@@ -1,0 +1,18 @@
+[package]
+name = "gdata_vaas_ui"
+version = "0.1.0"
+edition = "2021"
+authors = ["GDATA CyberDefense AG <opensource@gdata.de>"]
+license = "GPL-3.0-only"
+description = "GDATA Verdict-as-a-Service Scanner"
+build = "build.rs"
+publish = false
+
+[dependencies]
+sixtyfps = "0.1"
+vaas = { path = "../.."}
+tokio = "1"
+structopt = "0.3"
+
+[build-dependencies]
+sixtyfps-build = "0.1"

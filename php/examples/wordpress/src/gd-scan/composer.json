@@ -1,0 +1,27 @@
+{
+    "name": "gdata/wp-gd-scan",
+    "description": "Malware Scanner for WordPress Uploads",
+    "authors": [
+        {
+            "name": "PT-ATA No One",
+            "email": "ata-no-one@gdata.de"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../../../src/vaas",
+            "options": {
+                "symlink": false
+            }
+        }
+    ],
+    "require": {
+        "gdata/vaas": "@dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "WpGdScan\\": "."
+        }
+    }
+}

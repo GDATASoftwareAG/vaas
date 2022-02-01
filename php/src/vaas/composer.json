@@ -1,0 +1,15 @@
+{
+    "name": "gdata/vaas",
+    "require": {
+        "ramsey/uuid": "^4.1",
+        "textalk/websocket": "^1.5",
+        "netresearch/jsonmapper": "^4.0",
+        "guzzlehttp/guzzle": "^7.3",
+        "monolog/monolog": "^2.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "VaasSdk\\": "."
+        }
+    }
+}

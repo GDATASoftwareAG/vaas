@@ -1,0 +1,15 @@
+[package]
+name = "gscan"
+version = "0.1.0"
+edition = "2021"
+authors = ["GDATA CyberDefense AG <opensource@gdata.de>"]
+license = "MIT"
+description = "GDATA Verdict-as-a-Service CLI Scanner"
+publish = false
+
+[dependencies]
+vaas = { path = "../.." }
+tokio = "1.9"
+clap = "2.33"
+futures = "0.3"
+dotenv = "0.15"

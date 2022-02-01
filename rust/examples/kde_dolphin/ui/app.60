@@ -1,0 +1,67 @@
+import { VerticalBox, ListView, HorizontalBox, Button } from "sixtyfps_widgets.60";
+
+export struct FileItem := {
+    id: int,
+    name: string,
+    path: string,
+    state: string,
+}
+
+FileBox :=  HorizontalBox { 
+    property <string> name;
+    property <string> state;
+    property <int> id;
+
+    Text { 
+        text: id;
+        max-width: 10px;
+     }
+    Text {
+        text: name;
+        width: 200px;
+    }
+    Text {
+        text: state;
+    }
+ }
+
+Ui := Window {
+    title: "GDATA File Scanner";
+    icon: @image-url("../icon.png");
+    min-width: 600px;
+    min-height: 400px;
+    callback close();
+    callback scan();
+
+    property <[FileItem]> file-model: [
+        { id: 0, name: "foo.txt", state: "state1" },
+        { id: 1, name: "bar.exe", state: "state2" },
+    ];
+
+    VerticalBox {
+        Text {
+            text: "Scan files for malicious content.";
+        }
+
+        list-view := ListView {
+            for file in file-model: HorizontalLayout {
+               FileBox { 
+                   id: file.id;
+                   name: file.name;
+                   state: file.state;
+               }
+            }
+        }
+        HorizontalBox {
+            alignment: end;
+            Button {
+                text: "Scan";
+                clicked => { root.scan(); }
+            }
+            Button {
+                text: "Close";
+                clicked => { root.close();}
+            }
+        }
+    }
+}

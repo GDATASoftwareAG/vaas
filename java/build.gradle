@@ -1,0 +1,31 @@
+plugins {
+    id 'java'
+}
+
+group 'de.gdata'
+version '0.1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.testng:testng:7.1.0'
+    implementation 'org.projectlombok:lombok:1.18.20'
+    implementation 'com.google.code.gson:gson:2.8.8'
+    implementation 'org.java-websocket:Java-WebSocket:1.5.2'
+    implementation 'io.github.cdimascio:dotenv-java:2.2.0'
+    implementation 'org.jetbrains:annotations:20.1.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+
+    compileOnly 'org.projectlombok:lombok:1.18.20'
+    annotationProcessor 'org.projectlombok:lombok:1.18.20'
+
+    testCompileOnly 'org.projectlombok:lombok:1.18.20'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.20'
+}
+
+test {
+    useJUnitPlatform()
+}

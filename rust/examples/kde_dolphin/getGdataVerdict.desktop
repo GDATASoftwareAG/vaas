@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Service
+X-KDE-ServiceTypes=KonqPopupMenu/Plugin
+X-KDE-Priority=TopLevel
+MimeType=application/octet-stream;image/*;
+Actions=getVerdict
+
+[Desktop Action getVerdict]
+Name=Scan with GDATA
+Icon=REPLACE_WITH_ICON_PATH
+Exec=REPLACE_WITH_BINARY_PATH --token REPLACE_WITH_TOKEN --files %U
