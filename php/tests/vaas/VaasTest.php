@@ -30,12 +30,20 @@ final class VaasTest extends TestCase
 
     private function getDebugLogger(): LoggerInterface
     {
+        global $argv;
         $monoLogger = new Logger("VaaS");
 
-        $streamHandler = new StreamHandler(
-            STDOUT,
-            Logger::DEBUG
-        );
+        if (in_array("--debug", $argv) === true) {
+            $streamHandler = new StreamHandler(
+                STDOUT,
+                Logger::DEBUG
+            );
+        } else {
+            $streamHandler = new StreamHandler(
+                STDOUT,
+                Logger::INFO
+            );
+        }
         $streamHandler->setFormatter(new JsonFormatter());
         $monoLogger->pushHandler($streamHandler);
         return $monoLogger;
