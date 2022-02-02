@@ -1,4 +1,5 @@
 <?php
+
 namespace VaasTesting;
 
 include_once("./vendor/autoload.php");
@@ -17,18 +18,22 @@ use Ramsey\Uuid\Rfc4122\UuidV4;
 final class VaasTest extends TestCase
 {
     use ProphecyTrait;
-    
+
     public function setUp(): void
     {
         $dotenv = Dotenv::createImmutable(__DIR__);
-        $dotenv->load();
+        $dotenv->safeLoad();
+        if (getenv("VAAS_TOKEN") !== false) {
+            $_ENV["VAAS_TOKEN"] = getenv("VAAS_TOKEN");
+        }
     }
 
-    private function getDebugLogger(): LoggerInterface {
+    private function getDebugLogger(): LoggerInterface
+    {
         $monoLogger = new Logger("VaaS");
-            
+
         $streamHandler = new StreamHandler(
-            STDOUT, 
+            STDOUT,
             Logger::DEBUG
         );
         $streamHandler->setFormatter(new JsonFormatter());
@@ -91,7 +96,7 @@ final class VaasTest extends TestCase
         $cleanFile = pack("nvc*", 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a);
         $tmp = tmpfile();
         fwrite($tmp, $cleanFile);
-        fseek($tmp, 0);        
+        fseek($tmp, 0);
 
         $vaas = new Vaas($_ENV['VAAS_TOKEN'], $this->getDebugLogger());
         $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], false, $uuid));
@@ -104,7 +109,7 @@ final class VaasTest extends TestCase
 
         $tmp = tmpfile();
         fwrite($tmp, "X5O!P%@AP[4\\PZX54(P^)7CC)7}\$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!\$H+H*");
-        fseek($tmp, 0);        
+        fseek($tmp, 0);
 
         $vaas = new Vaas($_ENV['VAAS_TOKEN'], $this->getDebugLogger());
         $this->assertEquals("Malicious", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], false, $uuid));
@@ -117,7 +122,7 @@ final class VaasTest extends TestCase
 
         $tmp = tmpfile();
         fwrite($tmp, $uuid);
-        fseek($tmp, 0);        
+        fseek($tmp, 0);
 
         $vaas = new Vaas($_ENV['VAAS_TOKEN'], $this->getDebugLogger());
         $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true, $uuid));
