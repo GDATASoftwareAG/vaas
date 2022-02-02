@@ -11,19 +11,19 @@ class Verdict implements JsonSerializable
     public const CLEAN = "Clean";
     public const UNKNOWN = "Unknown";
 
-    private string $verdictString = "";
+    private string $_verdictString = "";
 
     public function __construct(string $type)
     {
         switch ($type) {
             case Verdict::MALICIOUS:
-                $this->verdictString = Verdict::MALICIOUS;
+                $this->_verdictString = Verdict::MALICIOUS;
                 break;
             case self::CLEAN:
-                $this->verdictString = Verdict::CLEAN;
+                $this->_verdictString = Verdict::CLEAN;
                 break;
             case self::UNKNOWN:
-                $this->verdictString = Verdict::UNKNOWN;
+                $this->_verdictString = Verdict::UNKNOWN;
                 break;
             default:
                 throw new UnkownVerdictException();
@@ -32,11 +32,11 @@ class Verdict implements JsonSerializable
 
     public function __toString()
     {
-        return $this->verdictString;
+        return $this->_verdictString;
     }
 
     public function jsonSerialize()
     {
-        return $this->verdictString;
+        return $this->_verdictString;
     }
 }

@@ -1,7 +1,7 @@
 <?php
 namespace VaasTesting;
 
-include_once("./vendor/autoload.php");
+require_once "./vendor/autoload.php";
 
 use PHPUnit\Framework\TestCase;
 use VaasSdk\Sha256;

@@ -12,23 +12,23 @@ class Kind implements JsonSerializable
     public const VERDICT_REQUEST = "VerdictRequest";
     public const VERDICT_RESPONSE = "VerdictResponse";
 
-    private string $kindString = "";
+    private string $_kindString = "";
 
     public function __construct(string $type)
     {
         switch ($type) {
             case self::AUTH_REQUEST:
-                $this->kindString = self::AUTH_REQUEST;
+                $this->_kindString = self::AUTH_REQUEST;
                 break;
             case self::AUTH_RESPONSE:
-                $this->kindString = self::AUTH_RESPONSE;
+                $this->_kindString = self::AUTH_RESPONSE;
                 break;
             case self::VERDICT_REQUEST:
-                $this->kindString = self::VERDICT_REQUEST;
+                $this->_kindString = self::VERDICT_REQUEST;
                 break;
             case self::VERDICT_RESPONSE:
-                $this->kindString = self::VERDICT_RESPONSE;
-                break;                
+                $this->_kindString = self::VERDICT_RESPONSE;
+                break;
             default:
                 throw new UnknownKindException();
         }
@@ -36,12 +36,11 @@ class Kind implements JsonSerializable
 
     public function __toString()
     {
-        return $this->kindString;
+        return $this->_kindString;
     }
 
     public function jsonSerialize()
     {
-        return $this->kindString;
+        return $this->_kindString;
     }
 }
-
