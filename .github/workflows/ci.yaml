@@ -81,3 +81,22 @@ jobs:
       - name: run Tests
         run: npm run test
         working-directory: typescript
+
+  build-rust:
+    name: Build & Test Rust SDK
+    runs-on: ubuntu-20.04
+    env:
+      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run cargo check
+        run: cargo test
+        working-directory: rust
