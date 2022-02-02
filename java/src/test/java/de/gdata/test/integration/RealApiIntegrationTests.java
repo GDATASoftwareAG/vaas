@@ -149,7 +149,9 @@ public class RealApiIntegrationTests {
 
     @org.jetbrains.annotations.NotNull
     private Vaas getVaas() throws URISyntaxException, InterruptedException {
-        var dotenv = Dotenv.load();
+        var dotenv = Dotenv.configure()
+            .ignoreIfMissing()
+            .load();
         var token = dotenv.get("VAAS_TOKEN");
 
         var config = new WsConfig(token);

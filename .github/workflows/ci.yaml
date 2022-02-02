@@ -11,6 +11,8 @@ jobs:
   build-java:
     name: Build & Test Java SDK
     runs-on: ubuntu-20.04
+    env:
+      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
 
     steps:
       - name: Checkout
