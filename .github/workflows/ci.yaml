@@ -32,6 +32,6 @@ jobs:
         with:
           arguments: test
           gradle-version: '7.2'
-        working-directory: java
+          build-root-directory: java
       
 
