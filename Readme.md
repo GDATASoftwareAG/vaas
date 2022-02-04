@@ -12,14 +12,10 @@
 Easily integrate malware detection into **any kind** of application, service or platform.
 
 Create a command line scanner to find malware with a few lines of code: [Example](rust/examples/gscan)
-<center>
-<img src="demo/gscan.gif" alt="GScan command line malware scanner" style="width:75%">
-</center>
+<img src="demo/gscan.gif" alt="GScan command line malware scanner" style="width:100%">
 
 Create a KDE Dolphin plugin to scan for malicious content with a few lines of code: [Example](rust/examples/kde_dolphin)
-<center>
-<img src="demo/dolphin_plugin.gif" alt="KDE Dolphin malware scanner plugin" style="width:75%">
-</center>
+<img src="demo/dolphin_plugin.gif" alt="KDE Dolphin malware scanner plugin" style="width:100%">
 
 ## I'm interested in VaaS
 
