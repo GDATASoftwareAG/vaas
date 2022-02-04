@@ -54,7 +54,7 @@ jobs:
       - name: install php dependencies
         uses: php-actions/composer@v6
         with:
-          args: --working-dir php/tests/vaas
+          working_dir: php/tests/vaas
 
       - name: run tests
         run: ./vendor/bin/phpunit --colors --testdox
