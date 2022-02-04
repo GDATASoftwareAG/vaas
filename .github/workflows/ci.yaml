@@ -94,6 +94,8 @@ jobs:
 
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
 
       - name: Run cargo check
         run: cargo test
