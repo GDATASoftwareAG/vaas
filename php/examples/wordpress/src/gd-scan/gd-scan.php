@@ -1,12 +1,14 @@
 <?php
 /**
- * File Scan Plugin
- * php version 7.3
+ * Plugin Name: File Scan Plugin
+ * Version: 0.0.1
+ * Requires PHP: 7.3
+ * Plugin URI: www.gdata.de
+ * 
  * @category Security
  * @package  GD_Scan
  * @author   G DATA CyberDefense AG <info@gdata.de>
  * @license  none www.gdata.de
- * @version  HG: 0.0.1
  * @link     www.gdata.de
  */
 namespace WpGdScan;
