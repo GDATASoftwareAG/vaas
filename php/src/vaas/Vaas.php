@@ -50,7 +50,7 @@ class Vaas
             $monoLogger = new Logger("VaaS");
 
             $streamHandler = new StreamHandler(
-                STDOUT,
+                fopen('php://stdout', 'w'),
                 Logger::INFO
             );
             $streamHandler->setFormatter(new JsonFormatter());
