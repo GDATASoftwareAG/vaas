@@ -17,6 +17,9 @@ Create a command line scanner to find malware with a few lines of code: [Example
 Create a KDE Dolphin plugin to scan for malicious content with a few lines of code: [Example](rust/examples/kde_dolphin)
 <img src="demo/dolphin_plugin.gif" alt="KDE Dolphin malware scanner plugin" style="width:100%">
 
+Create a Wordpress plugin that scans all file uploads for malware with a few lines of code: [Example](php/examples/wordpress)
+<img src="demo/wordpress.gif" alt="Wordpress plugin malware scanner" style="width:100%">
+
 ## I'm interested in VaaS
 
 You need credentials to use the service in your application. If your are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
