@@ -42,7 +42,7 @@ Documentation for the SDKs is available in the corresponding SDK folder.
 * [Rust SDK](./rust/), [Examples](./rust/examples)
 * [Java SDK](./java/)
 * [PHP SDK](./php/), [Examples](./php/examples)
-* [TypeScript](./typescript/)
+* [TypeScript SDK](./typescript/)
 
 ### Planned SDKs
 
