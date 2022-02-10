@@ -1,0 +1,144 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/l0ki/Repos/vaas/dotnet/Vaas/test/Vaas.Test/Vaas.Test.csproj": {}
+  },
+  "projects": {
+    "/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/Vaas.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/Vaas.csproj",
+        "projectName": "Vaas",
+        "projectPath": "/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/Vaas.csproj",
+        "packagesPath": "/home/l0ki/.nuget/packages/",
+        "outputPath": "/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/l0ki/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net5.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net5.0": {
+            "targetAlias": "net5.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net5.0": {
+          "targetAlias": "net5.0",
+          "dependencies": {
+            "Websocket.Client": {
+              "target": "Package",
+              "version": "[4.4.43, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib64/dotnet/sdk/5.0.206/RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "/home/l0ki/Repos/vaas/dotnet/Vaas/test/Vaas.Test/Vaas.Test.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/l0ki/Repos/vaas/dotnet/Vaas/test/Vaas.Test/Vaas.Test.csproj",
+        "projectName": "Vaas.Test",
+        "projectPath": "/home/l0ki/Repos/vaas/dotnet/Vaas/test/Vaas.Test/Vaas.Test.csproj",
+        "packagesPath": "/home/l0ki/.nuget/packages/",
+        "outputPath": "/home/l0ki/Repos/vaas/dotnet/Vaas/test/Vaas.Test/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/l0ki/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net5.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net5.0": {
+            "targetAlias": "net5.0",
+            "projectReferences": {
+              "/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/Vaas.csproj": {
+                "projectPath": "/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/Vaas.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net5.0": {
+          "targetAlias": "net5.0",
+          "dependencies": {
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[16.7.1, )"
+            },
+            "coverlet.collector": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.3.0, )"
+            },
+            "xunit": {
+              "target": "Package",
+              "version": "[2.4.1, )"
+            },
+            "xunit.runner.visualstudio": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[2.4.3, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/lib64/dotnet/sdk/5.0.206/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

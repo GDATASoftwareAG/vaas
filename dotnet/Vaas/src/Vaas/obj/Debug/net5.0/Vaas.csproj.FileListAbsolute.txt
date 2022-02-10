@@ -1,0 +1,15 @@
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/bin/Debug/net5.0/Vaas.deps.json
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/bin/Debug/net5.0/Vaas.dll
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/bin/Debug/net5.0/ref/Vaas.dll
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/bin/Debug/net5.0/Vaas.pdb
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.csprojAssemblyReference.cache
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.GeneratedMSBuildEditorConfig.editorconfig
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.AssemblyInfoInputs.cache
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.AssemblyInfo.cs
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.csproj.CoreCompileInputs.cache
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.dll
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/ref/Vaas.dll
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.pdb
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/bin/Debug/net5.0/System.Reactive.dll
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/bin/Debug/net5.0/System.Reactive.xml
+/home/l0ki/Repos/vaas/dotnet/Vaas/src/Vaas/obj/Debug/net5.0/Vaas.csproj.CopyComplete
