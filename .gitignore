@@ -38,3 +38,7 @@ java/.project
 java/.settings
 java/bin
 lib/
+
+obj/
+bin/
+
