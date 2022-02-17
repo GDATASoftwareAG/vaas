@@ -1,17 +1,17 @@
-use sixtyfps::Model;
+use slint::Model;
 use std::{env, path::PathBuf, rc::Rc, time::Duration};
 use structopt::StructOpt;
 use vaas::{CancellationTokenSource, Vaas};
-sixtyfps::include_modules!();
+slint::include_modules!();
 
 #[tokio::main]
 async fn main() {
     let opt = Opt::from_args();
     let file_items = get_files(&opt.files);
-    let file_model = Rc::new(sixtyfps::VecModel::<FileItem>::from(file_items.clone()));
+    let file_model = Rc::new(slint::VecModel::<FileItem>::from(file_items.clone()));
     let ui = Ui::new();
     ui.on_close(move || std::process::exit(0));
-    ui.set_file_model(sixtyfps::ModelHandle::new(file_model));
+    ui.set_file_model(slint::ModelRc::from(file_model));
 
     let handle_weak = ui.as_weak();
     ui.on_scan({
@@ -67,7 +67,7 @@ async fn main() {
     ui.run();
 }
 
-fn update_file_model(handle: sixtyfps::Weak<Ui>, fi: FileItem) {
+fn update_file_model(handle: slint::Weak<Ui>, fi: FileItem) {
     handle.upgrade_in_event_loop(move |handle| {
         let fm = handle.get_file_model();
         fm.set_row_data((fi.id - 1) as usize, fi)
