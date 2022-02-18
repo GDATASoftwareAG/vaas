@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::message::{VerdictResponse};
+use crate::message::VerdictResponse;
 use std::convert::TryFrom;
 
 pub enum MessageType {

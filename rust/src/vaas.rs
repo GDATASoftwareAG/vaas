@@ -3,12 +3,12 @@
 use crate::builder::Builder;
 use crate::connection::Connection;
 use crate::error::{Error, VResult};
+use crate::message::{AuthRequest, AuthResponse};
 use reqwest::Url;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use websockets::{Frame, WebSocket, WebSocketReadHalf, WebSocketWriteHalf};
-use crate::message::{AuthRequest, AuthResponse};
 
 #[derive(PartialEq)]
 pub(super) enum ThreadSyncMsg {
@@ -58,16 +58,20 @@ impl Vaas {
         Ok((reader, writer))
     }
 
-    async fn authenticate(&self, ws_reader: &mut WebSocketReadHalf, ws_writer: &mut WebSocketWriteHalf) -> VResult<String> {
+    async fn authenticate(
+        &self,
+        ws_reader: &mut WebSocketReadHalf,
+        ws_writer: &mut WebSocketWriteHalf,
+    ) -> VResult<String> {
         let auth_request = AuthRequest::new(self.token.clone(), None).to_json()?;
 
         ws_writer.send_text(auth_request).await?;
 
         let frame = ws_reader.receive().await?;
 
-        let response= match frame {
-           Frame::Text { payload: json, .. } => AuthResponse::try_from(&json)?,
-            _ => { return Err(Error::InvalidFrame) }
+        let response = match frame {
+            Frame::Text { payload: json, .. } => AuthResponse::try_from(&json)?,
+            _ => return Err(Error::InvalidFrame),
         };
 
         if response.success {

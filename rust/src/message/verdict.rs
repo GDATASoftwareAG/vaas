@@ -2,13 +2,13 @@ use crate::error::Error;
 use crate::error::Error::NoUploadUrl;
 use crate::message::upload_url::UploadUrl;
 use crate::message::VerdictResponse;
+use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use std::fmt;
-use serde::{Serialize, Deserialize};
 
 /// A `Verdict` is a response from the server that indicates whether the
 /// submission is `Clean`, `Malicious`, or `Unknown`.
-#[derive(Debug, PartialEq, Clone,  Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Verdict {
     /// No malicious content found.
     Clean,

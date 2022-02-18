@@ -179,7 +179,7 @@ async fn from_file_single_clean_file() {
 }
 
 #[tokio::test]
-// #[ignore = "Skip this test for now, as the test takes multiple minutes."]
+#[ignore = "Skip this test for now, as the test takes multiple minutes."]
 async fn from_file_single_unknown_file() {
     let unknown: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
@@ -200,7 +200,7 @@ async fn from_file_single_unknown_file() {
 }
 
 #[tokio::test]
-// #[ignore = "Skip this test for now, as it the takes multiple minutes."]
+#[ignore = "Skip this test for now, as it the takes multiple minutes."]
 async fn from_files_unknown_files() {
     let unknown1: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)

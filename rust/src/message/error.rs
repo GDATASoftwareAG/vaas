@@ -1,7 +1,7 @@
 use crate::message::kind::Kind;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
     #[serde(alias = "type")]
     pub error_type: String,

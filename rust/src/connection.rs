@@ -1,7 +1,7 @@
 //! The `Connection` module provides all functionallity to create an active connection to the verdict backend.
 
 use crate::error::{Error, VResult};
-use crate::message::{MessageType, VerdictRequest, VerdictResponse, State, UploadUrl, Verdict};
+use crate::message::{MessageType, State, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
 use crate::sha256::Sha256;
 use crate::vaas::ThreadSyncMsg;
 use cancellation::*;
@@ -28,7 +28,7 @@ pub struct Connection {
 impl Connection {
     /// Request a verdict for a SHA256 file hash.
     pub async fn for_sha256(&self, sha256: &Sha256, ct: &CancellationToken) -> VResult<Verdict> {
-        let request = VerdictRequest::new(sha256,self.session_id.clone());
+        let request = VerdictRequest::new(sha256, self.session_id.clone());
         let response = self.for_request(request, ct).await?;
         Ok(Verdict::try_from(&response)?)
     }
@@ -50,14 +50,17 @@ impl Connection {
     /// Request a verdict for a file.
     pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<Verdict> {
         let sha256 = Sha256::try_from(file)?;
-        let request = VerdictRequest::new(&sha256,self.session_id.clone());
+        let request = VerdictRequest::new(&sha256, self.session_id.clone());
         let guid = request.guid().to_string();
 
         let response = self.for_request(request, ct).await?;
         let verdict = Verdict::try_from(&response)?;
         match verdict {
             Verdict::Unknown { upload_url } => {
-                let auth_token = response.upload_token.as_ref().ok_or(Error::MissingAuthToken)?;
+                let auth_token = response
+                    .upload_token
+                    .as_ref()
+                    .ok_or(Error::MissingAuthToken)?;
                 let response = upload_file(file, upload_url, auth_token).await?;
 
                 if response.status() != 200 {
@@ -82,7 +85,11 @@ impl Connection {
         join_all(req).await
     }
 
-    async fn for_request(&self, request: VerdictRequest, ct: &CancellationToken) -> VResult<VerdictResponse> {
+    async fn for_request(
+        &self,
+        request: VerdictRequest,
+        ct: &CancellationToken,
+    ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
 
         self.ws_writer
@@ -99,7 +106,11 @@ impl Connection {
         self.wait_for_response(&guid, ct).await
     }
 
-    async fn wait_for_response(&self, guid: &str, ct: &CancellationToken) -> VResult<VerdictResponse> {
+    async fn wait_for_response(
+        &self,
+        guid: &str,
+        ct: &CancellationToken,
+    ) -> VResult<VerdictResponse> {
         let mut ping_cnt = 0;
         let result = loop {
             tokio::time::sleep(Duration::from_millis(self.poll_delay_ms)).await;
@@ -115,7 +126,7 @@ impl Connection {
                 self.ws_writer.lock().await.flush().await?;
                 ping_cnt = 0;
             }
-                ping_cnt += 1;
+            ping_cnt += 1;
         };
         // Remove guid/message from internal state, as we would gather infinite
         // messages if we never clean up.
@@ -139,7 +150,7 @@ impl Connection {
                         // TODO: Better error handling.
                         // Log a not parsable message?
                         // Infinite loop occurs if only errors are received... Notify user and exit?
-                        println!("Frame error: {:?}",e );
+                        println!("Frame error: {:?}", e);
                         continue;
                     }
                 };
@@ -175,15 +186,9 @@ impl Connection {
     fn parse_frame(frame: Result<Frame, WebSocketError>) -> VResult<MessageType> {
         match frame {
             Ok(Frame::Text { payload: json, .. }) => MessageType::try_from(&json),
-            Ok(Frame::Ping {..}) => {
-                Ok(MessageType::Ping)
-            },
-            Ok(Frame::Pong {..}) => {
-                Ok(MessageType::Pong)
-            },
-            Ok(Frame::Close {..}) => {
-                Ok(MessageType::Close)
-            },
+            Ok(Frame::Ping { .. }) => Ok(MessageType::Ping),
+            Ok(Frame::Pong { .. }) => Ok(MessageType::Pong),
+            Ok(Frame::Close { .. }) => Ok(MessageType::Close),
             Ok(_) => Err(Error::InvalidFrame),
             Err(e) => Err(Error::WebSocket(e)),
         }

@@ -58,8 +58,7 @@ impl Default for Builder {
         Self {
             poll_delay_ms: 100,
             token: String::new(),
-            url: Url::from_str("wss://gateway-vaas.gdatasecurity.de")
-                .unwrap(),
+            url: Url::from_str("wss://gateway-vaas.gdatasecurity.de").unwrap(),
         }
     }
 }
