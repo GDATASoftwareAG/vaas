@@ -6,9 +6,39 @@
 
 ## Protocol Internals   
 
-Verdict-as-a-Service is based on a WebSocket protocol. The flow graph shows the protocol flow. The protocol is described in detail below.
+Verdict-as-a-Service is based on a WebSocket protocol. The sequence diagram shows the protocol flow. The protocol is described in detail below.
 
-![vaas-protocol](./vaas-protocol.svg "VaaS Websocket Protocol")
+```mermaid
+sequenceDiagram
+participant s as Server
+participant c as Client
+c->>s: open ws connection
+c->>s: authentication request
+alt authenticated
+    s->>c: authentication response w/ session id
+else access denied
+    s->>c: authentication response w/ error msg.
+end
+loop request verdicts
+    c->>s: verdict request
+    loop keep alive
+        c->>s: ping
+        s->>c: pong
+    end
+    s->>c: verdict response
+end
+```
+
+In the case of an unknown response, the file can be uploaded for further analysis.
+```mermaid
+sequenceDiagram
+participant s as Server
+participant c as Client
+s->>c: verdict response: unknown
+c->>s: upload file
+s->>c: verdict response
+```
+
 
 The client is responsible for opening the websocket connection and sending the authentication message.
 
