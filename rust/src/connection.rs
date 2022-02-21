@@ -2,6 +2,7 @@
 
 use crate::error::{Error, VResult};
 use crate::message::{MessageType, State, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
+use crate::options::Options;
 use crate::sha256::Sha256;
 use crate::vaas::ThreadSyncMsg;
 use cancellation::*;
@@ -22,7 +23,7 @@ pub struct Connection {
     pub(super) session_id: String,
     pub(super) message_states: Arc<Mutex<HashMap<String, State>>>,
     pub(super) ch_sender: Sender<ThreadSyncMsg>,
-    pub(super) poll_delay_ms: u64,
+    pub(super) options: Options,
 }
 
 impl Connection {
@@ -111,27 +112,37 @@ impl Connection {
         guid: &str,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
-        let mut ping_cnt = 0;
         let result = loop {
-            tokio::time::sleep(Duration::from_millis(self.poll_delay_ms)).await;
+            tokio::time::sleep(Duration::from_millis(self.options.poll_delay_ms)).await;
             if ct.is_canceled() {
                 break Err(Error::Cancelled);
             }
             if let Some(State::Received(resp)) = self.message_states.lock().await.get(guid) {
                 break Ok((*resp).clone());
             }
-
-            if ping_cnt == 200 {
-                self.ws_writer.lock().await.send_ping(None).await?;
-                self.ws_writer.lock().await.flush().await?;
-                ping_cnt = 0;
-            }
-            ping_cnt += 1;
         };
         // Remove guid/message from internal state, as we would gather infinite
         // messages if we never clean up.
         self.message_states.lock().await.remove(guid);
         result
+    }
+
+    // TODO: Move this functionality into the underlying websocket library.
+    pub(super) async fn start_keep_alive(&self) {
+        let ws_writer = self.ws_writer.clone();
+        let keep_alive_delay_ms = self.options.keep_alive_delay_ms;
+
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(keep_alive_delay_ms)).await;
+                if let Err(e) = ws_writer.lock().await.send_ping(None).await {
+                    println!("Error sending keep alive: {:?}", e);
+                }
+                if let Err(e) = ws_writer.lock().await.flush().await {
+                    println!("Error flushing keep alive: {:?}", e);
+                }
+            }
+        });
     }
 
     pub(super) async fn start_reader_loop(

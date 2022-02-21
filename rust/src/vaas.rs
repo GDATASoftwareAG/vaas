@@ -4,6 +4,7 @@ use crate::builder::Builder;
 use crate::connection::Connection;
 use crate::error::{Error, VResult};
 use crate::message::{AuthRequest, AuthResponse};
+use crate::options::Options;
 use reqwest::Url;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -19,8 +20,8 @@ pub(super) enum ThreadSyncMsg {
 #[derive(Debug, Clone)]
 pub struct Vaas {
     pub(super) token: String,
-    pub(super) poll_delay_ms: u64,
     pub(super) url: Url,
+    pub(super) options: Options,
 }
 
 impl Vaas {
@@ -43,8 +44,12 @@ impl Vaas {
             session_id,
             message_states,
             ch_sender,
-            poll_delay_ms: self.poll_delay_ms,
+            options: self.options,
         };
+
+        if connection.options.keep_alive {
+            connection.start_keep_alive().await;
+        }
 
         Connection::start_reader_loop(ws_reader, ch_receiver, reader_messages).await;
         Ok(connection)
