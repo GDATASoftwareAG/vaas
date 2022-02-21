@@ -1,3 +1,3 @@
 fn main() {
-    sixtyfps_build::compile("ui/app.60").unwrap();
+    slint_build::compile("ui/app.slint").unwrap();
 }
