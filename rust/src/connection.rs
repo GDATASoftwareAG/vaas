@@ -15,6 +15,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 /// Active connection to the verdict server.
@@ -134,12 +135,14 @@ impl Connection {
 
         tokio::spawn(async move {
             loop {
-                tokio::time::sleep(Duration::from_secs(keep_alive_delay_ms)).await;
+                tokio::time::sleep(Duration::from_millis(keep_alive_delay_ms)).await;
                 if let Err(e) = ws_writer.lock().await.send_ping(None).await {
                     println!("Error sending keep alive: {:?}", e);
+                    break;
                 }
                 if let Err(e) = ws_writer.lock().await.flush().await {
                     println!("Error flushing keep alive: {:?}", e);
+                    break;
                 }
             }
         });
@@ -149,7 +152,7 @@ impl Connection {
         mut ws_reader: WebSocketReadHalf,
         ch_receiver: Receiver<ThreadSyncMsg>,
         message_states: Arc<Mutex<HashMap<String, State>>>,
-    ) {
+    ) -> JoinHandle<()> {
         tokio::spawn(async move {
             loop {
                 let frame = ws_reader.receive().await;
@@ -174,7 +177,7 @@ impl Connection {
                     Err(TryRecvError::Disconnected) => panic!("Channel receiver disconnected."),
                 }
             }
-        });
+        })
     }
 
     async fn transition_state(

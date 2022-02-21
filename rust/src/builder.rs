@@ -85,7 +85,7 @@ impl Default for Builder {
         Self {
             options: Options {
                 poll_delay_ms: 100,
-                keep_alive_delay_ms: 1000,
+                keep_alive_delay_ms: 10_000,
                 keep_alive: true,
             },
             token: String::new(),

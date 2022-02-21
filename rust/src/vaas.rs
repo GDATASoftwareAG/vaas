@@ -51,7 +51,10 @@ impl Vaas {
             connection.start_keep_alive().await;
         }
 
-        Connection::start_reader_loop(ws_reader, ch_receiver, reader_messages).await;
+        // TODO: Save the handle somewhere in the connection and on a connection drop, abort the handle
+        // Do the same for the start_keep_alive() function
+        // Then remove the ch_sender
+        let handle = Connection::start_reader_loop(ws_reader, ch_receiver, reader_messages).await;
         Ok(connection)
     }
 
