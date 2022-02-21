@@ -11,11 +11,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use websockets::{Frame, WebSocket, WebSocketReadHalf, WebSocketWriteHalf};
 
-#[derive(PartialEq)]
-pub(super) enum ThreadSyncMsg {
-    StopReader,
-}
-
 /// Provides all functionality needed to check a hash or file for malicious content.
 #[derive(Debug, Clone)]
 pub struct Vaas {
@@ -33,28 +28,27 @@ impl Vaas {
     /// Connect to the server endpoints to request a verdict for a hash or file.
     pub async fn connect(self) -> VResult<Connection> {
         let (mut ws_reader, mut ws_writer) = self.open_websocket().await?;
-        let (ch_sender, ch_receiver) = flume::unbounded();
         let message_states = Arc::new(Mutex::new(HashMap::new()));
         let reader_messages = message_states.clone();
 
         let session_id = self.authenticate(&mut ws_reader, &mut ws_writer).await?;
 
-        let connection = Connection {
+        let mut connection = Connection {
             ws_writer: Arc::new(Mutex::new(ws_writer)),
             session_id,
             message_states,
-            ch_sender,
             options: self.options,
+            reader_loop: None,
+            keep_alive_loop: None,
         };
 
         if connection.options.keep_alive {
             connection.start_keep_alive().await;
         }
 
-        // TODO: Save the handle somewhere in the connection and on a connection drop, abort the handle
-        // Do the same for the start_keep_alive() function
-        // Then remove the ch_sender
-        let handle = Connection::start_reader_loop(ws_reader, ch_receiver, reader_messages).await;
+        connection
+            .start_reader_loop(ws_reader, reader_messages)
+            .await;
         Ok(connection)
     }
 

@@ -2,10 +2,8 @@
 
 use crate::message;
 use crate::message::State;
-use crate::vaas::ThreadSyncMsg;
 use reqwest::StatusCode;
 use std::collections::HashMap;
-use std::sync::mpsc::SendError;
 use std::sync::{MutexGuard, PoisonError};
 use thiserror::Error;
 use websockets::WebSocketError;
@@ -31,9 +29,6 @@ pub enum Error {
     /// Request was cancelled due to a timeout.
     #[error("Request was cancelled")]
     Cancelled,
-    /// Failed to send a sync message between threads.
-    #[error("Failed to send message between threads")]
-    ThreadSendMsg,
     /// Received an invalid frame from the websocket.
     #[error("Invalid frame received")]
     InvalidFrame,
@@ -74,42 +69,8 @@ impl From<PoisonError<std::sync::MutexGuard<'_, HashMap<std::string::String, mes
     }
 }
 
-impl From<PoisonError<std::sync::MutexGuard<'_, std::sync::mpsc::Sender<ThreadSyncMsg>>>>
-    for Error
-{
-    fn from(
-        e: PoisonError<std::sync::MutexGuard<'_, std::sync::mpsc::Sender<ThreadSyncMsg>>>,
-    ) -> Self {
-        Self::Lock(e.to_string())
-    }
-}
-
 impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>> for Error {
     fn from(e: PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>) -> Self {
-        Self::Lock(e.to_string())
-    }
-}
-
-impl From<SendError<ThreadSyncMsg>> for Error {
-    fn from(_e: SendError<ThreadSyncMsg>) -> Self {
-        Self::ThreadSendMsg
-    }
-}
-
-impl From<tokio::sync::mpsc::error::SendError<ThreadSyncMsg>> for Error {
-    fn from(_e: tokio::sync::mpsc::error::SendError<ThreadSyncMsg>) -> Self {
-        Self::ThreadSendMsg
-    }
-}
-
-impl From<flume::SendError<ThreadSyncMsg>> for Error {
-    fn from(e: flume::SendError<ThreadSyncMsg>) -> Self {
-        Self::Lock(e.to_string())
-    }
-}
-
-impl From<PoisonError<std::sync::MutexGuard<'_, flume::Sender<ThreadSyncMsg>>>> for Error {
-    fn from(e: PoisonError<std::sync::MutexGuard<'_, flume::Sender<ThreadSyncMsg>>>) -> Self {
         Self::Lock(e.to_string())
     }
 }

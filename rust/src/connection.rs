@@ -1,12 +1,10 @@
-//! The `Connection` module provides all functionallity to create an active connection to the verdict backend.
+//! The `Connection` module provides all functionality to create an active connection to the verdict backend.
 
 use crate::error::{Error, VResult};
 use crate::message::{MessageType, State, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
 use crate::options::Options;
 use crate::sha256::Sha256;
-use crate::vaas::ThreadSyncMsg;
 use cancellation::*;
-use flume::{Receiver, Sender, TryRecvError};
 use futures::future::join_all;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -23,8 +21,11 @@ pub struct Connection {
     pub(super) ws_writer: Arc<Mutex<WebSocketWriteHalf>>,
     pub(super) session_id: String,
     pub(super) message_states: Arc<Mutex<HashMap<String, State>>>,
-    pub(super) ch_sender: Sender<ThreadSyncMsg>,
     pub(super) options: Options,
+    // The handles are used to be able to abort the threads
+    // in the case that the connection is dropped.
+    pub(super) reader_loop: Option<JoinHandle<()>>,
+    pub(super) keep_alive_loop: Option<JoinHandle<()>>,
 }
 
 impl Connection {
@@ -129,11 +130,11 @@ impl Connection {
     }
 
     // TODO: Move this functionality into the underlying websocket library.
-    pub(super) async fn start_keep_alive(&self) {
+    pub(super) async fn start_keep_alive(&mut self) {
         let ws_writer = self.ws_writer.clone();
         let keep_alive_delay_ms = self.options.keep_alive_delay_ms;
 
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(keep_alive_delay_ms)).await;
                 if let Err(e) = ws_writer.lock().await.send_ping(None).await {
@@ -146,14 +147,15 @@ impl Connection {
                 }
             }
         });
+        self.keep_alive_loop = Some(handle);
     }
 
     pub(super) async fn start_reader_loop(
+        &mut self,
         mut ws_reader: WebSocketReadHalf,
-        ch_receiver: Receiver<ThreadSyncMsg>,
         message_states: Arc<Mutex<HashMap<String, State>>>,
-    ) -> JoinHandle<()> {
-        tokio::spawn(async move {
+    ) {
+        let l = tokio::spawn(async move {
             loop {
                 let frame = ws_reader.receive().await;
                 match Self::parse_frame(frame) {
@@ -168,16 +170,9 @@ impl Connection {
                         continue;
                     }
                 };
-
-                match ch_receiver.try_recv() {
-                    Ok(ThreadSyncMsg::StopReader) => break,
-                    Err(TryRecvError::Empty) => continue,
-                    // TODO: Handle errors in thread. If the reader thread panics, currently nobody will notice and no new results will be received.
-                    // This should not happen as we have the channel under control but you never know...
-                    Err(TryRecvError::Disconnected) => panic!("Channel receiver disconnected."),
-                }
             }
-        })
+        });
+        self.reader_loop = Some(l);
     }
 
     async fn transition_state(
@@ -207,10 +202,6 @@ impl Connection {
             Err(e) => Err(Error::WebSocket(e)),
         }
     }
-
-    async fn stop_reader(&self) -> VResult<()> {
-        Ok(self.ch_sender.send(ThreadSyncMsg::StopReader)?)
-    }
 }
 
 async fn upload_file(
@@ -231,8 +222,16 @@ async fn upload_file(
 
 impl Drop for Connection {
     fn drop(&mut self) {
-        // Best effort: If the reader is hung up, we are out of luck
-        // and the thread cannot be terminated.
-        let _result = self.stop_reader();
+        // Abort the spawned threads in the case that the connection
+        // is dropped.
+        // If the threads are not aborted, they will live past the connection
+        // lifetime which is not what the user expects.
+        if self.reader_loop.is_some() {
+            self.reader_loop.as_ref().unwrap().abort();
+        }
+
+        if self.keep_alive_loop.is_some() {
+            self.reader_loop.as_ref().unwrap().abort();
+        }
     }
 }

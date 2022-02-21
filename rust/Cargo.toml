@@ -17,7 +17,6 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 cancellation = "0.1"
 reqwest = "0.11"
 regex = "1.5"
-flume = "0.10"
 tokio = { version = "1.9", features = ["full"] }
 sha2 = "0.9.5"
 futures = "0.3"
