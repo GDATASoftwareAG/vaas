@@ -76,9 +76,9 @@ mod builder;
 mod connection;
 pub mod error;
 pub mod message;
+mod options;
 mod sha256;
 mod vaas;
-mod options;
 
 pub use crate::vaas::Vaas;
 pub use builder::Builder;

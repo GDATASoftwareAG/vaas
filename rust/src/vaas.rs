@@ -6,9 +6,6 @@ use crate::error::{Error, VResult};
 use crate::message::{AuthRequest, AuthResponse};
 use crate::options::Options;
 use reqwest::Url;
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use websockets::{Frame, WebSocket, WebSocketReadHalf, WebSocketWriteHalf};
 
 /// Provides all functionality needed to check a hash or file for malicious content.
@@ -28,27 +25,8 @@ impl Vaas {
     /// Connect to the server endpoints to request a verdict for a hash or file.
     pub async fn connect(self) -> VResult<Connection> {
         let (mut ws_reader, mut ws_writer) = self.open_websocket().await?;
-        let message_states = Arc::new(Mutex::new(HashMap::new()));
-        let reader_messages = message_states.clone();
-
         let session_id = self.authenticate(&mut ws_reader, &mut ws_writer).await?;
-
-        let mut connection = Connection {
-            ws_writer: Arc::new(Mutex::new(ws_writer)),
-            session_id,
-            message_states,
-            options: self.options,
-            reader_loop: None,
-            keep_alive_loop: None,
-        };
-
-        if connection.options.keep_alive {
-            connection.start_keep_alive().await;
-        }
-
-        connection
-            .start_reader_loop(ws_reader, reader_messages)
-            .await;
+        let connection = Connection::start(ws_writer, ws_reader, session_id, self.options).await;
         Ok(connection)
     }
 

@@ -16,19 +16,50 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
+type ThreadHandle = JoinHandle<Result<(), Error>>;
+type MessageStates = Arc<Mutex<HashMap<String, State>>>;
+type AsyncWriterHalf = Arc<Mutex<WebSocketWriteHalf>>;
+
 /// Active connection to the verdict server.
 pub struct Connection {
-    pub(super) ws_writer: Arc<Mutex<WebSocketWriteHalf>>,
-    pub(super) session_id: String,
-    pub(super) message_states: Arc<Mutex<HashMap<String, State>>>,
-    pub(super) options: Options,
+    ws_writer: AsyncWriterHalf,
+    session_id: String,
+    message_states: MessageStates,
+    options: Options,
     // The handles are used to be able to abort the threads
     // in the case that the connection is dropped.
-    pub(super) reader_loop: Option<JoinHandle<()>>,
-    pub(super) keep_alive_loop: Option<JoinHandle<()>>,
+    reader_loop: ThreadHandle,
+    keep_alive_loop: Option<ThreadHandle>,
 }
 
 impl Connection {
+    pub(crate) async fn start(
+        ws_writer: WebSocketWriteHalf,
+        ws_reader: WebSocketReadHalf,
+        session_id: String,
+        options: Options,
+    ) -> Self {
+        let ws_writer = Arc::new(Mutex::new(ws_writer));
+        let message_states = Arc::new(Mutex::new(HashMap::new()));
+        let reader_messages = message_states.clone();
+        let reader_loop = Connection::start_reader_loop(ws_reader, reader_messages).await;
+
+        let keep_alive_loop = if options.keep_alive {
+            Some(Connection::start_keep_alive(ws_writer.clone(), options.keep_alive_delay_ms).await)
+        } else {
+            None
+        };
+
+        Connection {
+            ws_writer,
+            session_id,
+            message_states,
+            options,
+            reader_loop,
+            keep_alive_loop,
+        }
+    }
+
     /// Request a verdict for a SHA256 file hash.
     pub async fn for_sha256(&self, sha256: &Sha256, ct: &CancellationToken) -> VResult<Verdict> {
         let request = VerdictRequest::new(sha256, self.session_id.clone());
@@ -130,49 +161,30 @@ impl Connection {
     }
 
     // TODO: Move this functionality into the underlying websocket library.
-    pub(super) async fn start_keep_alive(&mut self) {
-        let ws_writer = self.ws_writer.clone();
-        let keep_alive_delay_ms = self.options.keep_alive_delay_ms;
-
-        let handle = tokio::spawn(async move {
+    async fn start_keep_alive(
+        ws_writer: AsyncWriterHalf,
+        keep_alive_delay_ms: u64,
+    ) -> ThreadHandle {
+        tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(keep_alive_delay_ms)).await;
-                if let Err(e) = ws_writer.lock().await.send_ping(None).await {
-                    println!("Error sending keep alive: {:?}", e);
-                    break;
-                }
-                if let Err(e) = ws_writer.lock().await.flush().await {
-                    println!("Error flushing keep alive: {:?}", e);
-                    break;
-                }
+                ws_writer.lock().await.send_ping(None).await?;
+                ws_writer.lock().await.flush().await?;
             }
-        });
-        self.keep_alive_loop = Some(handle);
+        })
     }
 
-    pub(super) async fn start_reader_loop(
-        &mut self,
+    async fn start_reader_loop(
         mut ws_reader: WebSocketReadHalf,
-        message_states: Arc<Mutex<HashMap<String, State>>>,
-    ) {
-        let l = tokio::spawn(async move {
+        message_states: MessageStates,
+    ) -> ThreadHandle {
+        tokio::spawn(async move {
             loop {
                 let frame = ws_reader.receive().await;
-                match Self::parse_frame(frame) {
-                    Ok(message) => {
-                        Self::transition_state(message, &message_states).await;
-                    }
-                    Err(e) => {
-                        // TODO: Better error handling.
-                        // Log a not parsable message?
-                        // Infinite loop occurs if only errors are received... Notify user and exit?
-                        println!("Frame error: {:?}", e);
-                        continue;
-                    }
-                };
+                let message = Self::parse_frame(frame)?;
+                Self::transition_state(message, &message_states).await;
             }
-        });
-        self.reader_loop = Some(l);
+        })
     }
 
     async fn transition_state(
@@ -226,12 +238,12 @@ impl Drop for Connection {
         // is dropped.
         // If the threads are not aborted, they will live past the connection
         // lifetime which is not what the user expects.
-        if self.reader_loop.is_some() {
-            self.reader_loop.as_ref().unwrap().abort();
-        }
+        // Abort is only safe if we never block or wait for mutex in the thread.
+        // If we had a mutex in the thread blocked and aborted the thread, we would deadlock.
+        self.reader_loop.abort();
 
         if self.keep_alive_loop.is_some() {
-            self.reader_loop.as_ref().unwrap().abort();
+            self.keep_alive_loop.as_ref().unwrap().abort();
         }
     }
 }
