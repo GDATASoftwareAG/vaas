@@ -48,3 +48,5 @@ namespace Vaas
         }
     }
 }
+
+// git credential helper einrichten.
