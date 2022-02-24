@@ -10,6 +10,13 @@ namespace Vaas
 {
     public class Vaas
     {
+        public string Token { get;  }
+        
+        public Vaas(string token)
+        {
+            Token = token;
+        }
+        
         public Verdict ForSha256(string sha256)
         {
             var url = new Uri("wss://gateway-vaas.gdatasecurity.de");
@@ -24,7 +31,7 @@ namespace Vaas
                     throw new WebsocketException("Could not start client");
                 }
 
-                var authenticationRequest = new AuthenticationRequest("1023456789", null);
+                var authenticationRequest = new AuthenticationRequest(Token, null);
 
                 string jsonString = JsonSerializer.Serialize(authenticationRequest);
                 
@@ -49,4 +56,3 @@ namespace Vaas
     }
 }
 
-// git credential helper einrichten.
