@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Vaas.Messages;
 using Websocket.Client;
@@ -10,35 +11,62 @@ namespace Vaas
 {
     public class Vaas
     {
-        public string Token { get;  }
+        public string Token { get; }
+
+        public WebsocketClient Client { get; }
         
+        public bool Authenticated { get; set; }
+
         public Vaas(string token)
         {
             Token = token;
-        }
-        
-        public Verdict ForSha256(string sha256)
-        {
+
             var url = new Uri("wss://gateway-vaas.gdatasecurity.de");
 
-            using (var client = new WebsocketClient(url, CreateWebsocketClient()))
+            Client = new WebsocketClient(url, CreateWebsocketClient());
+            Client.ReconnectTimeout = null;
+            Client.MessageReceived.Subscribe(msg =>
             {
-                client.ReconnectTimeout = null;
-                client.MessageReceived.Subscribe(msg => Console.WriteLine($"Message received: {msg}"));
-                client.Start().GetAwaiter().GetResult();
-                if (!client.IsStarted)
+                if (msg.MessageType == WebSocketMessageType.Text)
                 {
-                    throw new WebsocketException("Could not start client");
+                    var response = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
+                    if (response.Success == true)
+                    {
+                        Authenticated = true;
+                    }
                 }
-
-                var authenticationRequest = new AuthenticationRequest(Token, null);
-
-                string jsonString = JsonSerializer.Serialize(authenticationRequest);
-                
-                client.Send(jsonString);
+            });
+            Client.Start().GetAwaiter().GetResult();
+            if (!Client.IsStarted)
+            {
+                throw new WebsocketException("Could not start client");
             }
+
+            
+        }
+
+        public bool Authenticate()
+        {
+            var authenticationRequest = new AuthenticationRequest(Token, null);
+
+            string jsonString = JsonSerializer.Serialize(authenticationRequest);
+            Client.Send(jsonString);
+            for (var i = 0; i < 10; i++)
+            {
+                if (Authenticated == true)
+                {
+                    break;
+                }
+                Thread.Sleep(100);    
+            }
+            return Authenticated;
+        }
+
+        public Verdict ForSha256(string sha256)
+        {
             return Verdict.Clean;
         }
+
         private static Func<ClientWebSocket> CreateWebsocketClient()
         {
             return () =>
@@ -55,4 +83,3 @@ namespace Vaas
         }
     }
 }
-
