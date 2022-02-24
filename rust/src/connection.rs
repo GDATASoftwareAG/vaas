@@ -20,18 +20,18 @@ use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 type ThreadHandle = JoinHandle<Result<(), Error>>;
 type MessageStates = Arc<Mutex<HashMap<String, State>>>;
-type AsyncWriterHalf = Arc<Mutex<WebSocketWriteHalf>>;
-type AsyncRecv = Arc<Mutex<Receiver<Error>>>;
+type WebSocketWriter = Arc<Mutex<WebSocketWriteHalf>>;
+type ErrorChannel = Arc<Mutex<Receiver<Error>>>;
 
 /// Active connection to the verdict server.
 pub struct Connection {
-    ws_writer: AsyncWriterHalf,
+    ws_writer: WebSocketWriter,
     session_id: String,
     message_states: MessageStates,
     options: Options,
     reader_thread: ThreadHandle,
     keep_alive_thread: Option<ThreadHandle>,
-    error_channel_receiver: AsyncRecv,
+    error_channel_receiver: ErrorChannel,
 }
 
 impl Connection {
@@ -45,21 +45,10 @@ impl Connection {
         let message_states = Arc::new(Mutex::new(HashMap::new()));
         let reader_messages = message_states.clone();
         let (tx, rx) = tokio::sync::mpsc::channel(5);
+
         let reader_loop =
             Connection::start_reader_loop(ws_reader, reader_messages, tx.clone()).await;
-
-        let keep_alive_loop = if options.keep_alive {
-            Some(
-                Connection::start_keep_alive(
-                    ws_writer.clone(),
-                    options.keep_alive_delay_ms,
-                    tx.clone(),
-                )
-                .await,
-            )
-        } else {
-            None
-        };
+        let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, tx.clone()).await;
 
         Connection {
             ws_writer,
@@ -69,6 +58,21 @@ impl Connection {
             reader_thread: reader_loop,
             keep_alive_thread: keep_alive_loop,
             error_channel_receiver: Arc::new(Mutex::new(rx)),
+        }
+    }
+
+    async fn start_keep_alive(
+        options: &Options,
+        ws_writer: &Arc<Mutex<WebSocketWriteHalf>>,
+        tx: Sender<Error>,
+    ) -> Option<ThreadHandle> {
+        if options.keep_alive {
+            Some(
+                Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx)
+                    .await,
+            )
+        } else {
+            None
         }
     }
 
@@ -103,21 +107,33 @@ impl Connection {
         let verdict = Verdict::try_from(&response)?;
         match verdict {
             Verdict::Unknown { upload_url } => {
-                let auth_token = response
-                    .upload_token
-                    .as_ref()
-                    .ok_or(Error::MissingAuthToken)?;
-                let response = upload_file(file, upload_url, auth_token).await?;
-
-                if response.status() != 200 {
-                    return Err(Error::FailedUploadFile(response.status()));
-                }
-
-                let resp = self.wait_for_response(&guid, ct).await?;
-                Ok(Verdict::try_from(&resp)?)
+                self.handle_unknown(file, ct, &guid, response, upload_url)
+                    .await
             }
             _ => Ok(verdict),
         }
+    }
+
+    async fn handle_unknown(
+        &self,
+        file: &Path,
+        ct: &CancellationToken,
+        guid: &String,
+        response: VerdictResponse,
+        upload_url: UploadUrl,
+    ) -> Result<Verdict, Error> {
+        let auth_token = response
+            .upload_token
+            .as_ref()
+            .ok_or(Error::MissingAuthToken)?;
+        let response = upload_file(file, upload_url, auth_token).await?;
+
+        if response.status() != 200 {
+            return Err(Error::FailedUploadFile(response.status()));
+        }
+
+        let resp = self.wait_for_response(&guid, ct).await?;
+        Ok(Verdict::try_from(&resp)?)
     }
 
     /// Request a verdict for a list of files.
@@ -185,8 +201,8 @@ impl Connection {
     }
 
     // TODO: Move this functionality into the underlying websocket library.
-    async fn start_keep_alive(
-        ws_writer: AsyncWriterHalf,
+    async fn keep_alive_loop(
+        ws_writer: WebSocketWriter,
         keep_alive_delay_ms: u64,
         thread_sender: Sender<Error>,
     ) -> ThreadHandle {
@@ -277,7 +293,6 @@ impl Drop for Connection {
         // Abort is only safe if we never block or wait for mutex in the thread.
         // If we had a mutex in the thread blocked and aborted the thread, we would deadlock.
         self.reader_thread.abort();
-
         if self.keep_alive_thread.is_some() {
             self.keep_alive_thread.as_ref().unwrap().abort();
         }
