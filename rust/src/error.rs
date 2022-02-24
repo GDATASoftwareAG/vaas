@@ -59,6 +59,9 @@ pub enum Error {
     /// Unauthorized
     #[error("Unauthorized")]
     Unauthorized,
+    /// All threads were dropped. This happens when the keep-alive and reader thread are dropped.
+    #[error("All threads were dropped.")]
+    ThreadsDropped,
 }
 
 impl From<PoisonError<std::sync::MutexGuard<'_, HashMap<std::string::String, message::State>>>>
@@ -71,6 +74,12 @@ impl From<PoisonError<std::sync::MutexGuard<'_, HashMap<std::string::String, mes
 
 impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>> for Error {
     fn from(e: PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>) -> Self {
+        Self::Lock(e.to_string())
+    }
+}
+
+impl From<tokio::sync::mpsc::error::SendError<Error>> for Error {
+    fn from(e: tokio::sync::mpsc::error::SendError<Error>) -> Self {
         Self::Lock(e.to_string())
     }
 }
