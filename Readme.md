@@ -20,6 +20,9 @@ Create a KDE Dolphin plugin to scan for malicious content with a few lines of co
 Create a Wordpress plugin that scans all file uploads for malware with a few lines of code: [Example](php/examples/wordpress)
 <img src="demo/wordpress.gif" alt="Wordpress plugin malware scanner" style="width:100%">
 
+Create a Discord Bot that deletes all files with malicious content on your server with a few lines of code: [Example](typescript/examples/discordbot)
+<img src="demo/discord_bot.gif" alt="VaaS Discord Bot" style="width:100%">
+
 ## I'm interested in VaaS
 
 You need credentials to use the service in your application. If your are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
