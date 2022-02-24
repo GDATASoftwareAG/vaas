@@ -168,6 +168,8 @@ impl Connection {
         self.wait_for_response(&guid, ct).await
     }
 
+    // TODO Refactor this function.
+    // Idea: Do not loop, but get a result from the channel.
     async fn wait_for_response(
         &self,
         guid: &str,

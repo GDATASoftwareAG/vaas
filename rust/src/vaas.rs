@@ -44,11 +44,9 @@ impl Vaas {
         ws_writer: &mut WebSocketWriteHalf,
     ) -> VResult<String> {
         let auth_request = AuthRequest::new(self.token.clone(), None).to_json()?;
-
         ws_writer.send_text(auth_request).await?;
 
         let frame = ws_reader.receive().await?;
-
         let response = match frame {
             Frame::Text { payload: json, .. } => AuthResponse::try_from(&json)?,
             _ => return Err(Error::InvalidFrame),
