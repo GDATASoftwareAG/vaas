@@ -1,11 +1,10 @@
 //! The `Error` type is returned by the `vaas` API everywhere, where an error can occur.
 
-use crate::message;
-use crate::message::State;
+use crate::message::{ErrorResponse, VerdictResponse};
 use reqwest::StatusCode;
-use std::collections::HashMap;
-use std::sync::{MutexGuard, PoisonError};
+use std::sync::PoisonError;
 use thiserror::Error;
+use tokio::sync::broadcast::error::SendError;
 use websockets::WebSocketError;
 
 /// VaaS Result type.
@@ -16,10 +15,10 @@ pub type VResult<T> = Result<T, Error>;
 pub enum Error {
     /// A websocket error occurred.
     #[error("WebSocket Error: `{0}`")]
-    WebSocket(#[from] WebSocketError),
+    WebSocket(String),
     /// A serialization or deserialization error occurred.
     #[error("Serialization Error: `{0}`")]
-    DeSerialization(#[from] serde_json::Error),
+    DeSerialization(String),
     /// Failed to acquire the message lock.
     #[error("Cannot acquire message lock: `{0}`")]
     Lock(String),
@@ -43,13 +42,13 @@ pub enum Error {
     NoUploadUrl,
     /// A generic IO error occurred.
     #[error("IO Error: `{0}`")]
-    IoError(#[from] std::io::Error),
+    IoError(String),
     /// The provided string is not a valid SHA256.
     #[error("Invalid SHA256: `{0}`")]
     InvalidSha256(String),
     /// Failed create a request to upload a file.
     #[error("Failed to send file: `{0}`")]
-    FailedRequest(#[from] reqwest::Error),
+    FailedRequest(String),
     /// Failed to upload the file. Server answered with an non-200 status code.
     #[error("Server answered with status code: `{0}`")]
     FailedUploadFile(StatusCode),
@@ -65,14 +64,12 @@ pub enum Error {
     /// Message readers are lagging behind the message writer.
     #[error("Readers are lagging behind by `{0}`")]
     ReadersLagging(u64),
-}
-
-impl From<PoisonError<std::sync::MutexGuard<'_, HashMap<std::string::String, message::State>>>>
-    for Error
-{
-    fn from(e: PoisonError<MutexGuard<'_, HashMap<String, State>>>) -> Self {
-        Self::Lock(e.to_string())
-    }
+    /// Broadcast send error between threads occurred.
+    #[error("Send between threads failed: `{0}`")]
+    SendError(String),
+    /// Server returned an error.
+    #[error("Error response from the server")]
+    ErrorResponse(ErrorResponse),
 }
 
 impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>> for Error {
@@ -81,14 +78,32 @@ impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>
     }
 }
 
-impl From<tokio::sync::mpsc::error::SendError<Error>> for Error {
-    fn from(e: tokio::sync::mpsc::error::SendError<Error>) -> Self {
-        Self::Lock(e.to_string())
+impl From<WebSocketError> for Error {
+    fn from(e: WebSocketError) -> Self {
+        Self::WebSocket(e.to_string())
     }
 }
 
-impl From<tokio::sync::broadcast::error::SendError<Error>> for Error {
-    fn from(e: tokio::sync::broadcast::error::SendError<Error>) -> Self {
-        Self::Lock(e.to_string())
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::DeSerialization(e.to_string())
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Self::IoError(e.to_string())
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Self::FailedRequest(e.to_string())
+    }
+}
+
+impl From<tokio::sync::broadcast::error::SendError<Result<VerdictResponse, Error>>> for Error {
+    fn from(e: SendError<Result<VerdictResponse, Error>>) -> Self {
+        Self::SendError(e.to_string())
     }
 }

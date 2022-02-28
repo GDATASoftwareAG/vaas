@@ -23,16 +23,7 @@ impl VerdictRequest {
     pub fn to_json(&self) -> VResult<String> {
         Ok(serde_json::to_string(self)?)
     }
-
-    pub fn kind(&self) -> Kind {
-        self.kind
-    }
-
     pub fn guid(&self) -> &str {
         &self.guid
-    }
-
-    pub fn sha256(&self) -> &str {
-        &self.sha256
     }
 }

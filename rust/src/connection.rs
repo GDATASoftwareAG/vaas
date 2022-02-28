@@ -1,12 +1,11 @@
 //! The `Connection` module provides all functionality to create an active connection to the verdict backend.
 
 use crate::error::{Error, VResult};
-use crate::message::{MessageType, State, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
+use crate::message::{MessageType, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
 use crate::options::Options;
 use crate::sha256::Sha256;
 use cancellation::*;
 use futures::future::join_all;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -19,19 +18,18 @@ use tokio::task::JoinHandle;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 type ThreadHandle = JoinHandle<Result<(), Error>>;
-type MessageStates = Arc<Mutex<HashMap<String, State>>>;
 type WebSocketWriter = Arc<Mutex<WebSocketWriteHalf>>;
-type ErrorChannel = Receiver<Error>;
+type ResultChannelRx = Mutex<Receiver<VResult<VerdictResponse>>>;
+type ResultChannelTx = Sender<VResult<VerdictResponse>>;
 
 /// Active connection to the verdict server.
 pub struct Connection {
     ws_writer: WebSocketWriter,
     session_id: String,
-    message_states: MessageStates,
     options: Options,
     reader_thread: ThreadHandle,
     keep_alive_thread: Option<ThreadHandle>,
-    error_channel_receiver: ErrorChannel,
+    result_channel: ResultChannelRx,
 }
 
 impl Connection {
@@ -42,29 +40,25 @@ impl Connection {
         options: Options,
     ) -> Self {
         let ws_writer = Arc::new(Mutex::new(ws_writer));
-        let message_states = Arc::new(Mutex::new(HashMap::new()));
-        let reader_messages = message_states.clone();
         let (tx, rx) = tokio::sync::broadcast::channel(5);
 
-        let reader_loop =
-            Connection::start_reader_loop(ws_reader, reader_messages, tx.clone()).await;
+        let reader_loop = Connection::start_reader_loop(ws_reader, tx.clone()).await;
         let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, tx.clone()).await;
 
         Connection {
             ws_writer,
             session_id,
-            message_states,
             options,
             reader_thread: reader_loop,
             keep_alive_thread: keep_alive_loop,
-            error_channel_receiver: rx,
+            result_channel: Mutex::new(rx),
         }
     }
 
     async fn start_keep_alive(
         options: &Options,
         ws_writer: &Arc<Mutex<WebSocketWriteHalf>>,
-        tx: Sender<Error>,
+        tx: ResultChannelTx,
     ) -> Option<ThreadHandle> {
         if options.keep_alive {
             Some(
@@ -160,11 +154,6 @@ impl Connection {
             .send_text(request.to_json()?)
             .await?;
 
-        self.message_states
-            .lock()
-            .await
-            .insert(guid.to_string(), State::Send(request));
-
         self.wait_for_response(&guid, ct).await
     }
 
@@ -175,7 +164,7 @@ impl Connection {
         guid: &str,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
-        let result = loop {
+        loop {
             tokio::time::sleep(Duration::from_millis(self.options.poll_delay_ms)).await;
 
             // Check if the request has been cancelled
@@ -184,39 +173,35 @@ impl Connection {
             }
 
             // Check if the keep-alive or reader thread has died
-            match self.error_channel_receiver.try_recv() {
-                Ok(e) => break Err(e),
+            match self.result_channel.lock().await.try_recv() {
+                Ok(Ok(vr)) => {
+                    if vr.guid == guid {
+                        break Ok(vr);
+                    }
+                }
+                Ok(Err(e)) => break Err(e),
                 Err(TryRecvError::Closed) => break Err(Error::ThreadsDropped),
                 Err(TryRecvError::Lagged(i)) => break Err(Error::ReadersLagging(i)),
                 Err(TryRecvError::Empty) => { // continue
                 }
             }
-
-            // Pull a response from the message_states map
-            if let Some(State::Received(resp)) = self.message_states.lock().await.get(guid) {
-                break Ok((*resp).clone());
-            }
-        };
-        // Remove guid/message from internal state, as we would gather infinite
-        // messages if we never clean up.
-        self.message_states.lock().await.remove(guid);
-        result
+        }
     }
 
     // TODO: Move this functionality into the underlying websocket library.
     async fn keep_alive_loop(
         ws_writer: WebSocketWriter,
         keep_alive_delay_ms: u64,
-        thread_sender: Sender<Error>,
+        result_channel: ResultChannelTx,
     ) -> ThreadHandle {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(keep_alive_delay_ms)).await;
                 if let Err(e) = ws_writer.lock().await.send_ping(None).await {
-                    thread_sender.send(e.into())?;
+                    result_channel.send(Err(e.into()))?;
                 }
                 if let Err(e) = ws_writer.lock().await.flush().await {
-                    thread_sender.send(e.into())?;
+                    result_channel.send(Err(e.into()))?;
                 }
             }
         })
@@ -224,39 +209,22 @@ impl Connection {
 
     async fn start_reader_loop(
         mut ws_reader: WebSocketReadHalf,
-        message_states: MessageStates,
-        error_channel_sender: Sender<Error>,
+        result_channel: ResultChannelTx,
     ) -> ThreadHandle {
         tokio::spawn(async move {
             loop {
                 let frame = ws_reader.receive().await;
                 match Self::parse_frame(frame) {
-                    Ok(message) => {
-                        Self::transition_state(message, &message_states).await;
+                    Ok(MessageType::VerdictResponse(vr)) => {
+                        result_channel.send(Ok(vr))?;
                     }
                     Err(e) => {
-                        error_channel_sender.send(e)?;
+                        result_channel.send(Err(e))?;
                     }
+                    _ => {}
                 }
             }
         })
-    }
-
-    async fn transition_state(
-        message: MessageType,
-        message_states: &Arc<Mutex<HashMap<String, State>>>,
-    ) {
-        match message {
-            MessageType::Response(resp) => {
-                message_states
-                    .lock()
-                    .await
-                    .insert(resp.guid.clone(), State::Received(resp));
-            }
-            MessageType::Ping => (),
-            MessageType::Pong => (),
-            MessageType::Close => (),
-        }
     }
 
     fn parse_frame(frame: Result<Frame, WebSocketError>) -> VResult<MessageType> {
@@ -266,7 +234,7 @@ impl Connection {
             Ok(Frame::Pong { .. }) => Ok(MessageType::Pong),
             Ok(Frame::Close { .. }) => Ok(MessageType::Close),
             Ok(_) => Err(Error::InvalidFrame),
-            Err(e) => Err(Error::WebSocket(e)),
+            Err(e) => Err(e.into()),
         }
     }
 }
