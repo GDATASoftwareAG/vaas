@@ -50,8 +50,7 @@
 //! #[tokio::main]
 //! async fn main() -> vaas::error::VResult<()> {
 //!     // Cancel the request after 10 seconds if no response is received.
-//!     let cts = CancellationTokenSource::new();
-//!     cts.cancel_after(Duration::from_secs(10));
+//!     let cts = CancellationToken::from_seconds(10);;
 //!
 //!     // Create the SHA256 we want to check.
 //!     let file = std::path::PathBuf::from("myfile");
@@ -61,13 +60,12 @@
 //!         .build()?
 //!         .connect().await?;
 //!
-//!     let verdict = vaas.for_file(&file, &cts).await?;
+//!     let verdict = vaas.for_file(&file, &ct).await?;
 //!
 //!     // Prints "Clean" or "Malicious"
 //!     println!("{}", verdict);
 //!     Ok(())
-//! }
-//!
+//! }//!
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
 
