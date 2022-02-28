@@ -43,14 +43,14 @@
 //!
 //! Check a file for malicious content:
 //! ```rust,no_run
-//! use vaas::{ Vaas, Sha256, CancellationTokenSource };
+//! use vaas::{ Vaas, Sha256, CancellationToken };
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> vaas::error::VResult<()> {
 //!     // Cancel the request after 10 seconds if no response is received.
-//!     let cts = CancellationToken::from_seconds(10);;
+//!     let ct = CancellationToken::from_seconds(10);;
 //!
 //!     // Create the SHA256 we want to check.
 //!     let file = std::path::PathBuf::from("myfile");
@@ -65,7 +65,7 @@
 //!     // Prints "Clean" or "Malicious"
 //!     println!("{}", verdict);
 //!     Ok(())
-//! }//!
+//! }
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
 
