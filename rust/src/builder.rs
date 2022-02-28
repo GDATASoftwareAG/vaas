@@ -30,16 +30,6 @@ impl Builder {
         }
     }
 
-    /// Set the delay between each poll of the API for results. Defaults to 100ms.
-    pub fn poll_delay_ms(self, delay: u64) -> Self {
-        Self {
-            options: Options {
-                poll_delay_ms: delay,
-                ..self.options
-            },
-            ..self
-        }
-    }
     /// Set the delay in which a Ping is sent to the server to keep the connection alive.
     /// Defaults to 10s.
     pub fn keep_alive_delay_ms(self, delay: u64) -> Self {
@@ -84,7 +74,6 @@ impl Default for Builder {
         use std::str::FromStr;
         Self {
             options: Options {
-                poll_delay_ms: 100,
                 keep_alive_delay_ms: 10_000,
                 keep_alive: true,
             },

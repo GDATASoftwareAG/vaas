@@ -16,15 +16,14 @@
 //!
 //! Check a file hash for malicious content:
 //! ```rust,no_run
-//! use vaas::{ Vaas, Sha256, CancellationTokenSource };
+//! use vaas::{ Vaas, Sha256, CancellationToken };
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> vaas::error::VResult<()> {
 //!     // Cancel the request after 10 seconds if no response is received.
-//!     let cts = CancellationTokenSource::new();
-//!     cts.cancel_after(Duration::from_secs(10));
+//!     let ct = CancellationToken::from_seconds(10);
 //!
 //!     // Create the SHA256 we want to check.
 //!     let sha256 = Sha256::try_from("698CDA840A0B344639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")?;
@@ -34,7 +33,7 @@
 //!         .build()?
 //!         .connect().await?;
 //!
-//!     let verdict = vaas.for_sha256(&sha256, &cts).await?;
+//!     let verdict = vaas.for_sha256(&sha256, &ct).await?;
 //!
 //!     // Prints "Clean", "Malicious" or "Unknown"
 //!     println!("{}", verdict);
@@ -73,6 +72,7 @@
 #![warn(rustdoc::missing_doc_code_examples)]
 
 mod builder;
+mod cancellation;
 mod connection;
 pub mod error;
 pub mod message;
@@ -82,6 +82,7 @@ mod vaas;
 
 pub use crate::vaas::Vaas;
 pub use builder::Builder;
+pub use cancellation::CancellationToken;
 pub use cancellation::*;
 pub use connection::Connection;
 pub use sha256::Sha256;

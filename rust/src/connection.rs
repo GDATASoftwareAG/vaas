@@ -4,17 +4,17 @@ use crate::error::{Error, VResult};
 use crate::message::{MessageType, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
 use crate::options::Options;
 use crate::sha256::Sha256;
-use cancellation::*;
+use crate::CancellationToken;
 use futures::future::join_all;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::broadcast::error::TryRecvError;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+use tokio::time::timeout;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 type ThreadHandle = JoinHandle<Result<(), Error>>;
@@ -26,7 +26,6 @@ type ResultChannelTx = Sender<VResult<VerdictResponse>>;
 pub struct Connection {
     ws_writer: WebSocketWriter,
     session_id: String,
-    options: Options,
     reader_thread: ThreadHandle,
     keep_alive_thread: Option<ThreadHandle>,
     result_channel: ResultChannelRx,
@@ -48,7 +47,6 @@ impl Connection {
         Connection {
             ws_writer,
             session_id,
-            options,
             reader_thread: reader_loop,
             keep_alive_thread: keep_alive_loop,
             result_channel: Mutex::new(rx),
@@ -165,25 +163,15 @@ impl Connection {
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         loop {
-            tokio::time::sleep(Duration::from_millis(self.options.poll_delay_ms)).await;
+            let timeout = timeout(ct.duration, self.result_channel.lock().await.recv()).await??;
 
-            // Check if the request has been cancelled
-            if ct.is_canceled() {
-                break Err(Error::Cancelled);
-            }
-
-            // Check if the keep-alive or reader thread has died
-            match self.result_channel.lock().await.try_recv() {
-                Ok(Ok(vr)) => {
+            match timeout {
+                Ok(vr) => {
                     if vr.guid == guid {
                         break Ok(vr);
                     }
                 }
-                Ok(Err(e)) => break Err(e),
-                Err(TryRecvError::Closed) => break Err(Error::ThreadsDropped),
-                Err(TryRecvError::Lagged(i)) => break Err(Error::ReadersLagging(i)),
-                Err(TryRecvError::Empty) => { // continue
-                }
+                Err(e) => break Err(e),
             }
         }
     }

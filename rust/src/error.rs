@@ -4,7 +4,8 @@ use crate::message::{ErrorResponse, VerdictResponse};
 use reqwest::StatusCode;
 use std::sync::PoisonError;
 use thiserror::Error;
-use tokio::sync::broadcast::error::SendError;
+use tokio::sync::broadcast::error::{RecvError, SendError};
+use tokio::time::error::Elapsed;
 use websockets::WebSocketError;
 
 /// VaaS Result type.
@@ -58,15 +59,9 @@ pub enum Error {
     /// Unauthorized
     #[error("Unauthorized")]
     Unauthorized,
-    /// All threads were dropped. This happens when the keep-alive and reader thread are dropped.
-    #[error("All threads were dropped")]
-    ThreadsDropped,
-    /// Message readers are lagging behind the message writer.
-    #[error("Readers are lagging behind by `{0}`")]
-    ReadersLagging(u64),
-    /// Broadcast send error between threads occurred.
-    #[error("Send between threads failed: `{0}`")]
-    SendError(String),
+    /// Broadcast send/receive error between threads occurred.
+    #[error("The result channel failed: `{0}`")]
+    ResultChannelError(String),
     /// Server returned an error.
     #[error("Error response from the server")]
     ErrorResponse(ErrorResponse),
@@ -104,6 +99,18 @@ impl From<reqwest::Error> for Error {
 
 impl From<tokio::sync::broadcast::error::SendError<Result<VerdictResponse, Error>>> for Error {
     fn from(e: SendError<Result<VerdictResponse, Error>>) -> Self {
-        Self::SendError(e.to_string())
+        Self::ResultChannelError(e.to_string())
+    }
+}
+
+impl From<tokio::sync::broadcast::error::RecvError> for Error {
+    fn from(e: RecvError) -> Self {
+        Self::ResultChannelError(e.to_string())
+    }
+}
+
+impl From<Elapsed> for Error {
+    fn from(_: Elapsed) -> Self {
+        Self::Cancelled
     }
 }
