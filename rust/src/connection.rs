@@ -12,8 +12,8 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc::error::TryRecvError;
-use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::broadcast::error::TryRecvError;
+use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
@@ -21,7 +21,7 @@ use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 type ThreadHandle = JoinHandle<Result<(), Error>>;
 type MessageStates = Arc<Mutex<HashMap<String, State>>>;
 type WebSocketWriter = Arc<Mutex<WebSocketWriteHalf>>;
-type ErrorChannel = Arc<Mutex<Receiver<Error>>>;
+type ErrorChannel = Receiver<Error>;
 
 /// Active connection to the verdict server.
 pub struct Connection {
@@ -44,7 +44,7 @@ impl Connection {
         let ws_writer = Arc::new(Mutex::new(ws_writer));
         let message_states = Arc::new(Mutex::new(HashMap::new()));
         let reader_messages = message_states.clone();
-        let (tx, rx) = tokio::sync::mpsc::channel(5);
+        let (tx, rx) = tokio::sync::broadcast::channel(5);
 
         let reader_loop =
             Connection::start_reader_loop(ws_reader, reader_messages, tx.clone()).await;
@@ -57,7 +57,7 @@ impl Connection {
             options,
             reader_thread: reader_loop,
             keep_alive_thread: keep_alive_loop,
-            error_channel_receiver: Arc::new(Mutex::new(rx)),
+            error_channel_receiver: rx,
         }
     }
 
@@ -184,9 +184,10 @@ impl Connection {
             }
 
             // Check if the keep-alive or reader thread has died
-            match self.error_channel_receiver.lock().await.try_recv() {
+            match self.error_channel_receiver.try_recv() {
                 Ok(e) => break Err(e),
-                Err(TryRecvError::Disconnected) => break Err(Error::ThreadsDropped),
+                Err(TryRecvError::Closed) => break Err(Error::ThreadsDropped),
+                Err(TryRecvError::Lagged(i)) => break Err(Error::ReadersLagging(i)),
                 Err(TryRecvError::Empty) => { // continue
                 }
             }
@@ -212,10 +213,10 @@ impl Connection {
             loop {
                 tokio::time::sleep(Duration::from_millis(keep_alive_delay_ms)).await;
                 if let Err(e) = ws_writer.lock().await.send_ping(None).await {
-                    thread_sender.send(e.into()).await?;
+                    thread_sender.send(e.into())?;
                 }
                 if let Err(e) = ws_writer.lock().await.flush().await {
-                    thread_sender.send(e.into()).await?;
+                    thread_sender.send(e.into())?;
                 }
             }
         })
@@ -234,7 +235,7 @@ impl Connection {
                         Self::transition_state(message, &message_states).await;
                     }
                     Err(e) => {
-                        error_channel_sender.send(e).await?;
+                        error_channel_sender.send(e)?;
                     }
                 }
             }

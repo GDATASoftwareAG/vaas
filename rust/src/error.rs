@@ -12,7 +12,7 @@ use websockets::WebSocketError;
 pub type VResult<T> = Result<T, Error>;
 
 /// `Error` is the only error type in the `vaas` API.
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub enum Error {
     /// A websocket error occurred.
     #[error("WebSocket Error: `{0}`")]
@@ -60,8 +60,11 @@ pub enum Error {
     #[error("Unauthorized")]
     Unauthorized,
     /// All threads were dropped. This happens when the keep-alive and reader thread are dropped.
-    #[error("All threads were dropped.")]
+    #[error("All threads were dropped")]
     ThreadsDropped,
+    /// Message readers are lagging behind the message writer.
+    #[error("Readers are lagging behind by `{0}`")]
+    ReadersLagging(u64),
 }
 
 impl From<PoisonError<std::sync::MutexGuard<'_, HashMap<std::string::String, message::State>>>>
@@ -80,6 +83,12 @@ impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>
 
 impl From<tokio::sync::mpsc::error::SendError<Error>> for Error {
     fn from(e: tokio::sync::mpsc::error::SendError<Error>) -> Self {
+        Self::Lock(e.to_string())
+    }
+}
+
+impl From<tokio::sync::broadcast::error::SendError<Error>> for Error {
+    fn from(e: tokio::sync::broadcast::error::SendError<Error>) -> Self {
         Self::Lock(e.to_string())
     }
 }
