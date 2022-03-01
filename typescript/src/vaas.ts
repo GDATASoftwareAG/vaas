@@ -35,11 +35,8 @@ export class Vaas {
     }
 
     public async forSha256List(vaasConnection: VaasConnection, sha256List: string[]): Promise<Verdict[]> {
-        const promises = sha256List.map(sha256 => this.forSha256(vaasConnection, sha256));
-        return new Promise(async (resolve, _) => {
-            resolve(Promise.all(promises))
-        })
-
+        const promises = sha256List.map( sha256 => this.forSha256(vaasConnection, sha256));
+        return Promise.all(promises)
     }
 
     public async forFile(vaasConnection: VaasConnection, fileBuffer: Uint8Array): Promise<Verdict> {
@@ -54,9 +51,7 @@ export class Vaas {
 
     public async forFileList(vaasConnection: VaasConnection, fileBuffers: Uint8Array[]): Promise<Verdict[]> {
         const promises = fileBuffers.map(f => this.forFile(vaasConnection, f));
-        return new Promise(async (resolve, _) => {
-            resolve(Promise.all(promises))
-        })
+        return Promise.all(promises);
     }
 
     public async forRequest(vaasConnection: VaasConnection, sample: string | Uint8Array): Promise<VerdictResponse> {
