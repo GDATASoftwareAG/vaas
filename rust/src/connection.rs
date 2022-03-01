@@ -127,7 +127,7 @@ impl Connection {
 
     async fn handle_unknown(
         file: &Path,
-        guid: &String,
+        guid: &str,
         response: VerdictResponse,
         upload_url: UploadUrl,
         result_channel: &mut ResultChannelRx,
@@ -143,7 +143,7 @@ impl Connection {
             return Err(Error::FailedUploadFile(response.status()));
         }
 
-        let resp = Self::wait_for_response(&guid, result_channel, ct).await?;
+        let resp = Self::wait_for_response(guid, result_channel, ct).await?;
         Ok(Verdict::try_from(&resp)?)
     }
 
