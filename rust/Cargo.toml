@@ -23,4 +23,4 @@ rand = "0.8"
 
 [dev-dependencies]
 dotenv = "0.15"
-tokio = { version = "1.9", features = ["rt", "macros"] }
+tokio = { version = "1.9", features = ["rt", "macros", "rt-multi-thread"] }
