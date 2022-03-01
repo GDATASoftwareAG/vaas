@@ -58,14 +58,10 @@ impl Connection {
         ws_writer: &Arc<Mutex<WebSocketWriteHalf>>,
         tx: ResultChannelTx,
     ) -> Option<ThreadHandle> {
-        if options.keep_alive {
-            Some(
-                Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx)
-                    .await,
-            )
-        } else {
-            None
+        if !options.keep_alive {
+            return None;
         }
+        Some(Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx).await)
     }
 
     /// Request a verdict for a SHA256 file hash.
@@ -108,6 +104,7 @@ impl Connection {
             ct,
         )
         .await?;
+
         let verdict = Verdict::try_from(&response)?;
         match verdict {
             Verdict::Unknown { upload_url } => {
@@ -165,9 +162,7 @@ impl Connection {
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
-
         ws_writer.lock().await.send_text(request.to_json()?).await?;
-
         Self::wait_for_response(&guid, result_channel, ct).await
     }
 
