@@ -210,7 +210,6 @@ async fn from_files_unknown_files() {
 
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_minutes(5);
-
     let verdicts = vaas.for_file_list(&files, &ct).await;
 
     std::fs::remove_file(tmp_file1).unwrap();

@@ -19,7 +19,7 @@ use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 type ThreadHandle = JoinHandle<Result<(), Error>>;
 type WebSocketWriter = Arc<Mutex<WebSocketWriteHalf>>;
-type ResultChannelRx = Mutex<Receiver<VResult<VerdictResponse>>>;
+type ResultChannelRx = Receiver<VResult<VerdictResponse>>;
 type ResultChannelTx = Sender<VResult<VerdictResponse>>;
 
 /// Active connection to the verdict server.
@@ -28,7 +28,7 @@ pub struct Connection {
     session_id: String,
     reader_thread: ThreadHandle,
     keep_alive_thread: Option<ThreadHandle>,
-    result_channel: ResultChannelRx,
+    result_channel: ResultChannelTx,
 }
 
 impl Connection {
@@ -39,7 +39,7 @@ impl Connection {
         options: Options,
     ) -> Self {
         let ws_writer = Arc::new(Mutex::new(ws_writer));
-        let (tx, rx) = tokio::sync::broadcast::channel(5);
+        let (tx, _rx) = tokio::sync::broadcast::channel(5);
 
         let reader_loop = Connection::start_reader_loop(ws_reader, tx.clone()).await;
         let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, tx.clone()).await;
@@ -49,7 +49,7 @@ impl Connection {
             session_id,
             reader_thread: reader_loop,
             keep_alive_thread: keep_alive_loop,
-            result_channel: Mutex::new(rx),
+            result_channel: tx,
         }
     }
 
@@ -71,7 +71,13 @@ impl Connection {
     /// Request a verdict for a SHA256 file hash.
     pub async fn for_sha256(&self, sha256: &Sha256, ct: &CancellationToken) -> VResult<Verdict> {
         let request = VerdictRequest::new(sha256, self.session_id.clone());
-        let response = self.for_request(request, ct).await?;
+        let response = Self::for_request(
+            request,
+            self.ws_writer.clone(),
+            &mut self.result_channel.subscribe(),
+            ct,
+        )
+        .await?;
         Ok(Verdict::try_from(&response)?)
     }
 
@@ -95,24 +101,37 @@ impl Connection {
         let request = VerdictRequest::new(&sha256, self.session_id.clone());
         let guid = request.guid().to_string();
 
-        let response = self.for_request(request, ct).await?;
+        let response = Self::for_request(
+            request,
+            self.ws_writer.clone(),
+            &mut self.result_channel.subscribe(),
+            ct,
+        )
+        .await?;
         let verdict = Verdict::try_from(&response)?;
         match verdict {
             Verdict::Unknown { upload_url } => {
-                self.handle_unknown(file, ct, &guid, response, upload_url)
-                    .await
+                Self::handle_unknown(
+                    file,
+                    &guid,
+                    response,
+                    upload_url,
+                    &mut self.result_channel.subscribe(),
+                    ct,
+                )
+                .await
             }
             _ => Ok(verdict),
         }
     }
 
     async fn handle_unknown(
-        &self,
         file: &Path,
-        ct: &CancellationToken,
         guid: &String,
         response: VerdictResponse,
         upload_url: UploadUrl,
+        result_channel: &mut ResultChannelRx,
+        ct: &CancellationToken,
     ) -> Result<Verdict, Error> {
         let auth_token = response
             .upload_token
@@ -124,7 +143,7 @@ impl Connection {
             return Err(Error::FailedUploadFile(response.status()));
         }
 
-        let resp = self.wait_for_response(&guid, ct).await?;
+        let resp = Self::wait_for_response(&guid, result_channel, ct).await?;
         Ok(Verdict::try_from(&resp)?)
     }
 
@@ -140,28 +159,25 @@ impl Connection {
     }
 
     async fn for_request(
-        &self,
         request: VerdictRequest,
+        ws_writer: WebSocketWriter,
+        result_channel: &mut ResultChannelRx,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
 
-        self.ws_writer
-            .lock()
-            .await
-            .send_text(request.to_json()?)
-            .await?;
+        ws_writer.lock().await.send_text(request.to_json()?).await?;
 
-        self.wait_for_response(&guid, ct).await
+        Self::wait_for_response(&guid, result_channel, ct).await
     }
 
     async fn wait_for_response(
-        &self,
         guid: &str,
+        result_channel: &mut ResultChannelRx,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         loop {
-            let timeout = timeout(ct.duration, self.result_channel.lock().await.recv()).await??;
+            let timeout = timeout(ct.duration, result_channel.recv()).await??;
 
             match timeout {
                 Ok(vr) => {
