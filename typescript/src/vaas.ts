@@ -24,12 +24,6 @@ export type VaasConnection = {
 
 export class Vaas {
 
-    private static toHexString(byteArray: Uint8Array) {
-        return Array.from(byteArray, function (byte) {
-            return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-        }).join('')
-    }
-
     public async forSha256(vaasConnection: VaasConnection, sha256: string): Promise<Verdict> {
         return new Promise(async (resolve, reject) => {
             const verdictResponse = await this.forRequest(vaasConnection, sha256)
@@ -38,6 +32,31 @@ export class Vaas {
                 });
             resolve(verdictResponse!.verdict);
         });
+    }
+
+    public async forSha256List(vaasConnection: VaasConnection, sha256List: string[]): Promise<Verdict[]> {
+        const promises = sha256List.map(sha256 => this.forSha256(vaasConnection, sha256));
+        return new Promise(async (resolve, _) => {
+            resolve(Promise.all(promises))
+        })
+
+    }
+
+    public async forFile(vaasConnection: VaasConnection, fileBuffer: Uint8Array): Promise<Verdict> {
+        return new Promise(async (resolve, reject) => {
+            const verdictResponse = await this.forRequest(vaasConnection, fileBuffer)
+                .catch(error => {
+                    reject(error);
+                });
+            resolve(verdictResponse!.verdict);
+        });
+    }
+
+    public async forFileList(vaasConnection: VaasConnection, fileBuffers: Uint8Array[]): Promise<Verdict[]> {
+        const promises = fileBuffers.map(f => this.forFile(vaasConnection, f));
+        return new Promise(async (resolve, _) => {
+            resolve(Promise.all(promises))
+        })
     }
 
     public async forRequest(vaasConnection: VaasConnection, sample: string | Uint8Array): Promise<VerdictResponse> {
@@ -105,16 +124,6 @@ export class Vaas {
         })
     }
 
-    public async forFile(vaasConnection: VaasConnection, fileBuffer: Uint8Array): Promise<Verdict> {
-        return new Promise(async (resolve, reject) => {
-            const verdictResponse = await this.forRequest(vaasConnection, fileBuffer)
-                .catch(error => {
-                    reject(error);
-                });
-            resolve(verdictResponse!.verdict);
-        });
-    }
-
     public async upload(verdictResponse: VerdictResponse, fileBuffer: Uint8Array) {
         return new Promise(async (resolve, reject) => {
             const instance = axios.default.create({
@@ -148,5 +157,11 @@ export class Vaas {
             });
             ws.ping("ping");
         });
+    }
+
+    private static toHexString(byteArray: Uint8Array) {
+        return Array.from(byteArray, function (byte) {
+            return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+        }).join('')
     }
 }
