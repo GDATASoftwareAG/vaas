@@ -12,10 +12,8 @@ import {Verdict} from "./verdict";
 import * as axios from "axios";
 
 export interface VerdictCallback {
-    (result: Result): void;
+    (verdictResponse: VerdictResponse): Promise<void>;
 }
-
-export type Result = Verdict | string;
 
 export type VaasConnection = {
     ws: WebSocket;
@@ -23,6 +21,17 @@ export type VaasConnection = {
 }
 
 export class Vaas {
+    callbacks: Map<string, VerdictCallback>;
+
+    constructor() {
+        this.callbacks = new Map<string, VerdictCallback>();
+    }
+
+    private static toHexString(byteArray: Uint8Array) {
+        return Array.from(byteArray, function (byte) {
+            return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+        }).join('')
+    }
 
     public async forSha256(vaasConnection: VaasConnection, sha256: string): Promise<Verdict> {
         return new Promise(async (resolve, reject) => {
@@ -35,7 +44,7 @@ export class Vaas {
     }
 
     public async forSha256List(vaasConnection: VaasConnection, sha256List: string[]): Promise<Verdict[]> {
-        const promises = sha256List.map( sha256 => this.forSha256(vaasConnection, sha256));
+        const promises = sha256List.map(sha256 => this.forSha256(vaasConnection, sha256));
         return Promise.all(promises)
     }
 
@@ -55,34 +64,22 @@ export class Vaas {
     }
 
     public async forRequest(vaasConnection: VaasConnection, sample: string | Uint8Array): Promise<VerdictResponse> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve, _) => {
             const guid = uuidv4()
 
-            vaasConnection.ws.onmessage = async (event) => {
-                const message = deserialize<Message>(event.data, Message);
-
-                switch (message.kind) {
-                    case Kind.Error:
-                        reject(deserialize<WebsocketError>(event.data, WebsocketError).text);
-                        break;
-                    case Kind.VerdictResponse:
-                        const verdictResponse = deserialize<VerdictResponse>(event.data, VerdictResponse);
-                        if (typeof sample === "string") {
-                            resolve(verdictResponse);
-                            return;
-                        }
-                        if (verdictResponse.verdict !== Verdict.UNKNOWN) {
-                            resolve(verdictResponse);
-                            return;
-                        }
-                        await this.upload(verdictResponse, sample);
-                        return;
-                    default:
-                        console.log(event.data);
-                        reject("Unknown message kind");
-                        return;
+            this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
+                if (typeof sample === "string") {
+                    resolve(verdictResponse);
+                    this.callbacks.delete(guid);
+                    return;
                 }
-            }
+                if (verdictResponse.verdict !== Verdict.UNKNOWN) {
+                    resolve(verdictResponse);
+                    this.callbacks.delete(guid);
+                    return;
+                }
+                await this.upload(verdictResponse, sample);
+            });
 
             let hash: string;
             if (typeof sample === "string") {
@@ -116,6 +113,33 @@ export class Vaas {
             ws.onerror = (error) => {
                 reject(error.message);
             }
+            ws.onmessage = async (event) => {
+                const message = deserialize<Message>(event.data, Message);
+
+                switch (message.kind) {
+                    case Kind.AuthResponse:
+                        const authResponse = deserialize<AuthenticationResponse>(event.data, AuthenticationResponse);
+                        if (authResponse.success) {
+                            resolve({ws: ws, sessionId: authResponse.session_id});
+                        }
+                        reject("Unauthorized");
+                        break;
+                    case Kind.Error:
+                        reject(deserialize<WebsocketError>(event.data, WebsocketError).text);
+                        break;
+                    case Kind.VerdictResponse:
+                        const verdictResponse = deserialize<VerdictResponse>(event.data, VerdictResponse);
+                        const callback = this.callbacks.get(verdictResponse.guid);
+                        if (callback) {
+                            await callback(verdictResponse);
+                        }
+                        break;
+                    default:
+                        console.log(event.data);
+                        reject("Unknown message kind");
+                        break;
+                }
+            }
         })
     }
 
@@ -140,23 +164,10 @@ export class Vaas {
     }
 
     private async authenticate(ws: WebSocket, token: string): Promise<VaasConnection> {
-        return new Promise((resolve, reject) => {
+        return new Promise((_resolve, _reject) => {
             const authReq: string = JSON.stringify(serialize(new AuthenticationRequest(token)));
             ws.send(authReq);
-            ws.once("message", (data) => {
-                const authResponse = deserialize<AuthenticationResponse>(data.toString(), AuthenticationResponse);
-                if (authResponse.success) {
-                    resolve({ws: ws, sessionId: authResponse.session_id});
-                }
-                reject("Unauthorized");
-            });
             ws.ping("ping");
         });
-    }
-
-    private static toHexString(byteArray: Uint8Array) {
-        return Array.from(byteArray, function (byte) {
-            return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-        }).join('')
     }
 }
