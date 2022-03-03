@@ -28,7 +28,6 @@ pnpm-debug.log*
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
 php/tests/vaas/.phpunit.result.cache
 .gradle/

@@ -1,10 +1,10 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=02367265_002D369f_002D4343_002D93a0_002D75ef354257da/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="FromSha256SingleMaliciousHash" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=02367265_002D369f_002D4343_002D93a0_002D75ef354257da/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="FromSha256SingleMaliciousHash" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
   &lt;TestAncestor&gt;
     &lt;TestId&gt;xUnit::5C11F0F4-1483-4850-BB24-4A04E7EED14A::net5.0::Vaas.Test.IntegrationTests.FromSha256SingleMaliciousHash&lt;/TestId&gt;
   &lt;/TestAncestor&gt;
 &lt;/SessionState&gt;</s:String>
-	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=804be99d_002D33ff_002D49c0_002Da2b4_002Dfd6ef83e3062/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="FromSha256SingleMaliciousHash #2" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=804be99d_002D33ff_002D49c0_002Da2b4_002Dfd6ef83e3062/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" Name="FromSha256SingleMaliciousHash #2" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
   &lt;TestAncestor&gt;
     &lt;TestId&gt;xUnit::5C11F0F4-1483-4850-BB24-4A04E7EED14A::net5.0::Vaas.Test.IntegrationTests.FromSha256SingleMaliciousHash&lt;/TestId&gt;
   &lt;/TestAncestor&gt;
