@@ -77,7 +77,7 @@ namespace Vaas
             var analysisRequest = new AnalysisRequest(sha256, SessionId);
             string jsonString = JsonSerializer.Serialize(analysisRequest);
             Client.Send(jsonString);
-
+            //HaNdLe vErDiCt rEsPoNsE 
             return Verdict.Clean;
         }
 
