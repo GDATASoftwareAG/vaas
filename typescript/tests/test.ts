@@ -10,8 +10,7 @@ describe('Test authentication', () => {
         const token = "ThisIsAnInvalidToken";
         const vaas = new Vaas();
         try {
-            const _ = await vaas.connect(token);
-            throw new Error("This should not be thrown.");
+            await vaas.connect(token);
         } catch (error) {
             expect(error).to.equal("Unauthorized");
         }
@@ -72,5 +71,36 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(600_000_000);
+    }).timeout(300_000);
+
+    it('if a list of SHA256 is uploaded, they are detected', async () => {
+        dotenv.config();
+        const token = process.env.VAAS_TOKEN!;
+        const vaas = new Vaas();
+        try {
+            const con = await vaas.connect(token);
+            const verdicts = await vaas.forSha256List(con, ["275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"]);
+            expect(verdicts[0]).to.equal("Malicious");
+            expect(verdicts[1]).to.equal("Clean");
+        } catch (error) {
+            throw new Error(error as string);
+        }
+    });
+
+    it('if a list unknown files is uploaded, they are detected as clean', async () => {
+        dotenv.config();
+        const token = process.env.VAAS_TOKEN!;
+        const randomFileContent1 = await randomBytes.sync(50);
+        const randomFileContent2 = await randomBytes.sync(50);
+        try {
+            const vaas = new Vaas();
+            const con = await vaas.connect(token)
+            const verdict = await vaas.forFileList(con, [randomFileContent1, randomFileContent2]);
+            expect(verdict[0]).to.equal("Clean");
+            expect(verdict[0]).to.equal("Clean");
+        } catch (error) {
+            throw new Error(error as string);
+        }
+    }).timeout(300_000);
 })
