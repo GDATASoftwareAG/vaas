@@ -1,7 +1,7 @@
 use crate::error::Error;
+use crate::message::kind::Kind;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use crate::message::kind::Kind;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthResponse {

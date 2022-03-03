@@ -1,35 +1,79 @@
-//! The `Connection` module provides all functionallity to create an active connection to the verdict backend.
+//! The `Connection` module provides all functionality to create an active connection to the verdict backend.
 
 use crate::error::{Error, VResult};
-use crate::message::{MessageType, VerdictRequest, VerdictResponse, State, UploadUrl, Verdict};
+use crate::message::{MessageType, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
+use crate::options::Options;
 use crate::sha256::Sha256;
-use crate::vaas::ThreadSyncMsg;
-use cancellation::*;
-use flume::{Receiver, Sender, TryRecvError};
+use crate::CancellationToken;
 use futures::future::join_all;
-use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
+use tokio::time::timeout;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
+
+type ThreadHandle = JoinHandle<Result<(), Error>>;
+type WebSocketWriter = Arc<Mutex<WebSocketWriteHalf>>;
+type ResultChannelRx = Receiver<VResult<VerdictResponse>>;
+type ResultChannelTx = Sender<VResult<VerdictResponse>>;
 
 /// Active connection to the verdict server.
 pub struct Connection {
-    pub(super) ws_writer: Arc<Mutex<WebSocketWriteHalf>>,
-    pub(super) session_id: String,
-    pub(super) message_states: Arc<Mutex<HashMap<String, State>>>,
-    pub(super) ch_sender: Sender<ThreadSyncMsg>,
-    pub(super) poll_delay_ms: u64,
+    ws_writer: WebSocketWriter,
+    session_id: String,
+    reader_thread: ThreadHandle,
+    keep_alive_thread: Option<ThreadHandle>,
+    result_channel: ResultChannelTx,
 }
 
 impl Connection {
+    pub(crate) async fn start(
+        ws_writer: WebSocketWriteHalf,
+        ws_reader: WebSocketReadHalf,
+        session_id: String,
+        options: Options,
+    ) -> Self {
+        let ws_writer = Arc::new(Mutex::new(ws_writer));
+        let (tx, _rx) = tokio::sync::broadcast::channel(5);
+
+        let reader_loop = Connection::start_reader_loop(ws_reader, tx.clone()).await;
+        let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, tx.clone()).await;
+
+        Connection {
+            ws_writer,
+            session_id,
+            reader_thread: reader_loop,
+            keep_alive_thread: keep_alive_loop,
+            result_channel: tx,
+        }
+    }
+
+    async fn start_keep_alive(
+        options: &Options,
+        ws_writer: &Arc<Mutex<WebSocketWriteHalf>>,
+        tx: ResultChannelTx,
+    ) -> Option<ThreadHandle> {
+        if !options.keep_alive {
+            return None;
+        }
+        Some(Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx).await)
+    }
+
     /// Request a verdict for a SHA256 file hash.
     pub async fn for_sha256(&self, sha256: &Sha256, ct: &CancellationToken) -> VResult<Verdict> {
-        let request = VerdictRequest::new(sha256,self.session_id.clone());
-        let response = self.for_request(request, ct).await?;
+        let request = VerdictRequest::new(sha256, self.session_id.clone());
+        let response = Self::for_request(
+            request,
+            self.ws_writer.clone(),
+            &mut self.result_channel.subscribe(),
+            ct,
+        )
+        .await?;
         Ok(Verdict::try_from(&response)?)
     }
 
@@ -50,25 +94,54 @@ impl Connection {
     /// Request a verdict for a file.
     pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<Verdict> {
         let sha256 = Sha256::try_from(file)?;
-        let request = VerdictRequest::new(&sha256,self.session_id.clone());
+        let request = VerdictRequest::new(&sha256, self.session_id.clone());
         let guid = request.guid().to_string();
 
-        let response = self.for_request(request, ct).await?;
+        let response = Self::for_request(
+            request,
+            self.ws_writer.clone(),
+            &mut self.result_channel.subscribe(),
+            ct,
+        )
+        .await?;
+
         let verdict = Verdict::try_from(&response)?;
         match verdict {
             Verdict::Unknown { upload_url } => {
-                let auth_token = response.upload_token.as_ref().ok_or(Error::MissingAuthToken)?;
-                let response = upload_file(file, upload_url, auth_token).await?;
-
-                if response.status() != 200 {
-                    return Err(Error::FailedUploadFile(response.status()));
-                }
-
-                let resp = self.wait_for_response(&guid, ct).await?;
-                Ok(Verdict::try_from(&resp)?)
+                Self::handle_unknown(
+                    file,
+                    &guid,
+                    response,
+                    upload_url,
+                    &mut self.result_channel.subscribe(),
+                    ct,
+                )
+                .await
             }
             _ => Ok(verdict),
         }
+    }
+
+    async fn handle_unknown(
+        file: &Path,
+        guid: &str,
+        response: VerdictResponse,
+        upload_url: UploadUrl,
+        result_channel: &mut ResultChannelRx,
+        ct: &CancellationToken,
+    ) -> Result<Verdict, Error> {
+        let auth_token = response
+            .upload_token
+            .as_ref()
+            .ok_or(Error::MissingAuthToken)?;
+        let response = upload_file(file, upload_url, auth_token).await?;
+
+        if response.status() != 200 {
+            return Err(Error::FailedUploadFile(response.status()));
+        }
+
+        let resp = Self::wait_for_response(guid, result_channel, ct).await?;
+        Ok(Verdict::try_from(&resp)?)
     }
 
     /// Request a verdict for a list of files.
@@ -82,115 +155,84 @@ impl Connection {
         join_all(req).await
     }
 
-    async fn for_request(&self, request: VerdictRequest, ct: &CancellationToken) -> VResult<VerdictResponse> {
+    async fn for_request(
+        request: VerdictRequest,
+        ws_writer: WebSocketWriter,
+        result_channel: &mut ResultChannelRx,
+        ct: &CancellationToken,
+    ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
-
-        self.ws_writer
-            .lock()
-            .await
-            .send_text(request.to_json()?)
-            .await?;
-
-        self.message_states
-            .lock()
-            .await
-            .insert(guid.to_string(), State::Send(request));
-
-        self.wait_for_response(&guid, ct).await
+        ws_writer.lock().await.send_text(request.to_json()?).await?;
+        Self::wait_for_response(&guid, result_channel, ct).await
     }
 
-    async fn wait_for_response(&self, guid: &str, ct: &CancellationToken) -> VResult<VerdictResponse> {
-        let mut ping_cnt = 0;
-        let result = loop {
-            tokio::time::sleep(Duration::from_millis(self.poll_delay_ms)).await;
-            if ct.is_canceled() {
-                break Err(Error::Cancelled);
-            }
-            if let Some(State::Received(resp)) = self.message_states.lock().await.get(guid) {
-                break Ok((*resp).clone());
-            }
+    async fn wait_for_response(
+        guid: &str,
+        result_channel: &mut ResultChannelRx,
+        ct: &CancellationToken,
+    ) -> VResult<VerdictResponse> {
+        loop {
+            let timeout = timeout(ct.duration, result_channel.recv()).await??;
 
-            if ping_cnt == 200 {
-                self.ws_writer.lock().await.send_ping(None).await?;
-                self.ws_writer.lock().await.flush().await?;
-                ping_cnt = 0;
+            match timeout {
+                Ok(vr) => {
+                    if vr.guid == guid {
+                        break Ok(vr);
+                    }
+                }
+                Err(e) => break Err(e),
             }
-                ping_cnt += 1;
-        };
-        // Remove guid/message from internal state, as we would gather infinite
-        // messages if we never clean up.
-        self.message_states.lock().await.remove(guid);
-        result
+        }
     }
 
-    pub(super) async fn start_reader_loop(
+    // TODO: Move this functionality into the underlying websocket library.
+    async fn keep_alive_loop(
+        ws_writer: WebSocketWriter,
+        keep_alive_delay_ms: u64,
+        result_channel: ResultChannelTx,
+    ) -> ThreadHandle {
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(keep_alive_delay_ms)).await;
+                if let Err(e) = ws_writer.lock().await.send_ping(None).await {
+                    result_channel.send(Err(e.into()))?;
+                }
+                if let Err(e) = ws_writer.lock().await.flush().await {
+                    result_channel.send(Err(e.into()))?;
+                }
+            }
+        })
+    }
+
+    async fn start_reader_loop(
         mut ws_reader: WebSocketReadHalf,
-        ch_receiver: Receiver<ThreadSyncMsg>,
-        message_states: Arc<Mutex<HashMap<String, State>>>,
-    ) {
+        result_channel: ResultChannelTx,
+    ) -> ThreadHandle {
         tokio::spawn(async move {
             loop {
                 let frame = ws_reader.receive().await;
                 match Self::parse_frame(frame) {
-                    Ok(message) => {
-                        Self::transition_state(message, &message_states).await;
+                    Ok(MessageType::VerdictResponse(vr)) => {
+                        result_channel.send(Ok(vr))?;
                     }
                     Err(e) => {
-                        // TODO: Better error handling.
-                        // Log a not parsable message?
-                        // Infinite loop occurs if only errors are received... Notify user and exit?
-                        println!("Frame error: {:?}",e );
-                        continue;
+                        result_channel.send(Err(e))?;
                     }
-                };
-
-                match ch_receiver.try_recv() {
-                    Ok(ThreadSyncMsg::StopReader) => break,
-                    Err(TryRecvError::Empty) => continue,
-                    // TODO: Handle errors in thread. If the reader thread panics, currently nobody will notice and no new results will be received.
-                    // This should not happen as we have the channel under control but you never know...
-                    Err(TryRecvError::Disconnected) => panic!("Channel receiver disconnected."),
+                    _ => {}
                 }
             }
-        });
-    }
-
-    async fn transition_state(
-        message: MessageType,
-        message_states: &Arc<Mutex<HashMap<String, State>>>,
-    ) {
-        match message {
-            MessageType::Response(resp) => {
-                message_states
-                    .lock()
-                    .await
-                    .insert(resp.guid.clone(), State::Received(resp));
-            }
-            MessageType::Ping => (),
-            MessageType::Pong => (),
-            MessageType::Close => (),
-        }
+        })
     }
 
     fn parse_frame(frame: Result<Frame, WebSocketError>) -> VResult<MessageType> {
         match frame {
             Ok(Frame::Text { payload: json, .. }) => MessageType::try_from(&json),
-            Ok(Frame::Ping {..}) => {
-                Ok(MessageType::Ping)
-            },
-            Ok(Frame::Pong {..}) => {
-                Ok(MessageType::Pong)
-            },
-            Ok(Frame::Close {..}) => {
-                Ok(MessageType::Close)
-            },
+            Ok(Frame::Ping { .. }) => Ok(MessageType::Ping),
+            Ok(Frame::Pong { .. }) => Ok(MessageType::Pong),
+            Ok(Frame::Close { .. }) => Ok(MessageType::Close),
             Ok(_) => Err(Error::InvalidFrame),
-            Err(e) => Err(Error::WebSocket(e)),
+            Err(e) => Err(e.into()),
         }
-    }
-
-    async fn stop_reader(&self) -> VResult<()> {
-        Ok(self.ch_sender.send(ThreadSyncMsg::StopReader)?)
     }
 }
 
@@ -212,8 +254,15 @@ async fn upload_file(
 
 impl Drop for Connection {
     fn drop(&mut self) {
-        // Best effort: If the reader is hung up, we are out of luck
-        // and the thread cannot be terminated.
-        let _result = self.stop_reader();
+        // Abort the spawned threads in the case that the connection
+        // is dropped.
+        // If the threads are not aborted, they will live past the connection
+        // lifetime which is not what the user expects.
+        // Abort is only safe if we never block or wait for mutex in the thread.
+        // If we had a mutex in the thread blocked and aborted the thread, we would deadlock.
+        self.reader_thread.abort();
+        if self.keep_alive_thread.is_some() {
+            self.keep_alive_thread.as_ref().unwrap().abort();
+        }
     }
 }
