@@ -65,6 +65,7 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     steps:
       - name: Checkout
@@ -73,13 +74,30 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: "16"
+          registry-url: 'https://registry.npmjs.org'
 
       - name: install dependencies
-        run: npm install
+        run: npm ci
         working-directory: typescript
 
       - name: run Tests
         run: npm run test
+        working-directory: typescript
+
+      - name: Extract version
+        if: github.event_name == 'release'
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/ts}" >> $GITHUB_ENV
+          echo $RELEASE_VERSION    
+
+      - name: Set version      
+        if: github.event_name == 'release'
+        run: |
+          sed -i "s/\"version\": \"0.0.0\"/\"version\": \"$RELEASE_VERSION\"/g" package.json
+
+      - name: publish npm package
+        if: github.event_name == 'release'
+        run: cat package.json
         working-directory: typescript
 
   build-rust:

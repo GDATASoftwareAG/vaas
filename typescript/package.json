@@ -1,4 +1,6 @@
 {
+  "name": "gdata-vaas",
+  "version": "0.0.0",
   "devDependencies": {
     "@types/chai": "^4.3.0",
     "@types/dotenv": "^8.2.0",
