@@ -95,7 +95,7 @@ jobs:
       - name: Set version      
         if: startsWith(github.ref, 'refs/tags/ts')
         run: |
-          sed -i "s/\"version\": \"0.0.0\"/\"version\": \"$RELEASE_VERSION\"/g" package.json
+          sed -i "s/\"version\": \"0.0.0\"/\"version\": \"$RELEASE_VERSION\"/g" ./typescript/package.json
 
       - name: publish npm package
         if: startsWith(github.ref, 'refs/tags/ts')
