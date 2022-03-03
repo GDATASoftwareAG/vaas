@@ -13,17 +13,22 @@ namespace Vaas
     {
         public string Token { get; }
 
-        public WebsocketClient Client { get; }
-        
+        public WebsocketClient Client { get; set; }
+
+        public string SessionId { get; set; }
+
         public bool Authenticated { get; set; }
+
+        public Uri Url { get; set; } = new Uri("wss://gateway-vaas.gdatasecurity.de");
 
         public Vaas(string token)
         {
             Token = token;
+        }
 
-            var url = new Uri("wss://gateway-vaas.gdatasecurity.de");
-
-            Client = new WebsocketClient(url, CreateWebsocketClient());
+        public void Connect()
+        {
+            Client = new WebsocketClient(Url, CreateWebsocketClient());
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(msg =>
             {
@@ -33,6 +38,7 @@ namespace Vaas
                     if (response.Success == true)
                     {
                         Authenticated = true;
+                        SessionId = response.SessionId;
                     }
                 }
             });
@@ -42,13 +48,12 @@ namespace Vaas
                 throw new WebsocketException("Could not start client");
             }
 
-            
+            Authenticate();
         }
 
-        public bool Authenticate()
+        private void Authenticate()
         {
             var authenticationRequest = new AuthenticationRequest(Token, null);
-
             string jsonString = JsonSerializer.Serialize(authenticationRequest);
             Client.Send(jsonString);
             for (var i = 0; i < 10; i++)
@@ -57,13 +62,22 @@ namespace Vaas
                 {
                     break;
                 }
-                Thread.Sleep(100);    
+
+                Thread.Sleep(100);
             }
-            return Authenticated;
+
+            if (Authenticated != true)
+            {
+                throw new UnauthorizedAccessException();
+            }
         }
 
         public Verdict ForSha256(string sha256)
         {
+            var analysisRequest = new AnalysisRequest(sha256, SessionId);
+            string jsonString = JsonSerializer.Serialize(analysisRequest);
+            Client.Send(jsonString);
+
             return Verdict.Clean;
         }
 
