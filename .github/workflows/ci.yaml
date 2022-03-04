@@ -99,7 +99,7 @@ jobs:
 
       - name: publish npm package
         if: startsWith(github.ref, 'refs/tags/ts')
-        run: cat package.json
+        run: npm publish
         working-directory: typescript
 
   build-rust:
