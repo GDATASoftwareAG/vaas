@@ -1,0 +1,6 @@
+src/*
+tests/*
+examples/*
+.devcontainer/*
+.env
+.tsconfig.json
