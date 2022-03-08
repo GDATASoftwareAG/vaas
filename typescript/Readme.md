@@ -46,13 +46,13 @@ import Vaas from "gdata-vaas";
 // instantiate
 const vaas = new Vaas();
 // connect to the verdict service 
-const connection = await vaas.connect(process.env.VAAS_TOKEN!);
+await vaas.connect(process.env.VAAS_TOKEN!);
 ```
 Interested in a token? [Contact us](#interested).
 
 ```typescript
 // request verdict for file
-const verdict = await vaas.forFile(connection, response.data);
+const verdict = await vaas.forFile(response.data);
 if (verdict === 'Malicious') {
     console.log('This was malware.');
 }
