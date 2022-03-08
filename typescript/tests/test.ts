@@ -15,7 +15,7 @@ describe('Test authentication', () => {
             expect(error).to.equal("Unauthorized");
         }
     })
-})
+}).timeout(10_000);
 
 describe('Test verdict requests', () => {
     it('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
@@ -29,7 +29,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    });
+    }).timeout(10_000);
 
     it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
         dotenv.config();
@@ -42,7 +42,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    });
+    }).timeout(10_000);
 
     it('test if eicar file is detected as malicious based on the SHA256', async () => {
         dotenv.config();
@@ -57,7 +57,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    });
+    }).timeout(10_000);
 
     it('test if unknown file is uploaded and detected as clean', async () => {
         dotenv.config();
@@ -71,7 +71,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(300_000);
+    }).timeout(600_000);
 
     it('if a list of SHA256 is uploaded, they are detected', async () => {
         dotenv.config();
@@ -102,5 +102,5 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(300_000);
+    }).timeout(600_000);
 })
