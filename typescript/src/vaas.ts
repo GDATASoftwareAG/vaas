@@ -63,7 +63,7 @@ export default class Vaas {
         return Promise.all(promises);
     }
 
-    public async forRequest(vaasConnection: VaasConnection, sample: string | Uint8Array): Promise<VerdictResponse> {
+    private async forRequest(vaasConnection: VaasConnection, sample: string | Uint8Array): Promise<VerdictResponse> {
         return new Promise((resolve, _) => {
             const guid = uuidv4()
 
