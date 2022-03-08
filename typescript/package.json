@@ -9,11 +9,17 @@
   "main": "lib/vaas.js",
   "types": "lib/vaas.d.ts",
   "sideEffects": false,
-  "keywords": ["security", "malware", "malware-analysis", "it-security", "malware-detection"],
-  "description": "Malware analysis as a service.",
+  "keywords": [
+    "security",
+    "malware",
+    "malware-analysis",
+    "it-security",
+    "malware-detection"
+  ],
+  "description": "A SDK to for G DATA VaaS. Verdicts as a service.",
   "author": {
     "name": "G DATA CyberDefense AG",
-    "email": "oem@gdata.de", 
+    "email": "oem@gdata.de",
     "url": "https://www.gdata.de"
   },
   "devDependencies": {

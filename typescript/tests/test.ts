@@ -1,7 +1,7 @@
-import {expect} from 'chai';
-import {describe} from 'mocha';
+import { expect } from 'chai';
+import { describe } from 'mocha';
 import * as dotenv from "dotenv";
-import {Vaas} from '../src/vaas';
+import Vaas from '../src/vaas';
 import * as randomBytes from 'random-bytes';
 
 describe('Test authentication', () => {
@@ -80,7 +80,7 @@ describe('Test verdict requests', () => {
         try {
             const con = await vaas.connect(token);
             const verdicts = await vaas.forSha256List(con, ["275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"]);
+                "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"]);
             expect(verdicts[0]).to.equal("Malicious");
             expect(verdicts[1]).to.equal("Clean");
         } catch (error) {
