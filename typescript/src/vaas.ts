@@ -22,6 +22,7 @@ export type VaasConnection = {
 
 export default class Vaas {
     callbacks: Map<string, VerdictCallback>;
+    connection: VaasConnection | null = null;
 
     constructor() {
         this.callbacks = new Map<string, VerdictCallback>();
@@ -33,9 +34,10 @@ export default class Vaas {
         }).join('')
     }
 
-    public async forSha256(vaasConnection: VaasConnection, sha256: string): Promise<Verdict> {
+    public async forSha256(sha256: string): Promise<Verdict> {
+
         return new Promise(async (resolve, reject) => {
-            const verdictResponse = await this.forRequest(vaasConnection, sha256)
+            const verdictResponse = await this.forRequest(sha256)
                 .catch(error => {
                     reject(error);
                 });
@@ -43,14 +45,14 @@ export default class Vaas {
         });
     }
 
-    public async forSha256List(vaasConnection: VaasConnection, sha256List: string[]): Promise<Verdict[]> {
-        const promises = sha256List.map(sha256 => this.forSha256(vaasConnection, sha256));
+    public async forSha256List(sha256List: string[]): Promise<Verdict[]> {
+        const promises = sha256List.map(sha256 => this.forSha256(sha256));
         return Promise.all(promises)
     }
 
-    public async forFile(vaasConnection: VaasConnection, fileBuffer: Uint8Array): Promise<Verdict> {
+    public async forFile(fileBuffer: Uint8Array): Promise<Verdict> {
         return new Promise(async (resolve, reject) => {
-            const verdictResponse = await this.forRequest(vaasConnection, fileBuffer)
+            const verdictResponse = await this.forRequest(fileBuffer)
                 .catch(error => {
                     reject(error);
                 });
@@ -58,13 +60,16 @@ export default class Vaas {
         });
     }
 
-    public async forFileList(vaasConnection: VaasConnection, fileBuffers: Uint8Array[]): Promise<Verdict[]> {
-        const promises = fileBuffers.map(f => this.forFile(vaasConnection, f));
+    public async forFileList(fileBuffers: Uint8Array[]): Promise<Verdict[]> {
+        const promises = fileBuffers.map(f => this.forFile(f));
         return Promise.all(promises);
     }
 
-    private async forRequest(vaasConnection: VaasConnection, sample: string | Uint8Array): Promise<VerdictResponse> {
-        return new Promise((resolve, _) => {
+    private async forRequest(sample: string | Uint8Array): Promise<VerdictResponse> {
+        return new Promise((resolve, reject) => {
+            if (this.connection === null) {
+                reject("Not connected");
+            }
             const guid = uuidv4()
 
             this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
@@ -87,12 +92,12 @@ export default class Vaas {
             } else {
                 hash = Vaas.toHexString(sha256.hash(sample));
             }
-            const verdictReq = JSON.stringify(serialize(new VerdictRequest(hash, guid, vaasConnection.sessionId)));
-            vaasConnection.ws.send(verdictReq);
+            const verdictReq = JSON.stringify(serialize(new VerdictRequest(hash, guid, this.connection!.sessionId)));
+            this.connection!.ws.send(verdictReq);
         });
     }
 
-    public async connect(token: string): Promise<VaasConnection> {
+    public async connect(token: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
             const ws = new WebSocket('wss://gateway-vaas.gdatasecurity.de');
             ws.on("ping", (payload) => {
@@ -104,13 +109,13 @@ export default class Vaas {
             });
             ws.onopen = async () => {
                 try {
-                    const vaasCon = await this.authenticate(ws, token);
-                    resolve(vaasCon);
+                    this.connection = await this.authenticate(ws, token);
                 } catch (error) {
                     reject(error);
                 }
             };
             ws.onerror = (error) => {
+                console.log("Error here");
                 reject(error.message);
             }
             ws.onmessage = async (event) => {
@@ -120,7 +125,8 @@ export default class Vaas {
                     case Kind.AuthResponse:
                         const authResponse = deserialize<AuthenticationResponse>(event.data, AuthenticationResponse);
                         if (authResponse.success) {
-                            resolve({ ws: ws, sessionId: authResponse.session_id });
+                            this.connection = { ws: ws, sessionId: authResponse.session_id }
+                            resolve();
                         }
                         reject("Unauthorized");
                         break;
@@ -143,7 +149,7 @@ export default class Vaas {
         })
     }
 
-    public async upload(verdictResponse: VerdictResponse, fileBuffer: Uint8Array) {
+    private async upload(verdictResponse: VerdictResponse, fileBuffer: Uint8Array) {
         return new Promise(async (resolve, reject) => {
             const instance = axios.default.create({
                 baseURL: verdictResponse.url,

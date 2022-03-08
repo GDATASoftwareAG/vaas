@@ -23,8 +23,8 @@ describe('Test verdict requests', () => {
         const token = process.env.VAAS_TOKEN!;
         const vaas = new Vaas();
         try {
-            const con = await vaas.connect(token);
-            const verdict = await vaas.forSha256(con, "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+            await vaas.connect(token);
+            const verdict = await vaas.forSha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
             expect(verdict).to.equal("Clean");
         } catch (error) {
             throw new Error(error as string);
@@ -36,8 +36,8 @@ describe('Test verdict requests', () => {
         const token = process.env.VAAS_TOKEN!;
         const vaas = new Vaas();
         try {
-            const con = await vaas.connect(token);
-            const verdict = await vaas.forSha256(con, "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+            await vaas.connect(token);
+            const verdict = await vaas.forSha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
             expect(verdict).to.equal("Malicious");
         } catch (error) {
             throw new Error(error as string);
@@ -51,8 +51,8 @@ describe('Test verdict requests', () => {
         const eicarByteArray = new TextEncoder().encode(eicarString);
         try {
             const vaas = new Vaas();
-            const con = await vaas.connect(token)
-            const verdict = await vaas.forFile(con, eicarByteArray);
+            await vaas.connect(token)
+            const verdict = await vaas.forFile(eicarByteArray);
             expect(verdict).to.equal("Malicious");
         } catch (error) {
             throw new Error(error as string);
@@ -65,8 +65,8 @@ describe('Test verdict requests', () => {
         const randomFileContent = await randomBytes.sync(50);
         try {
             const vaas = new Vaas();
-            const con = await vaas.connect(token)
-            const verdict = await vaas.forFile(con, randomFileContent);
+            await vaas.connect(token)
+            const verdict = await vaas.forFile(randomFileContent);
             expect(verdict).to.equal("Clean");
         } catch (error) {
             throw new Error(error as string);
@@ -78,8 +78,8 @@ describe('Test verdict requests', () => {
         const token = process.env.VAAS_TOKEN!;
         const vaas = new Vaas();
         try {
-            const con = await vaas.connect(token);
-            const verdicts = await vaas.forSha256List(con, ["275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+            await vaas.connect(token);
+            const verdicts = await vaas.forSha256List(["275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
                 "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"]);
             expect(verdicts[0]).to.equal("Malicious");
             expect(verdicts[1]).to.equal("Clean");
@@ -95,8 +95,8 @@ describe('Test verdict requests', () => {
         const randomFileContent2 = await randomBytes.sync(50);
         try {
             const vaas = new Vaas();
-            const con = await vaas.connect(token)
-            const verdict = await vaas.forFileList(con, [randomFileContent1, randomFileContent2]);
+            await vaas.connect(token)
+            const verdict = await vaas.forFileList([randomFileContent1, randomFileContent2]);
             expect(verdict[0]).to.equal("Clean");
             expect(verdict[0]).to.equal("Clean");
         } catch (error) {
