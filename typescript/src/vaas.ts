@@ -1,14 +1,14 @@
 import WebSocket from "isomorphic-ws";
 import * as sha256 from "fast-sha256";
-import {Kind, Message} from "./messages/message";
-import {AuthenticationResponse} from "./messages/authentication_response";
-import {AuthenticationRequest} from "./messages/authentication_request";
-import {deserialize, serialize} from 'typescript-json-serializer';
-import {VerdictResponse} from "./messages/verdict_response";
-import {WebsocketError} from "./messages/websocket_error";
-import {VerdictRequest} from "./messages/verdict_request";
-import {v4 as uuidv4} from 'uuid';
-import {Verdict} from "./verdict";
+import { Kind, Message } from "./messages/message";
+import { AuthenticationResponse } from "./messages/authentication_response";
+import { AuthenticationRequest } from "./messages/authentication_request";
+import { deserialize, serialize } from 'typescript-json-serializer';
+import { VerdictResponse } from "./messages/verdict_response";
+import { WebsocketError } from "./messages/websocket_error";
+import { VerdictRequest } from "./messages/verdict_request";
+import { v4 as uuidv4 } from 'uuid';
+import { Verdict } from "./verdict";
 import * as axios from "axios";
 
 export interface VerdictCallback {
@@ -20,7 +20,7 @@ export type VaasConnection = {
     sessionId: string;
 }
 
-export class Vaas {
+export default class Vaas {
     callbacks: Map<string, VerdictCallback>;
 
     constructor() {
@@ -120,7 +120,7 @@ export class Vaas {
                     case Kind.AuthResponse:
                         const authResponse = deserialize<AuthenticationResponse>(event.data, AuthenticationResponse);
                         if (authResponse.success) {
-                            resolve({ws: ws, sessionId: authResponse.session_id});
+                            resolve({ ws: ws, sessionId: authResponse.session_id });
                         }
                         reject("Unauthorized");
                         break;
@@ -148,7 +148,7 @@ export class Vaas {
             const instance = axios.default.create({
                 baseURL: verdictResponse.url,
                 timeout: 10000,
-                headers: {'Authorization': verdictResponse.upload_token!}
+                headers: { 'Authorization': verdictResponse.upload_token! }
             });
             const response = await instance.put("/", fileBuffer);
             if (response.status != 200) {

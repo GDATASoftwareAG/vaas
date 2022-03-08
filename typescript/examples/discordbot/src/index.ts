@@ -1,9 +1,9 @@
 import { Client } from "discord.js";
 import axios from "axios";
 import * as dotenv from "dotenv";
-import { Vaas } from "../../../src/vaas";
+import Vaas from "../../../src/vaas";
 
-const client = new Client({intents: ["GUILDS", "GUILD_MESSAGES", "DIRECT_MESSAGES"]});
+const client = new Client({ intents: ["GUILDS", "GUILD_MESSAGES", "DIRECT_MESSAGES"] });
 dotenv.config()
 
 client.on("ready", () => {
@@ -13,7 +13,7 @@ client.on("ready", () => {
 client.on("messageCreate", (msg) => {
     const attachments = Array.from(msg.attachments.values());
 
-    attachments.forEach( (attachment) => {
+    attachments.forEach((attachment) => {
         axios({
             url: attachment.url,
             method: 'GET',
