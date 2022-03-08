@@ -125,7 +125,7 @@ public class RealApiIntegrationTests {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "unknown.txt");
         Files.writeString(tmpFile, unknown);
         var vaas = this.getVaas();
-        var cts = new CancellationTokenSource(Duration.ofMinutes(5));
+        var cts = new CancellationTokenSource(Duration.ofMinutes(10));
 
         var verdict = vaas.forFile(tmpFile, cts);
         vaas.disconnect();

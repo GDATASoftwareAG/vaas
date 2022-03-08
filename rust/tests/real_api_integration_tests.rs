@@ -181,7 +181,7 @@ async fn from_file_single_unknown_file() {
     std::fs::write(&tmp_file, unknown.as_bytes()).unwrap();
 
     let vaas = get_vaas().await;
-    let ct = CancellationToken::from_minutes(5);
+    let ct = CancellationToken::from_minutes(10);
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
@@ -209,7 +209,7 @@ async fn from_files_unknown_files() {
     let files = vec![tmp_file1.clone(), tmp_file2.clone()];
 
     let vaas = get_vaas().await;
-    let ct = CancellationToken::from_minutes(5);
+    let ct = CancellationToken::from_minutes(10);
     let verdicts = vaas.for_file_list(&files, &ct).await;
 
     std::fs::remove_file(tmp_file1).unwrap();
