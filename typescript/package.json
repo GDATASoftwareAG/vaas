@@ -16,7 +16,7 @@
     "it-security",
     "malware-detection"
   ],
-  "description": "A SDK to for G DATA VaaS. Verdicts as a service.",
+  "description": "An SDK to for G DATA VaaS. Verdicts as a service.",
   "author": {
     "name": "G DATA CyberDefense AG",
     "email": "oem@gdata.de",
