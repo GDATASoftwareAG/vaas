@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -12,7 +13,7 @@ namespace Vaas
 {
     public class Vaas
     {
-        public string Token { get; }
+        private string Token { get; }
 
         public WebsocketClient Client { get; set; }
 
@@ -20,10 +21,9 @@ namespace Vaas
 
         public bool Authenticated { get; set; }
         
-        
-        public Verdict? Verdict {get; set;}
-
         public Uri Url { get; set; } = new Uri("wss://gateway-vaas.gdatasecurity.de");
+
+        private Dictionary<string, Verdict> VerdictDict { get; } = new Dictionary<string, Verdict>();
 
         public Vaas(string token)
         {
@@ -53,7 +53,7 @@ namespace Vaas
                         case "VerdictResponse":
                             var options = new JsonSerializerOptions() {Converters = {new JsonStringEnumConverter()}};
                             var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text,options);
-                            Verdict = verdictResponse.Verdict;
+                            VerdictDict.Add(verdictResponse.Guid, verdictResponse.Verdict);
                             break;
                     }
                    
@@ -94,12 +94,13 @@ namespace Vaas
             var analysisRequest = new AnalysisRequest(sha256, SessionId);
             string jsonString = JsonSerializer.Serialize(analysisRequest);
             Client.Send(jsonString);
-            while (Verdict == null)
+            Verdict value;
+            while (VerdictDict.TryGetValue(analysisRequest.Guid, out value) == false)
             {
                 Thread.Sleep(300);
             }
-            
-            return (Verdict) Verdict;
+            VerdictDict.Remove(analysisRequest.Guid);
+            return value;
         }
 
         private static Func<ClientWebSocket> CreateWebsocketClient()
