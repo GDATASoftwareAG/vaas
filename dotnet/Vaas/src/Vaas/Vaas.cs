@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.WebSockets;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Vaas.Messages;
@@ -18,6 +19,9 @@ namespace Vaas
         public string SessionId { get; set; }
 
         public bool Authenticated { get; set; }
+        
+        
+        public Verdict? Verdict {get; set;}
 
         public Uri Url { get; set; } = new Uri("wss://gateway-vaas.gdatasecurity.de");
 
@@ -34,12 +38,25 @@ namespace Vaas
             {
                 if (msg.MessageType == WebSocketMessageType.Text)
                 {
-                    var response = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
-                    if (response.Success == true)
+                    var message = JsonSerializer.Deserialize<Message>(msg.Text);
+                    switch (message.Kind)
                     {
-                        Authenticated = true;
-                        SessionId = response.SessionId;
+                        case "AuthResponse":
+                            var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
+                            if (authenticationResponse.Success == true)
+                            {
+                                Authenticated = true;
+                                SessionId = authenticationResponse.SessionId;
+                            }
+                            break;
+                        
+                        case "VerdictResponse":
+                            var options = new JsonSerializerOptions() {Converters = {new JsonStringEnumConverter()}};
+                            var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text,options);
+                            Verdict = verdictResponse.Verdict;
+                            break;
                     }
+                   
                 }
             });
             Client.Start().GetAwaiter().GetResult();
@@ -77,8 +94,12 @@ namespace Vaas
             var analysisRequest = new AnalysisRequest(sha256, SessionId);
             string jsonString = JsonSerializer.Serialize(analysisRequest);
             Client.Send(jsonString);
-            //HaNdLe vErDiCt rEsPoNsE 
-            return Verdict.Clean;
+            while (Verdict == null)
+            {
+                Thread.Sleep(300);
+            }
+            
+            return (Verdict) Verdict;
         }
 
         private static Func<ClientWebSocket> CreateWebsocketClient()

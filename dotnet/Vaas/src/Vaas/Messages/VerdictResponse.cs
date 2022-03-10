@@ -14,7 +14,7 @@ namespace Vaas.Messages
         public string Guid { get; init; }
 
         [JsonPropertyName("verdict")] 
-        public string Verdict { get; init; }
+        public Verdict Verdict { get; init; }
         
         [JsonPropertyName("url")] 
         public string? Url { get; init; }
