@@ -1,8 +1,16 @@
-import { expect } from 'chai';
-import { describe } from 'mocha';
+import {expect} from 'chai';
+import {describe} from 'mocha';
 import * as dotenv from "dotenv";
 import Vaas from '../src/vaas';
 import * as randomBytes from 'random-bytes';
+import {CancellationToken} from "../src/CancellationToken";
+
+const chai = require('chai');
+const chaiAsPromised = require("chai-as-promised");
+chai.use(chaiAsPromised);
+
+const testTimeoutHashReq: number = 10_000;
+const testTimeoutFileReq: number = 600_000;
 
 describe('Test authentication', () => {
     it('if wrong authentication token is send, an error is expected', async () => {
@@ -14,8 +22,21 @@ describe('Test authentication', () => {
         } catch (error) {
             expect(error).to.equal("Unauthorized");
         }
-    })
-}).timeout(10_000);
+    }).timeout(testTimeoutHashReq);
+});
+
+describe('Test cancellation through timeout', () => {
+    it('if a request is cancelled, an error is expected', async () => {
+        dotenv.config();
+        const token = process.env.VAAS_TOKEN!;
+        const randomFileContent = await randomBytes.sync(50);
+        const vaas = new Vaas();
+        await vaas.connect(token)
+        // Cancel promise after 1ms
+        const promise = vaas.forFile(randomFileContent, CancellationToken.fromMilliseconds(1));
+        expect(promise).to.eventually.be.rejectedWith("Cancelled");
+    }).timeout(testTimeoutHashReq);
+});
 
 describe('Test verdict requests', () => {
     it('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
@@ -29,7 +50,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(10_000);
+    }).timeout(testTimeoutHashReq);
 
     it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
         dotenv.config();
@@ -42,7 +63,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(10_000);
+    }).timeout(testTimeoutHashReq);
 
     it('test if eicar file is detected as malicious based on the SHA256', async () => {
         dotenv.config();
@@ -57,7 +78,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(10_000);
+    }).timeout(testTimeoutHashReq);
 
     it('test if unknown file is uploaded and detected as clean', async () => {
         dotenv.config();
@@ -71,7 +92,7 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(600_000);
+    }).timeout(testTimeoutFileReq);
 
     it('if a list of SHA256 is uploaded, they are detected', async () => {
         dotenv.config();
@@ -102,5 +123,5 @@ describe('Test verdict requests', () => {
         } catch (error) {
             throw new Error(error as string);
         }
-    }).timeout(600_000);
+    }).timeout(testTimeoutFileReq);
 })
