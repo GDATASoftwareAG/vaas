@@ -1,15 +1,16 @@
 import WebSocket from "isomorphic-ws";
 import * as sha256 from "fast-sha256";
-import { Kind, Message } from "./messages/message";
-import { AuthenticationResponse } from "./messages/authentication_response";
-import { AuthenticationRequest } from "./messages/authentication_request";
-import { deserialize, serialize } from 'typescript-json-serializer';
-import { VerdictResponse } from "./messages/verdict_response";
-import { WebsocketError } from "./messages/websocket_error";
-import { VerdictRequest } from "./messages/verdict_request";
-import { v4 as uuidv4 } from 'uuid';
-import { Verdict } from "./verdict";
+import {Kind, Message} from "./messages/message";
+import {AuthenticationResponse} from "./messages/authentication_response";
+import {AuthenticationRequest} from "./messages/authentication_request";
+import {deserialize, serialize} from 'typescript-json-serializer';
+import {VerdictResponse} from "./messages/verdict_response";
+import {WebsocketError} from "./messages/websocket_error";
+import {VerdictRequest} from "./messages/verdict_request";
+import {v4 as uuidv4} from 'uuid';
+import {Verdict} from "./verdict";
 import * as axios from "axios";
+import {CancellationToken} from "./CancellationToken";
 
 export interface VerdictCallback {
     (verdictResponse: VerdictResponse): Promise<void>;
@@ -23,6 +24,8 @@ export type VaasConnection = {
 export default class Vaas {
     callbacks: Map<string, VerdictCallback>;
     connection: VaasConnection | null = null;
+    defaultTimeoutHashReq: number = 2_000;
+    defaultTimeoutFileReq: number = 600_000;
 
     constructor() {
         this.callbacks = new Map<string, VerdictCallback>();
@@ -34,10 +37,9 @@ export default class Vaas {
         }).join('')
     }
 
-    public async forSha256(sha256: string): Promise<Verdict> {
-
+    public async forSha256(sha256: string, ct: CancellationToken = CancellationToken.fromMilliseconds(this.defaultTimeoutHashReq)): Promise<Verdict> {
         return new Promise(async (resolve, reject) => {
-            const verdictResponse = await this.forRequest(sha256)
+            const verdictResponse = await this.forRequest(sha256, ct)
                 .catch(error => {
                     reject(error);
                 });
@@ -45,14 +47,14 @@ export default class Vaas {
         });
     }
 
-    public async forSha256List(sha256List: string[]): Promise<Verdict[]> {
-        const promises = sha256List.map(sha256 => this.forSha256(sha256));
+    public async forSha256List(sha256List: string[], ct: CancellationToken = CancellationToken.fromMilliseconds(this.defaultTimeoutHashReq)): Promise<Verdict[]> {
+        const promises = sha256List.map(sha256 => this.forSha256(sha256, ct));
         return Promise.all(promises)
     }
 
-    public async forFile(fileBuffer: Uint8Array): Promise<Verdict> {
+    public async forFile(fileBuffer: Uint8Array, ct: CancellationToken = CancellationToken.fromMilliseconds(this.defaultTimeoutFileReq)): Promise<Verdict> {
         return new Promise(async (resolve, reject) => {
-            const verdictResponse = await this.forRequest(fileBuffer)
+            const verdictResponse = await this.forRequest(fileBuffer, ct)
                 .catch(error => {
                     reject(error);
                 });
@@ -60,38 +62,39 @@ export default class Vaas {
         });
     }
 
-    public async forFileList(fileBuffers: Uint8Array[]): Promise<Verdict[]> {
-        const promises = fileBuffers.map(f => this.forFile(f));
+    public async forFileList(fileBuffers: Uint8Array[], ct: CancellationToken = CancellationToken.fromMilliseconds(this.defaultTimeoutFileReq)): Promise<Verdict[]> {
+        const promises = fileBuffers.map(f => this.forFile(f, ct));
         return Promise.all(promises);
     }
 
-    private async forRequest(sample: string | Uint8Array): Promise<VerdictResponse> {
+    private async forRequest(sample: string | Uint8Array, ct: CancellationToken): Promise<VerdictResponse> {
         return new Promise((resolve, reject) => {
             if (this.connection === null) {
                 reject("Not connected");
             }
-            const guid = uuidv4()
 
+            const guid = uuidv4()
             this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
+                const timer = setTimeout(() => {
+                    reject("Cancelled");
+                }, ct.timeout());
+
                 if (typeof sample === "string") {
-                    resolve(verdictResponse);
+                    clearTimeout(timer);
                     this.callbacks.delete(guid);
-                    return;
-                }
-                if (verdictResponse.verdict !== Verdict.UNKNOWN) {
                     resolve(verdictResponse);
-                    this.callbacks.delete(guid);
-                    return;
                 }
-                await this.upload(verdictResponse, sample);
+                else {
+                    if (verdictResponse.verdict !== Verdict.UNKNOWN) {
+                        clearTimeout(timer);
+                        this.callbacks.delete(guid);
+                        resolve(verdictResponse);
+                    }
+                    await this.upload(verdictResponse, sample);
+                }
             });
 
-            let hash: string;
-            if (typeof sample === "string") {
-                hash = sample;
-            } else {
-                hash = Vaas.toHexString(sha256.hash(sample));
-            }
+            let hash = typeof sample === "string" ? sample : Vaas.toHexString(sha256.hash(sample));
             const verdictReq = JSON.stringify(serialize(new VerdictRequest(hash, guid, this.connection!.sessionId)));
             this.connection!.ws.send(verdictReq);
         });
@@ -125,7 +128,7 @@ export default class Vaas {
                     case Kind.AuthResponse:
                         const authResponse = deserialize<AuthenticationResponse>(event.data, AuthenticationResponse);
                         if (authResponse.success) {
-                            this.connection = { ws: ws, sessionId: authResponse.session_id }
+                            this.connection = {ws: ws, sessionId: authResponse.session_id}
                             resolve();
                         }
                         reject("Unauthorized");
@@ -154,7 +157,7 @@ export default class Vaas {
             const instance = axios.default.create({
                 baseURL: verdictResponse.url,
                 timeout: 10000,
-                headers: { 'Authorization': verdictResponse.upload_token! }
+                headers: {'Authorization': verdictResponse.upload_token!}
             });
             const response = await instance.put("/", fileBuffer);
             if (response.status != 200) {
