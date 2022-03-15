@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Net.WebSockets;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -23,7 +27,7 @@ namespace Vaas
         
         public Uri Url { get; set; } = new Uri("wss://gateway-vaas.gdatasecurity.de");
 
-        private Dictionary<string, Verdict> VerdictDict { get; } = new Dictionary<string, Verdict>();
+        private Dictionary<string, VerdictResponse> VerdictResponsesDict { get; } = new Dictionary<string, VerdictResponse>();
 
         public Vaas(string token)
         {
@@ -32,7 +36,7 @@ namespace Vaas
 
         public void Connect()
         {
-            Client = new WebsocketClient(Url, CreateWebsocketClient());
+            Client = new WebsocketClient(Url, CreateWebsocketClient()); //WEBSOCKET OFFEN LASSEN - PING SENDEN
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(msg =>
             {
@@ -53,7 +57,7 @@ namespace Vaas
                         case "VerdictResponse":
                             var options = new JsonSerializerOptions() {Converters = {new JsonStringEnumConverter()}};
                             var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text,options);
-                            VerdictDict.Add(verdictResponse.Guid, verdictResponse.Verdict);
+                            VerdictResponsesDict.Add(verdictResponse.Guid, verdictResponse);
                             break;
                     }
                    
@@ -91,16 +95,71 @@ namespace Vaas
 
         public Verdict ForSha256(string sha256)
         {
-            var analysisRequest = new AnalysisRequest(sha256, SessionId);
-            string jsonString = JsonSerializer.Serialize(analysisRequest);
+            var value = ForRequest(new AnalysisRequest(sha256,SessionId));
+            return value.Verdict;
+        }
+        
+        public Verdict ForFile(string path)
+        {
+            var sha256 = SHA256CheckSum(path);
+            var verdictResponse = ForRequest(new AnalysisRequest(sha256, SessionId));
+            if (verdictResponse.Verdict == Verdict.Unknown)
+            {
+                var url = verdictResponse.Url;
+                var token = verdictResponse.UploadToken;
+
+                var httpRequest = (HttpWebRequest) WebRequest.Create(url);
+                httpRequest.Method = "PUT";
+                httpRequest.Headers.Add(HttpRequestHeader.Authorization, token);
+
+                var data = File.ReadAllBytes(path);
+                using (var streamWriter = new StreamWriter(httpRequest.GetRequestStream()))
+                {
+                    streamWriter.Write(data);
+                }
+
+                var httpResponse = (HttpWebResponse) httpRequest.GetResponse();
+                if (httpResponse.StatusCode != HttpStatusCode.OK)
+                {
+                    throw new HttpRequestException("file upload failed");
+                }
+
+                VerdictResponse value;
+                while (VerdictResponsesDict.TryGetValue(verdictResponse.Guid, out value) == false)
+                {
+                    Thread.Sleep(300);
+                }
+
+                VerdictResponsesDict.Remove(verdictResponse.Guid);
+
+                return value.Verdict;
+
+            }
+
+            return verdictResponse.Verdict;
+        }
+
+        private VerdictResponse ForRequest(AnalysisRequest analysisRequest)
+        {
+            var jsonString = JsonSerializer.Serialize(analysisRequest);
             Client.Send(jsonString);
-            Verdict value;
-            while (VerdictDict.TryGetValue(analysisRequest.Guid, out value) == false)
+            VerdictResponse value;
+            while (VerdictResponsesDict.TryGetValue(analysisRequest.Guid, out value) == false)
             {
                 Thread.Sleep(300);
             }
-            VerdictDict.Remove(analysisRequest.Guid);
+            VerdictResponsesDict.Remove(analysisRequest.Guid);
+
             return value;
+        }
+        
+        public string SHA256CheckSum(string filePath)
+        {
+            using (SHA256 SHA256 = SHA256Managed.Create())
+            {
+                using (FileStream fileStream = File.OpenRead(filePath))
+                    return Convert.ToHexString(SHA256.ComputeHash(fileStream));
+            }
         }
 
         private static Func<ClientWebSocket> CreateWebsocketClient()

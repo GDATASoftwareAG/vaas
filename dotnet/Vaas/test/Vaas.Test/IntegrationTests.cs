@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace Vaas.Test
@@ -20,10 +22,7 @@ namespace Vaas.Test
         [Fact]
         public void FromSha256SingleMaliciousHash()
         {
-            DotNetEnv.Env.TraversePath().Load();
-            var myToken = DotNetEnv.Env.GetString("VAAS_TOKEN");
-            var vaas = new Vaas(myToken);
-            vaas.Connect();
+            var vaas = Authenticate();
             var verdict = vaas.ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
             Assert.Equal(Verdict.Malicious, verdict);
         }
@@ -31,10 +30,7 @@ namespace Vaas.Test
         [Fact]
         public void FromSha256SingleCleanHash()
         {
-            DotNetEnv.Env.TraversePath().Load();
-            var myToken = DotNetEnv.Env.GetString("VAAS_TOKEN");
-            var vaas = new Vaas(myToken);
-            vaas.Connect();
+            var vaas = Authenticate();
             var verdict = vaas.ForSha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
             Assert.Equal(Verdict.Clean, verdict);
         }
@@ -42,12 +38,29 @@ namespace Vaas.Test
         [Fact]
         public void FromSha256SingleUnknownHash()
         {
+            var vaas = Authenticate();
+            var verdict = vaas.ForSha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9");
+            Assert.Equal(Verdict.Unknown, verdict);
+        }
+
+        [Fact]
+        public async Task GenerateFileUnknownHash()
+        {
+            Random rnd = new Random();
+            Byte[] b = new Byte[50];
+            rnd.NextBytes(b);
+            await File.WriteAllBytesAsync("test.txt", b);
+            var vaas = Authenticate();
+            vaas.ForFile("test.txt");
+        }
+
+        private Vaas Authenticate()
+        {
             DotNetEnv.Env.TraversePath().Load();
             var myToken = DotNetEnv.Env.GetString("VAAS_TOKEN");
             var vaas = new Vaas(myToken);
             vaas.Connect();
-            var verdict = vaas.ForSha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9");
-            Assert.Equal(Verdict.Unknown, verdict);
+            return vaas;
         }
     }
 }
