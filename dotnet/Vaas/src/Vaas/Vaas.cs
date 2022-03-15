@@ -139,6 +139,7 @@ namespace Vaas
             return verdictResponse.Verdict;
         }
 
+        //WAIT FOR RESPONSE FUNKTION RAUSZIEHEN
         private VerdictResponse ForRequest(AnalysisRequest analysisRequest)
         {
             var jsonString = JsonSerializer.Serialize(analysisRequest);
