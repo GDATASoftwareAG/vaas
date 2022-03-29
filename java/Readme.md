@@ -22,7 +22,7 @@ public class MainClass {
         vaas.disconnect();
 
         // Print verdict result (CLEAN, UNKNOWN, MALICIOUS)
-        System.out.println("Verdict: " + verdict.getClassification().name());
+        System.out.println("Verdict: " + verdict.getVerdict().name());
     }
 }
 
@@ -46,7 +46,7 @@ public class MainClass {
         vaas.disconnect();
 
         // Print verdict result (CLEAN, UNKNOWN, MALICIOUS)
-        System.out.println("Verdict: " + verdict.getClassification().name());
+        System.out.println("Verdict: " + verdict.getVerdict().name());
     }
 }
 ```
