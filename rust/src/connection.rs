@@ -137,7 +137,7 @@ impl Connection {
         let response = upload_file(file, upload_url, auth_token).await?;
 
         if response.status() != 200 {
-            return Err(Error::FailedUploadFile(response.status()));
+            return Err(Error::FailedUploadFile(response.status(), response.text().await.expect("failed to get payload")));
         }
 
         let resp = Self::wait_for_response(guid, result_channel, ct).await?;

@@ -51,8 +51,8 @@ pub enum Error {
     #[error("Failed to send file: `{0}`")]
     FailedRequest(String),
     /// Failed to upload the file. Server answered with an non-200 status code.
-    #[error("Server answered with status code: `{0}`")]
-    FailedUploadFile(StatusCode),
+    #[error("Server answered with status code: `{0}` `{1}`")]
+    FailedUploadFile(StatusCode, String),
     /// Authentication token for the file upload in the response message is missing.
     #[error("Missing authentication token for file upload")]
     MissingAuthToken,
