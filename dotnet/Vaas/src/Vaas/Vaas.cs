@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.WebSockets;
@@ -36,7 +37,7 @@ namespace Vaas
 
         public void Connect()
         {
-            Client = new WebsocketClient(Url, CreateWebsocketClient()); //WEBSOCKET OFFEN LASSEN - PING SENDEN
+            Client = new WebsocketClient(Url, CreateWebsocketClient());
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(msg =>
             {
@@ -68,8 +69,9 @@ namespace Vaas
             {
                 throw new WebsocketException("Could not start client");
             }
-
+            
             Authenticate();
+            Task.Run(SendPing);
         }
 
         private void Authenticate()
@@ -93,73 +95,82 @@ namespace Vaas
             }
         }
 
-        public Verdict ForSha256(string sha256)
+        public async Task<Verdict> ForSha256Async(string sha256)
         {
-            var value = ForRequest(new AnalysisRequest(sha256,SessionId));
+            var value = await ForRequestAsync(new AnalysisRequest(sha256,SessionId));
             return value.Verdict;
         }
         
-        public Verdict ForFile(string path)
+        public async Task<Verdict> ForFileAsync(string path)
         {
             var sha256 = SHA256CheckSum(path);
-            var verdictResponse = ForRequest(new AnalysisRequest(sha256, SessionId));
+            var verdictResponse = await ForRequestAsync(new AnalysisRequest(sha256, SessionId));
             if (verdictResponse.Verdict == Verdict.Unknown)
             {
                 var url = verdictResponse.Url;
                 var token = verdictResponse.UploadToken;
-
-                var httpRequest = (HttpWebRequest) WebRequest.Create(url);
-                httpRequest.Method = "PUT";
-                httpRequest.Headers.Add(HttpRequestHeader.Authorization, token);
-
-                var data = File.ReadAllBytes(path);
-                using (var streamWriter = new StreamWriter(httpRequest.GetRequestStream()))
+                var data = await File.ReadAllBytesAsync(path);
+                using (var client = new System.Net.WebClient())
                 {
-                    streamWriter.Write(data);
+                    client.Headers.Add(HttpRequestHeader.Authorization, token);
+                    client.UploadData(url, "PUT", data);
                 }
+                var response = await WaitForResponseAsync(verdictResponse.Guid);
 
-                var httpResponse = (HttpWebResponse) httpRequest.GetResponse();
-                if (httpResponse.StatusCode != HttpStatusCode.OK)
-                {
-                    throw new HttpRequestException("file upload failed");
-                }
-
-                VerdictResponse value;
-                while (VerdictResponsesDict.TryGetValue(verdictResponse.Guid, out value) == false)
-                {
-                    Thread.Sleep(300);
-                }
-
-                VerdictResponsesDict.Remove(verdictResponse.Guid);
-
-                return value.Verdict;
+                return response.Verdict;
 
             }
 
             return verdictResponse.Verdict;
         }
 
-        //WAIT FOR RESPONSE FUNKTION RAUSZIEHEN
-        private VerdictResponse ForRequest(AnalysisRequest analysisRequest)
+        public async Task<List<Verdict>> ForSha256ListAsync(IEnumerable<string> sha256List)
+        {
+            return (await Task.WhenAll(sha256List.Select(ForSha256Async))).ToList();
+
+        }
+
+        public async Task<List<Verdict>> ForFileListAsync(IEnumerable<string> fileList)
+        {
+            return (await Task.WhenAll(fileList.Select(ForFileAsync))).ToList();
+        }
+
+        
+        private async Task<VerdictResponse> ForRequestAsync(AnalysisRequest analysisRequest)
         {
             var jsonString = JsonSerializer.Serialize(analysisRequest);
-            Client.Send(jsonString);
-            VerdictResponse value;
-            while (VerdictResponsesDict.TryGetValue(analysisRequest.Guid, out value) == false)
-            {
-                Thread.Sleep(300);
-            }
-            VerdictResponsesDict.Remove(analysisRequest.Guid);
+            await Task.Run(()=>Client.Send(jsonString));
 
+            return await WaitForResponseAsync(analysisRequest.Guid);
+        }
+
+        private async void SendPing()
+        {
+            while (Client.IsRunning)
+            {
+                Client.Send("ping");
+                Thread.Sleep(10000);
+            }
+            
+        }
+        
+        private async Task<VerdictResponse> WaitForResponseAsync(string guid)
+        {
+            VerdictResponse value;
+            while (VerdictResponsesDict.TryGetValue(guid, out value) == false)
+            {
+                await Task.Delay(300);
+            }
+            VerdictResponsesDict.Remove(guid);
             return value;
         }
         
-        public string SHA256CheckSum(string filePath)
+        private string SHA256CheckSum(string filePath)
         {
             using (SHA256 SHA256 = SHA256Managed.Create())
             {
                 using (FileStream fileStream = File.OpenRead(filePath))
-                    return Convert.ToHexString(SHA256.ComputeHash(fileStream));
+                    return (Convert.ToHexString(SHA256.ComputeHash(fileStream))).ToLower();
             }
         }
 
