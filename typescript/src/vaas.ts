@@ -159,8 +159,8 @@ export default class Vaas {
                 timeout: 10000,
                 headers: {'Authorization': verdictResponse.upload_token!}
             });
-            // const response = await instance.put("/", fileBuffer);
-            instance.put("/", fileBuffer).then((response) =>
+            instance.put("/", fileBuffer)
+                .then((response) =>
             {
                 resolve(response);
             }).catch((error) => {
