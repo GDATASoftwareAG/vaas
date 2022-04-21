@@ -159,13 +159,11 @@ export default class Vaas {
                 timeout: 10000,
                 headers: {'Authorization': verdictResponse.upload_token!}
             });
-            instance.put("/", fileBuffer)
-                .then((response) =>
-            {
-                resolve(response);
-            }).catch((error) => {
-                reject(`Upload failed with ${error.response.status} - Error ${error.response.data.message}`)
+            const response = await instance.put("/", fileBuffer)
+                .catch((error) => {
+                    reject(`Upload failed with ${error.response.status} - Error ${error.response.data.message}`)
             });
+            resolve(response);
         });
 
     }
