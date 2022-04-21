@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -20,15 +19,15 @@ namespace Vaas
     {
         private string Token { get; }
 
-        public WebsocketClient Client { get; set; }
+        private WebsocketClient? Client { get; set; }
 
-        public string SessionId { get; set; }
+        private string? SessionId { get; set; }
 
-        public bool Authenticated { get; set; }
+        private bool Authenticated { get; set; }
         
-        public Uri Url { get; set; } = new Uri("wss://gateway-vaas.gdatasecurity.de");
+        public Uri Url { get; set; } = new("wss://gateway-vaas.gdatasecurity.de");
 
-        private Dictionary<string, VerdictResponse> VerdictResponsesDict { get; } = new Dictionary<string, VerdictResponse>();
+        private Dictionary<string, VerdictResponse> VerdictResponsesDict { get; } = new();
 
         public Vaas(string token)
         {
@@ -41,27 +40,24 @@ namespace Vaas
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(msg =>
             {
-                if (msg.MessageType == WebSocketMessageType.Text)
+                if (msg.MessageType != WebSocketMessageType.Text) return;
+                var message = JsonSerializer.Deserialize<Message>(msg.Text);
+                switch (message?.Kind)
                 {
-                    var message = JsonSerializer.Deserialize<Message>(msg.Text);
-                    switch (message.Kind)
-                    {
-                        case "AuthResponse":
-                            var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
-                            if (authenticationResponse.Success == true)
-                            {
-                                Authenticated = true;
-                                SessionId = authenticationResponse.SessionId;
-                            }
-                            break;
+                    case "AuthResponse":
+                        var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
+                        if (authenticationResponse is {Success: true})
+                        {
+                            Authenticated = true;
+                            SessionId = authenticationResponse.SessionId;
+                        }
+                        break;
                         
-                        case "VerdictResponse":
-                            var options = new JsonSerializerOptions() {Converters = {new JsonStringEnumConverter()}};
-                            var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text,options);
-                            VerdictResponsesDict.Add(verdictResponse.Guid, verdictResponse);
-                            break;
-                    }
-                   
+                    case "VerdictResponse":
+                        var options = new JsonSerializerOptions {Converters = {new JsonStringEnumConverter()}};
+                        var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text,options);
+                        VerdictResponsesDict.Add(verdictResponse?.Guid ?? throw new InvalidOperationException(), verdictResponse);
+                        break;
                 }
             });
             Client.Start().GetAwaiter().GetResult();
@@ -76,12 +72,12 @@ namespace Vaas
 
         private void Authenticate()
         {
-            var authenticationRequest = new AuthenticationRequest(Token, null);
-            string jsonString = JsonSerializer.Serialize(authenticationRequest);
-            Client.Send(jsonString);
+            var authenticationRequest = new AuthenticationRequest(Token);
+            var jsonString = JsonSerializer.Serialize(authenticationRequest);
+            Client?.Send(jsonString);
             for (var i = 0; i < 10; i++)
             {
-                if (Authenticated == true)
+                if (Authenticated)
                 {
                     break;
                 }
@@ -97,37 +93,33 @@ namespace Vaas
 
         public async Task<Verdict> ForSha256Async(string sha256)
         {
-            var value = await ForRequestAsync(new AnalysisRequest(sha256,SessionId));
+            var value = await ForRequestAsync(new AnalysisRequest(sha256,SessionId ?? throw new InvalidOperationException()));
             return value.Verdict;
         }
         
         public async Task<Verdict> ForFileAsync(string path)
         {
-            var sha256 = SHA256CheckSum(path);
-            var verdictResponse = await ForRequestAsync(new AnalysisRequest(sha256, SessionId));
-            if (verdictResponse.Verdict == Verdict.Unknown)
+            var sha256 = Sha256CheckSum(path);
+            var verdictResponse = await ForRequestAsync(new AnalysisRequest(sha256, SessionId ?? throw new InvalidOperationException()));
+            if (verdictResponse.Verdict != Verdict.Unknown) return verdictResponse.Verdict;
+            var url = verdictResponse.Url;
+            if (url is null) throw new ArgumentNullException(nameof(url));
+            
+            var token = verdictResponse.UploadToken;
+            var data = await File.ReadAllBytesAsync(path);
+            using (var client = new WebClient())
             {
-                var url = verdictResponse.Url;
-                var token = verdictResponse.UploadToken;
-                var data = await File.ReadAllBytesAsync(path);
-                using (var client = new System.Net.WebClient())
-                {
-                    client.Headers.Add(HttpRequestHeader.Authorization, token);
-                    client.UploadData(url, "PUT", data);
-                }
-                var response = await WaitForResponseAsync(verdictResponse.Guid);
-
-                return response.Verdict;
-
+                client.Headers.Add(HttpRequestHeader.Authorization, token);
+                client.UploadData(url, "PUT", data);
             }
+            var response = await WaitForResponseAsync(verdictResponse.Guid);
 
-            return verdictResponse.Verdict;
+            return response.Verdict;
         }
 
         public async Task<List<Verdict>> ForSha256ListAsync(IEnumerable<string> sha256List)
         {
             return (await Task.WhenAll(sha256List.Select(ForSha256Async))).ToList();
-
         }
 
         public async Task<List<Verdict>> ForFileListAsync(IEnumerable<string> fileList)
@@ -139,24 +131,23 @@ namespace Vaas
         private async Task<VerdictResponse> ForRequestAsync(AnalysisRequest analysisRequest)
         {
             var jsonString = JsonSerializer.Serialize(analysisRequest);
-            await Task.Run(()=>Client.Send(jsonString));
+            await Task.Run(()=>Client?.Send(jsonString));
 
             return await WaitForResponseAsync(analysisRequest.Guid);
         }
 
-        private async void SendPing()
+        private void SendPing()
         {
-            while (Client.IsRunning)
+            while (Client is {IsRunning: true})
             {
                 Client.Send("ping");
                 Thread.Sleep(10000);
             }
-            
         }
         
         private async Task<VerdictResponse> WaitForResponseAsync(string guid)
         {
-            VerdictResponse value;
+            VerdictResponse? value;
             while (VerdictResponsesDict.TryGetValue(guid, out value) == false)
             {
                 await Task.Delay(300);
@@ -165,13 +156,11 @@ namespace Vaas
             return value;
         }
         
-        private string SHA256CheckSum(string filePath)
+        private static string Sha256CheckSum(string filePath)
         {
-            using (SHA256 SHA256 = SHA256Managed.Create())
-            {
-                using (FileStream fileStream = File.OpenRead(filePath))
-                    return (Convert.ToHexString(SHA256.ComputeHash(fileStream))).ToLower();
-            }
+            using var sha256 = SHA256.Create();
+            using var fileStream = File.OpenRead(filePath);
+            return Convert.ToHexString(sha256.ComputeHash(fileStream)).ToLower();
         }
 
         private static Func<ClientWebSocket> CreateWebsocketClient()

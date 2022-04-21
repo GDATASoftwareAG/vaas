@@ -5,6 +5,6 @@ namespace Vaas.Messages
     public class Message
     {
         [JsonPropertyName("kind")] 
-        public string Kind { get; init; }
+        public string Kind { get; init; } = null!;
     }
 }

@@ -35,14 +35,14 @@ namespace Vaas.Test
         [Fact]
         public async void From256ListMultipleHashes()
         {
-            var mylist = new List<string>
+            var myList = new List<string>
             {
                 "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
                 "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23",
                 "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
             };
             var vaas = Authenticate();
-            var verdictList = await vaas.ForSha256ListAsync(mylist);
+            var verdictList = await vaas.ForSha256ListAsync(myList);
             Assert.Equal(Verdict.Malicious, verdictList[0]);
             Assert.Equal(Verdict.Clean, verdictList[1]);
             Assert.Equal(Verdict.Unknown, verdictList[2]);
@@ -52,8 +52,8 @@ namespace Vaas.Test
         [Fact]
         public async Task GenerateFileUnknownHash()
         {
-            Random rnd = new Random();
-            Byte[] b = new Byte[50];
+            var rnd = new Random();
+            var b = new byte[50];
             rnd.NextBytes(b);
             await File.WriteAllBytesAsync("test.txt", b);
             var vaas = Authenticate();
@@ -64,8 +64,8 @@ namespace Vaas.Test
         [Fact]
         public async Task GenerateFileList()
         {
-            Random rnd = new Random();
-            Byte[] b = new Byte[50];
+            var rnd = new Random();
+            var b = new byte[50];
             rnd.NextBytes(b);
             await File.WriteAllBytesAsync("test1.txt", b);
             rnd.NextBytes(b);
@@ -80,7 +80,7 @@ namespace Vaas.Test
             
         }
         
-        private Vaas Authenticate()
+        private static Vaas Authenticate()
         {
             DotNetEnv.Env.TraversePath().Load();
             var myToken = DotNetEnv.Env.GetString("VAAS_TOKEN");

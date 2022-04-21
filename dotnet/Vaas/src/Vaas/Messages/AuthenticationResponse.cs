@@ -9,21 +9,11 @@ namespace Vaas.Messages
         
         [JsonPropertyName("success")] 
         public bool Success { get; init; }
-        
+
         [JsonPropertyName("session_id")] 
-        public string SessionId { get; init; }
-        
+        public string SessionId { get; init; } = null!;
+
         [JsonPropertyName("text")] 
-        public string Text { get; init; }
-        
-        
-        // Authentication response
-        // {
-        //     "kind": "AuthResponse", // Unique identifier of the message kind
-        //     "success": true, // True, if the authentication was successful
-        //     "session_id": "...", // Session identifier
-        //     "text": "...", // Message for successful authentication
-        // }
-        // ```
+        public string Text { get; init; } = null!;
     }
 }
