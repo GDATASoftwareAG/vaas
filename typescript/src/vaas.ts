@@ -31,7 +31,7 @@ export default class Vaas {
         this.callbacks = new Map<string, VerdictCallback>();
     }
 
-    private static toHexString(byteArray: Uint8Array) {
+    public static toHexString(byteArray: Uint8Array) {
         return Array.from(byteArray, function (byte) {
             return ('0' + (byte & 0xFF).toString(16)).slice(-2);
         }).join('')
@@ -67,7 +67,7 @@ export default class Vaas {
         return Promise.all(promises);
     }
 
-    private async forRequest(sample: string | Uint8Array, ct: CancellationToken): Promise<VerdictResponse> {
+    public async forRequest(sample: string | Uint8Array, ct: CancellationToken): Promise<VerdictResponse> {
         return new Promise((resolve, reject) => {
             if (this.connection === null) {
                 reject("Not connected");
@@ -152,17 +152,17 @@ export default class Vaas {
         })
     }
 
-    private async upload(verdictResponse: VerdictResponse, fileBuffer: Uint8Array) {
+    public async upload(verdictResponse: VerdictResponse, fileBuffer: Uint8Array) {
         return new Promise(async (resolve, reject) => {
             const instance = axios.default.create({
                 baseURL: verdictResponse.url,
                 timeout: 10000,
                 headers: {'Authorization': verdictResponse.upload_token!}
             });
-            const response = await instance.put("/", fileBuffer);
-            if (response.status != 200) {
-                reject(`Upload failed with ${response.status}`);
-            }
+            const response = await instance.put("/", fileBuffer)
+                .catch((error) => {
+                    reject(`Upload failed with ${error.response.status} - Error ${error.response.data.message}`)
+            });
             resolve(response);
         });
 

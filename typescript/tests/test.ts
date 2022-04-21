@@ -1,5 +1,6 @@
 import {expect} from 'chai';
 import {describe} from 'mocha';
+import * as sha256 from "fast-sha256";
 import * as dotenv from "dotenv";
 import Vaas from '../src/vaas';
 import * as randomBytes from 'random-bytes';
@@ -91,6 +92,25 @@ describe('Test verdict requests', () => {
             expect(verdict).to.equal("Clean");
         } catch (error) {
             throw new Error(error as string);
+        }
+    }).timeout(testTimeoutFileReq);
+
+    it('test if there is a mismatch between submitted hash for file and uploaded file', async () => {
+        dotenv.config();
+        const token = process.env.VAAS_TOKEN!;
+        const randomFileContent = await randomBytes.sync(50);
+        const sample = Vaas.toHexString(sha256.hash(randomFileContent));
+        try
+        {
+            const vaas = new Vaas();
+            await vaas.connect(token)
+            const verdictResponse = await vaas.forRequest(sample, CancellationToken.fromMilliseconds(2_000));
+            const otherRandomFile = await randomBytes.sync(40)
+            await vaas.upload(verdictResponse, otherRandomFile);
+        }
+        catch (error)
+        {
+            expect(error).to.equal("Upload failed with 400 - Error Bad request: Wrong file");
         }
     }).timeout(testTimeoutFileReq);
 
