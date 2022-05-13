@@ -1,3 +1,6 @@
+"""Verdict-as-a-Service
+
+:mod:`vaas` is a Python library for the VaaS-API."""
 import hashlib
 import json
 import uuid
@@ -5,12 +8,14 @@ import asyncio
 from asyncio import Future
 
 import requests
-import websockets
+import websockets.client
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
 
 
 class Vaas:
+    """Verdict-as-a-Service client"""
+
     def __init__(self):
         self.loop_result = None
         self.websocket = None
@@ -19,7 +24,11 @@ class Vaas:
         self.session = requests.Session()
 
     async def connect(self, token, url=URL):
-        self.websocket = await websockets.connect(url)
+        """Connect to VaaS
+
+        token -- a OpenID Connect token signed by a trusted identity provider
+        """
+        self.websocket = await websockets.client.connect(url)
         authenticate_request = {"kind": "AuthRequest", "token": token}
 
         await self.websocket.send(json.dumps(authenticate_request))
@@ -30,10 +39,11 @@ class Vaas:
         self.session_id = authentication_response["session_id"]
 
         self.loop_result = asyncio.ensure_future(
-            self.receive_loop()
+            self.__receive_loop()
         )  # fire and forget async_foo()
 
     async def close(self):
+        """Close the connection"""
         if self.websocket is not None:
             await self.websocket.close()
         if self.loop_result is not None:
@@ -46,6 +56,7 @@ class Vaas:
         await self.close()
 
     async def for_sha256(self, sha256):
+        """Returns the verdict for a SHA256 checksum"""
         result = await self.__for_sha256(sha256)
         verdict = result.get("verdict")
         return verdict
@@ -67,7 +78,7 @@ class Vaas:
         self.results[guid] = result
         return result
 
-    async def receive_loop(self):
+    async def __receive_loop(self):
         async for message in self.websocket:
             vaas_message = json.loads(message)
             if vaas_message.get("kind") == "VerdictResponse":
@@ -77,6 +88,7 @@ class Vaas:
                     future.set_result(vaas_message)
 
     async def for_buffer(self, buffer):
+        """Returns the verdict for a buffer"""
         sha256 = hashlib.sha256(buffer).hexdigest()
         response = await self.__for_sha256(sha256)
         verdict = response.get("verdict")
