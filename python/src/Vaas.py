@@ -7,7 +7,7 @@ from asyncio import Future
 import requests
 import websockets
 
-URL = 'wss://gateway-vaas.gdatasecurity.de'
+URL = "wss://gateway-vaas.gdatasecurity.de"
 
 
 class Vaas:
@@ -29,7 +29,9 @@ class Vaas:
             raise Exception("Authentication failed")
         self.session_id = authentication_response["session_id"]
 
-        self.loop_result = asyncio.ensure_future(self.receive_loop())  # fire and forget async_foo()
+        self.loop_result = asyncio.ensure_future(
+            self.receive_loop()
+        )  # fire and forget async_foo()
 
     async def close(self):
         if self.websocket is not None:
@@ -50,7 +52,12 @@ class Vaas:
 
     async def __for_sha256(self, sha256):
         guid = str(uuid.uuid4())
-        verdict_request = {"kind": "VerdictRequest", "sha256": sha256, "session_id": self.session_id, "guid": guid}
+        verdict_request = {
+            "kind": "VerdictRequest",
+            "sha256": sha256,
+            "session_id": self.session_id,
+            "guid": guid,
+        }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
         return await response_message
@@ -72,17 +79,17 @@ class Vaas:
     async def for_buffer(self, buffer):
         sha256 = hashlib.sha256(buffer).hexdigest()
         response = await self.__for_sha256(sha256)
-        verdict = response.get('verdict')
+        verdict = response.get("verdict")
 
         if verdict == "Unknown":
             guid = response.get("guid")
-            token = response.get('upload_token')
-            url = response.get('url')
+            token = response.get("upload_token")
+            url = response.get("url")
             response_message = self.__response_message_for_guid(guid)
             self.__upload(token, url, buffer)
-            verdict = (await response_message).get('verdict')
+            verdict = (await response_message).get("verdict")
 
         return verdict
 
     def __upload(self, token, upload_uri, buffer):
-        self.session.put(url=upload_uri, data=buffer, headers={'Authorization': token})
+        self.session.put(url=upload_uri, data=buffer, headers={"Authorization": token})
