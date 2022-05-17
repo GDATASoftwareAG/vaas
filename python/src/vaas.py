@@ -103,5 +103,11 @@ class Vaas:
 
         return verdict
 
+
+    async def for_file(self, path):
+        with open(path, "rb") as open_file:
+            return await self.for_buffer(open_file.read())
+
+
     def __upload(self, token, upload_uri, buffer):
         self.session.put(url=upload_uri, data=buffer, headers={"Authorization": token})
