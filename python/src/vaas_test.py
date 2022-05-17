@@ -1,3 +1,4 @@
+# pylint: disable=C0114,C0116,C0115
 import base64
 import os
 import unittest
