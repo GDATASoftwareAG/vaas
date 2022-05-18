@@ -142,5 +142,6 @@ jobs:
         pip install -r requirements.txt
       working-directory: python
     - name: Run Tests
-      run: python -m unittest src/vaas_test.py
+      run: python test.py
       working-directory: python
+      
