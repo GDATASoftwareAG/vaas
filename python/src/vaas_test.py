@@ -4,7 +4,7 @@ import os
 import unittest
 from dotenv import load_dotenv
 
-from vaas import Vaas
+from .vaas import Vaas
 
 
 load_dotenv()
