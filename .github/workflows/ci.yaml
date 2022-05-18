@@ -124,3 +124,23 @@ jobs:
       - name: Run cargo check
         run: cargo test
         working-directory: rust
+
+  build-python:
+    name: Build & Test Python SDK
+    runs-on: ubuntu-20.04
+    env:
+      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.x
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      working-directory: python
+    - name: Run Tests
+      run: python -m unittest src/vaas_test.py
+      working-directory: python
