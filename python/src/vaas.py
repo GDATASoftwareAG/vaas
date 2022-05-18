@@ -6,6 +6,7 @@ import json
 import uuid
 import asyncio
 from asyncio import Future
+from jwt import JWT
 
 import requests
 import websockets.client
@@ -105,9 +106,14 @@ class Vaas:
 
 
     async def for_file(self, path):
+        """Returns the verdict for a file"""
         with open(path, "rb") as open_file:
             return await self.for_buffer(open_file.read())
 
 
     def __upload(self, token, upload_uri, buffer):
-        self.session.put(url=upload_uri, data=buffer, headers={"Authorization": token})
+        jwt = JWT()
+        decoded_token = jwt.decode(token, do_verify=False)
+        trace_id = decoded_token.get("traceId")
+        self.session.put(url=upload_uri, data=buffer, headers={
+                         "Authorization": token, "traceParent": trace_id})
