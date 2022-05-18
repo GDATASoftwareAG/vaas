@@ -40,6 +40,9 @@ java/.settings
 java/bin
 lib/
 
+bin/
+obj/
+
 # Python
 __pycache__/
 _trial_temp/
