@@ -19,7 +19,7 @@ class VaasTracing:
     def trace_hash_request(self, elapsed_in_seconds):
         """Trace hash request in seconds"""
 
-    def trace_upload_request(self, elapsed_in_seconds):
+    def trace_upload_request(self, elapsed_in_seconds, file_size):
         """Trace upload request in seconds"""
 
 
@@ -83,10 +83,9 @@ class Vaas:
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
-        response_message.add_done_callback(
-            lambda _: self.tracing.trace_hash_request(time.time() - start)
-        )
-        return await response_message
+        result = await response_message
+        self.tracing.trace_hash_request(time.time() - start)
+        return result
 
     def __response_message_for_guid(self, guid):
         result = Future()
@@ -116,9 +115,7 @@ class Vaas:
             response_message = self.__response_message_for_guid(guid)
             self.__upload(token, url, buffer)
             verdict = (await response_message).get("verdict")
-            response_message.add_done_callback(
-                lambda _: self.tracing.trace_upload_request(time.time() - start)
-            )
+            self.tracing.trace_upload_request(time.time() - start, len(buffer))
 
         return verdict
 

@@ -2,10 +2,9 @@
 import base64
 import os
 import unittest
+from unittest.mock import MagicMock, ANY
 from dotenv import load_dotenv
-
-from src.vaas import Vaas
-
+from src.vaas import Vaas, VaasTracing
 
 load_dotenv()
 
@@ -62,6 +61,17 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_file("eicar.txt")
             self.assertEqual(verdict, "Malicious")
 
+    async def test_for_buffer_traces(self):
+        tracing = VaasTracing()
+        tracing.trace_hash_request = MagicMock()
+        tracing.trace_upload_request = MagicMock()
+        async with Vaas(tracing=tracing) as vaas:
+            await vaas.connect(TOKEN)
+            buffer = os.urandom(1024)
+            verdict = await vaas.for_buffer(buffer)
+            self.assertEqual(verdict, "Clean")
+            tracing.trace_hash_request.assert_called_with(ANY)
+            tracing.trace_upload_request.assert_called_with(ANY, 1024)
 
 if __name__ == "__main__":
     unittest.main()
