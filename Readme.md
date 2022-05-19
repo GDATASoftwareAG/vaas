@@ -17,12 +17,15 @@ Create a command line scanner to find malware with a few lines of code: [Example
 Create a KDE Dolphin plugin to scan for malicious content with a few lines of code: [Example](rust/examples/kde_dolphin)
 <img src="demo/dolphin_plugin.gif" alt="KDE Dolphin malware scanner plugin" style="width:100%">
 
-Create a Wordpress plugin that scans all file uploads for malware with a few lines of code: [Example](php/examples/wordpress)
+Create a WordPress plugin that scans all file uploads for malware with a few lines of code: [Example](php/examples/wordpress)
 <img src="demo/wordpress.gif" alt="Wordpress plugin malware scanner" style="width:100%">
+
+Create a Discord bot that scans and deletes malicious files uploaded on your Discord server with few lines of code: [Example](typescript/examples/discordbot)
+<img src="demo/discord_bot.gif" alt="VaaS Discord Bot" style="width:100%">
 
 ## I'm interested in VaaS
 
-You need credentials to use the service in your application. If your are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
+You need credentials to use the service in your application. If you are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
 
 ## SDKs
 
@@ -31,9 +34,9 @@ At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescri
 |Functionality|Rust|Java|PHP|TypeScript|
 |---|---|---|---|---|
 |Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check SHA256 list|&#9989;|&#10060;|&#10060;|&#10060;|
+|Check SHA256 list|&#9989;|&#10060;|&#10060;|&#9989;|
 |Check file|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file list|&#9989;|&#10060;|&#10060;|&#10060;|
+|Check file list|&#9989;|&#10060;|&#10060;|&#9989;|
 
 ### Documentation
 

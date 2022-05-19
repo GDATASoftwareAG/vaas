@@ -5,6 +5,7 @@ Cargo.lock
 .DS_Store
 node_modules
 dist/
+build/
 WixTools
 
 # php
@@ -23,6 +24,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Editor directories and files
+*.DotSettings.user
 .idea
 .vscode
 *.suo
@@ -37,7 +39,11 @@ java/.project
 java/.settings
 java/bin
 lib/
+*.crt
 
-obj/
 bin/
+obj/
 
+# Python
+__pycache__/
+_trial_temp/

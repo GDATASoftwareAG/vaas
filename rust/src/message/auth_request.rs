@@ -1,6 +1,6 @@
-use crate::{error::VResult};
-use serde::{Deserialize, Serialize};
+use crate::error::VResult;
 use crate::message::kind::Kind;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthRequest {
@@ -10,7 +10,7 @@ pub struct AuthRequest {
 }
 
 impl AuthRequest {
-    pub fn new(token: String,session_id: Option<String>) -> Self {
+    pub fn new(token: String, session_id: Option<String>) -> Self {
         Self {
             kind: Kind::AuthRequest,
             token,

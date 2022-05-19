@@ -1,152 +1,230 @@
 import WebSocket from "isomorphic-ws";
 import * as sha256 from "fast-sha256";
-import {Kind, Message} from "./messages/message";
-import {AuthenticationResponse} from "./messages/authentication_response";
-import {AuthenticationRequest} from "./messages/authentication_request";
-import {deserialize, serialize} from 'typescript-json-serializer';
-import {VerdictResponse} from "./messages/verdict_response";
-import {WebsocketError} from "./messages/websocket_error";
-import {VerdictRequest} from "./messages/verdict_request";
-import {v4 as uuidv4} from 'uuid';
-import {Verdict} from "./verdict";
+import { Kind, Message } from "./messages/message";
+import { AuthenticationResponse } from "./messages/authentication_response";
+import { AuthenticationRequest } from "./messages/authentication_request";
+import { deserialize, serialize } from "typescript-json-serializer";
+import { VerdictResponse } from "./messages/verdict_response";
+import { WebsocketError } from "./messages/websocket_error";
+import { VerdictRequest } from "./messages/verdict_request";
+import { v4 as uuidv4 } from "uuid";
+import { Verdict } from "./verdict";
 import * as axios from "axios";
+import { CancellationToken } from "./CancellationToken";
+
+const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+export { VAAS_URL };
+
+// See https://advancedweb.hu/how-to-add-timeout-to-a-promise-in-javascript/
+const timeout = <T>(promise: Promise<T>, timeoutInMs: number) => {
+  let timer: NodeJS.Timeout;
+  return Promise.race([
+    promise,
+    new Promise<never>(
+      (_resolve, reject) =>
+        (timer = setTimeout(reject, timeoutInMs, new Error("Timeout")))
+    ),
+  ]).finally(() => clearTimeout(timer));
+};
 
 export interface VerdictCallback {
-    (result: Result): void;
+  (verdictResponse: VerdictResponse): Promise<void>;
 }
-
-export type Result = Verdict | string;
 
 export type VaasConnection = {
-    ws: WebSocket;
-    sessionId: string;
-}
+  ws: WebSocket;
+  sessionId: string;
+};
 
-export class Vaas {
+export default class Vaas {
+  callbacks: Map<string, VerdictCallback>;
+  connection: VaasConnection | null = null;
+  defaultTimeoutHashReq: number = 2_000;
+  defaultTimeoutFileReq: number = 600_000;
 
-    private static toHexString(byteArray: Uint8Array) {
-        return Array.from(byteArray, function (byte) {
-            return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-        }).join('')
-    }
+  constructor() {
+    this.callbacks = new Map<string, VerdictCallback>();
+  }
 
-    public async forSha256(vaasConnection: VaasConnection, sha256: string): Promise<Verdict> {
-        return new Promise(async (resolve, reject) => {
-            const verdictResponse = await this.forRequest(vaasConnection, sha256)
-                .catch(error => {
-                    reject(error);
-                });
-            resolve(verdictResponse!.verdict);
-        });
-    }
+  public static toHexString(byteArray: Uint8Array) {
+    return Array.from(byteArray, function (byte) {
+      return ("0" + (byte & 0xff).toString(16)).slice(-2);
+    }).join("");
+  }
 
-    public async forRequest(vaasConnection: VaasConnection, sample: string | Uint8Array): Promise<VerdictResponse> {
-        return new Promise((resolve, reject) => {
-            const guid = uuidv4()
+  public async forSha256(
+    sha256: string,
+    ct: CancellationToken = CancellationToken.fromMilliseconds(
+      this.defaultTimeoutHashReq
+    )
+  ): Promise<Verdict> {
+    const request = this.forRequest(sha256).then(
+      (response) => response.verdict
+    );
+    return timeout(request, ct.timeout());
+  }
 
-            vaasConnection.ws.onmessage = async (event) => {
-                const message = deserialize<Message>(event.data, Message);
+  public async forSha256List(
+    sha256List: string[],
+    ct: CancellationToken = CancellationToken.fromMilliseconds(
+      this.defaultTimeoutHashReq
+    )
+  ): Promise<Verdict[]> {
+    const promises = sha256List.map((sha256) => this.forSha256(sha256, ct));
+    return Promise.all(promises);
+  }
 
-                switch (message.kind) {
-                    case Kind.Error:
-                        reject(deserialize<WebsocketError>(event.data, WebsocketError).text);
-                        break;
-                    case Kind.VerdictResponse:
-                        const verdictResponse = deserialize<VerdictResponse>(event.data, VerdictResponse);
-                        if (typeof sample === "string") {
-                            resolve(verdictResponse);
-                            return;
-                        }
-                        if (verdictResponse.verdict !== Verdict.UNKNOWN) {
-                            resolve(verdictResponse);
-                            return;
-                        }
-                        await this.upload(verdictResponse, sample);
-                        return;
-                    default:
-                        console.log(event.data);
-                        reject("Unknown message kind");
-                        return;
-                }
+  public async forFile(
+    fileBuffer: Uint8Array,
+    ct: CancellationToken = CancellationToken.fromMilliseconds(
+      this.defaultTimeoutFileReq
+    )
+  ): Promise<Verdict> {
+    const request = this.forRequest(fileBuffer).then(
+      (response) => response.verdict
+    );
+    return timeout(request, ct.timeout());
+  }
+
+  public async forFileList(
+    fileBuffers: Uint8Array[],
+    ct: CancellationToken = CancellationToken.fromMilliseconds(
+      this.defaultTimeoutFileReq
+    )
+  ): Promise<Verdict[]> {
+    const promises = fileBuffers.map((f) => this.forFile(f, ct));
+    return Promise.all(promises);
+  }
+
+  public async forRequest(
+    sample: string | Uint8Array
+  ): Promise<VerdictResponse> {
+    return new Promise((resolve, reject) => {
+      if (this.connection === null) {
+        reject(new Error("Not connected"));
+        return;
+      }
+
+      const guid = uuidv4();
+      this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
+        if (
+          verdictResponse.verdict === Verdict.UNKNOWN &&
+          typeof sample !== "string"
+        ) {
+          await this.upload(verdictResponse, sample);
+          return;
+        }
+
+        this.callbacks.delete(guid);
+        resolve(verdictResponse);
+      });
+
+      let hash =
+        typeof sample === "string"
+          ? sample
+          : Vaas.toHexString(sha256.hash(sample));
+      const verdictReq = JSON.stringify(
+        serialize(new VerdictRequest(hash, guid, this.connection!.sessionId))
+      );
+      this.connection!.ws.send(verdictReq);
+    });
+  }
+
+  public async connect(token: string, url = VAAS_URL): Promise<void> {
+    return new Promise(async (resolve, reject) => {
+      const ws = new WebSocket(url);
+      // ws library does not have auto-keepalive
+      // https://github.com/websockets/ws/issues/767
+      ws.on("ping", (payload) => {
+        ws.pong(payload);
+      });
+      ws.on("pong", async () => {
+        await this.delay(10000);
+        ws.ping();
+      });
+      ws.onopen = async () => {
+        try {
+          this.authenticate(ws, token);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      ws.onerror = (error) => {
+        console.log("Error here");
+        reject(error);
+      };
+      ws.onmessage = async (event) => {
+        const message = deserialize<Message>(event.data, Message);
+
+        switch (message.kind) {
+          case Kind.AuthResponse:
+            const authResponse = deserialize<AuthenticationResponse>(
+              event.data,
+              AuthenticationResponse
+            );
+            if (authResponse.success) {
+              this.connection = { ws: ws, sessionId: authResponse.session_id };
+              resolve();
+              return;
             }
-
-            let hash: string;
-            if (typeof sample === "string") {
-                hash = sample;
-            } else {
-                hash = Vaas.toHexString(sha256.hash(sample));
+            reject(new Error("Unauthorized"));
+            break;
+          case Kind.Error:
+            reject(
+              deserialize<WebsocketError>(event.data, WebsocketError).text
+            );
+            break;
+          case Kind.VerdictResponse:
+            const verdictResponse = deserialize<VerdictResponse>(
+              event.data,
+              VerdictResponse
+            );
+            const callback = this.callbacks.get(verdictResponse.guid);
+            if (callback) {
+              await callback(verdictResponse);
             }
-            const verdictReq = JSON.stringify(serialize(new VerdictRequest(hash, guid, vaasConnection.sessionId)));
-            vaasConnection.ws.send(verdictReq);
+            break;
+          default:
+            console.log(event.data);
+            reject(new Error("Unknown message kind"));
+            break;
+        }
+      };
+    });
+  }
+
+  public async upload(
+    verdictResponse: VerdictResponse,
+    fileBuffer: Uint8Array
+  ) {
+    return new Promise(async (resolve, reject) => {
+      const instance = axios.default.create({
+        baseURL: verdictResponse.url,
+        timeout: 10000,
+        headers: { Authorization: verdictResponse.upload_token! },
+      });
+      await instance
+        .put("/", fileBuffer)
+        .then((response) => resolve(response))
+        .catch((error) => {
+          reject(
+            new Error(
+              `Upload failed with ${error.response.status} - Error ${error.response.data.message}`
+            )
+          );
         });
-    }
+    });
+  }
 
-    public async connect(token: string): Promise<VaasConnection> {
-        return new Promise(async (resolve, reject) => {
-            const ws = new WebSocket('wss://gateway-vaas.gdatasecurity.de');
-            ws.on("ping", (payload) => {
-                ws.pong(payload)
-            })
-            ws.on("pong", async () => {
-                await this.delay(10000);
-                ws.ping("ping");
-            });
-            ws.onopen = async () => {
-                try {
-                    const vaasCon = await this.authenticate(ws, token);
-                    resolve(vaasCon);
-                } catch (error) {
-                    reject(error);
-                }
-            };
-            ws.onerror = (error) => {
-                reject(error.message);
-            }
-        })
-    }
+  private delay(ms: number) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
-    public async forFile(vaasConnection: VaasConnection, fileBuffer: Uint8Array): Promise<Verdict> {
-        return new Promise(async (resolve, reject) => {
-            const verdictResponse = await this.forRequest(vaasConnection, fileBuffer)
-                .catch(error => {
-                    reject(error);
-                });
-            resolve(verdictResponse!.verdict);
-        });
-    }
-
-    public async upload(verdictResponse: VerdictResponse, fileBuffer: Uint8Array) {
-        return new Promise(async (resolve, reject) => {
-            const instance = axios.default.create({
-                baseURL: verdictResponse.url,
-                timeout: 10000,
-                headers: {'Authorization': verdictResponse.upload_token!}
-            });
-            const response = await instance.put("/", fileBuffer);
-            if (response.status != 200) {
-                reject(`Upload failed with ${response.status}`);
-            }
-            resolve(response);
-        });
-
-    }
-
-    private delay(ms: number) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    private async authenticate(ws: WebSocket, token: string): Promise<VaasConnection> {
-        return new Promise((resolve, reject) => {
-            const authReq: string = JSON.stringify(serialize(new AuthenticationRequest(token)));
-            ws.send(authReq);
-            ws.once("message", (data) => {
-                const authResponse = deserialize<AuthenticationResponse>(data.toString(), AuthenticationResponse);
-                if (authResponse.success) {
-                    resolve({ws: ws, sessionId: authResponse.session_id});
-                }
-                reject("Unauthorized");
-            });
-            ws.ping("ping");
-        });
-    }
+  private authenticate(ws: WebSocket, token: string): void {
+    const authReq: string = JSON.stringify(
+      serialize(new AuthenticationRequest(token))
+    );
+    ws.send(authReq);
+    ws.ping();
+  }
 }

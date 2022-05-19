@@ -1,30 +1,27 @@
 [package]
 name = "vaas"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
 license = "MIT"
-authors = ["GDATA CyberDefense AG <opensource@gdata.de>"]
-description = "Check file hashes and files for malicious content."
+authors = ["GDATA CyberDefense AG"]
+description = "Check files and hashes for malicious content."
 keywords = ["malware", "anti-virus", "security"]
 categories = ["api-bindings"]
+homepage = "https://github.com/GDATASoftwareAG/vaas"
 
 [dependencies]
 websockets = "0.3.0"
 serde = { version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 thiserror = "1.0"
-uuid = { version = "0.8", features = ["serde", "v4"] }
-cancellation = "0.1"
+uuid = { version = "1.0.0", features = ["serde", "v4"] }
 reqwest = "0.11"
 regex = "1.5"
-flume = "0.10"
-tokio = { version = "1.9", features = ["full"] }
-sha2 = "0.9.5"
+tokio = { version = "1.9", features = ["sync", "fs"] }
+sha2 = "0.10.2"
 futures = "0.3"
 rand = "0.8"
 
 [dev-dependencies]
 dotenv = "0.15"
-futures = "0.3"
-warp = "0.3"
-tokio-stream = "0.1.6"
+tokio = { version = "1.9", features = ["rt", "macros", "rt-multi-thread"] }

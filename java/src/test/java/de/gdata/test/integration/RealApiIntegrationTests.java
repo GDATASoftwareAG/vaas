@@ -5,16 +5,15 @@ import de.gdata.vaas.Sha256;
 import de.gdata.vaas.Vaas;
 import de.gdata.vaas.WsConfig;
 import de.gdata.vaas.messages.Verdict;
-import de.gdata.vaas.messages.VerdictResult;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
+import org.testng.annotations.Ignore;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 
 import static org.testng.AssertJUnit.assertEquals;
@@ -125,13 +124,30 @@ public class RealApiIntegrationTests {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "unknown.txt");
         Files.writeString(tmpFile, unknown);
         var vaas = this.getVaas();
-        var cts = new CancellationTokenSource(Duration.ofMinutes(5));
+        var cts = new CancellationTokenSource(Duration.ofMinutes(10));
 
         var verdict = vaas.forFile(tmpFile, cts);
         vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assert (verdict != null);
+        assertEquals(Verdict.CLEAN, verdict.getVerdict());
+    }
+
+    @Ignore
+    @Test
+    public void fromFileSingleCleanFileWithCredentials()
+            throws Exception {
+        byte[] clean = {0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a};
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
+        Files.write(tmpFile, clean);
+        var stagingVaas = this.getVaasWithCredentials();
+        var cts = new CancellationTokenSource(Duration.ofSeconds(10));
+
+        var verdict = stagingVaas.forFile(tmpFile, cts);
+        stagingVaas.disconnect();
+
+        Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
 
@@ -148,7 +164,7 @@ public class RealApiIntegrationTests {
     }
 
     @org.jetbrains.annotations.NotNull
-    private Vaas getVaas() throws URISyntaxException, InterruptedException {
+    private Vaas getVaas() throws URISyntaxException, InterruptedException, IOException {
         var dotenv = Dotenv.configure()
             .ignoreIfMissing()
             .load();
@@ -159,4 +175,17 @@ public class RealApiIntegrationTests {
         client.connect();
         return client;
     }
+
+    private Vaas getVaasWithCredentials() throws URISyntaxException, InterruptedException, IOException {
+        var dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        var clientId = dotenv.get("CLIENT_ID");
+        var clientSecret = dotenv.get("CLIENT_SECRET");
+        var config = new WsConfig(clientId,clientSecret);
+        var client = new Vaas(config);
+        client.connect();
+        return client;
+    }
+
 }

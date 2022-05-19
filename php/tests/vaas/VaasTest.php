@@ -107,7 +107,7 @@ final class VaasTest extends TestCase
         fseek($tmp, 0);
 
         $vaas = new Vaas($_ENV['VAAS_TOKEN'], $this->_getDebugLogger());
-        $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], false, $uuid));
+        $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true, $uuid));
         fclose($tmp);
     }
 
@@ -135,5 +135,17 @@ final class VaasTest extends TestCase
         $vaas = new Vaas($_ENV['VAAS_TOKEN'], $this->_getDebugLogger());
         $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true, $uuid));
         fclose($tmp);
+    }
+
+    public function testForMultipleMaliciousFilesWithCredentials_GetsMaliciousResponses(): void
+    {
+        $this->markTestSkipped(
+            'Not production ready.'
+        );
+        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $this->_getDebugLogger());
+        $this->assertEquals("Malicious", $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", $uuid));
+        $this->assertEquals("Malicious", $vaas->ForSha256("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c", $uuid));
+        $this->assertEquals("Malicious", $vaas->ForSha256("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a", $uuid));
     }
 }

@@ -16,7 +16,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.NoSuchAlgorithmException;
 
 public class Vaas {
 
@@ -30,11 +29,12 @@ public class Vaas {
         this.config = config;
     }
 
-    public void connect() throws InterruptedException {
+    public void connect() throws InterruptedException, URISyntaxException, IOException {
         this.client = new WsClient(this.getConfig());
         this.client.connectBlocking();
         this.client.authenticate();
     }
+
 
     public void disconnect() throws InterruptedException {
         this.client.closeBlocking();
@@ -72,10 +72,10 @@ public class Vaas {
         var response = HttpClient
                 .newBuilder()
                 .build()
-                .send(request, HttpResponse.BodyHandlers.discarding());
+                .send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode());
+            throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: " + response.body());
         }
     }
 
