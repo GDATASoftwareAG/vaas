@@ -3,21 +3,31 @@
 :mod:`vaas` is a Python library for the VaaS-API."""
 import hashlib
 import json
+import time
 import uuid
 import asyncio
 from asyncio import Future
 from jwt import JWT
-
 import requests
 import websockets.client
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
 
+class VaasTracing:
+    """Tracing interface for Vaas"""
+
+    def trace_hash_request(self, elapsed_in_seconds):
+        """Trace hash request in seconds"""
+
+    def trace_upload_request(self, elapsed_in_seconds):
+        """Trace upload request in seconds"""
+
 
 class Vaas:
     """Verdict-as-a-Service client"""
 
-    def __init__(self):
+    def __init__(self, tracing=VaasTracing()):
+        self.tracing = tracing
         self.loop_result = None
         self.websocket = None
         self.session_id = None
@@ -63,6 +73,7 @@ class Vaas:
         return verdict
 
     async def __for_sha256(self, sha256):
+        start = time.time()
         guid = str(uuid.uuid4())
         verdict_request = {
             "kind": "VerdictRequest",
@@ -72,6 +83,9 @@ class Vaas:
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
+        response_message.add_done_callback(
+            lambda _: self.tracing.trace_hash_request(time.time() - start)
+        )
         return await response_message
 
     def __response_message_for_guid(self, guid):
@@ -90,6 +104,7 @@ class Vaas:
 
     async def for_buffer(self, buffer):
         """Returns the verdict for a buffer"""
+        start = time.time()
         sha256 = hashlib.sha256(buffer).hexdigest()
         response = await self.__for_sha256(sha256)
         verdict = response.get("verdict")
@@ -101,19 +116,23 @@ class Vaas:
             response_message = self.__response_message_for_guid(guid)
             self.__upload(token, url, buffer)
             verdict = (await response_message).get("verdict")
+            response_message.add_done_callback(
+                lambda _: self.tracing.trace_upload_request(time.time() - start)
+            )
 
         return verdict
-
 
     async def for_file(self, path):
         """Returns the verdict for a file"""
         with open(path, "rb") as open_file:
             return await self.for_buffer(open_file.read())
 
-
     def __upload(self, token, upload_uri, buffer):
         jwt = JWT()
         decoded_token = jwt.decode(token, do_verify=False)
         trace_id = decoded_token.get("traceId")
-        self.session.put(url=upload_uri, data=buffer, headers={
-                         "Authorization": token, "traceParent": trace_id})
+        self.session.put(
+            url=upload_uri,
+            data=buffer,
+            headers={"Authorization": token, "traceParent": trace_id},
+        )
