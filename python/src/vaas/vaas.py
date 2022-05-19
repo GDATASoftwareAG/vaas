@@ -11,7 +11,7 @@ from jwt import JWT
 import requests
 import websockets.client
 
-URL = "wss://staging-gateway-vaas.gdatasecurity.de"
+URL = "wss://gateway-vaas.gdatasecurity.de"
 
 class VaasTracing:
     """Tracing interface for Vaas"""
