@@ -83,9 +83,8 @@ class Vaas:
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
-        end = time.time()
         response_message.add_done_callback(
-            lambda _: self.tracing.trace_hash_request(end - start)
+            lambda _: self.tracing.trace_hash_request(time.time() - start)
         )
         return await response_message
 
@@ -117,9 +116,8 @@ class Vaas:
             response_message = self.__response_message_for_guid(guid)
             self.__upload(token, url, buffer)
             verdict = (await response_message).get("verdict")
-            end = time.time()
             response_message.add_done_callback(
-                lambda _: self.tracing.trace_upload_request(end - start)
+                lambda _: self.tracing.trace_upload_request(time.time() - start)
             )
 
         return verdict
