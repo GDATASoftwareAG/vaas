@@ -1,0 +1,3 @@
+test-reports/
+*.egg-info
+eicar.txt

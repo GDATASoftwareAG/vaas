@@ -1,6 +1,6 @@
+use crate::message::kind::Kind;
 use crate::{error::VResult, sha256::Sha256};
 use serde::{Deserialize, Serialize};
-use crate::message::kind::Kind;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct VerdictRequest {
@@ -23,12 +23,7 @@ impl VerdictRequest {
     pub fn to_json(&self) -> VResult<String> {
         Ok(serde_json::to_string(self)?)
     }
-
-    pub fn kind(&self) -> Kind { self.kind }
-
-    pub fn guid(&self) -> &str { &self.guid }
-
-    pub fn sha256(&self) -> &str {
-        &self.sha256
+    pub fn guid(&self) -> &str {
+        &self.guid
     }
 }

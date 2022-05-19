@@ -72,10 +72,10 @@ public class Vaas {
         var response = HttpClient
                 .newBuilder()
                 .build()
-                .send(request, HttpResponse.BodyHandlers.discarding());
+                .send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode());
+            throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: " + response.body());
         }
     }
 

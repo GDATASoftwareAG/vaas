@@ -107,7 +107,7 @@ final class VaasTest extends TestCase
         fseek($tmp, 0);
 
         $vaas = new Vaas($_ENV['VAAS_TOKEN'], $this->_getDebugLogger());
-        $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], false, $uuid));
+        $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true, $uuid));
         fclose($tmp);
     }
 

@@ -123,7 +123,7 @@ class Vaas
                 'headers' => ["Authorization" => $verdictResponse->upload_token]
             ]);
             if ($response->getStatusCode() > 399) {
-                throw new UploadFailedException();
+                throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
             }
             $verdictResponse = $this->_waitForVerdict($verdictResponse->guid);
             return $verdictResponse->verdict;

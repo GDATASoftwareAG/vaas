@@ -5,6 +5,7 @@ Cargo.lock
 .DS_Store
 node_modules
 dist/
+build/
 WixTools
 
 # php
@@ -38,6 +39,9 @@ java/.settings
 java/bin
 lib/
 
-obj/
 bin/
+obj/
 
+# Python
+__pycache__/
+_trial_temp/
