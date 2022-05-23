@@ -8,7 +8,7 @@ import uuid
 import asyncio
 from asyncio import Future
 from jwt import JWT
-import requests
+import httpx
 import websockets.client
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
@@ -32,7 +32,7 @@ class Vaas:
         self.websocket = None
         self.session_id = None
         self.results = {}
-        self.session = requests.Session()
+        self.httpx_client = httpx.AsyncClient(http2=True)
 
     async def connect(self, token, url=URL):
         """Connect to VaaS
@@ -59,6 +59,8 @@ class Vaas:
             await self.websocket.close()
         if self.loop_result is not None:
             await self.loop_result
+        if self.httpx_client is not None:
+            await self.httpx_client.aclose()
 
     async def __aenter__(self):
         return self
@@ -113,7 +115,7 @@ class Vaas:
             token = response.get("upload_token")
             url = response.get("url")
             response_message = self.__response_message_for_guid(guid)
-            self.__upload(token, url, buffer)
+            await self.__upload(token, url, buffer)
             verdict = (await response_message).get("verdict")
             self.tracing.trace_upload_request(time.time() - start, len(buffer))
 
@@ -124,11 +126,11 @@ class Vaas:
         with open(path, "rb") as open_file:
             return await self.for_buffer(open_file.read())
 
-    def __upload(self, token, upload_uri, buffer):
+    async def __upload(self, token, upload_uri, buffer):
         jwt = JWT()
         decoded_token = jwt.decode(token, do_verify=False)
         trace_id = decoded_token.get("traceId")
-        self.session.put(
+        await self.httpx_client.put(
             url=upload_uri,
             data=buffer,
             headers={"Authorization": token, "traceParent": trace_id},
