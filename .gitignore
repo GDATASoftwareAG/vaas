@@ -39,6 +39,7 @@ java/.project
 java/.settings
 java/bin
 lib/
+*.crt
 
 bin/
 obj/

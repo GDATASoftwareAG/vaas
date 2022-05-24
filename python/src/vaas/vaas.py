@@ -10,8 +10,11 @@ from asyncio import Future
 from jwt import JWT
 import httpx
 import websockets.client
+from authlib.integrations.httpx_client import AsyncOAuth2Client
+
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
+
 
 class VaasTracing:
     """Tracing interface for Vaas"""
@@ -37,7 +40,7 @@ class Vaas:
     async def connect(self, token, url=URL):
         """Connect to VaaS
 
-        token -- a OpenID Connect token signed by a trusted identity provider
+        token -- OpenID Connect token signed by a trusted identity provider
         """
         self.websocket = await websockets.client.connect(url)
         authenticate_request = {"kind": "AuthRequest", "token": token}
@@ -52,6 +55,22 @@ class Vaas:
         self.loop_result = asyncio.ensure_future(
             self.__receive_loop()
         )  # fire and forget async_foo()
+
+    async def connect_with_client_credentials(
+        self, client_id, client_secret, token_endpoint, url=URL, verify=True
+    ):
+        """Connect to VaaS with client credentials grant
+
+        :param str client_id: Client ID provided by G DATA
+        :param str client_secret: Client secret provided by G DATA
+        :param str token_endpoint: Token endpoint of identity provider
+        :param str url: Websocket endpoint for verdict requests
+        :param bool verify: This switch turns off SSL validation when set to False; default: True
+
+        """
+        async with AsyncOAuth2Client(client_id, client_secret, verify=verify) as client:
+            token = (await client.fetch_token(token_endpoint))["access_token"]
+        await self.connect(token, url)
 
     async def close(self):
         """Close the connection"""

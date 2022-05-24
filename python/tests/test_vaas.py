@@ -73,5 +73,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             tracing.trace_hash_request.assert_called_with(ANY)
             tracing.trace_upload_request.assert_called_with(ANY, 1024)
 
+
 if __name__ == "__main__":
     unittest.main()
