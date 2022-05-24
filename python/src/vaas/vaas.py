@@ -37,7 +37,7 @@ class Vaas:
         self.results = {}
         self.httpx_client = httpx.AsyncClient(http2=True)
 
-    async def connect(self, token, url=URL):
+    async def connect(self, token, url=URL, verify=True):
         """Connect to VaaS
 
         token -- OpenID Connect token signed by a trusted identity provider
@@ -56,6 +56,8 @@ class Vaas:
             self.__receive_loop()
         )  # fire and forget async_foo()
 
+        self.httpx_client = httpx.AsyncClient(http2=True, verify=verify)
+
     async def connect_with_client_credentials(
         self, client_id, client_secret, token_endpoint, url=URL, verify=True
     ):
@@ -70,7 +72,7 @@ class Vaas:
         """
         async with AsyncOAuth2Client(client_id, client_secret, verify=verify) as client:
             token = (await client.fetch_token(token_endpoint))["access_token"]
-        await self.connect(token, url)
+        await self.connect(token, url, verify)
 
     async def close(self):
         """Close the connection"""
