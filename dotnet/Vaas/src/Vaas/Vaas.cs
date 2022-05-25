@@ -38,28 +38,7 @@ namespace Vaas
         {
             Client = new WebsocketClient(Url, CreateWebsocketClient());
             Client.ReconnectTimeout = null;
-            Client.MessageReceived.Subscribe(msg =>
-            {
-                if (msg.MessageType != WebSocketMessageType.Text) return;
-                var message = JsonSerializer.Deserialize<Message>(msg.Text);
-                switch (message?.Kind)
-                {
-                    case "AuthResponse":
-                        var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
-                        if (authenticationResponse is {Success: true})
-                        {
-                            Authenticated = true;
-                            SessionId = authenticationResponse.SessionId;
-                        }
-                        break;
-                        
-                    case "VerdictResponse":
-                        var options = new JsonSerializerOptions {Converters = {new JsonStringEnumConverter()}};
-                        var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text,options);
-                        VerdictResponsesDict.Add(verdictResponse?.Guid ?? throw new InvalidOperationException(), verdictResponse);
-                        break;
-                }
-            });
+            Client.MessageReceived.Subscribe(HandleResponseMessage);
             Client.Start().GetAwaiter().GetResult();
             if (!Client.IsStarted)
             {
@@ -67,6 +46,30 @@ namespace Vaas
             }
             
             Authenticate();
+        }
+
+        private void HandleResponseMessage(ResponseMessage msg)
+        {
+            if (msg.MessageType != WebSocketMessageType.Text) return;
+            var message = JsonSerializer.Deserialize<Message>(msg.Text);
+            switch (message?.Kind)
+            {
+                case "AuthResponse":
+                    var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
+                    if (authenticationResponse is { Success: true })
+                    {
+                        Authenticated = true;
+                        SessionId = authenticationResponse.SessionId;
+                    }
+
+                    break;
+
+                case "VerdictResponse":
+                    var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
+                    var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text, options);
+                    VerdictResponsesDict.Add(verdictResponse?.Guid ?? throw new InvalidOperationException(), verdictResponse);
+                    break;
+            }
         }
 
         private void Authenticate()
