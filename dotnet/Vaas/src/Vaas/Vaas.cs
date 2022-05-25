@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -22,7 +24,8 @@ namespace Vaas
         private string Token { get; }
 
         private WebsocketClient? Client { get; set; }
-
+        private readonly HttpClient _httpClient = new();
+        
         private string? SessionId { get; set; }
 
         private readonly TaskCompletionSource _authenticatedSource = new();
@@ -102,16 +105,26 @@ namespace Vaas
             var url = verdictResponse.Url;
             if (url is null) throw new ArgumentNullException(nameof(url));
             
-            var token = verdictResponse.UploadToken;
-            var data = await File.ReadAllBytesAsync(path);
-            using (var client = new WebClient())
-            {
-                client.Headers.Add(HttpRequestHeader.Authorization, token);
-                client.UploadData(url, "PUT", data);
-            }
+            var token = verdictResponse.UploadToken ?? "";
+
+            await UploadFile(path, url, token);
+            
             var response = await WaitForResponseAsync(verdictResponse.Guid);
 
             return response.Verdict;
+        }
+
+        private async Task UploadFile(string path, string url, string token)
+        {
+            await using var fileStream = File.OpenRead(path);
+            using var streamContent = new StreamContent(fileStream);
+            using var request = new HttpRequestMessage(HttpMethod.Put, url);
+            
+            request.Headers.Authorization = new AuthenticationHeaderValue(token);
+            request.Content = streamContent;
+            var httpResponse = await _httpClient.SendAsync(request);
+
+            httpResponse.EnsureSuccessStatusCode();
         }
 
         public async Task<List<Verdict>> ForSha256ListAsync(IEnumerable<string> sha256List)
@@ -171,6 +184,7 @@ namespace Vaas
             if (disposing)
             {
                 Client?.Dispose();
+                _httpClient.Dispose();
             }
         }
 
