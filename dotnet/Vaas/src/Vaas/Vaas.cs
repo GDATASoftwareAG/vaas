@@ -67,7 +67,6 @@ namespace Vaas
             }
             
             Authenticate();
-            Task.Run(SendPing);
         }
 
         private void Authenticate()
@@ -135,15 +134,6 @@ namespace Vaas
 
             return await WaitForResponseAsync(analysisRequest.Guid);
         }
-
-        private void SendPing()
-        {
-            while (Client is {IsRunning: true})
-            {
-                Client.Send("ping");
-                Thread.Sleep(10000);
-            }
-        }
         
         private async Task<VerdictResponse> WaitForResponseAsync(string guid)
         {
@@ -171,7 +161,7 @@ namespace Vaas
                 {
                     Options =
                     {
-                        KeepAliveInterval = TimeSpan.FromSeconds(30)
+                        KeepAliveInterval = TimeSpan.FromSeconds(20)
                     }
                 };
                 return clientWebSocket;
