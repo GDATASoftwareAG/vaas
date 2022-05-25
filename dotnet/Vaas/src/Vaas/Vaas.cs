@@ -42,7 +42,7 @@ namespace Vaas
 
         public async Task Connect()
         {
-            Client = new WebsocketClient(Url, GetWebsocketClientFactory());
+            Client = new WebsocketClient(Url, WebsocketClientFactory);
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(HandleResponseMessage);
             await Client.Start();
@@ -164,19 +164,16 @@ namespace Vaas
             return Convert.ToHexString(sha256.ComputeHash(fileStream)).ToLower();
         }
 
-        private static Func<ClientWebSocket> GetWebsocketClientFactory()
+        private static ClientWebSocket WebsocketClientFactory()
         {
-            return () =>
+            var clientWebSocket = new ClientWebSocket
             {
-                var clientWebSocket = new ClientWebSocket
+                Options =
                 {
-                    Options =
-                    {
-                        KeepAliveInterval = TimeSpan.FromSeconds(20)
-                    }
-                };
-                return clientWebSocket;
+                    KeepAliveInterval = TimeSpan.FromSeconds(20)
+                }
             };
+            return clientWebSocket;
         }
 
         protected virtual void Dispose(bool disposing)
