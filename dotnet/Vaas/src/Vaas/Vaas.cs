@@ -34,12 +34,12 @@ namespace Vaas
             Token = token;
         }
 
-        public void Connect()
+        public async Task Connect()
         {
             Client = new WebsocketClient(Url, CreateWebsocketClient());
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(HandleResponseMessage);
-            Client.Start().GetAwaiter().GetResult();
+            await Client.Start();
             if (!Client.IsStarted)
             {
                 throw new WebsocketException("Could not start client");
