@@ -118,11 +118,11 @@ public class Vaas : IDisposable
             throw new JsonException("VerdictResponse is not valid");
         }
 
-        await UploadFile(path, verdictResponse.Url, verdictResponse.UploadToken);
-            
-        var response = await WaitForResponseAsync(verdictResponse.Guid);
+        var response = WaitForResponseAsync(verdictResponse.Guid);
 
-        return response.Verdict;
+        await UploadFile(path, verdictResponse.Url, verdictResponse.UploadToken);
+        
+        return (await response).Verdict;
     }
 
     private async Task UploadFile(string path, string url, string token)
