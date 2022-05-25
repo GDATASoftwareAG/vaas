@@ -15,7 +15,7 @@ using Websocket.Client.Exceptions;
 
 namespace Vaas
 {
-    public class Vaas
+    public class Vaas : IDisposable
     {
         private string Token { get; }
 
@@ -176,6 +176,20 @@ namespace Vaas
                 };
                 return clientWebSocket;
             };
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Client?.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }
