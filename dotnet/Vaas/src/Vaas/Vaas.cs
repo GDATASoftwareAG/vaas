@@ -17,15 +17,18 @@ namespace Vaas
 {
     public class Vaas : IDisposable
     {
+        private const int AuthenticationTimeoutInMs = 1000;
+        
         private string Token { get; }
 
         private WebsocketClient? Client { get; set; }
 
         private string? SessionId { get; set; }
 
-        private bool Authenticated { get; set; }
+        private readonly TaskCompletionSource _authenticatedSource = new();
+        private Task Authenticated => _authenticatedSource.Task;
         
-        public Uri Url { get; set; } = new("wss://gateway-vaas.gdatasecurity.de");
+        public Uri Url { get; init; } = new("wss://gateway-vaas.gdatasecurity.de");
 
         private Dictionary<string, VerdictResponse> VerdictResponsesDict { get; } = new();
 
@@ -36,7 +39,7 @@ namespace Vaas
 
         public async Task Connect()
         {
-            Client = new WebsocketClient(Url, CreateWebsocketClient());
+            Client = new WebsocketClient(Url, GetWebsocketClientFactory());
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(HandleResponseMessage);
             await Client.Start();
@@ -45,7 +48,7 @@ namespace Vaas
                 throw new WebsocketException("Could not start client");
             }
             
-            Authenticate();
+            await Authenticate();
         }
 
         private void HandleResponseMessage(ResponseMessage msg)
@@ -58,8 +61,8 @@ namespace Vaas
                     var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
                     if (authenticationResponse is { Success: true })
                     {
-                        Authenticated = true;
                         SessionId = authenticationResponse.SessionId;
+                        _authenticatedSource.SetResult();
                     }
 
                     break;
@@ -72,22 +75,14 @@ namespace Vaas
             }
         }
 
-        private void Authenticate()
+        private async Task Authenticate()
         {
             var authenticationRequest = new AuthenticationRequest(Token);
             var jsonString = JsonSerializer.Serialize(authenticationRequest);
             Client?.Send(jsonString);
-            for (var i = 0; i < 10; i++)
-            {
-                if (Authenticated)
-                {
-                    break;
-                }
 
-                Thread.Sleep(100);
-            }
-
-            if (Authenticated != true)
+            var delay = Task.Delay(AuthenticationTimeoutInMs);
+            if (await Task.WhenAny(Authenticated, delay) == delay)
             {
                 throw new UnauthorizedAccessException();
             }
@@ -156,7 +151,7 @@ namespace Vaas
             return Convert.ToHexString(sha256.ComputeHash(fileStream)).ToLower();
         }
 
-        private static Func<ClientWebSocket> CreateWebsocketClient()
+        private static Func<ClientWebSocket> GetWebsocketClientFactory()
         {
             return () =>
             {
