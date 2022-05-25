@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -29,7 +28,7 @@ namespace Vaas.Test
         public async void FromSha256_WorksAfter40s()
         {
             var vaas = await Authenticate();
-            var guid = "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
+            const string guid = "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
             var verdict = await vaas.ForSha256Async(guid);
             Assert.Equal(Verdict.Clean, verdict);
             await Task.Delay(40000);
