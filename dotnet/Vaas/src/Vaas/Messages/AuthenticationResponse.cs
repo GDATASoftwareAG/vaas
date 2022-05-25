@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 
 namespace Vaas.Messages
@@ -11,9 +12,13 @@ namespace Vaas.Messages
         public bool Success { get; init; }
 
         [JsonPropertyName("session_id")] 
-        public string SessionId { get; init; } = null!;
+        public string? SessionId { get; init; }
 
         [JsonPropertyName("text")] 
-        public string Text { get; init; } = null!;
+        public string? Text { get; init; }
+
+        [MemberNotNullWhen(true, nameof(SessionId), nameof(Text))]
+        public bool IsValid => !string.IsNullOrWhiteSpace(SessionId)
+                               && !string.IsNullOrWhiteSpace(Text);
     }
 }

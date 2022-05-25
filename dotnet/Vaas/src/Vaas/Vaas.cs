@@ -29,8 +29,8 @@ namespace Vaas
 
         private readonly TaskCompletionSource _authenticatedSource = new();
         private Task Authenticated => _authenticatedSource.Task;
-        
-        public Uri Url { get; init; } = new("wss://gateway-vaas.gdatasecurity.de");
+
+        private readonly Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
 
         private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
 
@@ -41,7 +41,7 @@ namespace Vaas
 
         public async Task Connect()
         {
-            Client = new WebsocketClient(Url, WebsocketClientFactory);
+            Client = new WebsocketClient(_url, WebsocketClientFactory);
             Client.ReconnectTimeout = null;
             Client.MessageReceived.Subscribe(HandleResponseMessage);
             await Client.Start();
@@ -72,9 +72,11 @@ namespace Vaas
                 case "VerdictResponse":
                     var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
                     var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text, options);
-
-                    var guid = verdictResponse?.Guid ?? throw new InvalidOperationException();
-                    if (!_verdictResponses.TryRemove(guid, out var tcs))
+                    if (verdictResponse is not { IsValid: true })
+                    {
+                        return;
+                    }
+                    if (!_verdictResponses.TryRemove(verdictResponse.Guid, out var tcs))
                     {
                         // Error: Server sent guid we are not waiting for, ignore it
                         return;
@@ -107,13 +109,16 @@ namespace Vaas
         {
             var sha256 = Sha256CheckSum(path);
             var verdictResponse = await ForRequestAsync(new AnalysisRequest(sha256, SessionId ?? throw new InvalidOperationException()));
+            if (!verdictResponse.IsValid)
+                throw new JsonException("VerdictResponse is not valid");
             if (verdictResponse.Verdict != Verdict.Unknown) return verdictResponse.Verdict;
-            var url = verdictResponse.Url;
-            if (url is null) throw new ArgumentNullException(nameof(url));
-            
-            var token = verdictResponse.UploadToken ?? "";
+            if (string.IsNullOrWhiteSpace(verdictResponse.Url) ||
+                string.IsNullOrWhiteSpace(verdictResponse.UploadToken))
+            {
+                throw new JsonException("VerdictResponse is not valid");
+            }
 
-            await UploadFile(path, url, token);
+            await UploadFile(path, verdictResponse.Url, verdictResponse.UploadToken);
             
             var response = await WaitForResponseAsync(verdictResponse.Guid);
 
