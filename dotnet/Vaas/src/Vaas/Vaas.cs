@@ -1,15 +1,14 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
 using System.Threading.Tasks;
 using Vaas.Messages;
 using Websocket.Client;
@@ -33,7 +32,7 @@ namespace Vaas
         
         public Uri Url { get; init; } = new("wss://gateway-vaas.gdatasecurity.de");
 
-        private Dictionary<string, VerdictResponse> VerdictResponsesDict { get; } = new();
+        private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
 
         public Vaas(string token)
         {
@@ -73,7 +72,14 @@ namespace Vaas
                 case "VerdictResponse":
                     var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
                     var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(msg.Text, options);
-                    VerdictResponsesDict.Add(verdictResponse?.Guid ?? throw new InvalidOperationException(), verdictResponse);
+
+                    var guid = verdictResponse?.Guid ?? throw new InvalidOperationException();
+                    if (!_verdictResponses.TryRemove(guid, out var tcs))
+                    {
+                        // Error: Server sent guid we are not waiting for, ignore it
+                        return;
+                    }
+                    tcs.SetResult(verdictResponse);
                     break;
             }
         }
@@ -141,20 +147,15 @@ namespace Vaas
         private async Task<VerdictResponse> ForRequestAsync(AnalysisRequest analysisRequest)
         {
             var jsonString = JsonSerializer.Serialize(analysisRequest);
-            await Task.Run(()=>Client?.Send(jsonString));
+            Client?.Send(jsonString);
 
             return await WaitForResponseAsync(analysisRequest.Guid);
         }
         
-        private async Task<VerdictResponse> WaitForResponseAsync(string guid)
+        private Task<VerdictResponse> WaitForResponseAsync(string guid)
         {
-            VerdictResponse? value;
-            while (VerdictResponsesDict.TryGetValue(guid, out value) == false)
-            {
-                await Task.Delay(300);
-            }
-            VerdictResponsesDict.Remove(guid);
-            return value;
+            var tcs = _verdictResponses.GetOrAdd(guid, _ => new());
+            return tcs.Task;
         }
         
         private static string Sha256CheckSum(string filePath)
