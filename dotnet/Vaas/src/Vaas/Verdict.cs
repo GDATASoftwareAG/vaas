@@ -1,7 +1,6 @@
-namespace Vaas
+namespace Vaas;
+
+public enum Verdict
 {
-    public enum Verdict
-    {
-        Clean, Unknown, Malicious
-    }
+    Clean, Unknown, Malicious
 }
