@@ -24,6 +24,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Editor directories and files
+*.DotSettings.user
 .idea
 .vscode
 *.suo

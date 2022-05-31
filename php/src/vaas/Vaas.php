@@ -33,10 +33,20 @@ class Vaas
     private int $_uploadTimeoutInSeconds = 60;
     private LoggerInterface $_logger;
 
+    public function __construct()
+    {
+        $arguments = func_get_args();
+        if (sizeof($arguments) > 1 && gettype($arguments[0]) == "string" && gettype($arguments[1]) == "string") {
+            $this->connectWithCredentials(...$arguments);
+        } else {
+            $this->connect(...$arguments);
+        }
+    }
+
     /**
      * @throws BadOpcodeException|TimeoutException
      */
-    public function __construct(
+    private function connect(
         string $token,
         ?LoggerInterface $logger = null
     ) {
@@ -63,8 +73,39 @@ class Vaas
         $this->_webSocketClient->send(json_encode($authRequest));
         $authResponse = $this->_waitForAuthResponse();
         $this->_logger->debug("Authenticated: " . json_encode($authResponse));
-
         $this->_sessionId = $authResponse->session_id;
+    }
+
+    /**
+     * @throws BadOpcodeException|TimeoutException
+     */
+    private function connectWithCredentials(
+        string $clientId, string $clientSecret,
+        ?LoggerInterface $logger = null
+    ) {
+        $this->_httpClient = new HttpClient();
+        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret);
+        $this->connect($token, $logger);
+    }
+
+    private function getTokenFromTokenEndpoint(string $clientId, string $clientSecret){
+        $tokenEndpoint = "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
+        $headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
+        
+        $response = $this->_httpClient->request('POST', $tokenEndpoint,
+        [
+            'form_params' => [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'grant_type' => "client_credentials"
+            ],
+            'headers' => $headers
+        ]);
+        if ($response->getStatusCode() != 200) {
+            throw new AccessDeniedException($response->getReasonPhrase(), $response->getStatusCode());
+        }
+        $response_body = json_decode($response->getBody());
+        return $response_body->access_token;
     }
 
     /**
