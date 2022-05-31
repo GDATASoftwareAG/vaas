@@ -90,13 +90,39 @@ public class IntegrationTests
         Assert.Equal(Verdict.Clean, resultList[1]);
         Assert.Equal(Verdict.Clean, resultList[2]);
     }
+    
+    [Fact(Skip = "Not production ready.")]
+    public async void ConnectWithCredentials()
+    {
+        var myList = new List<string>
+        {
+            "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
+            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23",
+            "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
+        };
+        var vaas = await AuthenticateWithCredentials(new Uri("https://keycloak.staging-vaas-outside-auth.outside.k8s.gdata.de/realms/vaas/protocol/openid-connect/token"));
+        var verdictList = await vaas.ForSha256ListAsync(myList);
+        Assert.Equal(Verdict.Malicious, verdictList[0]);
+        Assert.Equal(Verdict.Clean, verdictList[1]);
+        Assert.Equal(Verdict.Unknown, verdictList[2]);
+    } 
         
     private static async Task<Vaas> Authenticate()
     {
         DotNetEnv.Env.TraversePath().Load();
         var myToken = DotNetEnv.Env.GetString("VAAS_TOKEN");
-        var vaas = new Vaas(myToken);
-        await vaas.Connect();
+        var vaas = new Vaas();
+        await vaas.Connect(myToken);
+        return vaas;
+    }
+    
+    private static async Task<Vaas> AuthenticateWithCredentials(Uri tokenEndpoint)
+    {
+        DotNetEnv.Env.TraversePath().Load();
+        var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
+        var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
+        var vaas = new Vaas();
+        await vaas.ConnectWithCredentials(clientId, clientSecret, tokenEndpoint);
         return vaas;
     }
 }

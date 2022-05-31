@@ -19,9 +19,7 @@ namespace Vaas;
 public class Vaas : IDisposable
 {
     private const int AuthenticationTimeoutInMs = 1000;
-        
-    private string Token { get; }
-
+    
     private WebsocketClient? Client { get; set; }
     private readonly HttpClient _httpClient = new();
         
@@ -33,13 +31,9 @@ public class Vaas : IDisposable
     private readonly Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
+    
 
-    public Vaas(string token)
-    {
-        Token = token;
-    }
-
-    public async Task Connect()
+    public async Task Connect(string token)
     {
         Client = new WebsocketClient(_url, WebsocketClientFactory);
         Client.ReconnectTimeout = null;
@@ -50,7 +44,25 @@ public class Vaas : IDisposable
             throw new WebsocketException("Could not start client");
         }
             
-        await Authenticate();
+        await Authenticate(token);
+    }
+
+    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint)
+    {
+        var response = await _httpClient.PostAsync(tokenEndpoint, new FormUrlEncodedContent(
+            new List<KeyValuePair<string, string>>
+            {
+                new("client_id", clientId),
+                new("client_secret", clientSecret),
+                new("grant_type", "client_credentials")
+            }));
+        var stringResponse = await response.Content.ReadAsStringAsync();
+        var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(stringResponse);
+        if (tokenResponse == null)
+            throw new JsonException("Access token is null");
+        
+        await Connect(tokenResponse.AccessToken);
+
     }
 
     private void HandleResponseMessage(ResponseMessage msg)
@@ -86,9 +98,9 @@ public class Vaas : IDisposable
         }
     }
 
-    private async Task Authenticate()
+    private async Task Authenticate(string token)
     {
-        var authenticationRequest = new AuthenticationRequest(Token);
+        var authenticationRequest = new AuthenticationRequest(token);
         var jsonString = JsonSerializer.Serialize(authenticationRequest);
         Client?.Send(jsonString);
 
