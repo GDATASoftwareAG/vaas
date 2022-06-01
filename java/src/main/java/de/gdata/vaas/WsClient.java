@@ -4,12 +4,12 @@ import de.gdata.vaas.messages.Error;
 import de.gdata.vaas.messages.*;
 import lombok.Getter;
 import lombok.NonNull;
-import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ServerHandshake;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
@@ -31,7 +31,7 @@ public class WsClient extends WebSocketClient {
     @Getter
     private String sessionId = null;
 
-    public WsClient(WsConfig config) {
+    public WsClient(WsConfig config) throws URISyntaxException, IOException, InterruptedException {
         super(config.getUrl());
         this.verdictResponses = new LinkedList<>();
         this.token = config.getToken();
@@ -98,17 +98,6 @@ public class WsClient extends WebSocketClient {
         } else {
             throw new IllegalArgumentException("Unknown message type");
         }
-    }
-
-    private boolean HandlePingPong(String message) {
-        if (message.equalsIgnoreCase("pong")) {
-            this.sendPing();
-            return true;
-        } else if (message.equalsIgnoreCase("ping")) {
-            this.send("pong");
-            return true;
-        }
-        return false;
     }
 
     @Override
