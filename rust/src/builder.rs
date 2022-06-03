@@ -1,5 +1,4 @@
 //! The `Builder` struct create a new [Vaas] instance with the expected default values and allows the custom configuration.
-
 use reqwest::Url;
 
 use crate::error::VResult;

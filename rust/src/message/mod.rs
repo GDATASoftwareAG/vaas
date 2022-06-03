@@ -9,9 +9,11 @@ mod upload_url;
 mod verdict;
 mod verdict_request;
 mod verdict_response;
+mod open_id_connect_token_response;
 
 pub(super) use auth_request::AuthRequest;
 pub(super) use auth_response::AuthResponse;
+pub(super) use open_id_connect_token_response::OpenIdConnectTokenResponse;
 pub(super) use error::ErrorResponse;
 pub(super) use message_type::MessageType;
 pub(super) use upload_url::UploadUrl;
