@@ -15,6 +15,22 @@ async fn get_vaas() -> Connection {
         .unwrap()
 }
 
+async fn get_vaas_with_credentials() -> Connection {
+    let token_endpoint = dotenv::var("TOKEN_ENDPOINT") 
+        .expect("No TOKEN_ENDPOINT environment variable set to be used in the integration tests!");
+    let client_id = dotenv::var("CLIENT_ID")
+        .expect("No CLIENT_ID environment variable set to be used in the integration tests!");
+    let client_secret = dotenv::var("CLIENT_SECRET")
+        .expect("No CLIENT_SECRET environment variable set to be used in the integration tests!");
+    let token = Vaas::get_token(client_id, client_secret, token_endpoint).await.unwrap();
+    Vaas::builder(token)
+        .build()
+        .unwrap()
+        .connect()
+        .await
+        .unwrap()
+}
+
 #[tokio::test]
 async fn from_sha256_list_multiple_hashes() {
     let vaas = get_vaas().await;
@@ -296,4 +312,20 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
     assert_eq!(Verdict::Clean, verdicts[0]);
     assert_eq!(Verdict::Clean, verdicts[1]);
     assert_eq!(Verdict::Clean, verdicts[2]);
+}
+
+#[tokio::test]
+#[ignore = ""]
+async fn from_file_single_clean_file_with_credentials() {
+    let clean: [u8; 8] = [0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a];
+    let tmp_file = std::env::temp_dir().join("clean.txt");
+    std::fs::write(&tmp_file, clean).unwrap();
+
+    let vaas = get_vaas_with_credentials().await;
+    let ct = CancellationToken::from_seconds(10);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    std::fs::remove_file(&tmp_file).unwrap();
+    assert_eq!(Verdict::Clean, verdict.unwrap());
 }
