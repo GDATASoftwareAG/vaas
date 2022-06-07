@@ -318,7 +318,7 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
 }
 
 #[tokio::test]
-// #[ignore = ""]
+#[ignore = "Ignored until the open id API is available in production"]
 async fn from_file_single_clean_file_with_credentials() {
     let clean: [u8; 8] = [0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a];
     let tmp_file = std::env::temp_dir().join("clean2.txt");
