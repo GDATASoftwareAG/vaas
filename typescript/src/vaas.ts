@@ -12,6 +12,8 @@ import { Verdict } from "./verdict";
 import * as axios from "axios";
 import { CancellationToken } from "./CancellationToken";
 
+const URL = "wss://gateway-vaas.gdatasecurity.de";
+
 export interface VerdictCallback {
   (verdictResponse: VerdictResponse): Promise<void>;
 }
@@ -129,18 +131,20 @@ export default class Vaas {
     });
   }
 
-  public async connect(token: string): Promise<void> {
+  public async connect(token: string, url = URL): Promise<void> {
     return new Promise(async (resolve, reject) => {
-      const ws = new WebSocket("wss://gateway-vaas.gdatasecurity.de");
+      const ws = new WebSocket(url);
+      // ws library does not have auto-keepalive
+      // https://github.com/websockets/ws/issues/767
       ws.on("ping", (payload) => {
         ws.pong(payload);
       });
       ws.on("pong", async () => {
         await this.delay(10000);
-        ws.ping("ping");
+        ws.ping();
       });
       ws.onopen = async () => {
-       try {
+        try {
           this.authenticate(ws, token);
         } catch (error) {
           reject(error);
@@ -217,5 +221,6 @@ export default class Vaas {
       serialize(new AuthenticationRequest(token))
     );
     ws.send(authReq);
+    ws.ping();
   }
 }
