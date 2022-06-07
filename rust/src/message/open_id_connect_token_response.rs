@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::error::Error;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OpenIdConnectTokenResponse {
@@ -9,6 +9,6 @@ pub struct OpenIdConnectTokenResponse {
 impl TryFrom<&String> for OpenIdConnectTokenResponse {
     type Error = Error;
     fn try_from(value: &String) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_str(value)?)
+        serde_json::from_str(value).map_err(|e| e.into())
     }
 }

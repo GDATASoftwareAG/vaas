@@ -21,7 +21,7 @@ impl VerdictRequest {
     }
 
     pub fn to_json(&self) -> VResult<String> {
-        Ok(serde_json::to_string(self)?)
+        serde_json::to_string(self).map_err(|e| e.into())
     }
     pub fn guid(&self) -> &str {
         &self.guid

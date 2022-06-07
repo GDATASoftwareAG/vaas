@@ -13,6 +13,6 @@ pub struct ErrorResponse {
 impl TryFrom<&String> for ErrorResponse {
     type Error = Error;
     fn try_from(value: &String) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_str(value)?)
+        serde_json::from_str(value).map_err(|e| e.into())
     }
 }

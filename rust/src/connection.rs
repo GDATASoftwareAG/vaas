@@ -23,6 +23,7 @@ type ResultChannelRx = Receiver<VResult<VerdictResponse>>;
 type ResultChannelTx = Sender<VResult<VerdictResponse>>;
 
 /// Active connection to the verdict server.
+#[derive(Debug)]
 pub struct Connection {
     ws_writer: WebSocketWriter,
     session_id: String,

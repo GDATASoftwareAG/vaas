@@ -57,14 +57,21 @@ pub enum Error {
     #[error("Missing authentication token for file upload")]
     MissingAuthToken,
     /// Unauthorized
-    #[error("Unauthorized")]
-    Unauthorized,
+    #[error("Unauthorized: `{0}`")]
+    Unauthorized(String),
     /// Broadcast send/receive error between threads occurred.
     #[error("The result channel failed: `{0}`")]
     ResultChannelError(String),
     /// Server returned an error.
     #[error("Error response from the server")]
     ErrorResponse(ErrorResponse),
+    /// Failed to get authentication token from the OpenID provider.
+    #[error("Failed to get authentication token. Status code `{0}` with message `{1}`")]
+    FailedAuthTokenRequest(StatusCode, String),
+    /// For an successful authentication response, a session id has to be send by the server.
+    /// If no session id is send, but the response has the success flag that, this error is used.
+    #[error("No session id in authentication response set")]
+    NoSessionIdInAuthResp,
 }
 
 impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>> for Error {

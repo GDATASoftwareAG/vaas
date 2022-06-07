@@ -14,6 +14,6 @@ pub struct VerdictResponse {
 impl TryFrom<&String> for VerdictResponse {
     type Error = Error;
     fn try_from(value: &String) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_str(value)?)
+        serde_json::from_str(value).map_err(|e| e.into())
     }
 }
