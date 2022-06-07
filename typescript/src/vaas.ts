@@ -140,8 +140,8 @@ export default class Vaas {
         ws.ping("ping");
       });
       ws.onopen = async () => {
-        try {
-          this.connection = await this.authenticate(ws, token);
+       try {
+          this.authenticate(ws, token);
         } catch (error) {
           reject(error);
         }
@@ -212,16 +212,10 @@ export default class Vaas {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private async authenticate(
-    ws: WebSocket,
-    token: string
-  ): Promise<VaasConnection> {
-    return new Promise((_resolve, _reject) => {
-      const authReq: string = JSON.stringify(
-        serialize(new AuthenticationRequest(token))
-      );
-      ws.send(authReq);
-      ws.ping("ping");
-    });
+  private authenticate(ws: WebSocket, token: string): void {
+    const authReq: string = JSON.stringify(
+      serialize(new AuthenticationRequest(token))
+    );
+    ws.send(authReq);
   }
 }
