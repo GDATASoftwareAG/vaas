@@ -17,7 +17,12 @@ pub struct Vaas {
 }
 
 impl Vaas {
-    pub async fn get_token(client_id: String, client_secret: String, token_endpoint: String) -> VResult<String>  {
+    /// Get an OpenID Connect token to use for authentication.
+    pub async fn get_token(
+        client_id: String,
+        client_secret: String,
+        token_endpoint: String,
+    ) -> VResult<String> {
         let params = [
             ("client_id", client_id),
             ("client_secret", client_secret),
@@ -27,9 +32,10 @@ impl Vaas {
         let token_response = client
             .post(token_endpoint)
             .form(&params)
-            .send().await.unwrap();
-        let json_string = token_response
-            .text().await.unwrap();
+            .send()
+            .await
+            .unwrap();
+        let json_string = token_response.text().await.unwrap();
         let token_response = OpenIdConnectTokenResponse::try_from(&json_string).unwrap();
         Ok(token_response.access_token)
     }
@@ -46,7 +52,6 @@ impl Vaas {
         let connection = Connection::start(ws_writer, ws_reader, session_id, self.options).await;
         Ok(connection)
     }
-
 
     async fn open_websocket(&self) -> VResult<(WebSocketReadHalf, WebSocketWriteHalf)> {
         let (reader, writer) = WebSocket::builder()
