@@ -29,14 +29,10 @@ impl Vaas {
             ("grant_type", "client_credentials".to_string()),
         ];
         let client = reqwest::Client::new();
-        let token_response = client
-            .post(token_endpoint)
-            .form(&params)
-            .send()
-            .await
-            .unwrap();
-        let json_string = token_response.text().await.unwrap();
-        let token_response = OpenIdConnectTokenResponse::try_from(&json_string).unwrap();
+        let token_response = client.post(token_endpoint).form(&params).send().await?;
+
+        let json_string = token_response.text().await?;
+        let token_response = OpenIdConnectTokenResponse::try_from(&json_string)?;
         Ok(token_response.access_token)
     }
 
