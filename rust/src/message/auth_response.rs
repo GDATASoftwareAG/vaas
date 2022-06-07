@@ -7,13 +7,12 @@ use std::convert::TryFrom;
 pub struct AuthResponse {
     pub kind: Kind,
     pub success: bool,
-    pub session_id: String,
+    pub session_id: Option<String>,
     pub text: String,
 }
-
 impl TryFrom<&String> for AuthResponse {
     type Error = Error;
     fn try_from(value: &String) -> Result<Self, Self::Error> {
-        Ok(serde_json::from_str(value)?)
+        serde_json::from_str(value).map_err(|e| e.into())
     }
 }

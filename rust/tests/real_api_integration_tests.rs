@@ -16,19 +16,18 @@ async fn get_vaas() -> Connection {
 }
 
 async fn get_vaas_with_credentials() -> Connection {
-    let token_endpoint = dotenv::var("TOKEN_ENDPOINT") 
+    let token_endpoint = dotenv::var("TOKEN_ENDPOINT")
         .expect("No TOKEN_ENDPOINT environment variable set to be used in the integration tests!");
     let client_id = dotenv::var("CLIENT_ID")
         .expect("No CLIENT_ID environment variable set to be used in the integration tests!");
     let client_secret = dotenv::var("CLIENT_SECRET")
         .expect("No CLIENT_SECRET environment variable set to be used in the integration tests!");
-    let token = Vaas::get_token(client_id, client_secret, token_endpoint).await.unwrap();
-    Vaas::builder(token)
-        .build()
-        .unwrap()
-        .connect()
+    let token = Vaas::get_token(client_id, client_secret, token_endpoint)
         .await
-        .unwrap()
+        .unwrap();
+    let foo = Vaas::builder(token).build().unwrap().connect().await;
+    println!("DEBUG {foo:?}");
+    foo.unwrap()
 }
 
 #[tokio::test]
@@ -315,7 +314,7 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
 }
 
 #[tokio::test]
-#[ignore = ""]
+// #[ignore = ""]
 async fn from_file_single_clean_file_with_credentials() {
     let clean: [u8; 8] = [0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a];
     let tmp_file = std::env::temp_dir().join("clean.txt");
