@@ -1,5 +1,6 @@
 use futures::future::try_join_all;
 use rand::{distributions::Alphanumeric, Rng};
+use reqwest::Url;
 use std::convert::TryFrom;
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
@@ -25,9 +26,12 @@ async fn get_vaas_with_credentials() -> Connection {
     let token = Vaas::get_token(client_id, client_secret, token_endpoint)
         .await
         .unwrap();
-    let foo = Vaas::builder(token).build().unwrap().connect().await;
-    println!("DEBUG {foo:?}");
-    foo.unwrap()
+    Vaas::builder(token)
+        .build()
+        .unwrap()
+        .connect()
+        .await
+        .unwrap()
 }
 
 #[tokio::test]
@@ -317,7 +321,7 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
 // #[ignore = ""]
 async fn from_file_single_clean_file_with_credentials() {
     let clean: [u8; 8] = [0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a];
-    let tmp_file = std::env::temp_dir().join("clean.txt");
+    let tmp_file = std::env::temp_dir().join("clean2.txt");
     std::fs::write(&tmp_file, clean).unwrap();
 
     let vaas = get_vaas_with_credentials().await;
