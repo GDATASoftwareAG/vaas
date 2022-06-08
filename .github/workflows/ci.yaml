@@ -68,8 +68,11 @@ jobs:
     name: Build & Test TypeScript SDK
     runs-on: ubuntu-20.04
     env:
-      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+      TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 
     steps:
       - name: checkout
