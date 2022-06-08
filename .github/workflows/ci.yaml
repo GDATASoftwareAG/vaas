@@ -54,6 +54,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "7.4"
+
       - name: install php dependencies
         uses: php-actions/composer@v6
         with:
