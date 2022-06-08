@@ -111,10 +111,7 @@ describe("Test verdict requests", () => {
     try {
       const vaas = new Vaas();
       await vaas.connect(TOKEN);
-      const verdictResponse = await vaas.forRequest(
-        sample,
-        CancellationToken.fromMilliseconds(2_000)
-      );
+      const verdictResponse = await vaas.forRequest(sample);
       const otherRandomFile = await randomBytes.sync(40);
       await vaas.upload(verdictResponse, otherRandomFile);
     } catch (error) {
@@ -153,6 +150,19 @@ describe("Test verdict requests", () => {
     } catch (error) {
       throw new Error(error as string);
     }
+  }).timeout(testTimeoutFileReq);
+
+  it("if we request the same guid twice, both calls return a result", async () => {
+    const vaas = new Vaas();
+    await vaas.connect(TOKEN);
+    const guid =
+      "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
+    const request1 = vaas.forSha256(guid);
+    const request2 = vaas.forSha256(guid);
+    const verdict1 = await request1;
+    const verdict2 = await request2;
+    expect(verdict1).to.equal("Clean");
+    expect(verdict2).to.equal("Clean");
   }).timeout(testTimeoutFileReq);
 
   xit("keeps connection alive", async () => {
