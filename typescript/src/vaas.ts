@@ -12,7 +12,8 @@ import { Verdict } from "./verdict";
 import * as axios from "axios";
 import { CancellationToken } from "./CancellationToken";
 
-const URL = "wss://gateway-vaas.gdatasecurity.de";
+const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+export { VAAS_URL };
 
 // See https://advancedweb.hu/how-to-add-timeout-to-a-promise-in-javascript/
 const timeout = <T>(promise: Promise<T>, timeoutInMs: number) => {
@@ -128,7 +129,7 @@ export default class Vaas {
     });
   }
 
-  public async connect(token: string, url = URL): Promise<void> {
+  public async connect(token: string, url = VAAS_URL): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const ws = new WebSocket(url);
       // ws library does not have auto-keepalive
