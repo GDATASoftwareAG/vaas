@@ -194,3 +194,27 @@ jobs:
           packages_dir: python/dist
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
+
+  build-dotnet:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ["6.0.x"]
+    env:
+      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Install dependencies
+        run: dotnet restore
+        working-directory: dotnet
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+        working-directory: dotnet
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+        working-directory: dotnet
