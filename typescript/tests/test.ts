@@ -40,20 +40,23 @@ function createVaas() {
   );
 }
 
-const testTimeoutHashReq: number = 10_000;
-const testTimeoutFileReq: number = 600_000;
+const defaultTimeout: number = 10_000;
 
-describe("Test authentication", () => {
+describe("Test authentication", function () {
+  this.timeout(defaultTimeout);
+
   it("if wrong authentication token is send, an error is expected", async () => {
     const token = "ThisIsAnInvalidToken";
     const vaas = new Vaas();
     await expect((() => vaas.connect(token))()).to.be.rejectedWith(
       "Unauthorized"
     );
-  }).timeout(testTimeoutHashReq);
+  });
 });
 
-describe("Test cancellation through timeout", () => {
+describe("Test cancellation through timeout", function () {
+  this.timeout(defaultTimeout);
+
   it("if a request times out, an error is expected", async () => {
     const randomFileContent = randomBytes.sync(50);
     const vaas = await createVaas();
@@ -63,17 +66,19 @@ describe("Test cancellation through timeout", () => {
       CancellationToken.fromMilliseconds(1)
     );
     await expect(promise).to.eventually.be.rejectedWith("Timeout");
-  }).timeout(testTimeoutHashReq);
+  });
 });
 
-describe("Test verdict requests", () => {
+describe("Test verdict requests", function () {
+  this.timeout(defaultTimeout);
+
   it('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
     const vaas = await createVaas();
     const verdict = await vaas.forSha256(
       "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"
     );
     expect(verdict).to.equal("Clean");
-  }).timeout(testTimeoutHashReq);
+  });
 
   it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
     const vaas = await createVaas();
@@ -81,7 +86,7 @@ describe("Test verdict requests", () => {
       "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
     );
     expect(verdict).to.equal("Malicious");
-  }).timeout(testTimeoutHashReq);
+  });
 
   it("test if eicar file is detected as malicious based on the SHA256", async () => {
     const eicarString =
@@ -90,14 +95,14 @@ describe("Test verdict requests", () => {
     const vaas = await createVaas();
     const verdict = await vaas.forFile(eicarByteArray);
     expect(verdict).to.equal("Malicious");
-  }).timeout(testTimeoutHashReq);
+  });
 
   it("test if unknown file is uploaded and detected as clean", async () => {
     const randomFileContent = await randomBytes.sync(50);
     const vaas = await createVaas();
     const verdict = await vaas.forFile(randomFileContent);
     expect(verdict).to.equal("Clean");
-  }).timeout(testTimeoutFileReq);
+  });
 
   it("test if there is a mismatch between submitted hash for file and uploaded file", async () => {
     const randomFileContent = await randomBytes.sync(50);
@@ -112,7 +117,7 @@ describe("Test verdict requests", () => {
     ).to.be.rejectedWith(
       "Upload failed with 400 - Error Bad request: Wrong file"
     );
-  }).timeout(testTimeoutFileReq);
+  });
 
   it("if a list of SHA256 is uploaded, they are detected", async () => {
     const vaas = await createVaas();
@@ -133,7 +138,7 @@ describe("Test verdict requests", () => {
       randomFileContent2,
     ]);
     expect(verdict[0]).to.equal("Clean");
-  }).timeout(testTimeoutFileReq);
+  });
 
   it("if we request the same guid twice, both calls return a result", async () => {
     const vaas = await createVaas();
@@ -145,7 +150,7 @@ describe("Test verdict requests", () => {
     const verdict2 = await request2;
     expect(verdict1).to.equal("Clean");
     expect(verdict2).to.equal("Clean");
-  }).timeout(testTimeoutFileReq);
+  });
 
   xit("keeps connection alive", async () => {
     const vaas = await createVaas();
