@@ -196,6 +196,7 @@ jobs:
           password: ${{ secrets.PYPI_TOKEN }}
 
   build-dotnet:
+    name: Build & Test C# SDK
     runs-on: ubuntu-latest
     strategy:
       matrix:
