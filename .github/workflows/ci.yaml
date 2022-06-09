@@ -127,6 +127,10 @@ jobs:
         with:
           toolchain: stable
 
+      - uses: Swatinem/rust-cache@v1
+        with:
+          working-directory: rust
+
       - name: run tests
         run: cargo test
         working-directory: rust
