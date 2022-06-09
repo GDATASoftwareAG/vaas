@@ -21,7 +21,8 @@ const timeout = <T>(promise: Promise<T>, timeoutInMs: number) => {
   return Promise.race([
     promise,
     new Promise<never>(
-      (_resolve, reject) => (timer = setTimeout(reject, timeoutInMs))
+      (_resolve, reject) =>
+        (timer = setTimeout(reject, timeoutInMs, new Error("Timeout")))
     ),
   ]).finally(() => clearTimeout(timer));
 };
@@ -100,7 +101,7 @@ export default class Vaas {
   ): Promise<VerdictResponse> {
     return new Promise((resolve, reject) => {
       if (this.connection === null) {
-        reject("Not connected");
+        reject(new Error("Not connected"));
         return;
       }
 
@@ -150,7 +151,7 @@ export default class Vaas {
       };
       ws.onerror = (error) => {
         console.log("Error here");
-        reject(error.message);
+        reject(error);
       };
       ws.onmessage = async (event) => {
         const message = deserialize<Message>(event.data, Message);
@@ -166,7 +167,7 @@ export default class Vaas {
               resolve();
               return;
             }
-            reject("Unauthorized");
+            reject(new Error("Unauthorized"));
             break;
           case Kind.Error:
             reject(
@@ -185,7 +186,7 @@ export default class Vaas {
             break;
           default:
             console.log(event.data);
-            reject("Unknown message kind");
+            reject(new Error("Unknown message kind"));
             break;
         }
       };
@@ -207,7 +208,9 @@ export default class Vaas {
         .then((response) => resolve(response))
         .catch((error) => {
           reject(
-            `Upload failed with ${error.response.status} - Error ${error.response.data.message}`
+            new Error(
+              `Upload failed with ${error.response.status} - Error ${error.response.data.message}`
+            )
           );
         });
     });
