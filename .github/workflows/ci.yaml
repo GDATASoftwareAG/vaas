@@ -211,10 +211,10 @@ jobs:
           dotnet-version: ${{ matrix.dotnet-version }}
       - name: Install dependencies
         run: dotnet restore
-        working-directory: dotnet
+        working-directory: dotnet/Vaas
       - name: Build
         run: dotnet build --configuration Release --no-restore
-        working-directory: dotnet
+        working-directory: dotnet/Vaas
       - name: Test
         run: dotnet test --no-restore --verbosity normal
-        working-directory: dotnet
+        working-directory: dotnet/Vaas
