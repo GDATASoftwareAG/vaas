@@ -3,8 +3,8 @@
 :mod:`vaas` is a Python library for the VaaS-API."""
 
 __version__ = "0.0.1"
-__all__ = ["Vaas", "VaasTracing"]
+__all__ = ["Vaas", "VaasTracing", "VaasTimeoutError"]
 
 __author__ = "G DATA CyberDefense AG <oem@gdata.de>"
 
-from .vaas import Vaas, VaasTracing
+from .vaas import Vaas, VaasTracing, VaasTimeoutError
