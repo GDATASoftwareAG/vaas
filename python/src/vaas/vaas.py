@@ -14,6 +14,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
+TIMEOUT = 60
 
 
 class VaasTracing:
@@ -24,6 +25,19 @@ class VaasTracing:
 
     def trace_upload_request(self, elapsed_in_seconds, file_size):
         """Trace upload request in seconds"""
+
+    def trace_hash_request_timeout(self):
+        """Trace timeout while waiting for hash verdict"""
+
+    def trace_upload_result_timeout(self, file_size):
+        """Trace timeout while waiting for verdict for uploaded file"""
+
+    def trace_upload_timeout(self, file_size):
+        """Trace upload timeout"""
+
+
+class VaasTimeoutError(BaseException):
+    """Generic timeout"""
 
 
 class Vaas:
@@ -106,7 +120,13 @@ class Vaas:
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
-        result = await response_message
+
+        try:
+            result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
+        except asyncio.TimeoutError:
+            self.tracing.trace_hash_request_timeout()
+            raise VaasTimeoutError()
+
         self.tracing.trace_hash_request(time.time() - start)
         return result
 
@@ -137,7 +157,13 @@ class Vaas:
             url = response.get("url")
             response_message = self.__response_message_for_guid(guid)
             await self.__upload(token, url, buffer)
-            verdict = (await response_message).get("verdict")
+            try:
+                verdict = (
+                    await asyncio.wait_for(response_message, timeout=TIMEOUT)
+                ).get("verdict")
+            except asyncio.TimeoutError:
+                self.tracing.trace_upload_result_timeout(len(buffer))
+                raise VaasTimeoutError()
             self.tracing.trace_upload_request(time.time() - start, len(buffer))
 
         return verdict
@@ -151,8 +177,12 @@ class Vaas:
         jwt = JWT()
         decoded_token = jwt.decode(token, do_verify=False)
         trace_id = decoded_token.get("traceId")
-        await self.httpx_client.put(
-            url=upload_uri,
-            data=buffer,
-            headers={"Authorization": token, "traceParent": trace_id},
-        )
+        try:
+            await self.httpx_client.put(
+                url=upload_uri,
+                data=buffer,
+                headers={"Authorization": token, "traceParent": trace_id},
+            )
+        except httpx.TimeoutException:
+            self.tracing.trace_upload_timeout(len(buffer))
+            raise VaasTimeoutError()
