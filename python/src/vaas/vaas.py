@@ -7,6 +7,7 @@ import time
 import uuid
 import asyncio
 from asyncio import Future
+import aiofiles
 from jwt import JWT
 import httpx
 import websockets.client
@@ -147,7 +148,12 @@ class Vaas:
     async def for_buffer(self, buffer):
         """Returns the verdict for a buffer"""
         start = time.time()
-        sha256 = hashlib.sha256(buffer).hexdigest()
+
+        loop = asyncio.get_running_loop()
+        sha256 = await loop.run_in_executor(
+            None, lambda: hashlib.sha256(buffer).hexdigest()
+        )
+
         response = await self.__for_sha256(sha256)
         verdict = response.get("verdict")
 
@@ -170,8 +176,8 @@ class Vaas:
 
     async def for_file(self, path):
         """Returns the verdict for a file"""
-        with open(path, "rb") as open_file:
-            return await self.for_buffer(open_file.read())
+        async with aiofiles.open(path, mode="rb") as open_file:
+            return await self.for_buffer(await open_file.read())
 
     async def __upload(self, token, upload_uri, buffer):
         jwt = JWT()
