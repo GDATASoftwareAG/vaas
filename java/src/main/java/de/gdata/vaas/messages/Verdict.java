@@ -8,7 +8,7 @@ public enum Verdict {
     @SerializedName("Clean")
     CLEAN,
     @SerializedName("Malicious")
-    MALICIOUS
+    MALICIOUS,
     @SerializedName("Pub")
     PUB
 }
