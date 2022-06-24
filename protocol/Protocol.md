@@ -95,7 +95,7 @@ For each request, the server sends a corresponding response. The response contai
     "kind": "VerdictResponse", // Unique identifier of the message kind
     "sha256": "...", // SHA256 hash of the analyzed file
     "guid": "...", // Unique identifier of the request
-    "verdict": "Clean", // Verdict of the analysis (Unknown, Clean, Malicious)
+    "verdict": "Clean", // Verdict of the analysis (Unknown, Clean, Malicious, Pub)
     "url": "...", // Optional: Upload URL for the file in the case of an "Unknown" verdict
     "upload_token": "...", // Optional: Upload token for the file in the case of an "Unknown" verdict
 }
