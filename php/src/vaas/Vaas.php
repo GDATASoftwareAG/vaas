@@ -80,27 +80,32 @@ class Vaas
      * @throws BadOpcodeException|TimeoutException
      */
     private function connectWithCredentials(
-        string $clientId, string $clientSecret,
+        string $clientId,
+        string $clientSecret,
+        string $tokenEndpoint,
         ?LoggerInterface $logger = null
     ) {
         $this->_httpClient = new HttpClient();
-        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret);
+        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
         $this->connect($token, $logger);
     }
 
-    private function getTokenFromTokenEndpoint(string $clientId, string $clientSecret){
-        $tokenEndpoint = "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
+    private function getTokenFromTokenEndpoint(string $clientId, string $clientSecret, string $tokenEndpoint)
+    {
         $headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
-        
-        $response = $this->_httpClient->request('POST', $tokenEndpoint,
-        [
-            'form_params' => [
-                'client_id' => $clientId,
-                'client_secret' => $clientSecret,
-                'grant_type' => "client_credentials"
-            ],
-            'headers' => $headers
-        ]);
+
+        $response = $this->_httpClient->request(
+            'POST',
+            $tokenEndpoint,
+            [
+                'form_params' => [
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret,
+                    'grant_type' => "client_credentials"
+                ],
+                'headers' => $headers
+            ]
+        );
         if ($response->getStatusCode() != 200) {
             throw new AccessDeniedException($response->getReasonPhrase(), $response->getStatusCode());
         }
