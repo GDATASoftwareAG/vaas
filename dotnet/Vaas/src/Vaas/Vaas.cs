@@ -28,7 +28,7 @@ public class Vaas : IDisposable
     private readonly TaskCompletionSource _authenticatedSource = new();
     private Task Authenticated => _authenticatedSource.Task;
 
-    private readonly Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
+    private Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
     
@@ -47,7 +47,7 @@ public class Vaas : IDisposable
         await Authenticate(token);
     }
 
-    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint)
+    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint, string url = "wss://staging-gateway-vaas.gdatasecurity.de")
     {
         var response = await _httpClient.PostAsync(tokenEndpoint, new FormUrlEncodedContent(
             new List<KeyValuePair<string, string>>
@@ -61,8 +61,8 @@ public class Vaas : IDisposable
         if (tokenResponse == null)
             throw new JsonException("Access token is null");
         
+        _url = new Uri(url);
         await Connect(tokenResponse.AccessToken);
-
     }
 
     private void HandleResponseMessage(ResponseMessage msg)

@@ -51,7 +51,7 @@ class Vaas
         ?LoggerInterface $logger = null
     ) {
         $this->_token = $token;
-        $this->_webSocketClient = new WebSocketClient(self::$_vaasUrl);
+        $this->_webSocketClient = new WebSocketClient($this->_vaasUrl);
         $this->_webSocketClient->ping();
 
         $this->_httpClient = new HttpClient();
