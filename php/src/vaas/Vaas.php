@@ -24,7 +24,7 @@ use Psr\Log\LoggerInterface;
 
 class Vaas
 {
-    private const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+    private string $_vaasUrl = "wss://gateway-vaas.gdatasecurity.de";
     private string $_token;
     private string $_sessionId;
     private WebSocketClient $_webSocketClient;
@@ -51,7 +51,7 @@ class Vaas
         ?LoggerInterface $logger = null
     ) {
         $this->_token = $token;
-        $this->_webSocketClient = new WebSocketClient(self::VAAS_URL);
+        $this->_webSocketClient = new WebSocketClient(self::$_vaasUrl);
         $this->_webSocketClient->ping();
 
         $this->_httpClient = new HttpClient();
@@ -83,10 +83,12 @@ class Vaas
         string $clientId,
         string $clientSecret,
         string $tokenEndpoint,
+        string $vaasUrl,
         ?LoggerInterface $logger = null
     ) {
         $this->_httpClient = new HttpClient();
         $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
+        $this->$_vaasUrl = $vaasUrl;
         $this->connect($token, $logger);
     }
 

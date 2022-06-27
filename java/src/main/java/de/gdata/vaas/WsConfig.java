@@ -68,6 +68,9 @@ public class WsConfig {
     @Getter @Setter @NonNull
     private URI url;
 
+    @Getter @Setter @NonNull
+    private URI tokenEndpoint;
+
     @Getter @Setter
     private int PullDelayMs;
 
@@ -78,9 +81,16 @@ public class WsConfig {
     }
 
     public WsConfig(String clientId, String clientSecret) throws URISyntaxException {
+        this(clientId, clientSecret, 
+            new URI("https://staging-keycloak-vaas.gdatasecurity.de"), 
+            new URI("wss://staging-gateway-vaas.gdatasecurity.de"));
+    }
+
+    public WsConfig(String clientId, String clientSecret, URI tokenEndpoint, URI url) throws URISyntaxException {
         this.clientID = clientId;
         this.clientSecret = clientSecret;
-        this.url = new URI("wss://staging-gateway-vaas.gdatasecurity.de");
+        this.tokenEndpoint = tokenEndpoint;
+        this.url = url;
         this.PullDelayMs = 100;
     }
 }
