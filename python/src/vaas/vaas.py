@@ -182,7 +182,7 @@ class Vaas:
                 url=upload_uri,
                 data=buffer,
                 headers={"Authorization": token, "traceParent": trace_id},
-                timeout=60,
+                timeout=600,
             )
         except httpx.TimeoutException:
             self.tracing.trace_upload_timeout(len(buffer))
