@@ -24,7 +24,7 @@ use Psr\Log\LoggerInterface;
 
 class Vaas
 {
-    private const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+    private string $_vaasUrl = "wss://gateway-vaas.gdatasecurity.de";
     private string $_token;
     private string $_sessionId;
     private WebSocketClient $_webSocketClient;
@@ -51,7 +51,7 @@ class Vaas
         ?LoggerInterface $logger = null
     ) {
         $this->_token = $token;
-        $this->_webSocketClient = new WebSocketClient(self::VAAS_URL);
+        $this->_webSocketClient = new WebSocketClient($this->_vaasUrl);
         $this->_webSocketClient->ping();
 
         $this->_httpClient = new HttpClient();
@@ -80,27 +80,34 @@ class Vaas
      * @throws BadOpcodeException|TimeoutException
      */
     private function connectWithCredentials(
-        string $clientId, string $clientSecret,
+        string $clientId,
+        string $clientSecret,
+        string $tokenEndpoint,
+        string $vaasUrl,
         ?LoggerInterface $logger = null
     ) {
         $this->_httpClient = new HttpClient();
-        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret);
+        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
+        $this->$_vaasUrl = $vaasUrl;
         $this->connect($token, $logger);
     }
 
-    private function getTokenFromTokenEndpoint(string $clientId, string $clientSecret){
-        $tokenEndpoint = "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
+    private function getTokenFromTokenEndpoint(string $clientId, string $clientSecret, string $tokenEndpoint)
+    {
         $headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
-        
-        $response = $this->_httpClient->request('POST', $tokenEndpoint,
-        [
-            'form_params' => [
-                'client_id' => $clientId,
-                'client_secret' => $clientSecret,
-                'grant_type' => "client_credentials"
-            ],
-            'headers' => $headers
-        ]);
+
+        $response = $this->_httpClient->request(
+            'POST',
+            $tokenEndpoint,
+            [
+                'form_params' => [
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret,
+                    'grant_type' => "client_credentials"
+                ],
+                'headers' => $headers
+            ]
+        );
         if ($response->getStatusCode() != 200) {
             throw new AccessDeniedException($response->getReasonPhrase(), $response->getStatusCode());
         }
