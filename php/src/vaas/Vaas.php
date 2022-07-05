@@ -24,7 +24,7 @@ use Psr\Log\LoggerInterface;
 
 class Vaas
 {
-    private const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+    private string $_vaasUrl = "wss://gateway-vaas.gdatasecurity.de";
     private string $_token;
     private string $_sessionId;
     private WebSocketClient $_webSocketClient;
@@ -33,15 +33,25 @@ class Vaas
     private int $_uploadTimeoutInSeconds = 60;
     private LoggerInterface $_logger;
 
+    public function __construct()
+    {
+        $arguments = func_get_args();
+        if (sizeof($arguments) > 1 && gettype($arguments[0]) == "string" && gettype($arguments[1]) == "string") {
+            $this->connectWithCredentials(...$arguments);
+        } else {
+            $this->connect(...$arguments);
+        }
+    }
+
     /**
      * @throws BadOpcodeException|TimeoutException
      */
-    public function __construct(
+    private function connect(
         string $token,
         ?LoggerInterface $logger = null
     ) {
         $this->_token = $token;
-        $this->_webSocketClient = new WebSocketClient(self::VAAS_URL);
+        $this->_webSocketClient = new WebSocketClient($this->_vaasUrl);
         $this->_webSocketClient->ping();
 
         $this->_httpClient = new HttpClient();
@@ -63,8 +73,46 @@ class Vaas
         $this->_webSocketClient->send(json_encode($authRequest));
         $authResponse = $this->_waitForAuthResponse();
         $this->_logger->debug("Authenticated: " . json_encode($authResponse));
-
         $this->_sessionId = $authResponse->session_id;
+    }
+
+    /**
+     * @throws BadOpcodeException|TimeoutException
+     */
+    private function connectWithCredentials(
+        string $clientId,
+        string $clientSecret,
+        string $tokenEndpoint,
+        string $vaasUrl,
+        ?LoggerInterface $logger = null
+    ) {
+        $this->_httpClient = new HttpClient();
+        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
+        $this->$_vaasUrl = $vaasUrl;
+        $this->connect($token, $logger);
+    }
+
+    private function getTokenFromTokenEndpoint(string $clientId, string $clientSecret, string $tokenEndpoint)
+    {
+        $headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
+
+        $response = $this->_httpClient->request(
+            'POST',
+            $tokenEndpoint,
+            [
+                'form_params' => [
+                    'client_id' => $clientId,
+                    'client_secret' => $clientSecret,
+                    'grant_type' => "client_credentials"
+                ],
+                'headers' => $headers
+            ]
+        );
+        if ($response->getStatusCode() != 200) {
+            throw new AccessDeniedException($response->getReasonPhrase(), $response->getStatusCode());
+        }
+        $response_body = json_decode($response->getBody());
+        return $response_body->access_token;
     }
 
     /**

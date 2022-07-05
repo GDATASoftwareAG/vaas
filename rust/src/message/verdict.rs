@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 /// A `Verdict` is a response from the server that indicates whether the
-/// submission is `Clean`, `Malicious`, or `Unknown`.
+/// submission is `Clean`, `Malicious`, `Pup` or `Unknown`.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Verdict {
     /// No malicious content found.
@@ -15,6 +15,8 @@ pub enum Verdict {
     /// Malicious content found.
     Malicious,
     /// Unknown if clean or malicious.
+    Pup,
+    /// Potentially unwanted content found.
     Unknown {
         /// Pre-signed URL to submit a file for further analysis to get a `Clean` or `Malicious` verdict.
         upload_url: UploadUrl,
@@ -37,6 +39,7 @@ impl TryFrom<&VerdictResponse> for Verdict {
         match value.verdict.as_str() {
             "Clean" => Ok(Verdict::Clean),
             "Malicious" => Ok(Verdict::Malicious),
+            "Pup" => Ok(Verdict::Pup),
             "Unknown" => Ok(Verdict::Unknown {
                 upload_url: UploadUrl(value.url.to_owned().ok_or(NoUploadUrl)?),
             }),

@@ -23,6 +23,7 @@ type ResultChannelRx = Receiver<VResult<VerdictResponse>>;
 type ResultChannelTx = Sender<VResult<VerdictResponse>>;
 
 /// Active connection to the verdict server.
+#[derive(Debug)]
 pub struct Connection {
     ws_writer: WebSocketWriter,
     session_id: String,
@@ -74,7 +75,7 @@ impl Connection {
             ct,
         )
         .await?;
-        Ok(Verdict::try_from(&response)?)
+        Verdict::try_from(&response)
     }
 
     /// Request verdicts for a list of SHA256 file hashes.
@@ -137,11 +138,14 @@ impl Connection {
         let response = upload_file(file, upload_url, auth_token).await?;
 
         if response.status() != 200 {
-            return Err(Error::FailedUploadFile(response.status(), response.text().await.expect("failed to get payload")));
+            return Err(Error::FailedUploadFile(
+                response.status(),
+                response.text().await.expect("failed to get payload"),
+            ));
         }
 
         let resp = Self::wait_for_response(guid, result_channel, ct).await?;
-        Ok(Verdict::try_from(&resp)?)
+        Verdict::try_from(&resp)
     }
 
     /// Request a verdict for a list of files.

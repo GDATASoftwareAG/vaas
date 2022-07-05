@@ -1,5 +1,6 @@
 use futures::future::try_join_all;
 use rand::{distributions::Alphanumeric, Rng};
+use reqwest::Url;
 use std::convert::TryFrom;
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
@@ -7,6 +8,24 @@ async fn get_vaas() -> Connection {
     let token = dotenv::var("VAAS_TOKEN")
         .expect("No TOKEN environment variable set to be used in the integration tests!");
 
+    Vaas::builder(token)
+        .build()
+        .unwrap()
+        .connect()
+        .await
+        .unwrap()
+}
+
+async fn get_vaas_with_credentials() -> Connection {
+    let token_endpoint = dotenv::var("TOKEN_ENDPOINT")
+        .expect("No TOKEN_ENDPOINT environment variable set to be used in the integration tests!");
+    let client_id = dotenv::var("CLIENT_ID")
+        .expect("No CLIENT_ID environment variable set to be used in the integration tests!");
+    let client_secret = dotenv::var("CLIENT_SECRET")
+        .expect("No CLIENT_SECRET environment variable set to be used in the integration tests!");
+    let token = Vaas::get_token(client_id, client_secret, token_endpoint)
+        .await
+        .unwrap();
     Vaas::builder(token)
         .build()
         .unwrap()
@@ -296,4 +315,20 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
     assert_eq!(Verdict::Clean, verdicts[0]);
     assert_eq!(Verdict::Clean, verdicts[1]);
     assert_eq!(Verdict::Clean, verdicts[2]);
+}
+
+#[tokio::test]
+#[ignore = "Ignored until the open id API is available in production"]
+async fn from_file_single_clean_file_with_credentials() {
+    let clean: [u8; 8] = [0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a];
+    let tmp_file = std::env::temp_dir().join("clean2.txt");
+    std::fs::write(&tmp_file, clean).unwrap();
+
+    let vaas = get_vaas_with_credentials().await;
+    let ct = CancellationToken::from_seconds(10);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    std::fs::remove_file(&tmp_file).unwrap();
+    assert_eq!(Verdict::Clean, verdict.unwrap());
 }

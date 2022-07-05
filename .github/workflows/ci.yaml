@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - name: checkout
@@ -66,8 +68,11 @@ jobs:
     name: Build & Test TypeScript SDK
     runs-on: ubuntu-20.04
     env:
-      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+      TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 
     steps:
       - name: checkout
@@ -122,6 +127,10 @@ jobs:
         with:
           toolchain: stable
 
+      - uses: Swatinem/rust-cache@v1
+        with:
+          working-directory: rust
+
       - name: run tests
         run: cargo test
         working-directory: rust
@@ -146,7 +155,10 @@ jobs:
     name: Build & Test Python SDK
     runs-on: ubuntu-20.04
     env:
-      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+      TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
     steps:
       - uses: actions/checkout@v3
       - name: set up Python
@@ -185,3 +197,28 @@ jobs:
           packages_dir: python/dist
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
+
+  build-dotnet:
+    name: Build & Test C# SDK
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dotnet-version: ["6.0.x"]
+    env:
+      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v2
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - name: Install dependencies
+        run: dotnet restore
+        working-directory: dotnet/Vaas
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+        working-directory: dotnet/Vaas
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+        working-directory: dotnet/Vaas
