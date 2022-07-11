@@ -18,6 +18,8 @@ namespace Vaas;
 
 public class Vaas : IDisposable
 {
+    public const string DefaultUrl = "wss://gateway-vaas.gdatasecurity.de";
+
     private const int AuthenticationTimeoutInMs = 1000;
     
     private WebsocketClient? Client { get; set; }
@@ -28,12 +30,12 @@ public class Vaas : IDisposable
     private readonly TaskCompletionSource _authenticatedSource = new();
     private Task Authenticated => _authenticatedSource.Task;
 
-    private Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
+    private Uri _url = new(DefaultUrl);
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
     
 
-    public async Task Connect(string token)
+    public async Task Connect(string token, string url = DefaultUrl)
     {
         Client = new WebsocketClient(_url, WebsocketClientFactory);
         Client.ReconnectTimeout = null;
@@ -47,7 +49,7 @@ public class Vaas : IDisposable
         await Authenticate(token);
     }
 
-    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint, string url = "wss://staging-gateway-vaas.gdatasecurity.de")
+    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint, string url = DefaultUrl)
     {
         var response = await _httpClient.PostAsync(tokenEndpoint, new FormUrlEncodedContent(
             new List<KeyValuePair<string, string>>
@@ -60,9 +62,8 @@ public class Vaas : IDisposable
         var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(stringResponse);
         if (tokenResponse == null)
             throw new JsonException("Access token is null");
-        
-        _url = new Uri(url);
-        await Connect(tokenResponse.AccessToken);
+
+        await Connect(tokenResponse.AccessToken, url);
     }
 
     private void HandleResponseMessage(ResponseMessage msg)
