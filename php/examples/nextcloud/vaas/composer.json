@@ -1,0 +1,13 @@
+{
+    "name": "VaaS",
+    "description": "VaaS (Verdict-as-a-Service) is an web API, that scan files for malware and other threats.",
+    "type": "project",
+    "license": "AGPL",
+    "authors": [{
+        "name": "Kevin Heise"
+    }],
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "^5.4"
+    }
+}

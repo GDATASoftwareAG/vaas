@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<info xmlns:xsi= "http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>vaas</id>
+    <name>VaaS</name>
+    <summary>VaaS (Verdict-as-a-Service) is an web API, that scan files for malware and other threats.</summary>
+    <description><![CDATA[# Verdict-as-a-Service
+
+*Verdict-as-a-Service* (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware.]]></description>
+    <version>0.0.1</version>
+    <licence>agpl</licence>
+    <author mail="oem@gdata.de" homepage="https://github.com/GDATASoftwareAG/vaas">Kevin Heise</author>
+    <namespace>VaaS</namespace>
+    <category>security</category>
+    <bugs>https://github.com/GDATASoftwareAG/vaas/issues</bugs>
+    <dependencies>
+        <nextcloud min-version="15" max-version="15"/>
+    </dependencies>
+    <navigations>
+        <navigation>
+            <name>VaaS</name>
+            <route>vaas.page.index</route>
+        </navigation>
+    </navigations>
+</info>
