@@ -29,9 +29,9 @@ You need credentials to use the service in your application. If you are interest
 
 ## SDKs
 
-At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [C#](./dotnet/), [Python](./python/) and [PHP](./php/) are available.
+At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [.NET](./dotnet/), [Python](./python/) and [PHP](./php/) are available.
 
-|Functionality|Rust|Java|PHP|TypeScript|C#|Python|
+|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|
 |---|---|---|---|---|---|---|
 |Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
 |Check SHA256 list|&#9989;|&#10060;|&#10060;|&#9989;|&#9989;|&#10060;|
@@ -47,7 +47,7 @@ Documentation for the SDKs is available in the corresponding SDK folder.
 * [PHP SDK](./php/), [Examples](./php/examples)
 * [TypeScript SDK](./typescript/)
 * [Python SDK](./python/)
-* [C# SDK](./dotnet/)
+* [.NET SDK](./dotnet/)
 
 ### Planned SDKs
 
