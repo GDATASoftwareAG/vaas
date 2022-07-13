@@ -29,7 +29,7 @@ You need credentials to use the service in your application. If you are interest
 
 ## SDKs
 
-At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [.NET](./dotnet/), [Python](./python/) and [PHP](./php/) are available.
+At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [Microsoft .NET](./dotnet/), [Python](./python/) and [PHP](./php/) are available.
 
 |Functionality|Rust|Java|PHP|TypeScript|.NET|Python|
 |---|---|---|---|---|---|---|
