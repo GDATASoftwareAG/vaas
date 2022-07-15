@@ -14,7 +14,6 @@ my $token_endpoint = $credentials{'TOKEN_URL'};
 my $client_id = $credentials{'CLIENT_ID'};
 my $client_secret = $credentials{'CLIENT_SECRET'};
 
-
 my $vaas = new VaaS();
 
 $vaas->connect_with_credentials($client_id, $client_secret, $token_endpoint, $vaas_url);

@@ -30,6 +30,7 @@ sub new {
         'session_id'    => "",
         'got_verdict'   => 0,
         'verdict'       => "",
+        'token'         => "",
         'upload_token'  => "",
         'upload_url'    => ""
     };
@@ -47,6 +48,7 @@ sub connect_with_credentials {
     my $vaas_url = shift;
 
     my $access_token = $self->_authenticate($client_id, $client_secret, $token_endpoint);
+
     return $self->connect($access_token, $vaas_url);
 }
 
@@ -54,19 +56,25 @@ sub connect {
     my $self = shift;
     my $token = shift;
     my $url = shift;
-    
-    $url =~ m/(?<host>[^\/:]+)$/;
 
-    $self->{'tcp_socket'} = IO::Socket::SSL->new(
-        PeerAddr           => $+{host},
-        PeerPort           => "wss(443)",
-        Proto              => 'tcp',
-        SSL_startHandshake => 1,
-        Blocking           => 1
-    ) or die "Failed to connect to socket: $@";
+    $self->_create_websocket_connection($url, $token);
+
+    while ($self->{'authenticated'} == 3) {
+        $self->_receive_data();
+    }
+
+    return $self->{'authenticated'};
+}
+
+sub _create_websocket_connection{
+    my $self = shift;
+    my $url = shift;
+    my $token = shift;
+
+    $self->_create_tcp_socket($url);
 
     $self->{'ws_client'} = Protocol::WebSocket::Client->new(url => $url);
-
+    
     $self->{'ws_client'}->on(
         write => sub {
             my $ws_client = shift;
@@ -93,26 +101,27 @@ sub connect {
         read => sub {
             my $ws_client = shift;
             my ($buf) = @_;
-            if ( $self->{'debug'} == 1 ) {
-                print "Response @_\n";
-            }
+            
             $self->_response_handler(@_);
         }
     );
 
-    if ( $self->{'debug'} == 1 ) {
-        print "Connecting to VaaS-Server...\n";
-    }
-
     $self->{'ws_client'}->connect;
+}
 
-    while ( $self->{'authenticated'} == 3 ) {
-        my $recv_data;
-        sysread $self->{'tcp_socket'}, $recv_data, 16384;
-        $self->{'ws_client'}->read($recv_data);
-    }
+sub _create_tcp_socket{
+    my $self = shift;
+    my $url = shift;
 
-    return $self->{'authenticated'}
+    $url =~ m/(?<host>[^\/:]+)$/;
+
+    $self->{'tcp_socket'} =  IO::Socket::SSL->new(
+        PeerAddr           => $+{host},
+        PeerPort           => "wss(443)",
+        Proto              => 'tcp',
+        SSL_startHandshake => 1,
+        Blocking           => 1
+    ) or die "Failed to connect to socket: $@";
 }
 
 sub _authenticate {
@@ -139,11 +148,11 @@ sub get_verdict_by_sha256 {
     my $self   = shift;
     my $sha256 = $_[0];
 
-    if ( $self->{'authenticated'} == 1 ) {
+    if ($self->{'authenticated'} == 1) {
         my $verdict_request = $self->_create_verdict_request($sha256);
         $self->{'ws_client'}->write($verdict_request);
 
-        return $self->_get_verdict_from_websocket();
+        return $self->_get_verdict();
     } else {
         print "Error: not authenticated\n";
     }
@@ -153,7 +162,7 @@ sub get_verdict_by_file {
     my $self   = shift;
     my $path   = shift;
 
-    if ( $self->{'authenticated'} == 1 ) {
+    if ($self->{'authenticated'} == 1) {
         my $buffer = $self->_read_file($path);
 
         my $sha256 = sha256_hex($buffer);
@@ -161,7 +170,7 @@ sub get_verdict_by_file {
 
         if($verdict eq "Unknown"){
             $self->_upload($buffer);
-            $verdict = $self->_get_verdict_from_websocket();
+            $verdict = $self->_get_verdict();
         }
 
         return $verdict;
@@ -176,7 +185,7 @@ sub _upload {
     
     my $response = $self->{'http_client'}->put($self->{'upload_url'}, [Authorization=>$self->{'upload_token'}], $buffer);
 
-    if ( $self->{'debug'} == 1 ){
+    if ($self->{'debug'} == 1){
         if ($response->is_success) {
             print "Upload successful.\n";
         } else {
@@ -199,36 +208,35 @@ sub _read_file{
     return $buffer
 }
 
-sub _get_verdict_from_websocket{
+sub _get_verdict{
     my $self = shift;
     $self->{'got_verdict'} = 0;
 
-    while ( !$self->{'got_verdict'} ) {
-        my $recv_data;
-        sysread $self->{'tcp_socket'}, $recv_data, 16384;
-
-        $self->{'ws_client'}->read($recv_data);
-
+    while (!$self->{'got_verdict'}) {
+        $self->_receive_data();
     }
     $self->{'got_verdict'} = 0;
 
     return $self->{'verdict'};
 }
 
+sub _receive_data{
+    my $self = shift;
+
+    my $recv_data;
+    sysread $self->{'tcp_socket'}, $recv_data, 16384;
+    $self->{'ws_client'}->read($recv_data);
+}
+
 sub _create_verdict_request {
     my $self   = shift;
     my $sha256 = $_[0];
-    my $uuid   = create_uuid_string;
-
-    if ( $self->{'debug'} == 1 ) {
-        print "Requesting verdict...\n";
-    }
 
     my %request = (
         sha256     => $sha256,
         kind       => "VerdictRequest",
         session_id => $self->{'session_id'},
-        guid       => $uuid
+        guid       => create_uuid_string
     );
 
     my $request_json = encode_json \%request;
@@ -243,11 +251,11 @@ sub _response_handler {
     my $response_ref  = decode_json($response);
     my %response_hash = %$response_ref;
 
-    if ( $response_hash{'kind'} eq "AuthResponse" ) {
+    if ($response_hash{'kind'} eq "AuthResponse") {
         $self->{'authenticated'} = $response_hash{'success'};
         $self->{'session_id'}    = $response_hash{'session_id'};
     }
-    if ( $response_hash{'kind'} eq "VerdictResponse" ) {
+    if ($response_hash{'kind'} eq "VerdictResponse") {
         $self->{'got_verdict'} = 1;
         $self->{'verdict'}     = $response_hash{'verdict'};
 
