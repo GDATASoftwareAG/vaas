@@ -55,9 +55,10 @@ sub connect {
     my $token = shift;
     my $url = shift;
     
-    #TODO: PeerAddr not hardcoded!
+    $url =~ m/(?<host>[^\/:]+)$/;
+
     $self->{'tcp_socket'} = IO::Socket::SSL->new(
-        PeerAddr           => "staging-gateway-vaas.gdatasecurity.de",
+        PeerAddr           => $+{host},
         PeerPort           => "wss(443)",
         Proto              => 'tcp',
         SSL_startHandshake => 1,
