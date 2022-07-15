@@ -115,8 +115,11 @@ jobs:
     name: Build & Test Rust SDK
     runs-on: ubuntu-20.04
     env:
-      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+      TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 
     steps:
       - name: checkout
