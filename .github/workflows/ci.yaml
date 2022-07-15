@@ -187,3 +187,22 @@ jobs:
           packages_dir: python/dist
           user: __token__
           password: ${{ secrets.PYPI_TOKEN }}
+  
+  build-perl:
+    name: Build & Test Perl SDK
+    runs-on: ubuntu-20.04
+    env:
+      TOKEN_URL: ${{ secrets.TOKEN_URL}}
+      VAAS_URL: ${{ secrets.VAAS_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5'
+      - run: cpanm --installdeps .
+      - run: prove -lv t
+      - name: run tests
+        run: perl test.pl
+        working-directory: perl/tests
