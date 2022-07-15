@@ -5,6 +5,7 @@ Scan files for malware and other threats using the VaaS API in Java.
 ## Usage
 
 Get a verdict for a SHA256 of a file.
+
 ```java
 public class MainClass {
     public  static void main(String[] args) {
@@ -21,7 +22,7 @@ public class MainClass {
         // Disconnect from the VaaS endpoint
         vaas.disconnect();
 
-        // Print verdict result (CLEAN, UNKNOWN, MALICIOUS)
+        // Print verdict result (CLEAN, UNKNOWN, MALICIOUS, PUP)
         System.out.println("Verdict: " + verdict.getVerdict().name());
     }
 }
@@ -29,6 +30,7 @@ public class MainClass {
 ```
 
 Get a verdict for a file.
+
 ```java
 public class MainClass {
     public  static void main(String[] args) {
@@ -45,13 +47,14 @@ public class MainClass {
         // Disconnect from the VaaS endpoint
         vaas.disconnect();
 
-        // Print verdict result (CLEAN, UNKNOWN, MALICIOUS)
+        // Print verdict result (CLEAN, UNKNOWN, MALICIOUS, PUP)
         System.out.println("Verdict: " + verdict.getVerdict().name());
     }
 }
 ```
 
 ## Integration Test: Real API
+
 Currently, all test under the /src/test folder are integration tests against the real API. As they need credentials, (token). These values need to be provided as environment variables.
 
 Either export a VAAS_TOKEN environment variable or use the .env file. To use an .env file, just create it in the root directory (e.g. where the Readme.md resides) and add the variables with their values, e.g. KEY=VALUE.

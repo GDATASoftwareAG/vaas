@@ -134,7 +134,6 @@ public class RealApiIntegrationTests {
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
 
-    @Ignore
     @Test
     public void fromFileSingleCleanFileWithCredentials()
             throws Exception {

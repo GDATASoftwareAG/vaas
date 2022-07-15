@@ -7,6 +7,7 @@ import time
 import uuid
 import asyncio
 from asyncio import Future
+import aiofiles
 from jwt import JWT
 import httpx
 import websockets.client
@@ -14,6 +15,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
+TIMEOUT = 60
 
 
 class VaasTracing:
@@ -24,6 +26,19 @@ class VaasTracing:
 
     def trace_upload_request(self, elapsed_in_seconds, file_size):
         """Trace upload request in seconds"""
+
+    def trace_hash_request_timeout(self):
+        """Trace timeout while waiting for hash verdict"""
+
+    def trace_upload_result_timeout(self, file_size):
+        """Trace timeout while waiting for verdict for uploaded file"""
+
+    def trace_upload_timeout(self, file_size):
+        """Trace upload timeout"""
+
+
+class VaasTimeoutError(BaseException):
+    """Generic timeout"""
 
 
 class Vaas:
@@ -106,7 +121,13 @@ class Vaas:
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
-        result = await response_message
+
+        try:
+            result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
+        except asyncio.TimeoutError:
+            self.tracing.trace_hash_request_timeout()
+            raise VaasTimeoutError()
+
         self.tracing.trace_hash_request(time.time() - start)
         return result
 
@@ -127,7 +148,12 @@ class Vaas:
     async def for_buffer(self, buffer):
         """Returns the verdict for a buffer"""
         start = time.time()
-        sha256 = hashlib.sha256(buffer).hexdigest()
+
+        loop = asyncio.get_running_loop()
+        sha256 = await loop.run_in_executor(
+            None, lambda: hashlib.sha256(buffer).hexdigest()
+        )
+
         response = await self.__for_sha256(sha256)
         verdict = response.get("verdict")
 
@@ -137,22 +163,33 @@ class Vaas:
             url = response.get("url")
             response_message = self.__response_message_for_guid(guid)
             await self.__upload(token, url, buffer)
-            verdict = (await response_message).get("verdict")
+            try:
+                verdict = (
+                    await asyncio.wait_for(response_message, timeout=TIMEOUT)
+                ).get("verdict")
+            except asyncio.TimeoutError:
+                self.tracing.trace_upload_result_timeout(len(buffer))
+                raise VaasTimeoutError()
             self.tracing.trace_upload_request(time.time() - start, len(buffer))
 
         return verdict
 
     async def for_file(self, path):
         """Returns the verdict for a file"""
-        with open(path, "rb") as open_file:
-            return await self.for_buffer(open_file.read())
+        async with aiofiles.open(path, mode="rb") as open_file:
+            return await self.for_buffer(await open_file.read())
 
     async def __upload(self, token, upload_uri, buffer):
         jwt = JWT()
         decoded_token = jwt.decode(token, do_verify=False)
         trace_id = decoded_token.get("traceId")
-        await self.httpx_client.put(
-            url=upload_uri,
-            data=buffer,
-            headers={"Authorization": token, "traceParent": trace_id},
-        )
+        try:
+            await self.httpx_client.put(
+                url=upload_uri,
+                data=buffer,
+                headers={"Authorization": token, "traceParent": trace_id},
+                timeout=600,
+            )
+        except httpx.TimeoutException:
+            self.tracing.trace_upload_timeout(len(buffer))
+            raise VaasTimeoutError()

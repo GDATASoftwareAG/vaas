@@ -1,13 +1,23 @@
 use futures::future::try_join_all;
 use rand::{distributions::Alphanumeric, Rng};
+use reqwest::Url;
 use std::convert::TryFrom;
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
 async fn get_vaas() -> Connection {
-    let token = dotenv::var("VAAS_TOKEN")
-        .expect("No TOKEN environment variable set to be used in the integration tests!");
-
+    let token_url = dotenv::var("TOKEN_URL")
+        .expect("No TOKEN_URL environment variable set to be used in the integration tests!");
+    let client_id = dotenv::var("CLIENT_ID")
+        .expect("No CLIENT_ID environment variable set to be used in the integration tests!");
+    let client_secret = dotenv::var("CLIENT_SECRET")
+        .expect("No CLIENT_SECRET environment variable set to be used in the integration tests!");
+    let token = Vaas::get_token(client_id, client_secret, token_url)
+        .await
+        .unwrap();
+    let vaas_url = dotenv::var("VAAS_URL")
+        .expect("No VAAS_URL environment variable set to be used in the integration tests!");
     Vaas::builder(token)
+        .url(Url::parse(&vaas_url).unwrap())
         .build()
         .unwrap()
         .connect()
@@ -19,7 +29,7 @@ async fn get_vaas() -> Connection {
 async fn from_sha256_list_multiple_hashes() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
-    let expected_url = "https://upload-vaas.gdatasecurity.de/upload";
+    let expected_url = "https://staging-upload-vaas.gdatasecurity.de/upload";
     let sha256_malicious =
         Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
             .unwrap();
@@ -108,7 +118,7 @@ async fn from_sha256_multiple_clean_hash() {
 async fn from_sha256_multiple_unknown_hash() {
     let vaas = get_vaas().await;
     let t = CancellationToken::from_seconds(10);
-    let expected_url = "https://upload-vaas.gdatasecurity.de/upload";
+    let expected_url = "https://staging-upload-vaas.gdatasecurity.de/upload";
     let sha256_1 =
         Sha256::try_from("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
             .unwrap();
@@ -296,4 +306,19 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
     assert_eq!(Verdict::Clean, verdicts[0]);
     assert_eq!(Verdict::Clean, verdicts[1]);
     assert_eq!(Verdict::Clean, verdicts[2]);
+}
+
+#[tokio::test]
+async fn from_file_single_clean_file_with_credentials() {
+    let clean: [u8; 8] = [0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a];
+    let tmp_file = std::env::temp_dir().join("clean2.txt");
+    std::fs::write(&tmp_file, clean).unwrap();
+
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    std::fs::remove_file(&tmp_file).unwrap();
+    assert_eq!(Verdict::Clean, verdict.unwrap());
 }

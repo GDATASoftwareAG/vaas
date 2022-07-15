@@ -8,7 +8,13 @@ An SDK to easily utilize G DATA VaaS.
 
 ## What does the SDK do?
 
-It gives you as a developer a functions to talk to G DATA VaaS. It wraps away the complexity of the API into 4 basic functions.
+It gives you as a developer a functions to talk to G DATA VaaS. It wraps away the complexity of the API into 2 basic functions.
+
+### for_sha256
+If you calculate the sha256 for a file, you can request that sha256 against G DATA VaaS. It's the fastest way to get a verdict from our service.
+
+### for_file
+You can also ask for a file itself. You will still get the benefit of a fast verdict via Sha256 because the SDK will do that for you first. But additionally, if we don't know the file, the file will get uploaded and (automatically) analyzed by us.
 
 ## How to use
 
@@ -17,20 +23,20 @@ It gives you as a developer a functions to talk to G DATA VaaS. It wraps away th
 ```bash
 pip3 install gdata-vaas
 ```
+
+### Import
+```python
+from vaas import Vaas
+```
+
 ### Example: Request a verdict for file
 
 ```python
         async with Vaas() as vaas:
             await vaas.connect(TOKEN)
-            buffer = base64.b64decode(EICAR_BASE64)
-            verdict = await vaas.for_buffer(buffer)
+            path = "/path/to/file"
+            verdict = await vaas.for_file(path)
 ```
-
-### Request a verdict
-
-Interested in a token? [Contact us](#interested).
-
-
 
 ## <a name="interested"></a>I'm interested in VaaS
 
