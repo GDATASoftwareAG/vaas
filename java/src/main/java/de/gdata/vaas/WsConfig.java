@@ -30,7 +30,7 @@ public class WsConfig {
 
     public String getToken() throws URISyntaxException, IOException, InterruptedException {
         if (token == null) {
-            String uri = "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
+            String uri = "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
             Map<String, String> requestParams = new HashMap<>();
             requestParams.put("client_id", getClientID());
             requestParams.put("grant_type", "client_credentials");
@@ -82,8 +82,8 @@ public class WsConfig {
 
     public WsConfig(String clientId, String clientSecret) throws URISyntaxException {
         this(clientId, clientSecret, 
-            new URI("https://staging-keycloak-vaas.gdatasecurity.de"), 
-            new URI("wss://staging-gateway-vaas.gdatasecurity.de"));
+            new URI("https://keycloak-vaas.gdatasecurity.de"), 
+            new URI("wss://gateway-vaas.gdatasecurity.de"));
     }
 
     public WsConfig(String clientId, String clientSecret, URI tokenEndpoint, URI url) throws URISyntaxException {
