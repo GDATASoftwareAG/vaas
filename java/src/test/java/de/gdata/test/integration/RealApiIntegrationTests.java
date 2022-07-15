@@ -21,7 +21,7 @@ import static org.testng.AssertJUnit.assertEquals;
 public class RealApiIntegrationTests {
     @Test
     public void fromSha256SingleMaliciousHash() throws Exception {
-        var vaas = this.getVaas();
+        var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
         var cts = new CancellationTokenSource(Duration.ofSeconds(10));
 
@@ -33,7 +33,7 @@ public class RealApiIntegrationTests {
 
     @Test
     public void fromSha256MultipleMaliciousHash() throws Exception {
-        var vaas = this.getVaas();
+        var vaas = this.getVaasWithCredentials();
         var cts = new CancellationTokenSource(Duration.ofSeconds(10));
         var sha256_1 = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
         var sha256_2 = new Sha256("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
@@ -51,7 +51,7 @@ public class RealApiIntegrationTests {
 
     @Test
     public void fromSha256MultipleCleanHash() throws Exception {
-        var vaas = this.getVaas();
+        var vaas = this.getVaasWithCredentials();
         var cts = new CancellationTokenSource(Duration.ofSeconds(10));
         var sha256_1 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
         var sha256_2 = new Sha256("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391");
@@ -69,7 +69,7 @@ public class RealApiIntegrationTests {
 
     @Test
     public void fromSha256MultipleUnknownHash() throws Exception {
-        var vaas = this.getVaas();
+        var vaas = this.getVaasWithCredentials();
         var cts = new CancellationTokenSource(Duration.ofSeconds(10));
         var sha256_1 = new Sha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
         var sha256_2 = new Sha256("11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
@@ -91,7 +91,7 @@ public class RealApiIntegrationTests {
         var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
         Files.writeString(tmpFile, eicar);
-        var vaas = this.getVaas();
+        var vaas = this.getVaasWithCredentials();
         var cts = new CancellationTokenSource(Duration.ofSeconds(10));
 
         var verdict = vaas.forFile(tmpFile, cts);
@@ -107,7 +107,7 @@ public class RealApiIntegrationTests {
         byte[] clean = {0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a};
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
         Files.write(tmpFile, clean);
-        var vaas = this.getVaas();
+        var vaas = this.getVaasWithCredentials();
         var cts = new CancellationTokenSource(Duration.ofSeconds(10));
 
         var verdict = vaas.forFile(tmpFile, cts);
@@ -123,7 +123,7 @@ public class RealApiIntegrationTests {
         var unknown = getRandomString(50);
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "unknown.txt");
         Files.writeString(tmpFile, unknown);
-        var vaas = this.getVaas();
+        var vaas = this.getVaasWithCredentials();
         var cts = new CancellationTokenSource(Duration.ofMinutes(10));
 
         var verdict = vaas.forFile(tmpFile, cts);
@@ -160,19 +160,6 @@ public class RealApiIntegrationTests {
         }
 
         return sb.toString();
-    }
-
-    @org.jetbrains.annotations.NotNull
-    private Vaas getVaas() throws URISyntaxException, InterruptedException, IOException {
-        var dotenv = Dotenv.configure()
-            .ignoreIfMissing()
-            .load();
-        var token = dotenv.get("VAAS_TOKEN");
-
-        var config = new WsConfig(token);
-        var client = new Vaas(config);
-        client.connect();
-        return client;
     }
 
     private Vaas getVaasWithCredentials() throws URISyntaxException, InterruptedException, IOException {
