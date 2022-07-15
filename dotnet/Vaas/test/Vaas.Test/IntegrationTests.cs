@@ -100,7 +100,7 @@ public class IntegrationTests
             "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23",
             "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
         };
-        var vaas = await AuthenticateWithCredentials());
+        var vaas = await AuthenticateWithCredentials();
         var verdictList = await vaas.ForSha256ListAsync(myList);
         Assert.Equal(Verdict.Malicious, verdictList[0]);
         Assert.Equal(Verdict.Clean, verdictList[1]);
