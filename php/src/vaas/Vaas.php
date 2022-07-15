@@ -84,7 +84,7 @@ class Vaas
     ) {
         $this->_httpClient = new HttpClient();
         $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
-        $this->$_vaasUrl = $vaasUrl;
+        $this->_vaasUrl = $vaasUrl;
         $this->connect($token, $logger);
     }
 
