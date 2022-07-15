@@ -66,7 +66,7 @@ sub connect {
     return $self->{'authenticated'};
 }
 
-sub _create_websocket_connection{
+sub _create_websocket_connection {
     my $self = shift;
     my $url = shift;
     my $token = shift;
@@ -109,7 +109,7 @@ sub _create_websocket_connection{
     $self->{'ws_client'}->connect;
 }
 
-sub _create_tcp_socket{
+sub _create_tcp_socket {
     my $self = shift;
     my $url = shift;
 
@@ -195,7 +195,7 @@ sub _upload {
     }
 }
 
-sub _read_file{
+sub _read_file {
     my $self = shift;
     my $path = shift;
 
@@ -208,7 +208,7 @@ sub _read_file{
     return $buffer
 }
 
-sub _get_verdict{
+sub _get_verdict {
     my $self = shift;
     $self->{'got_verdict'} = 0;
 
@@ -220,7 +220,7 @@ sub _get_verdict{
     return $self->{'verdict'};
 }
 
-sub _receive_data{
+sub _receive_data {
     my $self = shift;
 
     my $recv_data;
@@ -259,7 +259,7 @@ sub _response_handler {
         $self->{'got_verdict'} = 1;
         $self->{'verdict'}     = $response_hash{'verdict'};
 
-        if($response_hash{'verdict'} eq "Unknown"){
+        if($response_hash{'verdict'} eq "Unknown") {
             $self->{'upload_token'} = $response_hash{'upload_token'};
             $self->{'upload_url'} = $response_hash{'url'};
         }

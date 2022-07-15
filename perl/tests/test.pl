@@ -62,7 +62,7 @@ ok(
 unlink(eicarfile);
 
 
-sub get_env{
+sub get_env {
     open my $env, '<', File::Spec->catdir( $FindBin::Bin, "../.env" )
     or die "Unable to open file:$!\n";
     my %credentials = map { split /=|\s+/; } <$env>;
@@ -72,7 +72,7 @@ sub get_env{
     return %credentials;
 }
 
-sub create_file{
+sub create_file {
     my $file = shift;
     my $buffer = shift;
 
