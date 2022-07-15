@@ -45,6 +45,8 @@ jobs:
     runs-on: ubuntu-20.04
     env:
       VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - name: checkout
@@ -209,6 +211,8 @@ jobs:
         dotnet-version: ["6.0.x"]
     env:
       VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@v3
