@@ -17,6 +17,8 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 URL = "wss://gateway-vaas.gdatasecurity.de"
 TIMEOUT = 60
 HTTP2 = False
+# TODO: Set to default of 5 once Vaas upload endpoint is 100% streaming
+UPLOAD_TIMEOUT = 600
 
 
 class VaasTracing:
@@ -189,7 +191,7 @@ class Vaas:
                 url=upload_uri,
                 data=buffer,
                 headers={"Authorization": token, "traceParent": trace_id},
-                timeout=600,
+                timeout=UPLOAD_TIMEOUT,
             )
         except httpx.TimeoutException:
             self.tracing.trace_upload_timeout(len(buffer))
