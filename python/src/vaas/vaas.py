@@ -16,6 +16,7 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
 TIMEOUT = 60
+HTTP2 = False
 
 
 class VaasTracing:
@@ -50,7 +51,7 @@ class Vaas:
         self.websocket = None
         self.session_id = None
         self.results = {}
-        self.httpx_client = httpx.AsyncClient(http2=True)
+        self.httpx_client = httpx.AsyncClient(http2=HTTP2)
 
     async def connect(self, token, url=URL, verify=True):
         """Connect to VaaS
@@ -71,7 +72,7 @@ class Vaas:
             self.__receive_loop()
         )  # fire and forget async_foo()
 
-        self.httpx_client = httpx.AsyncClient(http2=True, verify=verify)
+        self.httpx_client = httpx.AsyncClient(http2=HTTP2, verify=verify)
 
     async def connect_with_client_credentials(
         self, client_id, client_secret, token_endpoint, url=URL, verify=True
