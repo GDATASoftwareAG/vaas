@@ -14,7 +14,6 @@ jobs:
     name: Build & Test Java SDK
     runs-on: ubuntu-20.04
     env:
-      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
@@ -44,7 +43,8 @@ jobs:
     name: Build & Test PHP SDK
     runs-on: ubuntu-20.04
     env:
-      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - name: checkout
@@ -71,8 +71,8 @@ jobs:
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
-      TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+      VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+      TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 
     steps:
       - name: checkout
@@ -118,8 +118,8 @@ jobs:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
-      TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+      VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+      TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 
     steps:
       - name: checkout
@@ -160,8 +160,8 @@ jobs:
     env:
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
-      TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+      VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+      TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
     steps:
       - uses: actions/checkout@v3
       - name: set up Python
@@ -208,7 +208,8 @@ jobs:
       matrix:
         dotnet-version: ["6.0.x"]
     env:
-      VAAS_TOKEN: ${{ secrets.VAAS_TOKEN }}
+      CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@v3
