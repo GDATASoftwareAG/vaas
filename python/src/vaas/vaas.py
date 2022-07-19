@@ -19,6 +19,8 @@ TIMEOUT = 60
 HTTP2 = False
 # TODO: Set to default of 5 once Vaas upload endpoint is 100% streaming
 UPLOAD_TIMEOUT = 600
+USE_CACHE = True
+USE_SHED = True
 
 
 class VaasTracing:
@@ -121,6 +123,8 @@ class Vaas:
             "sha256": sha256,
             "session_id": self.session_id,
             "guid": guid,
+            "use_shed": USE_SHED,
+            "use_cache": USE_CACHE,
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
