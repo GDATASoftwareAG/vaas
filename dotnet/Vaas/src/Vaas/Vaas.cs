@@ -47,7 +47,7 @@ public class Vaas : IDisposable
         await Authenticate(token);
     }
 
-    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint, string url = "wss://staging-gateway-vaas.gdatasecurity.de")
+    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint, string url = "wss://gateway-vaas.gdatasecurity.de")
     {
         var response = await _httpClient.PostAsync(tokenEndpoint, new FormUrlEncodedContent(
             new List<KeyValuePair<string, string>>
