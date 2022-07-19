@@ -29,7 +29,7 @@ async fn get_vaas() -> Connection {
 async fn from_sha256_list_multiple_hashes() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
-    let expected_url = "https://staging-upload-vaas.gdatasecurity.de/upload";
+    let expected_url = "https://upload-vaas.gdatasecurity.de/upload";
     let sha256_malicious =
         Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
             .unwrap();
@@ -118,7 +118,7 @@ async fn from_sha256_multiple_clean_hash() {
 async fn from_sha256_multiple_unknown_hash() {
     let vaas = get_vaas().await;
     let t = CancellationToken::from_seconds(10);
-    let expected_url = "https://staging-upload-vaas.gdatasecurity.de/upload";
+    let expected_url = "https://upload-vaas.gdatasecurity.de/upload";
     let sha256_1 =
         Sha256::try_from("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
             .unwrap();

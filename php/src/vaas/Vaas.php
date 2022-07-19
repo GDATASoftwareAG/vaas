@@ -36,11 +36,7 @@ class Vaas
     public function __construct()
     {
         $arguments = func_get_args();
-        if (sizeof($arguments) > 1 && gettype($arguments[0]) == "string" && gettype($arguments[1]) == "string") {
-            $this->connectWithCredentials(...$arguments);
-        } else {
-            $this->connect(...$arguments);
-        }
+        $this->connectWithCredentials(...$arguments);
     }
 
     /**
@@ -88,7 +84,7 @@ class Vaas
     ) {
         $this->_httpClient = new HttpClient();
         $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
-        $this->$_vaasUrl = $vaasUrl;
+        $this->_vaasUrl = $vaasUrl;
         $this->connect($token, $logger);
     }
 

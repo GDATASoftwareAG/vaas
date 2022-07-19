@@ -16,6 +16,11 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
 TIMEOUT = 60
+HTTP2 = False
+# TODO: Set to default of 5 once Vaas upload endpoint is 100% streaming
+UPLOAD_TIMEOUT = 600
+USE_CACHE = True
+USE_SHED = True
 
 
 class VaasTracing:
@@ -50,7 +55,7 @@ class Vaas:
         self.websocket = None
         self.session_id = None
         self.results = {}
-        self.httpx_client = httpx.AsyncClient(http2=True)
+        self.httpx_client = httpx.AsyncClient(http2=HTTP2)
 
     async def connect(self, token, url=URL, verify=True):
         """Connect to VaaS
@@ -71,7 +76,7 @@ class Vaas:
             self.__receive_loop()
         )  # fire and forget async_foo()
 
-        self.httpx_client = httpx.AsyncClient(http2=True, verify=verify)
+        self.httpx_client = httpx.AsyncClient(http2=HTTP2, verify=verify)
 
     async def connect_with_client_credentials(
         self, client_id, client_secret, token_endpoint, url=URL, verify=True
@@ -118,6 +123,8 @@ class Vaas:
             "sha256": sha256,
             "session_id": self.session_id,
             "guid": guid,
+            "use_shed": USE_SHED,
+            "use_cache": USE_CACHE,
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
@@ -188,7 +195,7 @@ class Vaas:
                 url=upload_uri,
                 data=buffer,
                 headers={"Authorization": token, "traceParent": trace_id},
-                timeout=600,
+                timeout=UPLOAD_TIMEOUT,
             )
         except httpx.TimeoutException:
             self.tracing.trace_upload_timeout(len(buffer))
