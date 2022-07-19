@@ -1,7 +1,7 @@
 use slint::Model;
-use std::{env, path::PathBuf, rc::Rc, time::Duration};
+use std::{env, path::PathBuf, rc::Rc};
 use structopt::StructOpt;
-use vaas::{CancellationTokenSource, Vaas};
+use vaas::{CancellationToken, Vaas};
 slint::include_modules!();
 
 #[tokio::main]
@@ -27,8 +27,7 @@ async fn main() {
                     .await
                     .expect("Failed to connect to VaaS.");
 
-                let cts = CancellationTokenSource::new();
-                cts.cancel_after(Duration::from_secs(60 * 5));
+                let cts = CancellationToken::from_minutes(1);
 
                 let files = file_items_clone
                     .iter()

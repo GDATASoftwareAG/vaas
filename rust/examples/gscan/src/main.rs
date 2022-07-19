@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 use std::{path::PathBuf, str::FromStr};
-use vaas::{error::VResult, message::Verdict, CancellationTokenSource, Vaas};
+use vaas::{error::VResult, message::Verdict, CancellationToken, Vaas};
 
 #[tokio::main]
 async fn main() -> VResult<()> {
@@ -70,9 +70,7 @@ async fn scan_files<'a>(
         .connect()
         .await?;
 
-    let ct = CancellationTokenSource::new();
-    ct.cancel_after(std::time::Duration::from_secs(10 * 60));
-
+    let ct = CancellationToken::from_minutes(1);
     let verdicts = vaas.for_file_list(files, &ct).await;
     let results = files.iter().zip(verdicts).collect();
 
