@@ -7,4 +7,4 @@ __all__ = ["Vaas", "VaasTracing", "VaasTimeoutError"]
 
 __author__ = "G DATA CyberDefense AG <oem@gdata.de>"
 
-from .vaas import Vaas, VaasTracing, VaasTimeoutError
+from .vaas import Vaas, VaasTracing, VaasTimeoutError, VaasOptions

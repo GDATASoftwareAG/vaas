@@ -1,6 +1,7 @@
 """Verdict-as-a-Service
 
 :mod:`vaas` is a Python library for the VaaS-API."""
+import os
 import hashlib
 import json
 import time
@@ -19,8 +20,6 @@ TIMEOUT = 60
 HTTP2 = False
 # TODO: Set to default of 5 once Vaas upload endpoint is 100% streaming
 UPLOAD_TIMEOUT = 600
-USE_CACHE = True
-USE_SHED = True
 
 
 class VaasTracing:
@@ -46,16 +45,40 @@ class VaasTimeoutError(BaseException):
     """Generic timeout"""
 
 
+class VaasOptions:
+    """Configure behaviour of VaaS"""
+
+    def __init__(self):
+        self.use_cache = True
+        self.use_shed = True
+
+
+def hash_file(filename):
+    """Return sha256 hash for file"""
+    BLOCK_SIZE = 65536
+
+    h_sha256 = hashlib.sha256()
+
+    with open(filename, "rb") as file:
+        fb = file.read(BLOCK_SIZE)
+        while len(fb) > 0:
+            h_sha256.update(fb)
+            fb = file.read(BLOCK_SIZE)
+
+    return h_sha256.hexdigest()
+
+
 class Vaas:
     """Verdict-as-a-Service client"""
 
-    def __init__(self, tracing=VaasTracing()):
+    def __init__(self, tracing=VaasTracing(), options=VaasOptions()):
         self.tracing = tracing
         self.loop_result = None
         self.websocket = None
         self.session_id = None
         self.results = {}
         self.httpx_client = httpx.AsyncClient(http2=HTTP2)
+        self.options = options
 
     async def connect(self, token, url=URL, verify=True):
         """Connect to VaaS
@@ -123,8 +146,8 @@ class Vaas:
             "sha256": sha256,
             "session_id": self.session_id,
             "guid": guid,
-            "use_shed": USE_SHED,
-            "use_cache": USE_CACHE,
+            "use_shed": self.options.use_shed,
+            "use_cache": self.options.use_cache,
         }
         response_message = self.__response_message_for_guid(guid)
         await self.websocket.send(json.dumps(verdict_request))
@@ -169,7 +192,7 @@ class Vaas:
             token = response.get("upload_token")
             url = response.get("url")
             response_message = self.__response_message_for_guid(guid)
-            await self.__upload(token, url, buffer)
+            await self.__upload(token, url, buffer, len(buffer))
             try:
                 verdict = (
                     await asyncio.wait_for(response_message, timeout=TIMEOUT)
@@ -186,17 +209,50 @@ class Vaas:
         async with aiofiles.open(path, mode="rb") as open_file:
             return await self.for_buffer(await open_file.read())
 
-    async def __upload(self, token, upload_uri, buffer):
+        start = time.time()
+
+        loop = asyncio.get_running_loop()
+        sha256 = await loop.run_in_executor(None, lambda: hash_file(path))
+
+        response = await self.__for_sha256(sha256)
+        verdict = response.get("verdict")
+
+        if verdict == "Unknown":
+            guid = response.get("guid")
+            token = response.get("upload_token")
+            url = response.get("url")
+            response_message = self.__response_message_for_guid(guid)
+
+            content_length = os.path.getsize(path)
+            async with aiofiles.open(path, mode="rb") as file:
+                await self.__upload(token, url, file, content_length)
+
+            try:
+                verdict = (
+                    await asyncio.wait_for(response_message, timeout=TIMEOUT)
+                ).get("verdict")
+            except asyncio.TimeoutError:
+                self.tracing.trace_upload_result_timeout(content_length)
+                raise VaasTimeoutError()
+            self.tracing.trace_upload_request(time.time() - start, content_length)
+
+        return verdict
+
+    async def __upload(self, token, upload_uri, buffer_or_file, content_length):
         jwt = JWT()
         decoded_token = jwt.decode(token, do_verify=False)
         trace_id = decoded_token.get("traceId")
         try:
             await self.httpx_client.put(
                 url=upload_uri,
-                data=buffer,
-                headers={"Authorization": token, "traceParent": trace_id},
+                content=buffer_or_file,
+                headers={
+                    "Authorization": token,
+                    "traceParent": trace_id,
+                    "Content-Length": str(content_length),
+                },
                 timeout=UPLOAD_TIMEOUT,
             )
         except httpx.TimeoutException:
-            self.tracing.trace_upload_timeout(len(buffer))
+            self.tracing.trace_upload_timeout(content_length)
             raise VaasTimeoutError()
