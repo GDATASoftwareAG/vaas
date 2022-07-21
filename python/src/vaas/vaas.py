@@ -6,8 +6,11 @@ import hashlib
 import json
 import time
 import uuid
+from typing import Optional
 import asyncio
 from asyncio import Future
+import ssl
+from urllib.parse import urlparse
 import aiofiles
 from jwt import JWT
 import httpx
@@ -55,17 +58,38 @@ class VaasOptions:
 
 def hash_file(filename):
     """Return sha256 hash for file"""
-    BLOCK_SIZE = 65536
+    block_size = 65536
 
     h_sha256 = hashlib.sha256()
 
     with open(filename, "rb") as file:
-        fb = file.read(BLOCK_SIZE)
-        while len(fb) > 0:
-            h_sha256.update(fb)
-            fb = file.read(BLOCK_SIZE)
+        buffer = file.read(block_size)
+        while len(buffer) > 0:
+            h_sha256.update(buffer)
+            buffer = file.read(block_size)
 
     return h_sha256.hexdigest()
+
+
+def is_ssl_url(url):
+    """check if url is wss"""
+    parsed_url = urlparse(url)
+    return parsed_url.scheme == "wss"
+
+
+def get_ssl_context(url, verify):
+    """return ssl context for websockets"""
+    if not is_ssl_url(url):
+        return None
+    if verify:
+        return ssl.create_default_context()
+    return ssl._create_unverified_context()  # pylint: disable=W0212
+
+
+def connect_websocket(url, verify):
+    """returns a websocket instance"""
+    ssl_context = get_ssl_context(url, verify)
+    return websockets.client.connect(url, ssl=ssl_context)
 
 
 class Vaas:
@@ -77,7 +101,7 @@ class Vaas:
         self.websocket = None
         self.session_id = None
         self.results = {}
-        self.httpx_client = httpx.AsyncClient(http2=HTTP2)
+        self.httpx_client: Optional[httpx.AsyncClient] = None
         self.options = options
 
     async def connect(self, token, url=URL, verify=True):
@@ -85,7 +109,7 @@ class Vaas:
 
         token -- OpenID Connect token signed by a trusted identity provider
         """
-        self.websocket = await websockets.client.connect(url)
+        self.websocket = await connect_websocket(url, verify)
         authenticate_request = {"kind": "AuthRequest", "token": token}
 
         await self.websocket.send(json.dumps(authenticate_request))
