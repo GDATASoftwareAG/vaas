@@ -12,6 +12,7 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TOKEN_URL = os.getenv("TOKEN_URL")
 VAAS_URL = os.getenv("VAAS_URL")
+SSL_VERIFICATION = os.getenv("SSL_VERIFICATION", "True").lower() in ["true", "1"]
 
 EICAR_BASE64 = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo="
 
@@ -19,9 +20,16 @@ EICAR_BASE64 = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElW
 async def create_and_connect(tracing=VaasTracing(), options=VaasOptions()):
     vaas = Vaas(tracing=tracing, options=options)
     await vaas.connect_with_client_credentials(
-        CLIENT_ID, CLIENT_SECRET, TOKEN_URL, VAAS_URL
+        CLIENT_ID, CLIENT_SECRET, TOKEN_URL, VAAS_URL, SSL_VERIFICATION
     )
     return vaas
+
+
+def get_disabled_options():
+    options = VaasOptions()
+    options.use_cache = False
+    options.use_shed = False
+    return options
 
 
 class VaasTest(unittest.IsolatedAsyncioTestCase):
@@ -68,6 +76,7 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_file("eicar.txt")
             self.assertEqual(verdict, "Malicious")
 
+    # TODO: Check with tempo
     async def test_for_file_returns_verdict_if_no_cache_or_shed(self):
         options = VaasOptions()
         options.use_cache = False
@@ -77,6 +86,20 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             with open("eicar.txt", "wb") as f:
                 f.write(base64.b64decode(EICAR_BASE64))
             verdict = await vaas.for_file("eicar.txt")
+            self.assertEqual(verdict, "Malicious")
+
+    # TODO: test_for_url_returns_malicious_for_eicar
+    # for_url(url)
+    #   httpx.get with stream
+    #   httpx.upload with stream (reuse stuff from for_file)
+    # https://secure.eicar.org/eicarcom2.zip
+
+    # TODO: Release vaas 0.3.0
+
+    async def test_for_url_returns_malicious_for_eicar(self):
+        options = get_disabled_options()
+        async with await create_and_connect(options=options) as vaas:
+            verdict = await vaas.for_url("https://secure.eicar.org/eicarcom2.zip")
             self.assertEqual(verdict, "Malicious")
 
     async def test_for_buffer_traces(self):
