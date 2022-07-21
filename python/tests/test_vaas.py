@@ -76,7 +76,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_file("eicar.txt")
             self.assertEqual(verdict, "Malicious")
 
-    # TODO: Check with tempo
     async def test_for_file_returns_verdict_if_no_cache_or_shed(self):
         options = VaasOptions()
         options.use_cache = False
@@ -87,14 +86,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
                 f.write(base64.b64decode(EICAR_BASE64))
             verdict = await vaas.for_file("eicar.txt")
             self.assertEqual(verdict, "Malicious")
-
-    # TODO: test_for_url_returns_malicious_for_eicar
-    # for_url(url)
-    #   httpx.get with stream
-    #   httpx.upload with stream (reuse stuff from for_file)
-    # https://secure.eicar.org/eicarcom2.zip
-
-    # TODO: Release vaas 0.3.0
 
     async def test_for_url_returns_malicious_for_eicar(self):
         options = get_disabled_options()
