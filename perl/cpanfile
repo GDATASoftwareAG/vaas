@@ -1,0 +1,11 @@
+requires 'JSON', '4.07';
+requires 'IO::Async::Loop';
+requires 'IO::Socket::SSL';
+requires 'Protocol::WebSocket::Client';
+requires 'UUID4::Tiny';
+requires 'lib';
+requires 'File::Spec';
+requires 'FindBin';
+requires 'Furl';
+requires 'Test::Simple';
+requires 'Digest::SHA';
