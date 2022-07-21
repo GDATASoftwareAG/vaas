@@ -280,3 +280,9 @@ class Vaas:
         except httpx.TimeoutException:
             self.tracing.trace_upload_timeout(content_length)
             raise VaasTimeoutError()
+
+    async def for_url(self, url):
+        """Returns the verdict for a file from an url"""
+        response = await self.httpx_client.get(url)
+        buffer = response.content
+        return await self.for_buffer(buffer)
