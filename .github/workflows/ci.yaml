@@ -151,7 +151,7 @@ jobs:
 
       - name: publish crates.io package
         if: startsWith(github.ref, 'refs/tags/rs')
-        run: cargo publish
+        run: cargo publish --allow-dirty
         working-directory: rust
 
   build-python:
