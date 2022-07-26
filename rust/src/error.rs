@@ -12,6 +12,7 @@ use websockets::WebSocketError;
 pub type VResult<T> = Result<T, Error>;
 
 /// `Error` is the only error type in the `vaas` API.
+#[non_exhaustive]
 #[derive(Error, Debug, Clone)]
 pub enum Error {
     /// A websocket error occurred.
