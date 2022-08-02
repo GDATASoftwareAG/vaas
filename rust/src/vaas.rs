@@ -19,14 +19,14 @@ pub struct Vaas {
 impl Vaas {
     /// Get an OpenID Connect token to use for authentication.
     pub async fn get_token(
-        client_id: String,
-        client_secret: String,
-        token_endpoint: String,
+        client_id: &str,
+        client_secret: &str,
+        token_endpoint: Url,
     ) -> VResult<String> {
         let params = [
             ("client_id", client_id),
             ("client_secret", client_secret),
-            ("grant_type", "client_credentials".to_string()),
+            ("grant_type", "client_credentials"),
         ];
         let client = reqwest::Client::new();
         let token_response = client.post(token_endpoint).form(&params).send().await?;
