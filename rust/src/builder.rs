@@ -53,6 +53,19 @@ impl Builder {
         }
     }
 
+    /// Set the channel capacity of the internal results channel.
+    /// Increase the value if a `ResultChannelError("channel lagged by X")` is received.
+    /// Defaults to 100.
+    pub fn channel_capacity(self, capacity: usize) -> Self {
+        Self {
+            options: Options {
+                channel_capacity: capacity,
+                ..self.options
+            },
+            ..self
+        }
+    }
+
     /// Change the URL of the VaaS API.
     pub fn url(self, url: Url) -> Self {
         Self { url, ..self }
@@ -75,6 +88,7 @@ impl Default for Builder {
             options: Options {
                 keep_alive_delay_ms: 10_000,
                 keep_alive: true,
+                channel_capacity: 100,
             },
             token: String::new(),
             url: Url::from_str("wss://gateway-vaas.gdatasecurity.de").unwrap(),
