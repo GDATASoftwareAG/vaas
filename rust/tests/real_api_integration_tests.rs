@@ -5,17 +5,19 @@ use std::convert::TryFrom;
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
 async fn get_vaas() -> Connection {
-    let token_url = dotenv::var("TOKEN_URL")
-        .expect("No TOKEN_URL environment variable set to be used in the integration tests!");
+    let token_url: Url = dotenv::var("TOKEN_URL")
+        .expect("No TOKEN_URL environment variable set to be used in the integration tests")
+        .parse()
+        .expect("Failed to parse TOKEN_URL environment variable");
     let client_id = dotenv::var("CLIENT_ID")
-        .expect("No CLIENT_ID environment variable set to be used in the integration tests!");
+        .expect("No CLIENT_ID environment variable set to be used in the integration tests");
     let client_secret = dotenv::var("CLIENT_SECRET")
-        .expect("No CLIENT_SECRET environment variable set to be used in the integration tests!");
-    let token = Vaas::get_token(client_id, client_secret, token_url)
+        .expect("No CLIENT_SECRET environment variable set to be used in the integration tests");
+    let token = Vaas::get_token(&client_id, &client_secret, token_url)
         .await
         .unwrap();
     let vaas_url = dotenv::var("VAAS_URL")
-        .expect("No VAAS_URL environment variable set to be used in the integration tests!");
+        .expect("No VAAS_URL environment variable set to be used in the integration tests");
     Vaas::builder(token)
         .url(Url::parse(&vaas_url).unwrap())
         .build()
