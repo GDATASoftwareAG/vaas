@@ -40,7 +40,7 @@ impl Connection {
         options: Options,
     ) -> Self {
         let ws_writer = Arc::new(Mutex::new(ws_writer));
-        let (tx, _rx) = tokio::sync::broadcast::channel(5);
+        let (tx, _rx) = tokio::sync::broadcast::channel(options.channel_capacity);
 
         let reader_loop = Connection::start_reader_loop(ws_reader, tx.clone()).await;
         let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, tx.clone()).await;
