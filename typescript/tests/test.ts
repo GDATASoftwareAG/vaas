@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { describe } from "mocha";
-import * as sha256 from "fast-sha256";
 import * as dotenv from "dotenv";
 import Vaas from "../src/vaas";
 import * as randomBytes from "random-bytes";
@@ -104,21 +103,6 @@ describe("Test verdict requests", function () {
     expect(verdict).to.equal("Clean");
   });
 
-  it("test if there is a mismatch between submitted hash for file and uploaded file", async () => {
-    const randomFileContent = await randomBytes.sync(50);
-    const sample = Vaas.toHexString(sha256.hash(randomFileContent));
-    await expect(
-      (async () => {
-        const vaas = await createVaas();
-        const verdictResponse = await vaas.forRequest(sample);
-        const otherRandomFile = await randomBytes.sync(40);
-        await vaas.upload(verdictResponse, otherRandomFile);
-      })()
-    ).to.be.rejectedWith(
-      "Upload failed with 400 - Error Bad request: Wrong file"
-    );
-  });
-
   it("if a list of SHA256 is uploaded, they are detected", async () => {
     const vaas = await createVaas();
     const verdicts = await vaas.forSha256List([
@@ -162,4 +146,13 @@ describe("Test verdict requests", function () {
     verdict = await vaas.forSha256(guid);
     expect(verdict).to.equal("Clean");
   }).timeout(45000);
+
+  // TODO: Enable once Pup is in production
+  xit("returns Pup for AMTSO pup sample", async () => {
+    const vaas = await createVaas();
+    const guid =
+      "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
+    let verdict = await vaas.forSha256(guid);
+    expect(verdict).to.equal("Pup");
+  });
 });
