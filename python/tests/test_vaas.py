@@ -57,6 +57,14 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(verdict, "Malicious")
 
+    @unittest.skip("not ready for production")
+    async def test_for_sha256_returns_pup_for_amtso(self):
+        async with await create_and_connect() as vaas:
+            verdict = await vaas.for_sha256(
+                "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
+            )
+            self.assertEqual(verdict, "Pup")
+
     async def test_for_buffer_returns_malicious_for_eicar(self):
         async with await create_and_connect() as vaas:
             buffer = base64.b64decode(EICAR_BASE64)
