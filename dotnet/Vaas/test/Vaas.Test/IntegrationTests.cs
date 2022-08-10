@@ -104,10 +104,10 @@ public class IntegrationTests
     {
         DotNetEnv.Env.TraversePath().Load();
         var url = DotNetEnv.Env.GetString(
-            "ENDPOINT",
+            "VAAS_URL",
             "wss://gateway-vaas.gdatasecurity.de");
         var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
-            "TOKEN_ENDPOINT",
+            "TOKEN_URL",
             "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"));
         var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
         var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
