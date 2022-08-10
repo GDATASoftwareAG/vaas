@@ -178,9 +178,9 @@ class Vaas:
 
         try:
             result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as ex:
             self.tracing.trace_hash_request_timeout()
-            raise VaasTimeoutError()
+            raise VaasTimeoutError() from ex
 
         self.tracing.trace_hash_request(time.time() - start)
         return result
@@ -221,9 +221,9 @@ class Vaas:
                 verdict = (
                     await asyncio.wait_for(response_message, timeout=TIMEOUT)
                 ).get("verdict")
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError as ex:
                 self.tracing.trace_upload_result_timeout(len(buffer))
-                raise VaasTimeoutError()
+                raise VaasTimeoutError() from ex
             self.tracing.trace_upload_request(time.time() - start, len(buffer))
 
         return verdict
@@ -255,9 +255,9 @@ class Vaas:
                 verdict = (
                     await asyncio.wait_for(response_message, timeout=TIMEOUT)
                 ).get("verdict")
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError as ex:
                 self.tracing.trace_upload_result_timeout(content_length)
-                raise VaasTimeoutError()
+                raise VaasTimeoutError() from ex
             self.tracing.trace_upload_request(time.time() - start, content_length)
 
         return verdict
@@ -277,9 +277,9 @@ class Vaas:
                 },
                 timeout=UPLOAD_TIMEOUT,
             )
-        except httpx.TimeoutException:
+        except httpx.TimeoutException as ex:
             self.tracing.trace_upload_timeout(content_length)
-            raise VaasTimeoutError()
+            raise VaasTimeoutError() from ex
 
     async def for_url(self, url):
         """Returns the verdict for a file from an url"""
