@@ -1,7 +1,8 @@
 <?php
+
 namespace VaasTesting;
 
-require_once "./vendor/autoload.php";
+require_once __DIR__ . "/vendor/autoload.php";
 
 use PHPUnit\Framework\TestCase;
 use VaasSdk\Sha256;
@@ -11,7 +12,7 @@ use VaasSdk\Exceptions\FileDoesNotExistException;
 final class Sha256Test extends TestCase
 {
     const VALIDSHA256 = "df6f184e0235c88868668c3f9434528a59377cedb18e305abdb1adea19e93be1";
-    const VALIDFILE   = "./testfile";
+    const VALIDFILE   = __DIR__ . "/testfile";
 
     public function testIsValidGetsValidSha256ReturnsTrue(): void
     {
@@ -26,7 +27,7 @@ final class Sha256Test extends TestCase
     public function testTryFromStringGetsValidSha256ReturnsCorrectSha256(): void
     {
         $calculatedSha256 = Sha256::TryFromString(Sha256Test::VALIDSHA256);
-        $this->assertEquals(Sha256Test::VALIDSHA256, $calculatedSha256); 
+        $this->assertEquals(Sha256Test::VALIDSHA256, $calculatedSha256);
     }
 
     public function testTryFromStringGetsInvalidSha256ThrowsInvalidSha256Exception(): void
@@ -38,7 +39,7 @@ final class Sha256Test extends TestCase
     public function testTryFromFileGetsValidSha256ReturnsTrue(): void
     {
         $calculatedSha256 = Sha256::TryFromFile(Sha256Test::VALIDFILE);
-        $this->assertEquals(Sha256Test::VALIDSHA256, $calculatedSha256); 
+        $this->assertEquals(Sha256Test::VALIDSHA256, $calculatedSha256);
     }
 
     public function testTryFromFileGetsInvalidPathThrowsFileDoesNotExistException(): void
