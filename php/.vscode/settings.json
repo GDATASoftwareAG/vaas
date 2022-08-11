@@ -1,0 +1,4 @@
+{
+    "testExplorer.useNativeTesting": true,
+    "phpunit.phpunit": "/workspaces/vaas/php/tests/vaas/vendor/bin/phpunit",
+}
