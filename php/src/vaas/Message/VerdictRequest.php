@@ -7,7 +7,7 @@ use Ramsey\Uuid\Rfc4122\UuidV4;
 class VerdictRequest
 {
     public string $sha256;
-    public string $kuid;
+    public string $guid;
     public Kind $kind;
     public string $session_id;
 

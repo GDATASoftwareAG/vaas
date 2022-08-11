@@ -285,6 +285,8 @@ class Vaas
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_sessionId);
         $this->_webSocketClient->send(json_encode($request));
 
+        $this->_logger->debug("verdictResponse", ["VerdictResponse" => json_encode($request)]);
+
         return $this->_waitForVerdict($request->guid);
     }
 

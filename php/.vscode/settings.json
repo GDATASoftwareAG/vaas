@@ -1,4 +1,9 @@
 {
     "testExplorer.useNativeTesting": true,
     "phpunit.phpunit": "/workspaces/vaas/php/tests/vaas/vendor/bin/phpunit",
+    "phpunit.args": [
+        "--debug",
+        "--testdox"
+    ],
+    "php.debug.ideKey": "docker"
 }

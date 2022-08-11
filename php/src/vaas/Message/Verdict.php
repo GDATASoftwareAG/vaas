@@ -10,7 +10,7 @@ class Verdict implements JsonSerializable
     public const MALICIOUS = "Malicious";
     public const CLEAN = "Clean";
     public const UNKNOWN = "Unknown";
-    public const PUB = "Pub";
+    public const PUP = "Pup";
 
     private string $_verdictString = "";
 
@@ -26,10 +26,10 @@ class Verdict implements JsonSerializable
             case self::UNKNOWN:
                 $this->_verdictString = Verdict::UNKNOWN;
                 break;
-            case self::PUB:
-                $this->_verdictString = Verict::PUB;
+            case self::PUP:
+                $this->_verdictString = Verdict::PUP;
                 break;
-            
+
             default:
                 throw new UnkownVerdictException();
         }
