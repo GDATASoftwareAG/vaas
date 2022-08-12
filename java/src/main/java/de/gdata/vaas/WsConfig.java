@@ -30,7 +30,6 @@ public class WsConfig {
 
     public String getToken() throws URISyntaxException, IOException, InterruptedException {
         if (token == null) {
-            String uri = "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
             Map<String, String> requestParams = new HashMap<>();
             requestParams.put("client_id", getClientID());
             requestParams.put("grant_type", "client_credentials");
@@ -42,7 +41,7 @@ public class WsConfig {
                     })        
                     .collect(Collectors.joining("&"));
             var request = HttpRequest
-                    .newBuilder(new URI(uri))
+                    .newBuilder(tokenEndpoint)
                     .header("Content-Type", "application/x-www-form-urlencoded")
                     .POST(HttpRequest.BodyPublishers.ofString(UriWithParameters))
                     .build();

@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.testng.annotations.Ignore;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +30,18 @@ public class RealApiIntegrationTests {
         vaas.disconnect();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+    }
+
+    @Test
+    public void fromSha256SinglePupHash() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var sha256 = new Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
+        var cts = new CancellationTokenSource(Duration.ofSeconds(10));
+
+        var verdict = vaas.forSha256(sha256, cts);
+        vaas.disconnect();
+
+        assertEquals(Verdict.PUP, verdict.getVerdict());
     }
 
     @Test
@@ -104,7 +117,7 @@ public class RealApiIntegrationTests {
     @Test
     public void fromFileSingleCleanFile()
             throws Exception {
-        byte[] clean = {0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a};
+        byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
         Files.write(tmpFile, clean);
         var vaas = this.getVaasWithCredentials();
@@ -137,7 +150,7 @@ public class RealApiIntegrationTests {
     @Test
     public void fromFileSingleCleanFileWithCredentials()
             throws Exception {
-        byte[] clean = {0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a};
+        byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
         Files.write(tmpFile, clean);
         var stagingVaas = this.getVaasWithCredentials();
@@ -168,7 +181,9 @@ public class RealApiIntegrationTests {
                 .load();
         var clientId = dotenv.get("CLIENT_ID");
         var clientSecret = dotenv.get("CLIENT_SECRET");
-        var config = new WsConfig(clientId,clientSecret);
+        var tokenUrl = dotenv.get("TOKEN_URL");
+        var vaasUrl = dotenv.get("VAAS_URL");
+        var config = new WsConfig(clientId, clientSecret, new URI(tokenUrl), new URI(vaasUrl));
         var client = new Vaas(config);
         client.connect();
         return client;
