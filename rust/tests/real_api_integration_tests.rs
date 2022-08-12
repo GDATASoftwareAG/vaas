@@ -31,7 +31,6 @@ async fn get_vaas() -> Connection {
 async fn from_sha256_list_multiple_hashes() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
-    let expected_url = "https://upload-vaas.gdatasecurity.de/upload";
     let sha256_malicious =
         Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
             .unwrap();
@@ -51,8 +50,10 @@ async fn from_sha256_list_multiple_hashes() {
 
     assert_eq!(&Verdict::Malicious, results[0].as_ref().unwrap());
     assert_eq!(&Verdict::Clean, results[1].as_ref().unwrap());
-    assert_eq!(&Verdict::Unknown, results[2].as_ref().unwrap());
-
+    assert!(matches!(
+        results[2].as_ref().unwrap(),
+        Verdict::Unknown { .. }
+    ));
 }
 
 #[tokio::test]
@@ -142,9 +143,9 @@ async fn from_sha256_multiple_unknown_hash() {
     let verdict_2 = vaas.for_sha256(&sha256_2, &t).await.unwrap();
     let verdict_3 = vaas.for_sha256(&sha256_3, &t).await.unwrap();
 
-    assert_eq!(Verdict::Unknown, verdict_1.unwrap());
-    assert_eq!(Verdict::Unknown, verdict_2.unwrap());
-    assert_eq!(Verdict::Unknown, verdict_3.unwrap());
+    assert!(matches!(verdict_1, Verdict::Unknown { .. }));
+    assert!(matches!(verdict_2, Verdict::Unknown { .. }));
+    assert!(matches!(verdict_3, Verdict::Unknown { .. }));
 }
 
 #[tokio::test]
