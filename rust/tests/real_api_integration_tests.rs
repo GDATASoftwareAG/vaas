@@ -51,12 +51,8 @@ async fn from_sha256_list_multiple_hashes() {
 
     assert_eq!(&Verdict::Malicious, results[0].as_ref().unwrap());
     assert_eq!(&Verdict::Clean, results[1].as_ref().unwrap());
-    if let Verdict::Unknown { upload_url } = results[2].as_ref().unwrap() {
-        println!("URL: {}", upload_url);
-        assert!(upload_url.starts_with(expected_url));
-    } else {
-        panic!("Unexpected verdict type.")
-    }
+    assert_eq!(&Verdict::Unknown, results[2].as_ref().unwrap());
+
 }
 
 #[tokio::test]
@@ -133,7 +129,6 @@ async fn from_sha256_multiple_clean_hash() {
 async fn from_sha256_multiple_unknown_hash() {
     let vaas = get_vaas().await;
     let t = CancellationToken::from_seconds(10);
-    let expected_url = "https://upload-vaas.gdatasecurity.de/upload";
     let sha256_1 =
         Sha256::try_from("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
             .unwrap();
@@ -147,21 +142,9 @@ async fn from_sha256_multiple_unknown_hash() {
     let verdict_2 = vaas.for_sha256(&sha256_2, &t).await.unwrap();
     let verdict_3 = vaas.for_sha256(&sha256_3, &t).await.unwrap();
 
-    if let Verdict::Unknown { upload_url } = verdict_1 {
-        assert!(upload_url.starts_with(expected_url));
-    } else {
-        panic!("Unexpected verdict type.")
-    }
-    if let Verdict::Unknown { upload_url } = verdict_2 {
-        assert!(upload_url.starts_with(expected_url));
-    } else {
-        panic!("Unexpected verdict type.")
-    }
-    if let Verdict::Unknown { upload_url } = verdict_3 {
-        assert!(upload_url.starts_with(expected_url));
-    } else {
-        panic!("Unexpected verdict type.")
-    }
+    assert_eq!(Verdict::Unknown, verdict_1.unwrap());
+    assert_eq!(Verdict::Unknown, verdict_2.unwrap());
+    assert_eq!(Verdict::Unknown, verdict_3.unwrap());
 }
 
 #[tokio::test]
