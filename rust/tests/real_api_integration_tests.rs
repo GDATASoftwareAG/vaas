@@ -73,6 +73,19 @@ async fn from_sha256_single_malicious_hash() {
 }
 
 #[tokio::test]
+async fn from_sha256_single_pup_hash() {
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+    let sha256 =
+        Sha256::try_from("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
+            .unwrap();
+
+    let verdict = vaas.for_sha256(&sha256, &ct).await;
+
+    assert_eq!(Verdict::Pup, verdict.unwrap());
+}
+
+#[tokio::test]
 async fn from_sha256_multiple_malicious_hash() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
