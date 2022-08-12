@@ -13,9 +13,6 @@ jobs:
   build-java:
     name: Build & Test Java SDK
     runs-on: ubuntu-20.04
-    env:
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - name: checkout
@@ -33,6 +30,25 @@ jobs:
           gradle-version: "7.2"
 
       - name: run tests
+        if: github.ref == 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: test
+          gradle-version: "7.2"
+          build-root-directory: java
+
+      - name: run tests staging
+        if: github.ref != 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         uses: gradle/gradle-build-action@v2
         with:
           arguments: test
@@ -42,9 +58,6 @@ jobs:
   build-php:
     name: Build & Test PHP SDK
     runs-on: ubuntu-20.04
-    env:
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - name: checkout
@@ -61,18 +74,28 @@ jobs:
           working_dir: php/tests/vaas
 
       - name: run tests
+        if: github.ref == 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        run: ./vendor/bin/phpunit --colors --testdox
+        working-directory: php/tests/vaas
+
+      - name: run tests staging
+        if: github.ref != 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: ./vendor/bin/phpunit --colors --testdox
         working-directory: php/tests/vaas
 
   build-typescript:
     name: Build & Test TypeScript SDK
     runs-on: ubuntu-20.04
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
-      TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 
     steps:
       - name: checkout
@@ -92,6 +115,22 @@ jobs:
         working-directory: typescript
 
       - name: run tests
+        if: github.ref == 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        run: npm run test
+        working-directory: typescript
+
+      - name: run tests staging
+        if: github.ref != 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: npm run test
         working-directory: typescript
 
@@ -114,12 +153,6 @@ jobs:
   build-rust:
     name: Build & Test Rust SDK
     runs-on: ubuntu-20.04
-    env:
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
-      TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 
     steps:
       - name: checkout
@@ -135,6 +168,22 @@ jobs:
           working-directory: rust
 
       - name: run tests
+        if: github.ref == 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        run: cargo test
+        working-directory: rust
+
+      - name: run tests staging
+        if: github.ref != 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: cargo test
         working-directory: rust
 
@@ -157,11 +206,7 @@ jobs:
   build-python:
     name: Build & Test Python SDK
     runs-on: ubuntu-20.04
-    env:
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
-      TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+
     steps:
       - uses: actions/checkout@v3
       - name: set up Python
@@ -173,7 +218,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
         working-directory: python
+
       - name: run tests
+        if: github.ref == 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        run: python test.py
+        working-directory: python
+
+      - name: run tests
+        if: github.ref != 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: python test.py
         working-directory: python
 
@@ -207,9 +269,6 @@ jobs:
     strategy:
       matrix:
         dotnet-version: ["6.0.x"]
-    env:
-      CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - uses: actions/checkout@v3
@@ -224,5 +283,20 @@ jobs:
         run: dotnet build --configuration Release --no-restore
         working-directory: dotnet/Vaas
       - name: Test
+        if: github.ref == 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        run: dotnet test --no-restore --verbosity normal
+        working-directory: dotnet/Vaas
+      - name: Test staging
+        if: github.ref != 'refs/heads/main'
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: dotnet test --no-restore --verbosity normal
         working-directory: dotnet/Vaas
