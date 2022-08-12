@@ -14,9 +14,9 @@ pub enum Verdict {
     Clean,
     /// Malicious content found.
     Malicious,
-    /// Unknown if clean or malicious.
-    Pup,
     /// Potentially unwanted content found.
+    Pup,
+    /// Unknown if clean or malicious.
     Unknown {
         /// Pre-signed URL to submit a file for further analysis to get a `Clean` or `Malicious` verdict.
         upload_url: UploadUrl,
