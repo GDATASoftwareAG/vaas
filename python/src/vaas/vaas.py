@@ -201,7 +201,6 @@ class Vaas:
 
     async def for_buffer(self, buffer):
         """Returns the verdict for a buffer"""
-        start = time.time()
 
         loop = asyncio.get_running_loop()
         sha256 = await loop.run_in_executor(
@@ -212,28 +211,29 @@ class Vaas:
         verdict = response.get("verdict")
 
         if verdict == "Unknown":
-            guid = response.get("guid")
-            token = response.get("upload_token")
-            url = response.get("url")
-            response_message = self.__response_message_for_guid(guid)
-            await self.__upload(token, url, buffer, len(buffer))
-            try:
-                verdict = (
-                    await asyncio.wait_for(response_message, timeout=TIMEOUT)
-                ).get("verdict")
-            except asyncio.TimeoutError as ex:
-                self.tracing.trace_upload_result_timeout(len(buffer))
-                raise VaasTimeoutError() from ex
-            self.tracing.trace_upload_request(time.time() - start, len(buffer))
+            verdict = await self._for_unknown_buffer(response, buffer, len(buffer))
 
+        return verdict
+
+    async def _for_unknown_buffer(self, response, buffer, buffer_len):
+        start = time.time()
+        guid = response.get("guid")
+        token = response.get("upload_token")
+        url = response.get("url")
+        response_message = self.__response_message_for_guid(guid)
+        await self.__upload(token, url, buffer, buffer_len)
+        try:
+            verdict = (
+                await asyncio.wait_for(response_message, timeout=TIMEOUT)
+            ).get("verdict")
+        except asyncio.TimeoutError as ex:
+            self.tracing.trace_upload_result_timeout(len(buffer))
+            raise VaasTimeoutError() from ex
+        self.tracing.trace_upload_request(time.time() - start, buffer_len)
         return verdict
 
     async def for_file(self, path):
         """Returns the verdict for a file"""
-        async with aiofiles.open(path, mode="rb") as open_file:
-            return await self.for_buffer(await open_file.read())
-
-        start = time.time()
 
         loop = asyncio.get_running_loop()
         sha256 = await loop.run_in_executor(None, lambda: hash_file(path))
@@ -242,23 +242,9 @@ class Vaas:
         verdict = response.get("verdict")
 
         if verdict == "Unknown":
-            guid = response.get("guid")
-            token = response.get("upload_token")
-            url = response.get("url")
-            response_message = self.__response_message_for_guid(guid)
-
             content_length = os.path.getsize(path)
             async with aiofiles.open(path, mode="rb") as file:
-                await self.__upload(token, url, file, content_length)
-
-            try:
-                verdict = (
-                    await asyncio.wait_for(response_message, timeout=TIMEOUT)
-                ).get("verdict")
-            except asyncio.TimeoutError as ex:
-                self.tracing.trace_upload_result_timeout(content_length)
-                raise VaasTimeoutError() from ex
-            self.tracing.trace_upload_request(time.time() - start, content_length)
+                verdict = await self._for_unknown_buffer(response, file, content_length)
 
         return verdict
 
