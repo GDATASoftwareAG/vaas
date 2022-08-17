@@ -92,7 +92,7 @@ public class IntegrationTests
     }
 
     
-    [Fact(Skip = "Not yet in production")]
+    [Fact]
     public async void FromSha256_ReturnsPup_ForAmtsoSample()
     {
         var vaas = await AuthenticateWithCredentials();

@@ -147,8 +147,7 @@ describe("Test verdict requests", function () {
     expect(verdict).to.equal("Clean");
   }).timeout(45000);
 
-  // TODO: Enable once Pup is in production
-  xit("returns Pup for AMTSO pup sample", async () => {
+  it("returns Pup for AMTSO pup sample", async () => {
     const vaas = await createVaas();
     const guid =
       "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
