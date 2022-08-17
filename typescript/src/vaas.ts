@@ -52,9 +52,25 @@ export default class Vaas {
     }).join("");
   }
 
+  public async forSha256WithCustomGuid(
+    sha256: string,
+    guid: string = uuidv4(),
+    ct: CancellationToken = CancellationToken.fromMilliseconds
+    (
+      this.defaultTimeoutHashReq
+    )
+  ): Promise<Verdict> {
+    const request = this.forRequest(sha256, guid).then(
+      (response) => response.verdict
+    );
+    return timeout(request, ct.timeout());
+  }
+
+
   public async forSha256(
     sha256: string,
-    ct: CancellationToken = CancellationToken.fromMilliseconds(
+    ct: CancellationToken = CancellationToken.fromMilliseconds
+    (
       this.defaultTimeoutHashReq
     )
   ): Promise<Verdict> {
@@ -97,15 +113,15 @@ export default class Vaas {
   }
 
   public async forRequest(
-    sample: string | Uint8Array
+    sample: string | Uint8Array,
+    guid: string = uuidv4()
   ): Promise<VerdictResponse> {
     return new Promise((resolve, reject) => {
       if (this.connection === null) {
         reject(new Error("Not connected"));
         return;
       }
-
-      const guid = uuidv4();
+ 
       this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
         if (
           verdictResponse.verdict === Verdict.UNKNOWN &&

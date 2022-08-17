@@ -41,6 +41,10 @@ function createVaas() {
 
 const defaultTimeout: number = 10_000;
 
+function test(foobar: string = "nix") {
+  return foobar;
+}
+
 describe("Test authentication", function () {
   this.timeout(defaultTimeout);
 
@@ -81,7 +85,8 @@ describe("Test verdict requests", function () {
 
   it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
     const vaas = await createVaas();
-    const verdict = await vaas.forSha256(
+    const verdict = await vaas.forSha256WithCustomGuid(
+      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
       "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
     );
     expect(verdict).to.equal("Malicious");
