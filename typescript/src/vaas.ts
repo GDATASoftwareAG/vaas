@@ -39,7 +39,7 @@ export type VaasConnection = {
 export default class Vaas {
   callbacks: Map<string, VerdictCallback>;
   connection: VaasConnection | null = null;
-  defaultTimeoutHashReq: number = 2_000;
+  defaultTimeoutHashReq: number = 4_000;
   defaultTimeoutFileReq: number = 600_000;
 
   constructor() {
