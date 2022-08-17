@@ -57,7 +57,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(verdict, "Malicious")
 
-    @unittest.skip("not ready for production")
     async def test_for_sha256_returns_pup_for_amtso(self):
         async with await create_and_connect() as vaas:
             verdict = await vaas.for_sha256(
