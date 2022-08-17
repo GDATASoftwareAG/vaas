@@ -14,6 +14,17 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     php7.4 php7.4-cli php7.4-common php7.4-xml php7.4-mbstring php7.4-xdebug \
     && apt-get -y clean && apt-get -y autoclean && apt-get -y autoremove
 
+RUN echo "xdebug.start_with_request=yes" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.idekey=docker" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.profiler_enable_trigger = 1" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.profiler_enable = 0" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.remote_enable = 1" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.profiler_output_dir = '/tmp'" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.client_port=9003" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.log=/dev/stdout" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+RUN echo "xdebug.discover_client_host=true" >> /etc/php/7.4/cli/conf.d/20-xdebug.ini
+ENV DBGP_IDEKEY="docker"
+
 USER vscode
 # setup search path
 ENV PATH="/home/vscode/.local/bin/:/home/vscode/.config/composer/vendor/bin/:${PATH}"
