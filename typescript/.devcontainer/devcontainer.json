@@ -22,7 +22,8 @@
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"jeff-hykin.better-dockerfile-syntax",
-		"Gruntfuggly.todo-tree"
+		"Gruntfuggly.todo-tree",
+		"hbenl.vscode-mocha-test-adapter"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
