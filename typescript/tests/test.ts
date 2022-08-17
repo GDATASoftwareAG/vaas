@@ -87,7 +87,7 @@ describe("Test verdict requests", function () {
     const vaas = await createVaas();
     const verdict = await vaas.forSha256WithCustomGuid(
       "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+      "e5f27bfe-852a-41e6-b510-926ced1f59b9"
     );
     expect(verdict).to.equal("Malicious");
   });

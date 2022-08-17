@@ -66,7 +66,6 @@ export default class Vaas {
     return timeout(request, ct.timeout());
   }
 
-
   public async forSha256(
     sha256: string,
     ct: CancellationToken = CancellationToken.fromMilliseconds
@@ -121,7 +120,7 @@ export default class Vaas {
         reject(new Error("Not connected"));
         return;
       }
- 
+
       this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
         if (
           verdictResponse.verdict === Verdict.UNKNOWN &&
