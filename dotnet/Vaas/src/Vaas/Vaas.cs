@@ -31,7 +31,13 @@ public class Vaas : IDisposable
     private Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
+
+    private readonly VaasOptions _options;
     
+    public Vaas(VaasOptions? options = null)
+    {
+        _options = options ?? VaasOptions.Defaults;
+    }
 
     public async Task Connect(string token)
     {
@@ -113,14 +119,23 @@ public class Vaas : IDisposable
 
     public async Task<Verdict> ForSha256Async(string sha256)
     {
-        var value = await ForRequestAsync(new AnalysisRequest(sha256,SessionId ?? throw new InvalidOperationException()));
+        var value = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
+        {
+            UseCache = _options.UseCache,
+            UseShed = _options.UseShed
+        });
         return value.Verdict;
     }
         
     public async Task<Verdict> ForFileAsync(string path)
     {
         var sha256 = Sha256CheckSum(path);
-        var verdictResponse = await ForRequestAsync(new AnalysisRequest(sha256, SessionId ?? throw new InvalidOperationException()));
+        var verdictResponse = await ForRequestAsync(
+            new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
+            {
+                UseCache = _options.UseCache,
+                UseShed = _options.UseShed
+            });
         if (!verdictResponse.IsValid)
             throw new JsonException("VerdictResponse is not valid");
         if (verdictResponse.Verdict != Verdict.Unknown) return verdictResponse.Verdict;
@@ -161,12 +176,12 @@ public class Vaas : IDisposable
     }
 
         
-    private async Task<VerdictResponse> ForRequestAsync(AnalysisRequest analysisRequest)
+    private async Task<VerdictResponse> ForRequestAsync(VerdictRequest verdictRequest)
     {
-        var jsonString = JsonSerializer.Serialize(analysisRequest);
+        var jsonString = JsonSerializer.Serialize(verdictRequest);
         Client?.Send(jsonString);
 
-        return await WaitForResponseAsync(analysisRequest.Guid);
+        return await WaitForResponseAsync(verdictRequest.Guid);
     }
         
     private Task<VerdictResponse> WaitForResponseAsync(string guid)

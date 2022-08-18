@@ -1,8 +1,9 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace Vaas.Messages;
 
-public class AnalysisRequest
+public class VerdictRequest
 {
     [JsonPropertyName("kind")] 
     public string Kind => "VerdictRequest";
@@ -16,7 +17,15 @@ public class AnalysisRequest
     [JsonPropertyName("session_id")] 
     public string SessionId { get; }
 
-    public AnalysisRequest(string sha256, string sessionId)
+    [JsonPropertyName("use_cache")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? UseCache { get; init; } = null;
+    
+    [JsonPropertyName("use_shed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? UseShed { get; init; } = null;
+    
+    public VerdictRequest(string sha256, string sessionId)
     {
         Sha256 = sha256;
         SessionId = sessionId;
