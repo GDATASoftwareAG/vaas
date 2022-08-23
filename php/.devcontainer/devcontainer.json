@@ -26,7 +26,6 @@
 		"johnbillion.vscode-wordpress-hooks",
 		"hridoy.wordpress",
 		"Gruntfuggly.todo-tree",
-		"recca0120.vscode-phpunit",
 		"xdebug.php-debug"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
