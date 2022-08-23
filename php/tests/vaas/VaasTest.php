@@ -60,14 +60,14 @@ final class VaasTest extends TestCase
 
     public function testForSha256MaliciousSha256_GetsMaliciousResponse(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Malicious", $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", $uuid));
     }
 
     public function testForMultipleMaliciousFiles_GetsMaliciousResponses(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Malicious", $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", $uuid));
         $this->assertEquals("Malicious", $vaas->ForSha256("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c", $uuid));
@@ -76,21 +76,21 @@ final class VaasTest extends TestCase
 
     public function testForSha256CleanSha256_GetsCleanResponse(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Clean", $vaas->ForSha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23", $uuid));
     }
 
     public function testForSha256AmtsoPupSample_GetsPupResponse(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Pup", $vaas->ForSha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", $uuid));
     }
 
     public function testForMultipleCleanFiles_GetsCleanResponses(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Clean", $vaas->ForSha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23", $uuid));
         $this->assertEquals("Clean", $vaas->ForSha256("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391", $uuid));
@@ -99,14 +99,14 @@ final class VaasTest extends TestCase
 
     public function testForSha256UnknownSha256_GetsUnknownResponse(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Unknown", $vaas->ForSha256("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fbbb", $uuid));
     }
 
     public function testForMultipleUnknownFiles_GetsUnknownResponses(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Unknown", $vaas->ForSha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", $uuid));
         $this->assertEquals("Unknown", $vaas->ForSha256("11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c", $uuid));
@@ -115,7 +115,7 @@ final class VaasTest extends TestCase
 
     public function testForFileCleanFile_GetsCleanResponse(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
 
         $cleanFile = pack("nvc*", 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a);
         $tmp = tmpfile();
@@ -129,7 +129,7 @@ final class VaasTest extends TestCase
 
     public function testForFileMaliciousFile_GetsMaliciousResponse(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
 
         $tmp = tmpfile();
         fwrite($tmp, "X5O!P%@AP[4\\PZX54(P^)7CC)7}\$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!\$H+H*");
@@ -142,7 +142,7 @@ final class VaasTest extends TestCase
 
     public function testForFileRandomFile_GetsCleanResponseAfterUpload(): void
     {
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
 
         $tmp = tmpfile();
         fwrite($tmp, $uuid);
@@ -156,10 +156,19 @@ final class VaasTest extends TestCase
     public function testForMultipleMaliciousFilesWithCredentials_GetsMaliciousResponses(): void
     {
 
-        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $this->getUuid();
         $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->assertEquals("Malicious", $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", $uuid));
         $this->assertEquals("Malicious", $vaas->ForSha256("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c", $uuid));
         $this->assertEquals("Malicious", $vaas->ForSha256("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a", $uuid));
+    }
+
+    /**
+     * @outputBuffering disabled
+     */
+    private function getUuid(): string {
+        $uuid = UuidV4::getFactory()->uuid4()->toString();
+        echo "Generated UUID: $uuid \n";
+        return $uuid;
     }
 }
