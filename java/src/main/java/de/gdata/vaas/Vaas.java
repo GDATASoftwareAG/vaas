@@ -16,6 +16,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Vaas {
 
@@ -35,7 +37,6 @@ public class Vaas {
         this.client.authenticate();
     }
 
-
     public void disconnect() throws InterruptedException {
         this.client.closeBlocking();
     }
@@ -43,6 +44,28 @@ public class Vaas {
     public VerdictResult forSha256(Sha256 sha256, @NotNull CancellationTokenSource cts) throws Exception {
         var request = new VerdictRequest(sha256, this.client.getSessionId());
         return this.forRequest(request, cts.getToken());
+    }
+
+    public List<VerdictResult> forSha256List(List<Sha256> sha256List, @NotNull CancellationTokenSource cts)
+            throws Exception {
+        return sha256List.stream().map(sha256 -> {
+            try {
+                return this.forSha256(sha256, cts);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
+    }
+
+    public List<VerdictResult> forFileList(List<Path> fileList, @NotNull CancellationTokenSource cts)
+            throws Exception {
+        return fileList.stream().map(file -> {
+            try {
+                return this.forFile(file, cts);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
     }
 
     public VerdictResult forFile(Path file, CancellationTokenSource cts) throws Exception {
@@ -61,7 +84,8 @@ public class Vaas {
         }
     }
 
-    private void UploadFile(Path file, String url, String authToken) throws IOException, URISyntaxException, InterruptedException {
+    private void UploadFile(Path file, String url, String authToken)
+            throws IOException, URISyntaxException, InterruptedException {
         var bytes = Files.readAllBytes(file);
         var request = HttpRequest
                 .newBuilder(new URI(url))
@@ -75,31 +99,30 @@ public class Vaas {
                 .send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: " + response.body());
+            throw new IOException(
+                    "Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: " + response.body());
         }
     }
 
     private VerdictResult forRequest(VerdictRequest verdictRequest, CancellationToken ct) throws Exception {
         // Ensure that we are authenticated, before we send the request
-        if(this.client.isAuthenticated()) {
+        if (this.client.isAuthenticated()) {
             verdictRequest.setSessionId(this.client.getSessionId());
             this.client.send(verdictRequest.toJson());
-        }
-        else if(this.client.isAuthenticationFailed()) {
+        } else if (this.client.isAuthenticationFailed()) {
             throw new Exception("Authentication failed");
-        }
-        else {
+        } else {
             // We are not authenticated yet, wait a short time for the AuthResponse.
             // If it does not arrive in time, we will throw an exception.
-            for(int i = 0; i < 20; i++) {
-                if(this.client.isAuthenticated()) {
+            for (int i = 0; i < 20; i++) {
+                if (this.client.isAuthenticated()) {
                     verdictRequest.setSessionId(this.client.getSessionId());
                     this.client.send(verdictRequest.toJson());
                     break;
                 }
                 Thread.sleep(100);
             }
-            if(!this.client.isAuthenticated()) {
+            if (!this.client.isAuthenticated()) {
                 throw new Exception("No authentication response received");
             }
         }
@@ -117,14 +140,14 @@ public class Vaas {
 
             // Send a ping message every 10 pull,
             // to keep the connection alive.
-            if(ping_cnt == 10) {
+            if (ping_cnt == 10) {
                 ping_cnt = 0;
                 this.client.sendPing();
             } else {
                 ping_cnt++;
             }
 
-            if(this.client.getErrorResponses() != null){
+            if (this.client.getErrorResponses() != null) {
                 throw new Error(this.client.getErrorResponses().getText());
             }
 
@@ -135,7 +158,7 @@ public class Vaas {
                 break;
             }
 
-            if(ping_cnt == 200) {
+            if (ping_cnt == 200) {
                 client.sendPing();
                 ping_cnt = 0;
             }

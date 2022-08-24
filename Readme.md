@@ -34,9 +34,9 @@ At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescri
 |Functionality|Rust|Java|PHP|TypeScript|.NET|Python|
 |---|---|---|---|---|---|---|
 |Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check SHA256 list|&#9989;|&#10060;|&#10060;|&#9989;|&#9989;|&#10060;|
+|Check SHA256 list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|
 |Check file|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file list|&#9989;|&#10060;|&#10060;|&#9989;|&#9989;|&#10060;|
+|Check file list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|
 |Custom Guids for tracability on user side|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#10060;|
 
 ### Documentation
