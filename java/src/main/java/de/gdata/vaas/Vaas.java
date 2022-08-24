@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Vaas {
 
@@ -47,8 +48,24 @@ public class Vaas {
 
     public List<VerdictResult> forSha256List(List<Sha256> sha256List, @NotNull CancellationTokenSource cts)
             throws Exception {
-        var request = new VerdictRequest(sha256, this.client.getSessionId());
-        return this.forRequest(request, cts.getToken());
+        return sha256List.stream().map(sha256 -> {
+            try {
+                return this.forSha256(sha256, cts);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
+    }
+
+    public List<VerdictResult> forFileList(List<Path> fileList, @NotNull CancellationTokenSource cts)
+            throws Exception {
+        return fileList.stream().map(file -> {
+            try {
+                return this.forFile(file, cts);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList());
     }
 
     public VerdictResult forFile(Path file, CancellationTokenSource cts) throws Exception {

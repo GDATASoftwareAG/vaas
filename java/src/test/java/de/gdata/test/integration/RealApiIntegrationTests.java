@@ -8,15 +8,13 @@ import de.gdata.vaas.messages.Verdict;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
-import org.testng.annotations.Ignore;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-
+import java.util.Arrays;
 import static org.testng.AssertJUnit.assertEquals;
 
 public class RealApiIntegrationTests {
@@ -99,6 +97,26 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    public void fromSha256MultipleHashesWithDifferentVerdicts() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var cts = new CancellationTokenSource(Duration.ofSeconds(10));
+        var unknownHash = new Sha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
+        var cleanHash = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        var pupHash = new Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
+        var maliciousHash = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
+
+        var hashList = Arrays.asList(new Sha256[] { unknownHash, cleanHash, pupHash, maliciousHash });
+
+        var verdicts = vaas.forSha256List(hashList, cts);
+        vaas.disconnect();
+
+        assertEquals(Verdict.UNKNOWN, verdicts.get(0).getVerdict());
+        assertEquals(Verdict.CLEAN, verdicts.get(1).getVerdict());
+        assertEquals(Verdict.PUP, verdicts.get(2).getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdicts.get(3).getVerdict());
+    }
+
+    @Test
     public void fromFileSingleMaliciousFile()
             throws Exception {
         var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
@@ -148,19 +166,52 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromFileSingleCleanFileWithCredentials()
+    public void fromFileListForDifferentVerdicts()
             throws Exception {
+
+        var unknown = getRandomString(50);
+        var unknownFile = Path.of(System.getProperty("java.io.tmpdir"), "unknown.txt");
+        Files.writeString(unknownFile, unknown);
+
         byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
-        Files.write(tmpFile, clean);
-        var stagingVaas = this.getVaasWithCredentials();
-        var cts = new CancellationTokenSource(Duration.ofSeconds(10));
+        var cleanFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
+        Files.write(cleanFile, clean);
 
-        var verdict = stagingVaas.forFile(tmpFile, cts);
-        stagingVaas.disconnect();
+        var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        var maliciousFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
+        Files.writeString(maliciousFile, eicar);
 
-        Files.deleteIfExists(tmpFile);
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
+        var vaas = this.getVaasWithCredentials();
+        var cts = new CancellationTokenSource(Duration.ofMinutes(10));
+
+        var fileList = Arrays.asList(new Path[] {
+                unknownFile,
+                cleanFile,
+                maliciousFile,
+                maliciousFile,
+                maliciousFile,
+                cleanFile
+        });
+
+        var verdicts = vaas.forFileList(fileList, cts);
+        vaas.disconnect();
+
+        Files.deleteIfExists(unknownFile);
+        Files.deleteIfExists(cleanFile);
+        Files.deleteIfExists(maliciousFile);
+
+        assert (verdicts.get(0) != null);
+        assert (verdicts.get(1) != null);
+        assert (verdicts.get(2) != null);
+        assert (verdicts.get(3) != null);
+        assert (verdicts.get(4) != null);
+        assert (verdicts.get(5) != null);
+        assertEquals(Verdict.CLEAN, verdicts.get(0).getVerdict());
+        assertEquals(Verdict.CLEAN, verdicts.get(1).getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdicts.get(2).getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdicts.get(3).getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdicts.get(4).getVerdict());
+        assertEquals(Verdict.CLEAN, verdicts.get(5).getVerdict());
     }
 
     private @NotNull String getRandomString(int size) {
