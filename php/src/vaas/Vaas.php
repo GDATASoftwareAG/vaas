@@ -125,13 +125,31 @@ class Vaas
      */
     public function ForSha256(string $hashString, string $uuid = null): string
     {
-
         $this->_logger->debug("ForSha256", ["Sha256" => $hashString]);
+
+        $verdictResponse = $this->VerdictResponseForSha256($hashString, $uuid);
+        return $verdictResponse->verdict;
+    }
+
+    /**
+     * Gets verdict by hashstring
+     *
+     * @param string $hashString the hash to get the verdict for
+     * @param string $uuid       unique identifier
+     * 
+     * @throws Exceptions\InvalidSha256Exception
+     * @throws Exceptions\TimeoutException
+     * @throws BadOpcodeException
+     * 
+     * @return VerdictResponse the verdict
+     */
+    public function VerdictResponseForSha256(string $hashString, string $uuid = null): VerdictResponse
+    {
+        $this->_logger->debug("VerdictResponseForSha256", ["Sha256" => $hashString]);
 
         $sha256 = Sha256::TryFromString($hashString);
 
-        $verdictResponse = $this->_verdictResponseForSha256($sha256, $uuid);
-        return $verdictResponse->verdict;
+        return $this->_verdictResponseForSha256($sha256, $uuid);
     }
 
     /**
@@ -154,6 +172,31 @@ class Vaas
     {
         $this->_logger->debug("ForFile", ["File" => $path]);
 
+        $verdictResponse = $this->VerdictResponseForFile($path, $upload, $uuid);
+
+        return $verdictResponse->verdict;
+    }
+
+    /**
+     * Gets verdict by file
+     *
+     * @param string $path   the path to get the verdict for
+     * @param bool   $upload should the file be uploaded if initial verdict is unknown
+     * @param string $uuid   unique identifier
+     * 
+     * @throws GuzzleException
+     * @throws Exceptions\TimeoutException
+     * @throws Exceptions\FileDoesNotExistException
+     * @throws Exceptions\InvalidSha256Exception
+     * @throws Exceptions\UploadFailedException
+     * @throws BadOpcodeException
+     * 
+     * @return VerdictResponse the verdict
+     */
+    public function VerdictResponseForFile(string $path, bool $upload = true, string $uuid = null): VerdictResponse
+    {
+        $this->_logger->debug("VerdictResponseForFile", ["File" => $path]);
+
         $sha256 = Sha256::TryFromFile($path);
         $this->_logger->debug("Calculated Hash", ["Sha256" => $sha256]);
 
@@ -169,12 +212,12 @@ class Vaas
             if ($response->getStatusCode() > 399) {
                 throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
             }
-            $verdictResponse = $this->_waitForVerdict($verdictResponse->guid);
-            return $verdictResponse->verdict;
+            return $this->_waitForVerdict($verdictResponse->guid);
         }
 
-        return $verdictResponse->verdict;
+        return $verdictResponse;
     }
+
 
     /**
      * @throws TimeoutException
