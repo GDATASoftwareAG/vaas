@@ -37,7 +37,7 @@ async function createVaas() {
     TOKEN_URL,
     VAAS_URL
   );
-  vaas.debug = false;
+  vaas.debug = true;
   return vaas;
 }
 
