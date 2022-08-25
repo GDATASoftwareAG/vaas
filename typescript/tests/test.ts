@@ -30,13 +30,15 @@ const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
 const VAAS_URL = getFromEnvironment("VAAS_URL");
 const TOKEN_URL = getFromEnvironment("TOKEN_URL");
 
-function createVaas() {
-  return createVaasWithClientCredentialsGrant(
+async function createVaas() {
+  let vaas = await createVaasWithClientCredentialsGrant(
     CLIENT_ID,
     CLIENT_SECRET,
     TOKEN_URL,
     VAAS_URL
   );
+  vaas.debug = false;
+  return vaas;
 }
 
 const defaultTimeout: number = 10_000;
