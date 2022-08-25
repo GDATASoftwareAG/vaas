@@ -41,7 +41,7 @@ async function createVaas() {
   return vaas;
 }
 
-const defaultTimeout: number = 10_000;
+const defaultTimeout: number = 15_000;
 
 describe("Test authentication", function () {
   this.timeout(defaultTimeout);
