@@ -41,6 +41,7 @@ export default class Vaas {
   connection: VaasConnection | null = null;
   defaultTimeoutHashReq: number = 2_000;
   defaultTimeoutFileReq: number = 600_000;
+  debug = false;
 
   constructor() {
     this.callbacks = new Map<string, VerdictCallback>();
@@ -106,6 +107,8 @@ export default class Vaas {
       }
 
       const guid = uuidv4();
+      if (this.debug)
+        console.debug("uuid", guid);
       this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
         if (
           verdictResponse.verdict === Verdict.UNKNOWN &&
