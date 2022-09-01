@@ -42,6 +42,7 @@ export default class Vaas {
   defaultTimeoutHashReq: number = 2_000;
   defaultTimeoutFileReq: number = 600_000;
   debug = false;
+  pingTimeout?: NodeJS.Timeout;
 
   constructor() {
     this.callbacks = new Map<string, VerdictCallback>();
@@ -107,8 +108,7 @@ export default class Vaas {
       }
 
       const guid = uuidv4();
-      if (this.debug)
-        console.debug("uuid", guid);
+      if (this.debug) console.debug("uuid", guid);
       this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
         if (
           verdictResponse.verdict === Verdict.UNKNOWN &&
@@ -142,8 +142,7 @@ export default class Vaas {
         ws.pong(payload);
       });
       ws.on("pong", async () => {
-        await this.delay(10000);
-        ws.ping();
+        this.pingTimeout = setTimeout(() => ws.ping(), 10000);
       });
       ws.onopen = async () => {
         try {
@@ -219,8 +218,15 @@ export default class Vaas {
     });
   }
 
-  private delay(ms: number) {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+  public close() {
+    if (this.pingTimeout) {
+      clearTimeout(this.pingTimeout);
+      this.pingTimeout = undefined;
+    }
+    if (this.connection) {
+      this.connection.ws.close();
+      this.connection = null;
+    }
   }
 
   private authenticate(ws: WebSocket, token: string): void {

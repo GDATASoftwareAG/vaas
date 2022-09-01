@@ -23,7 +23,8 @@
 	"extensions": [
 		"jeff-hykin.better-dockerfile-syntax",
 		"Gruntfuggly.todo-tree",
-		"hbenl.vscode-mocha-test-adapter"
+		"hbenl.vscode-mocha-test-adapter",
+		"esbenp.prettier-vscode"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

@@ -24,7 +24,7 @@ export default async function createVaasWithClientCredentialsGrant(
   clientSecret: string,
   tokenEndpoint: string,
   vaasUrl = VAAS_URL
-) {
+): Promise<Vaas> {
   const token = await getTokenWithClientCredentialsGrant(
     clientId,
     clientSecret,
