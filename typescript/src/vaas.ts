@@ -209,11 +209,15 @@ export default class Vaas {
         .put("/", fileBuffer)
         .then((response) => resolve(response))
         .catch((error) => {
-          reject(
-            new Error(
-              `Upload failed with ${error.response.status} - Error ${error.response.data.message}`
-            )
-          );
+          if (error instanceof axios.AxiosError && error.response) {
+            reject(
+              new Error(
+                `Upload failed with ${error.response.status} - Error ${error.response.data.message}`
+              )
+            );
+          } else {
+            throw error;
+          }
         });
     });
   }
