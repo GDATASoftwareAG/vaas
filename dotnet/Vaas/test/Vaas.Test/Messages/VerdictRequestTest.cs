@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Snapshooter;
 using Snapshooter.Xunit;
 using Vaas.Messages;
 using Xunit;
@@ -11,13 +12,13 @@ public class VerdictRequestTest
     public void Serialize()
     {
         var json = JsonSerializer.Serialize(new VerdictRequest("", ""));
-        Snapshot.Match(json);
+        Snapshot.Match(json, matchOptions => matchOptions.IgnoreField("guid"));
     }
     
     [Fact]
     public void Serialize_WithOptions()
     {
         var json = JsonSerializer.Serialize(new VerdictRequest("", "") { UseCache = false, UseShed = false });
-        Snapshot.Match(json);
+        Snapshot.Match(json, matchOptions => matchOptions.IgnoreField("guid"));
     }
 }
