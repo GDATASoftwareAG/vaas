@@ -202,8 +202,10 @@ export default class Vaas {
     return new Promise(async (resolve, reject) => {
       const instance = axios.default.create({
         baseURL: verdictResponse.url,
-        timeout: 10000,
+        // the maximum allowed time for the request
+        timeout: 10 * 60 * 1000,
         headers: { Authorization: verdictResponse.upload_token! },
+        maxBodyLength: Infinity,
       });
       await instance
         .put("/", fileBuffer)
