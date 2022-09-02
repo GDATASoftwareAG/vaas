@@ -43,13 +43,16 @@ import Vaas from "gdata-vaas";
 ### Request a verdict
 
 ```typescript
-// instantiate
-const vaas = new Vaas();
-// connect to the verdict service
-await vaas.connect(process.env.VAAS_TOKEN!);
+// create vaas client
+const vaas = await createVaasWithClientCredentialsGrant(
+    CLIENT_ID,
+    CLIENT_SECRET,
+    TOKEN_URL,
+    VAAS_URL
+  );
 ```
 
-Interested in a token? [Contact us](#interested).
+Are you interested in credentials? [Contact us](#interested).
 
 ```typescript
 // request verdict for file
