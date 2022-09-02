@@ -101,17 +101,26 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
-      - uses: actions/setup-node@v3
+      - uses: pnpm/action-setup@v2.0.1
+        name: install pnpm
+        id: pnpm-install
         with:
-          node-version: "18"
+          version: 7
+          run_install: false
+
+      - uses: actions/setup-node@v3
+        name: setup node
+        with:
+          node-version: 18
           registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
 
       - name: install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
         working-directory: typescript
 
       - name: build
-        run: npm run build
+        run: pnpm run build
         working-directory: typescript
 
       - name: run tests
@@ -121,7 +130,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
           TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: npm run test
+        run: pnpm run test
         working-directory: typescript
 
       - name: run tests staging
@@ -131,7 +140,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
           VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
           TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: npm run test
+        run: pnpm run test
         working-directory: typescript
 
       - name: extract version
