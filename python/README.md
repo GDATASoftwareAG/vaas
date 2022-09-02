@@ -33,7 +33,13 @@ from vaas import Vaas
 
 ```python
         async with Vaas() as vaas:
-            await vaas.connect(TOKEN)
+            await vaas.connect_with_client_credentials(
+                CLIENT_ID,
+                CLIENT_SECRET,
+                TOKEN_URL,
+                VAAS_URL,
+                SSL_VERIFICATION
+                )
             path = "/path/to/file"
             verdict = await vaas.for_file(path)
 ```
