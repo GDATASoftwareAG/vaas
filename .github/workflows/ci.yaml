@@ -114,7 +114,7 @@ jobs:
           node-version: 18
           registry-url: "https://registry.npmjs.org"
           cache: "pnpm"
-          cache-dependency-path: "typescript/package-lock.json"
+          cache-dependency-path: "typescript/pnpm-lock.yaml"
 
       - name: install dependencies
         run: pnpm install --frozen-lockfile
