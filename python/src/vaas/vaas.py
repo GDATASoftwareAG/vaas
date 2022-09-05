@@ -223,11 +223,11 @@ class Vaas:
         response_message = self.__response_message_for_guid(guid)
         await self.__upload(token, url, buffer, buffer_len)
         try:
-            verdict = (
-                await asyncio.wait_for(response_message, timeout=TIMEOUT)
-            ).get("verdict")
+            verdict = (await asyncio.wait_for(response_message, timeout=TIMEOUT)).get(
+                "verdict"
+            )
         except asyncio.TimeoutError as ex:
-            self.tracing.trace_upload_result_timeout(len(buffer))
+            self.tracing.trace_upload_result_timeout(buffer_len)
             raise VaasTimeoutError() from ex
         self.tracing.trace_upload_request(time.time() - start, buffer_len)
         return verdict
