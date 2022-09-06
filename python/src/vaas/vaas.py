@@ -9,20 +9,17 @@ import uuid
 from typing import Optional
 import asyncio
 from asyncio import Future
+import aiohttp
 import ssl
 from urllib.parse import urlparse
 import aiofiles
 from jwt import JWT
-import httpx
 import websockets.client
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 
 URL = "wss://gateway-vaas.gdatasecurity.de"
-TIMEOUT = 60
-HTTP2 = False
-# TODO: Set to default of 5 once Vaas upload endpoint is 100% streaming
-UPLOAD_TIMEOUT = 600
+TIMEOUT = 600
 
 
 class VaasTracing:
@@ -101,14 +98,16 @@ class Vaas:
         self.websocket = None
         self.session_id = None
         self.results = {}
-        self.httpx_client: Optional[httpx.AsyncClient] = None
+        self.http_client: Optional[aiohttp.ClientSession] = None
         self.options = options
+        self.verify_ssl = True
 
     async def connect(self, token, url=URL, verify=True):
         """Connect to VaaS
 
         token -- OpenID Connect token signed by a trusted identity provider
         """
+        self.verify_ssl = verify
         self.websocket = await connect_websocket(url, verify)
         authenticate_request = {"kind": "AuthRequest", "token": token}
 
@@ -123,7 +122,7 @@ class Vaas:
             self.__receive_loop()
         )  # fire and forget async_foo()
 
-        self.httpx_client = httpx.AsyncClient(http2=HTTP2, verify=verify)
+        self.http_client = aiohttp.ClientSession()
 
     async def connect_with_client_credentials(
         self, client_id, client_secret, token_endpoint, url=URL, verify=True
@@ -147,8 +146,8 @@ class Vaas:
             await self.websocket.close()
         if self.loop_result is not None:
             await self.loop_result
-        if self.httpx_client is not None:
-            await self.httpx_client.aclose()
+        if self.http_client is not None:
+            await self.http_client.close()
 
     async def __aenter__(self):
         return self
@@ -253,22 +252,22 @@ class Vaas:
         decoded_token = jwt.decode(token, do_verify=False)
         trace_id = decoded_token.get("traceId")
         try:
-            await self.httpx_client.put(
+            await self.http_client.put(
                 url=upload_uri,
-                content=buffer_or_file,
+                data=buffer_or_file,
                 headers={
                     "Authorization": token,
                     "traceParent": trace_id,
                     "Content-Length": str(content_length),
                 },
-                timeout=UPLOAD_TIMEOUT,
+                verify_ssl=self.verify_ssl
             )
-        except httpx.TimeoutException as ex:
+        except aiohttp.ServerTimeoutError as ex:
             self.tracing.trace_upload_timeout(content_length)
             raise VaasTimeoutError() from ex
 
     async def for_url(self, url):
         """Returns the verdict for a file from an url"""
-        response = await self.httpx_client.get(url)
-        buffer = response.content
+        response = await self.http_client.get(url)
+        buffer = await response.content.read()
         return await self.for_buffer(buffer)
