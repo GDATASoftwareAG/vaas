@@ -10,7 +10,11 @@ Get a verdict for a SHA256 of a file.
 public class MainClass {
     public  static void main(String[] args) {
         // Connect to the VaaS endpoint
-        var config = new WsConfig(token);
+        var config = new WsConfig(
+            clientId,
+            clientSecret,
+            new URI(tokenUrl),
+            new URI(vaasUrl));
         var vaas = new Vaas(config);
         vaas.connect();
 
