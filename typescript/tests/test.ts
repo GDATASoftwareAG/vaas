@@ -128,10 +128,10 @@ describe("Test verdict requests", function () {
 
   it("if we request the same guid twice, both calls return a result", async () => {
     const vaas = await createVaas();
-    const guid =
+    const sha256 =
       "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
-    const request1 = vaas.forSha256(guid);
-    const request2 = vaas.forSha256(guid);
+    const request1 = vaas.forSha256(sha256);
+    const request2 = vaas.forSha256(sha256);
     const verdict1 = await request1;
     const verdict2 = await request2;
     expect(verdict1).to.equal("Clean");
@@ -140,20 +140,20 @@ describe("Test verdict requests", function () {
 
   xit("keeps connection alive", async () => {
     const vaas = await createVaas();
-    const guid =
+    const sha256 =
       "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
-    let verdict = await vaas.forSha256(guid);
+    let verdict = await vaas.forSha256(sha256);
     expect(verdict).to.equal("Clean");
     await delay(40000);
-    verdict = await vaas.forSha256(guid);
+    verdict = await vaas.forSha256(sha256);
     expect(verdict).to.equal("Clean");
   }).timeout(45000);
 
   it("returns Pup for AMTSO pup sample", async () => {
     const vaas = await createVaas();
-    const guid =
+    const sha256 =
       "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
-    let verdict = await vaas.forSha256(guid);
+    let verdict = await vaas.forSha256(sha256);
     expect(verdict).to.equal("Pup");
   });
 });
