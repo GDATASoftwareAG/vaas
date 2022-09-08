@@ -241,10 +241,17 @@ class Vaas:
         response = await self.__for_sha256(sha256)
         verdict = response.get("verdict")
 
+        # Read file block-by-block. Disabled, because this causes upload to be done with very small blocks (<1k),
+        # which destroys performance.
+        # if verdict == "Unknown":
+        #     content_length = os.path.getsize(path)
+        #     async with aiofiles.open(path, mode="rb") as file:
+        #         verdict = await self._for_unknown_buffer(response, file, content_length)
+
         if verdict == "Unknown":
-            content_length = os.path.getsize(path)
             async with aiofiles.open(path, mode="rb") as file:
-                verdict = await self._for_unknown_buffer(response, file, content_length)
+                buffer = await file.read()
+                verdict = await self._for_unknown_buffer(response, buffer, len(buffer))
 
         return verdict
 

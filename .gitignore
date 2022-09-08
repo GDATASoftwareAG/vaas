@@ -44,3 +44,4 @@ obj/
 # Python
 __pycache__/
 _trial_temp/
+*.zip
