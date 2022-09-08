@@ -17,6 +17,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+
 import static org.testng.AssertJUnit.assertEquals;
 
 public class RealApiIntegrationTests {
@@ -243,7 +245,8 @@ public class RealApiIntegrationTests {
         return sb.toString();
     }
 
-    private Vaas getVaasWithCredentials() throws URISyntaxException, InterruptedException, IOException {
+    private Vaas getVaasWithCredentials()
+            throws URISyntaxException, InterruptedException, IOException, ExecutionException {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();

@@ -16,6 +16,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 public class Vaas {
@@ -30,7 +31,8 @@ public class Vaas {
         this.config = config;
     }
 
-    public void connect() throws InterruptedException, URISyntaxException, IOException {
+    // TODO: Custom exception or documentation
+    public void connect() throws InterruptedException, URISyntaxException, IOException, ExecutionException {
         this.client = new WsClient(this.getConfig());
         this.client.connectBlocking();
         this.client.authenticate();
@@ -108,27 +110,6 @@ public class Vaas {
     }
 
     private VerdictResult forRequest(VerdictRequest verdictRequest, CancellationToken ct) throws Exception {
-        // Ensure that we are authenticated, before we send the request
-        if (this.client.isAuthenticationFailed()) {
-            throw new Exception("Authentication failed");
-        }
-
-        if (!this.client.isAuthenticated()) {
-            // We are not authenticated yet, wait a short time for the AuthResponse.
-            // If it does not arrive in time, we will throw an exception.
-            for (int i = 0; i < 20; i++) {
-                if (this.client.isAuthenticated()) {
-                    break;
-                }
-                // TODO: Wastes 100ms for 1st request
-                Thread.sleep(100);
-            }
-
-            if (!this.client.isAuthenticated()) {
-                throw new Exception("No authentication response received");
-            }
-        }
-
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());

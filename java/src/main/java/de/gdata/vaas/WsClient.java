@@ -5,6 +5,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.java_websocket.client.WebSocketClient;
@@ -25,13 +26,13 @@ public class WsClient extends WebSocketClient {
 
     @Getter
     private Error errorResponses = null;
+
     @Getter
     @NonNull
     private String token;
-    @Getter
-    private boolean authenticated = false;
-    @Getter
-    private boolean authenticationFailed = false;
+
+    private CompletableFuture<Void> authenticated = new CompletableFuture<Void>();
+
     @Getter
     private String sessionId = null;
 
@@ -52,9 +53,17 @@ public class WsClient extends WebSocketClient {
         this.token = config.getToken();
     }
 
-    public void authenticate() {
+    public void authenticate() throws InterruptedException, ExecutionException {
         var authRequest = new AuthRequest(this.getToken());
         this.send(authRequest.toJson());
+        waitForAuthentication();
+    }
+
+    private void waitForAuthentication() throws InterruptedException, ExecutionException {
+        // TODO: Test authentication error
+        this.authenticated.get();
+        // TODO: Timeout
+        // throw new Exception("No authentication response received");
     }
 
     public Future<VerdictResponse> waitForVerdict(String requestId) {
@@ -96,10 +105,11 @@ public class WsClient extends WebSocketClient {
         if (msg.getKind() == Kind.AuthResponse) {
             var authResp = AuthResponse.fromJson(message);
             if (authResp.isSuccess()) {
-                this.authenticated = true;
+                this.authenticated.complete(null);
                 this.sessionId = authResp.getSessionId();
             } else {
-                this.authenticationFailed = true;
+                // TODO:
+                this.authenticated.completeExceptionally(new Exception("Authentication failed"));
             }
         } else if (msg.getKind() == Kind.VerdictResponse) {
             var verdictResp = VerdictResponse.fromJson(message);
