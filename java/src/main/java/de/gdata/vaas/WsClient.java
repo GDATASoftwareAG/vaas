@@ -1,19 +1,23 @@
 package de.gdata.vaas;
 
-import de.gdata.vaas.messages.Error;
-import de.gdata.vaas.messages.*;
-import lombok.Getter;
-import lombok.NonNull;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
+
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+
+import de.gdata.vaas.messages.AuthRequest;
+import de.gdata.vaas.messages.AuthResponse;
+import de.gdata.vaas.messages.Error;
+import de.gdata.vaas.messages.Kind;
+import de.gdata.vaas.messages.MessageType;
+import de.gdata.vaas.messages.VerdictResponse;
+import lombok.Getter;
+import lombok.NonNull;
 
 public class WsClient extends WebSocketClient {
 
@@ -30,6 +34,18 @@ public class WsClient extends WebSocketClient {
     private boolean authenticationFailed = false;
     @Getter
     private String sessionId = null;
+
+    private Thread pingThread;
+
+    private void pingThread() {
+        try {
+            while (true) {
+                Thread.sleep(20000);
+                this.sendPing();
+            }
+        } catch (InterruptedException e) {
+        }
+    }
 
     public WsClient(WsConfig config) throws URISyntaxException, IOException, InterruptedException {
         super(config.getUrl());
@@ -59,11 +75,17 @@ public class WsClient extends WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshakeData) {
-        this.sendPing();
+        pingThread = new Thread(() -> pingThread());
+        this.pingThread.start();
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
+        this.pingThread.interrupt();
+        try {
+            this.pingThread.join();
+        } catch (InterruptedException e) {
+        }
     }
 
     @Override

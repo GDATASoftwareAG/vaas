@@ -2,7 +2,6 @@ package de.gdata.vaas;
 
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
-import de.gdata.vaas.messages.VerdictResponse;
 import de.gdata.vaas.messages.VerdictResult;
 import lombok.Getter;
 import lombok.NonNull;
