@@ -11,14 +11,14 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 
 public class WsClient extends WebSocketClient {
 
-    @NonNull
-    private List<VerdictResponse> verdictResponses;
+    private ConcurrentHashMap<String, CompletableFuture<VerdictResponse>> verdictResponses = new ConcurrentHashMap<String, CompletableFuture<VerdictResponse>>();
+
     @Getter
     private Error errorResponses = null;
     @Getter
@@ -33,7 +33,6 @@ public class WsClient extends WebSocketClient {
 
     public WsClient(WsConfig config) throws URISyntaxException, IOException, InterruptedException {
         super(config.getUrl());
-        this.verdictResponses = new LinkedList<>();
         this.token = config.getToken();
     }
 
@@ -42,29 +41,20 @@ public class WsClient extends WebSocketClient {
         this.send(authRequest.toJson());
     }
 
-    public Optional<VerdictResponse> popResponse(String guid) {
-        var op = this.findMessage(guid);
-
-        if (op.isPresent()) {
-            this.removeMessage(guid);
-            return Optional.of((VerdictResponse) op.get());
-        } else {
-            return Optional.empty();
-        }
+    public Future<VerdictResponse> waitForVerdict(String requestId) {
+        var future = new CompletableFuture<VerdictResponse>();
+        // TODO: What happens if the requestId already exists?
+        verdictResponses.put(requestId, future);
+        return future;
     }
 
-    private void removeMessage(String guid) {
-        var resp = this.findMessage(guid);
-        if (resp.isPresent()) {
-            this.verdictResponses.remove(resp.get());
+    private void completeVerdict(String requestId, VerdictResponse response) {
+        var verdictResponse = verdictResponses.remove(requestId);
+        if (verdictResponse == null) {
+            // Error: Server sent guid we are not waiting for, ignore it
+            return;
         }
-    }
-
-    private @NotNull Optional<VerdictResponse> findMessage(String guid) {
-        return this.verdictResponses
-                .stream()
-                .filter(m -> m.getGuid().equals(guid))
-                .findFirst();
+        verdictResponse.complete(response);
     }
 
     @Override
@@ -91,7 +81,7 @@ public class WsClient extends WebSocketClient {
             }
         } else if (msg.getKind() == Kind.VerdictResponse) {
             var verdictResp = VerdictResponse.fromJson(message);
-            this.verdictResponses.add(verdictResp);
+            completeVerdict(verdictResp.getGuid(), verdictResp);
         } else if (msg.getKind() == Kind.Error) {
             var error = Error.fromJson(message);
             this.errorResponses = error;

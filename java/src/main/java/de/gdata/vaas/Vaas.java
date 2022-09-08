@@ -77,8 +77,12 @@ public class Vaas {
         if (verdict == null) {
             return null;
         } else if (verdict.getVerdict() == Verdict.UNKNOWN) {
+            var response = this.client.waitForVerdict(verdictRequest.getGuid());
+
             UploadFile(file, verdict.getUploadUrl(), verdict.getUploadToken());
-            return this.waitForVerdict(verdictRequest.getGuid(), ct);
+
+            // TODO: Handle timeouts and cancellation
+            return new VerdictResult(response.get());
         } else {
             return verdict;
         }
@@ -106,70 +110,31 @@ public class Vaas {
 
     private VerdictResult forRequest(VerdictRequest verdictRequest, CancellationToken ct) throws Exception {
         // Ensure that we are authenticated, before we send the request
-        if (this.client.isAuthenticated()) {
-            verdictRequest.setSessionId(this.client.getSessionId());
-            this.client.send(verdictRequest.toJson());
-        } else if (this.client.isAuthenticationFailed()) {
+        if (this.client.isAuthenticationFailed()) {
             throw new Exception("Authentication failed");
-        } else {
+        }
+
+        if (!this.client.isAuthenticated()) {
             // We are not authenticated yet, wait a short time for the AuthResponse.
             // If it does not arrive in time, we will throw an exception.
             for (int i = 0; i < 20; i++) {
                 if (this.client.isAuthenticated()) {
-                    verdictRequest.setSessionId(this.client.getSessionId());
-                    this.client.send(verdictRequest.toJson());
                     break;
                 }
+                // TODO: Wastes 100ms for 1st request
                 Thread.sleep(100);
             }
+
             if (!this.client.isAuthenticated()) {
                 throw new Exception("No authentication response received");
             }
         }
 
-        return this.waitForVerdict(verdictRequest.getGuid(), ct);
-    }
+        var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
-    private VerdictResult waitForVerdict(String guid, CancellationToken ct) throws InterruptedException {
-        VerdictResponse verdictResponse = null;
+        verdictRequest.setSessionId(this.client.getSessionId());
+        this.client.send(verdictRequest.toJson());
 
-        int ping_cnt = 0;
-        // Pull for a result until we get one, or are cancelled.
-        while (ct.isNotCancelled()) {
-            Thread.sleep(this.config.getPullDelayMs());
-
-            // Send a ping message every 10 pull,
-            // to keep the connection alive.
-            if (ping_cnt == 10) {
-                ping_cnt = 0;
-                this.client.sendPing();
-            } else {
-                ping_cnt++;
-            }
-
-            if (this.client.getErrorResponses() != null) {
-                throw new Error(this.client.getErrorResponses().getText());
-            }
-
-            var resp = client.popResponse(guid);
-
-            if (resp.isPresent()) {
-                verdictResponse = resp.get();
-                break;
-            }
-
-            if (ping_cnt == 200) {
-                client.sendPing();
-                ping_cnt = 0;
-            }
-            ping_cnt++;
-        }
-
-        if (verdictResponse == null) {
-            // Cancellation case
-            return null;
-        } else {
-            return new VerdictResult(verdictResponse);
-        }
+        return new VerdictResult(verdictResponse.get());
     }
 }
