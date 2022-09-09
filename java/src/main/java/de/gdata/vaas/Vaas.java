@@ -1,12 +1,5 @@
 package de.gdata.vaas;
 
-import de.gdata.vaas.messages.Verdict;
-import de.gdata.vaas.messages.VerdictRequest;
-import de.gdata.vaas.messages.VerdictResult;
-import lombok.Getter;
-import lombok.NonNull;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -15,9 +8,18 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.messages.VerdictRequest;
+import de.gdata.vaas.messages.VerdictResult;
+import lombok.Getter;
+import lombok.NonNull;
 
 public class Vaas {
 
@@ -42,38 +44,25 @@ public class Vaas {
         this.client.closeBlocking();
     }
 
-    public VerdictResult forSha256(Sha256 sha256, @NotNull CancellationTokenSource cts) throws Exception {
-        var request = new VerdictRequest(sha256, this.client.getSessionId());
-        return this.forRequest(request, cts.getToken());
+    public VerdictResult forSha256(Sha256 sha256)
+            throws TimeoutException, InterruptedException, ExecutionException {
+        return this.forSha256(sha256, 10, TimeUnit.MINUTES);
     }
 
-    public List<VerdictResult> forSha256List(List<Sha256> sha256List, @NotNull CancellationTokenSource cts)
-            throws Exception {
-        return sha256List.stream().map(sha256 -> {
-            try {
-                return this.forSha256(sha256, cts);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }).collect(Collectors.toList());
+    public VerdictResult forSha256(Sha256 sha256, long timeout, TimeUnit unit)
+            throws TimeoutException, InterruptedException, ExecutionException {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Future<VerdictResult> future = executor.submit(() -> {
+            var request = new VerdictRequest(sha256, this.client.getSessionId());
+            return this.forRequest(request);
+        });
+        return future.get(timeout, unit);
     }
 
-    public List<VerdictResult> forFileList(List<Path> fileList, @NotNull CancellationTokenSource cts)
-            throws Exception {
-        return fileList.stream().map(file -> {
-            try {
-                return this.forFile(file, cts);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }).collect(Collectors.toList());
-    }
-
-    public VerdictResult forFile(Path file, CancellationTokenSource cts) throws Exception {
+    public VerdictResult forFile(Path file) throws Exception {
         var sha256 = new Sha256(file);
-        var ct = cts.getToken();
         var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId());
-        var verdict = this.forRequest(verdictRequest, ct);
+        var verdict = this.forRequest(verdictRequest);
 
         if (verdict == null) {
             return null;
@@ -98,6 +87,7 @@ public class Vaas {
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(bytes))
                 .build();
 
+        // TODO: Timeout and cancellation
         var response = HttpClient
                 .newBuilder()
                 .build()
@@ -109,12 +99,13 @@ public class Vaas {
         }
     }
 
-    private VerdictResult forRequest(VerdictRequest verdictRequest, CancellationToken ct) throws Exception {
+    private VerdictResult forRequest(VerdictRequest verdictRequest) throws Exception {
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());
         this.client.send(verdictRequest.toJson());
 
+        // TODO: Timeout and cancellation
         return new VerdictResult(verdictResponse.get());
     }
 }

@@ -66,10 +66,12 @@ public class WsClient extends WebSocketClient {
         // throw new Exception("No authentication response received");
     }
 
-    public Future<VerdictResponse> waitForVerdict(String requestId) {
+    public Future<VerdictResponse> waitForVerdict(String requestId) throws Exception {
         var future = new CompletableFuture<VerdictResponse>();
-        // TODO: What happens if the requestId already exists?
-        verdictResponses.put(requestId, future);
+        var previousValue = verdictResponses.putIfAbsent(requestId, future);
+        if (previousValue != null) {
+            throw new Exception("requestId already exists");
+        }
         return future;
     }
 
@@ -105,8 +107,8 @@ public class WsClient extends WebSocketClient {
         if (msg.getKind() == Kind.AuthResponse) {
             var authResp = AuthResponse.fromJson(message);
             if (authResp.isSuccess()) {
-                this.authenticated.complete(null);
                 this.sessionId = authResp.getSessionId();
+                this.authenticated.complete(null);
             } else {
                 // TODO:
                 this.authenticated.completeExceptionally(new Exception("Authentication failed"));
