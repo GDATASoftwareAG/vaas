@@ -6,7 +6,6 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
@@ -66,7 +65,7 @@ public class WsClient extends WebSocketClient {
         // throw new Exception("No authentication response received");
     }
 
-    public Future<VerdictResponse> waitForVerdict(String requestId) throws Exception {
+    public CompletableFuture<VerdictResponse> waitForVerdict(String requestId) throws Exception {
         var future = new CompletableFuture<VerdictResponse>();
         var previousValue = verdictResponses.putIfAbsent(requestId, future);
         if (previousValue != null) {
