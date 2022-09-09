@@ -6,6 +6,8 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
@@ -20,6 +22,8 @@ import lombok.Getter;
 import lombok.NonNull;
 
 public class WsClient extends WebSocketClient {
+
+    private final int AuthenticationTimeoutInS = 10;
 
     private ConcurrentHashMap<String, CompletableFuture<VerdictResponse>> verdictResponses = new ConcurrentHashMap<String, CompletableFuture<VerdictResponse>>();
 
@@ -52,17 +56,14 @@ public class WsClient extends WebSocketClient {
         this.token = config.getToken();
     }
 
-    public void authenticate() throws InterruptedException, ExecutionException {
+    public void authenticate() throws InterruptedException, ExecutionException, TimeoutException {
         var authRequest = new AuthRequest(this.getToken());
         this.send(authRequest.toJson());
         waitForAuthentication();
     }
 
-    private void waitForAuthentication() throws InterruptedException, ExecutionException {
-        // TODO: Test authentication error
-        this.authenticated.get();
-        // TODO: Timeout
-        // throw new Exception("No authentication response received");
+    private void waitForAuthentication() throws InterruptedException, ExecutionException, TimeoutException {
+        this.authenticated.get(AuthenticationTimeoutInS, TimeUnit.SECONDS);
     }
 
     public CompletableFuture<VerdictResponse> waitForVerdict(String requestId) throws Exception {

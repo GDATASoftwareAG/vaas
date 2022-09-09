@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
@@ -32,8 +33,8 @@ public class Vaas {
         this.config = config;
     }
 
-    // TODO: Custom exception or documentation
-    public void connect() throws InterruptedException, URISyntaxException, IOException, ExecutionException {
+    public void connect()
+            throws InterruptedException, URISyntaxException, IOException, ExecutionException, TimeoutException {
         this.client = new WsClient(this.getConfig());
         this.client.connectBlocking();
         this.client.authenticate();
@@ -55,17 +56,15 @@ public class Vaas {
     }
 
     public VerdictResult forFile(Path file) throws Exception {
+        return forFile(file, defaultTimeout, defaultTimeoutUnit);
+    }
+
+    public VerdictResult forFile(Path file, long timeout, TimeUnit unit) throws Exception {
         var sha256 = new Sha256(file);
         var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId());
 
         var verdictResultFuture = this.forRequest(verdictRequest)
-                // verdict != Verdic.Unknown -> return
-                // return Upload.then(wait)
                 .thenCompose(verdictResult -> {
-                    // TODO: Throw if null
-                    // if (verdictResult == null) {
-                    // return null;
-                    // }
                     var verdict = verdictResult.getVerdict();
                     if (verdict != Verdict.UNKNOWN) {
                         return CompletableFuture.completedStage(verdictResult);
@@ -81,8 +80,7 @@ public class Vaas {
                         return null;
                     }
                 });
-        // TODO: timeout
-        return verdictResultFuture.get();
+        return verdictResultFuture.get(timeout, unit);
     }
 
     private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)

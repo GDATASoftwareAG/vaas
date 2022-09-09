@@ -9,6 +9,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
@@ -182,7 +183,7 @@ public class RealApiIntegrationTests {
     }
 
     private Vaas getVaasWithCredentials()
-            throws URISyntaxException, InterruptedException, IOException, ExecutionException {
+            throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
