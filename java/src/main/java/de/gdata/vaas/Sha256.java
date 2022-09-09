@@ -13,16 +13,16 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class Sha256 {
+    private static Pattern pattern = Pattern.compile("^[A-Fa-f0-9]{64}$");
+
     @NonNull
     @Getter
     private String value;
 
     public Sha256(String sha256) {
-        var lowerSha256 = sha256.toLowerCase();
-        var pattern = Pattern.compile("^[A-Fa-f0-9]{64}$");
-        var matcher = pattern.matcher(lowerSha256);
+        var matcher = pattern.matcher(sha256);
 
-        if(!matcher.find()) {
+        if (!matcher.find()) {
             throw new IllegalArgumentException("Not a valid SHA256");
         }
 
