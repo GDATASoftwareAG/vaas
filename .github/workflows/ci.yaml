@@ -55,6 +55,14 @@ jobs:
           gradle-version: "7.2"
           build-root-directory: java
 
+      - name: publish Maven package
+        if: startsWith(github.ref, 'refs/tags/java')
+        uses: samuelmeuli/action-maven-publish@v1
+        with:
+          directory: java
+          nexus_username: ${{ secrets.NEXUS_USER }}
+          nexus_password: ${{ secrets.NEXUS_PASSWORD }}
+
   build-php:
     name: Build & Test PHP SDK
     runs-on: ubuntu-20.04

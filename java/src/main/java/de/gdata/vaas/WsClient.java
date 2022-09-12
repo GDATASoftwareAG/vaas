@@ -1,79 +1,102 @@
 package de.gdata.vaas;
 
-import de.gdata.vaas.messages.Error;
-import de.gdata.vaas.messages.*;
-import lombok.Getter;
-import lombok.NonNull;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+
+import de.gdata.vaas.messages.AuthRequest;
+import de.gdata.vaas.messages.AuthResponse;
+import de.gdata.vaas.messages.Error;
+import de.gdata.vaas.messages.Kind;
+import de.gdata.vaas.messages.MessageType;
+import de.gdata.vaas.messages.VerdictResponse;
+import lombok.Getter;
+import lombok.NonNull;
 
 public class WsClient extends WebSocketClient {
 
-    @NonNull
-    private List<VerdictResponse> verdictResponses;
+    private final int AuthenticationTimeoutInS = 10;
+
+    private ConcurrentHashMap<String, CompletableFuture<VerdictResponse>> verdictResponses = new ConcurrentHashMap<String, CompletableFuture<VerdictResponse>>();
+
     @Getter
     private Error errorResponses = null;
+
     @Getter
     @NonNull
     private String token;
-    @Getter
-    private boolean authenticated = false;
-    @Getter
-    private boolean authenticationFailed = false;
+
+    private CompletableFuture<Void> authenticated = new CompletableFuture<Void>();
+
     @Getter
     private String sessionId = null;
 
+    private Thread pingThread;
+
+    private void pingThread() {
+        try {
+            while (true) {
+                Thread.sleep(20000);
+                this.sendPing();
+            }
+        } catch (InterruptedException e) {
+        }
+    }
+
     public WsClient(WsConfig config) throws URISyntaxException, IOException, InterruptedException {
         super(config.getUrl());
-        this.verdictResponses = new LinkedList<>();
         this.token = config.getToken();
     }
 
-    public void authenticate() {
+    public void authenticate() throws InterruptedException, ExecutionException, TimeoutException {
         var authRequest = new AuthRequest(this.getToken());
         this.send(authRequest.toJson());
+        waitForAuthentication();
     }
 
-    public Optional<VerdictResponse> popResponse(String guid) {
-        var op = this.findMessage(guid);
+    private void waitForAuthentication() throws InterruptedException, ExecutionException, TimeoutException {
+        this.authenticated.get(AuthenticationTimeoutInS, TimeUnit.SECONDS);
+    }
 
-        if (op.isPresent()) {
-            this.removeMessage(guid);
-            return Optional.of((VerdictResponse) op.get());
-        } else {
-            return Optional.empty();
+    public CompletableFuture<VerdictResponse> waitForVerdict(String requestId) throws Exception {
+        var future = new CompletableFuture<VerdictResponse>();
+        var previousValue = verdictResponses.putIfAbsent(requestId, future);
+        if (previousValue != null) {
+            throw new Exception("requestId already exists");
         }
+        return future;
     }
 
-    private void removeMessage(String guid) {
-        var resp = this.findMessage(guid);
-        if (resp.isPresent()) {
-            this.verdictResponses.remove(resp.get());
+    private void completeVerdict(String requestId, VerdictResponse response) {
+        var verdictResponse = verdictResponses.remove(requestId);
+        if (verdictResponse == null) {
+            // Error: Server sent guid we are not waiting for, ignore it
+            return;
         }
-    }
-
-    private @NotNull Optional<VerdictResponse> findMessage(String guid) {
-        return this.verdictResponses
-                .stream()
-                .filter(m -> m.getGuid().equals(guid))
-                .findFirst();
+        verdictResponse.complete(response);
     }
 
     @Override
     public void onOpen(ServerHandshake handshakeData) {
-        this.sendPing();
+        pingThread = new Thread(() -> pingThread());
+        this.pingThread.start();
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
+        this.pingThread.interrupt();
+        try {
+            this.pingThread.join();
+        } catch (InterruptedException e) {
+        }
     }
 
     @Override
@@ -84,14 +107,15 @@ public class WsClient extends WebSocketClient {
         if (msg.getKind() == Kind.AuthResponse) {
             var authResp = AuthResponse.fromJson(message);
             if (authResp.isSuccess()) {
-                this.authenticated = true;
                 this.sessionId = authResp.getSessionId();
+                this.authenticated.complete(null);
             } else {
-                this.authenticationFailed = true;
+                // TODO:
+                this.authenticated.completeExceptionally(new Exception("Authentication failed"));
             }
         } else if (msg.getKind() == Kind.VerdictResponse) {
             var verdictResp = VerdictResponse.fromJson(message);
-            this.verdictResponses.add(verdictResp);
+            completeVerdict(verdictResp.getGuid(), verdictResp);
         } else if (msg.getKind() == Kind.Error) {
             var error = Error.fromJson(message);
             this.errorResponses = error;
