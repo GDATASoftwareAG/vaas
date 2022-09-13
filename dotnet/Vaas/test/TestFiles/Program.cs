@@ -2,7 +2,7 @@
 
 if (args.Length == 0)
 {
-    Console.WriteLine("Usage TestFiles [FILE]");
+    Console.WriteLine("Usage TestFiles [FILE]...");
     Environment.Exit(1);
 }
 
