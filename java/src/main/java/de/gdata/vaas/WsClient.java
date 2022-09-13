@@ -66,11 +66,11 @@ public class WsClient extends WebSocketClient {
         this.authenticated.get(AuthenticationTimeoutInS, TimeUnit.SECONDS);
     }
 
-    public CompletableFuture<VerdictResponse> waitForVerdict(String requestId) throws Exception {
+    public CompletableFuture<VerdictResponse> waitForVerdict(String requestId) {
         var future = new CompletableFuture<VerdictResponse>();
         var previousValue = verdictResponses.putIfAbsent(requestId, future);
         if (previousValue != null) {
-            throw new Exception("requestId already exists");
+            return CompletableFuture.failedFuture(new Exception("requestId already exists"));
         }
         return future;
     }
@@ -110,7 +110,6 @@ public class WsClient extends WebSocketClient {
                 this.sessionId = authResp.getSessionId();
                 this.authenticated.complete(null);
             } else {
-                // TODO:
                 this.authenticated.completeExceptionally(new Exception("Authentication failed"));
             }
         } else if (msg.getKind() == Kind.VerdictResponse) {
