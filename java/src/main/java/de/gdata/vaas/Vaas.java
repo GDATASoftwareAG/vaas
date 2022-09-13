@@ -29,6 +29,8 @@ public class Vaas {
 
     private WsClient client;
 
+    private HttpClient httpClient = HttpClient.newBuilder().build();
+
     public Vaas(WsConfig config) {
         this.config = config;
     }
@@ -92,9 +94,7 @@ public class Vaas {
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(bytes))
                 .build();
 
-        var futureResponse = HttpClient
-                .newBuilder()
-                .build()
+        var futureResponse = this.httpClient
                 .sendAsync(request, HttpResponse.BodyHandlers.ofString());
 
         return futureResponse.thenAccept(response -> {
