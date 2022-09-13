@@ -3,7 +3,7 @@
 //! `vaas` is a client SDK for the Verdict-as-a-Service (VaaS) platform by the GDATA CyberSecurity AG.
 //! It provides an API to check a hash sum of a file or a file for malicous content.
 //!
-//! ## Intendet For
+//! ## Intended For
 //!
 //! The `vaas` SDK is intended for developers who want to integrate Verdict-as-a-Service into their product.
 //! For example to check all files uploaded by user on a website or plugin into an e-mail client, to check all attachments of an e-mail for malicious content.
