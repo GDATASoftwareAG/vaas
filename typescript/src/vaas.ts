@@ -138,12 +138,14 @@ export default class Vaas {
       const ws = new WebSocket(url);
       // ws library does not have auto-keepalive
       // https://github.com/websockets/ws/issues/767
-      ws.on("ping", (payload) => {
-        ws.pong(payload);
-      });
-      ws.on("pong", async () => {
-        this.pingTimeout = setTimeout(() => ws.ping(), 10000);
-      });
+      if (ws.on !== undefined) {
+        ws.on("ping", (payload) => {
+          ws.pong(payload);
+        });
+        ws.on("pong", async () => {
+          this.pingTimeout = setTimeout(() => ws.ping(), 10000);
+        });
+      }
       ws.onopen = async () => {
         try {
           this.authenticate(ws, token);
@@ -240,6 +242,8 @@ export default class Vaas {
       serialize(new AuthenticationRequest(token))
     );
     ws.send(authReq);
-    ws.ping();
+    if (ws.ping !== undefined) {
+      ws.ping();
+    }
   }
 }
