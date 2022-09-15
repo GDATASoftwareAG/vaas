@@ -5,6 +5,19 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <Authors>opensource@gdata.de</Authors>
+    <Company>G DATA CyberDefense AG</Company>
+    <PackageId>GData.Vaas</PackageId>
+    <PackageTags>security;malware;malware-analysis;it-security;malware-detection</PackageTags>
+    <Description>
+      Verdict-as-a-Service (VaaS) is a service that provides a platform for scanning files for malware and 
+      other threats. It allows easy integration in your application. With a few lines of code, you can start 
+      scanning files for malware.
+    </Description>
+    <RepositoryUrl>https://github.com/GDATASoftwareAG/vaas.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryProjectUrl>https://github.com/GDATASoftwareAG/vaas</RepositoryProjectUrl>
+    <Copyright>Copyright (C) 2022 G DATA CyberDefense AG</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
