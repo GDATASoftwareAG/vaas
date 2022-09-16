@@ -1,12 +1,20 @@
 plugins {
     id 'java'
+    id 'maven-publish'
+    id 'signing'
+    id "io.codearte.nexus-staging" version "0.30.0"
 }
 
-group 'de.gdata'
-version '0.0.1'
+group = 'de.gdata'
+version = '0.0.0'
 
 repositories {
     mavenCentral()
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
 }
 
 dependencies {
@@ -28,4 +36,57 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            pom {
+                name = 'G DATA VaaS'
+                description = 'Verdict-as-a-Service (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware.'
+                url = 'https://github.com/GDATASoftwareAG/vaas'
+                licenses {
+                    license {
+                        name = 'MIT'
+                        url = 'https://github.com/GDATASoftwareAG/vaas/blob/main/LICENSE'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'gdata'
+                        name = 'GDATA Cyberdefense'
+                        email = 'opensource@gdata.de'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:git@github.com:GDATASoftwareAG/vaas.git'
+                    url = 'https://github.com/GDATASoftwareAG/vaas'
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials {
+                username = findProperty("username")
+                password = findProperty("password")
+            }
+        }
+    }
+
+    signing {
+        def signingKey = findProperty("signingKey")
+        def signingPassword = findProperty("signingPassword")
+        useInMemoryPgpKeys(signingKey, signingPassword)        
+        sign publishing.publications.mavenJava
+    }
+}
+
+nexusStaging {
+    serverUrl = "https://s01.oss.sonatype.org/service/local/"
+    username = findProperty("username")
+    password = findProperty("password")    
+    packageGroup = "de.gdata"
 }
