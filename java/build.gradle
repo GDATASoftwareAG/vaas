@@ -2,10 +2,11 @@ plugins {
     id 'java'
     id 'maven-publish'
     id 'signing'
+    id "io.codearte.nexus-staging" version "0.30.0"
 }
 
 group = 'de.gdata'
-version = '0.0.0'
+version = '0.0.2'
 
 repositories {
     mavenCentral()
@@ -85,4 +86,11 @@ publishing {
         useInMemoryPgpKeys(signingKey, signingPassword)        
         sign publishing.publications.mavenJava
     }
+}
+
+nexusStaging {
+    serverUrl = "https://s01.oss.sonatype.org/service/local/"
+    username = findProperty("username")
+    password = findProperty("password")    
+    packageGroup = "de.gdata"
 }
