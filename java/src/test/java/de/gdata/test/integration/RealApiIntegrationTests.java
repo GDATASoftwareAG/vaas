@@ -158,7 +158,16 @@ public class RealApiIntegrationTests {
 
     @Test
     @Disabled("Enable to test keep-alive")
-    public void FromSha256_WorksAfter40s() throws Exception {
+    public void fromFile_WorksWithBigSample() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var verdict = vaas.forFile(Path.of("/home/vscode/big.zip"));
+        assert (verdict != null);
+        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+    }
+
+    @Test
+    @Disabled("Enable to test keep-alive")
+    public void fromSha256_WorksAfter40s() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
         var verdict = vaas.forSha256(sha256);
