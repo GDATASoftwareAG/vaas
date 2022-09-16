@@ -45,10 +45,6 @@ publishing {
                 name = 'G DATA VaaS'
                 description = 'Verdict-as-a-Service (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware.'
                 url = 'https://github.com/GDATASoftwareAG/vaas'
-                properties = [
-                    myProp: "value",
-                    "prop.with.dots": "anotherValue"
-                ]
                 licenses {
                     license {
                         name = 'MIT'
