@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'java-libary'
     id 'maven-publish'
     id 'signing'
     id "io.codearte.nexus-staging" version "0.30.0"
