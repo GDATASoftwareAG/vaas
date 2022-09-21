@@ -1,27 +1,21 @@
-import { argv, exit } from "process";
 import { promises as fs } from "fs";
-import createVaas from "../../tests/createVaas";
+import CreateVaasWithClientCredentialsGrant from "gdata-vaas";
 
 async function main() {
-  if (argv.length < 3) {
-    console.log("Usage: ts-node test-files.ts [FILE]");
-    exit(1);
-  }
-
-  const vaas = await createVaas();
-
-  for (const path of argv.slice(2)) {
-    console.log(`Testing ${path}`);
-    const f = await fs.open(path, "r");
-    try {
-      const verdict = await vaas.forFile(await f.readFile());
-      console.log(`Tested ${path}: Verdict ${verdict}`);
-    } finally {
-      f.close();
+    const vaas = await CreateVaasWithClientCredentialsGrant(
+        "clientID",
+        "clientSecret",
+        "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        );
+    const f = await fs.open("/path/to/file", "r");
+    try{
+        const verdict = await vaas.forFile(await f.readFile());
+        console.log(verdict);
     }
-  }
-
-  vaas.close();
+    finally{
+        f.close();
+        vaas.close();
+    }    
 }
 
-main().catch((e) => console.error(e));
+main().catch(e => { console.log(e) })

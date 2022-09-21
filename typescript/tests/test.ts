@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { describe } from "mocha";
 import * as dotenv from "dotenv";
-import Vaas from "../src/vaas";
+import { Vaas } from "../src/Vaas";
 import * as randomBytes from "random-bytes";
 import { CancellationToken } from "../src/CancellationToken";
-import createVaasWithClientCredentialsGrant from "../src/createVaasWithClientCredentialsGrant";
+import { CreateVaasWithClientCredentialsGrant } from "../src/CreateVaasWithClientCredentialsGrant";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -31,7 +31,7 @@ const VAAS_URL = getFromEnvironment("VAAS_URL");
 const TOKEN_URL = getFromEnvironment("TOKEN_URL");
 
 async function createVaas() {
-  let vaas = await createVaasWithClientCredentialsGrant(
+  let vaas = await CreateVaasWithClientCredentialsGrant(
     CLIENT_ID,
     CLIENT_SECRET,
     TOKEN_URL,

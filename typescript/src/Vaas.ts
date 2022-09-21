@@ -8,7 +8,7 @@ import { VerdictResponse } from "./messages/verdict_response";
 import { WebsocketError } from "./messages/websocket_error";
 import { VerdictRequest } from "./messages/verdict_request";
 import { v4 as uuidv4 } from "uuid";
-import { Verdict } from "./verdict";
+import { Verdict } from "./Verdict";
 import * as axios from "axios";
 import { CancellationToken } from "./CancellationToken";
 
@@ -36,7 +36,7 @@ export type VaasConnection = {
   sessionId: string;
 };
 
-export default class Vaas {
+export class Vaas {
   callbacks: Map<string, VerdictCallback>;
   connection: VaasConnection | null = null;
   defaultTimeoutHashReq: number = 2_000;

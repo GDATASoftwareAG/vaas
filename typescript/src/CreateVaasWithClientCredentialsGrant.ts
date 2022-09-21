@@ -1,6 +1,6 @@
 import URLSearchParams from "@ungap/url-search-params";
 import * as axios from "axios";
-import Vaas, { VAAS_URL } from "./vaas";
+import { Vaas, VAAS_URL } from "./Vaas";
 
 async function getTokenWithClientCredentialsGrant(
   clientId: string,
@@ -19,7 +19,7 @@ async function getTokenWithClientCredentialsGrant(
   return response.data.access_token;
 }
 
-export default async function createVaasWithClientCredentialsGrant(
+export async function CreateVaasWithClientCredentialsGrant(
   clientId: string,
   clientSecret: string,
   tokenEndpoint: string,

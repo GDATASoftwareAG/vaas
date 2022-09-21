@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
-import Vaas from "../src/vaas";
-import createVaasWithClientCredentialsGrant from "../src/createVaasWithClientCredentialsGrant";
+import { Vaas, CreateVaasWithClientCredentialsGrant } from "../src/Index";
 
 function throwError(errorMessage: string): never {
   throw new Error(errorMessage);
@@ -19,7 +18,7 @@ export default function createVaas(): Promise<Vaas> {
   const VAAS_URL = getFromEnvironment("VAAS_URL");
   const TOKEN_URL = getFromEnvironment("TOKEN_URL");
 
-  return createVaasWithClientCredentialsGrant(
+  return CreateVaasWithClientCredentialsGrant(
     CLIENT_ID,
     CLIENT_SECRET,
     TOKEN_URL,
