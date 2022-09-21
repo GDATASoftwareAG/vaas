@@ -62,6 +62,8 @@ publishing {
                     connection = 'scm:git:git@github.com:GDATASoftwareAG/vaas.git'
                     url = 'https://github.com/GDATASoftwareAG/vaas'
                 }
+
+                from components.java
             }
         }
     }
