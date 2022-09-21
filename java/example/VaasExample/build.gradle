@@ -1,0 +1,14 @@
+plugins {
+    id 'java'
+}
+
+group 'de.gdata.vaasexample'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'de.gdata:vaas'
+}
