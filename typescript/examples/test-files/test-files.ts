@@ -1,5 +1,5 @@
 import { promises as fs } from "fs";
-import CreateVaasWithClientCredentialsGrant from "gdata-vaas";
+import { CreateVaasWithClientCredentialsGrant } from "gdata-vaas";
 
 async function main() {
     const vaas = await CreateVaasWithClientCredentialsGrant(

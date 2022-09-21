@@ -9,6 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "gdata-vaas": "^2.2.6"
+    "gdata-vaas": "^2.2.7"
   }
 }
