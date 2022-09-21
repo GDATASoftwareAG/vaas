@@ -8,7 +8,7 @@ import { VerdictResponse } from "./messages/verdict_response";
 import { WebsocketError } from "./messages/websocket_error";
 import { VerdictRequest } from "./messages/verdict_request";
 import { v4 as uuidv4 } from "uuid";
-import { Verdict } from "./verdict";
+import { Verdict } from "./Verdict";
 import * as axios from "axios";
 import { CancellationToken } from "./CancellationToken";
 

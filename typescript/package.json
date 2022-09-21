@@ -6,8 +6,8 @@
   "name": "gdata-vaas",
   "version": "0.0.0",
   "license": "MIT",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "lib/Index.js",
+  "types": "lib/Index.d.ts",
   "sideEffects": false,
   "keywords": [
     "security",

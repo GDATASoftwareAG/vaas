@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { describe } from "mocha";
 import * as dotenv from "dotenv";
-import Vaas from "../src/vaas";
+import Vaas from "../src/Vaas";
 import * as randomBytes from "random-bytes";
 import { CancellationToken } from "../src/CancellationToken";
-import createVaasWithClientCredentialsGrant from "../src/createVaasWithClientCredentialsGrant";
+import createVaasWithClientCredentialsGrant from "../src/CreateVaasWithClientCredentialsGrant";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");

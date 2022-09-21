@@ -1,6 +1,6 @@
 import { Serializable, JsonProperty } from "typescript-json-serializer";
 import { Kind, Message } from "./message";
-import { Verdict } from "../verdict";
+import { Verdict } from "../Verdict";
 
 @Serializable()
 export class VerdictResponse extends Message {

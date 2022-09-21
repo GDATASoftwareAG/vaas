@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
-import Vaas from "../src/vaas";
-import createVaasWithClientCredentialsGrant from "../src/createVaasWithClientCredentialsGrant";
+import Vaas from "../src/Vaas";
+import createVaasWithClientCredentialsGrant from "../src/CreateVaasWithClientCredentialsGrant";
 
 function throwError(errorMessage: string): never {
   throw new Error(errorMessage);
