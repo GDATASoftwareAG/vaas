@@ -18,9 +18,9 @@ java {
 }
 
 dependencies {
-    implementation 'org.testng:testng:7.1.0'
+    implementation 'org.testng:testng:7.6.1'
     implementation 'org.projectlombok:lombok:1.18.20'
-    implementation 'com.google.code.gson:gson:2.8.8'
+    implementation 'com.google.code.gson:gson:2.9.1'
     implementation 'org.java-websocket:Java-WebSocket:1.5.2'
     implementation 'io.github.cdimascio:dotenv-java:2.2.0'
     implementation 'org.jetbrains:annotations:20.1.0'
