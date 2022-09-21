@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'de.gdata'
-version = '1.0.1'
+version = '0.0.0'
 
 repositories {
     mavenCentral()
@@ -78,12 +78,12 @@ publishing {
         }
     }
 
-    // signing {
-    //     def signingKey = findProperty("signingKey")
-    //     def signingPassword = findProperty("signingPassword")
-    //     useInMemoryPgpKeys(signingKey, signingPassword)        
-    //     sign publishing.publications.mavenJava
-    // }
+    signing {
+        def signingKey = findProperty("signingKey")
+        def signingPassword = findProperty("signingPassword")
+        useInMemoryPgpKeys(signingKey, signingPassword)        
+        sign publishing.publications.mavenJava
+    }
 }
 
 nexusStaging {
