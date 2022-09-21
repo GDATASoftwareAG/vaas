@@ -21,7 +21,6 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
-
 public class WsConfig {
 
     private String encodeValue(String value) throws UnsupportedEncodingException {
@@ -36,9 +35,12 @@ public class WsConfig {
             requestParams.put("client_secret", getClientSecret());
             String UriWithParameters = requestParams.keySet().stream()
                     .map(key -> {
-                        try { return key + "=" + encodeValue(requestParams.get(key));}
-                        catch (UnsupportedEncodingException e) { return ""; }                        
-                    })        
+                        try {
+                            return key + "=" + encodeValue(requestParams.get(key));
+                        } catch (UnsupportedEncodingException e) {
+                            return "";
+                        }
+                    })
                     .collect(Collectors.joining("&"));
             var request = HttpRequest
                     .newBuilder(tokenEndpoint)
@@ -52,31 +54,38 @@ public class WsConfig {
                     .send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: " + response.body());
+                throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: "
+                        + response.body());
             }
             JsonObject bodyJsonObject = JsonParser.parseString(response.body()).getAsJsonObject();
             JsonElement tokenJsonElement = bodyJsonObject.get("access_token");
             token = tokenJsonElement.getAsString();
-        } return token;
+        }
+        return token;
     }
 
     private String token;
     @Getter
     private String clientID, clientSecret;
 
-    @Getter @Setter @NonNull
+    @Getter
+    @Setter
+    @NonNull
     private URI url;
 
-    @Getter @Setter @NonNull
+    @Getter
+    @Setter
+    @NonNull
     private URI tokenEndpoint;
 
-    @Getter @Setter
+    @Getter
+    @Setter
     private int PullDelayMs;
 
     public WsConfig(String clientId, String clientSecret) throws URISyntaxException {
-        this(clientId, clientSecret, 
-            new URI("https://keycloak-vaas.gdatasecurity.de"), 
-            new URI("wss://gateway-vaas.gdatasecurity.de"));
+        this(clientId, clientSecret,
+                new URI("https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"),
+                new URI("wss://gateway-vaas.gdatasecurity.de"));
     }
 
     public WsConfig(String clientId, String clientSecret, URI tokenEndpoint, URI url) throws URISyntaxException {
