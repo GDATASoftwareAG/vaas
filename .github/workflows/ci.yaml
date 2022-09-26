@@ -309,6 +309,18 @@ jobs:
         run: python test.py
         working-directory: python
 
+      - name: install example requirements
+        run: pip install -r requirements.txt
+        working-directory: python/examples/VaasExample
+
+      - name: run example
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "main.py"
+        run: python main.py
+        working-directory: python/examples/VaasExample
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/py')
         run: |
