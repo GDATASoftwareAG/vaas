@@ -1,15 +1,16 @@
 import asyncio
+import os
 from vaas.vaas import Vaas
 
 
 async def main():
     async with Vaas() as vaas:
         await vaas.connect_with_client_credentials(
-            "clientId",
-            "clientSecret",
+            os.getenv('CLIENT_ID'),
+            os.getenv('CLIENT_SECRET'),
             "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token",
             )
-        path = "/path/to/file"
+        path = "../../../path/to/file"
         verdict = await vaas.for_file(path)
         print(f"File {path} is detected as {verdict}")
 
