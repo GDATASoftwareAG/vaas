@@ -10,7 +10,7 @@ async def main():
             os.getenv('CLIENT_SECRET'),
             "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token",
             )
-        path = "../../../path/to/file"
+        path = os.getenv('SCAN_PATH')
         verdict = await vaas.for_file(path)
         print(f"File {path} is detected as {verdict}")
 
@@ -18,4 +18,4 @@ async def main():
 if __name__ ==  '__main__':
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(main())    
+    loop.run_until_complete(main())

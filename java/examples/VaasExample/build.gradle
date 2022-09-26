@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'application'
 }
 
 group 'de.gdata.vaasexample'
@@ -11,4 +12,8 @@ repositories {
 
 dependencies {
     implementation 'de.gdata:vaas:1.0.3'
+}
+
+application {
+    mainClass = 'de.gdata.vaasexample.Main' 
 }
