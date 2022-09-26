@@ -22,8 +22,10 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Editor directories and files
+java/example/VaasExample/gradle/
 *.DotSettings.user
 .idea
+*.jar
 *.suo
 *.ntvs*
 *.njsproj
