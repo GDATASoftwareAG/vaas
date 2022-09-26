@@ -403,7 +403,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          SCAN_PATH: "main.py"
+          SCAN_PATH: "Program.cs"
         run: dotnet run
         working-directory: dotnet/examples/VaasExample
 
