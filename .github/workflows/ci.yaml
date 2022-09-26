@@ -55,6 +55,17 @@ jobs:
           gradle-version: "7.2"
           build-root-directory: java
 
+      - name: run examples
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: run
+          gradle-version: "7.2"
+          build-root-directory: java/examples/VaasExample
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/java')
         run: |
@@ -179,6 +190,18 @@ jobs:
         run: pnpm run test
         working-directory: typescript
 
+      - name: install dependencies for example
+        run: pnpm install
+        working-directory: typescript/examples/VaasExample
+
+      - name: run examples
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "main.ts"
+        run: npx ts-node main.ts
+        working-directory: typescript/examples/VaasExample
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/ts')
         run: |
@@ -286,6 +309,18 @@ jobs:
         run: python test.py
         working-directory: python
 
+      - name: install example requirements
+        run: pip install -r requirements.txt
+        working-directory: python/examples/VaasExample
+
+      - name: run example
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "main.py"
+        run: python main.py
+        working-directory: python/examples/VaasExample
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/py')
         run: |
@@ -319,25 +354,31 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
         uses: actions/setup-dotnet@v2
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
+
       - name: Install dependencies
         run: dotnet restore
         working-directory: dotnet/Vaas
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/cs')
         run: |
           echo "RELEASE_VERSION=${GITHUB_REF#refs/*/cs}" >> $GITHUB_ENV
           echo $RELEASE_VERSION
+
       - name: set version
         if: startsWith(github.ref, 'refs/tags/cs')
         run: |
           sed -i "s/<Version>0\.0\.0/<Version>$RELEASE_VERSION/g" ./dotnet/Vaas/src/Vaas/Vaas.csproj
+
       - name: Build
         run: dotnet build --configuration Release --no-restore
         working-directory: dotnet/Vaas
+
       - name: Test
         if: github.ref == 'refs/heads/main'
         env:
@@ -347,6 +388,7 @@ jobs:
           TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: dotnet test --no-restore --verbosity normal
         working-directory: dotnet/Vaas
+
       - name: Test staging
         if: github.ref != 'refs/heads/main'
         env:
@@ -356,10 +398,20 @@ jobs:
           TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: dotnet test --no-restore --verbosity normal
         working-directory: dotnet/Vaas
+
+      - name: Run example
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "Program.cs"
+        run: dotnet run
+        working-directory: dotnet/examples/VaasExample
+
       - name: Pack
         if: startsWith(github.ref, 'refs/tags/cs')
         run: dotnet pack -c Release src/Vaas
         working-directory: dotnet/Vaas
+
       - name: Push to nuget
         if: startsWith(github.ref, 'refs/tags/cs')
         env:
