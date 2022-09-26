@@ -190,6 +190,18 @@ jobs:
         run: pnpm run test
         working-directory: typescript
 
+      - name: install dependencies for example
+        run: pnpm install
+        working-directory: typescript/examples/VaasExample
+
+      - name: run examples
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "main.ts"
+        run: npx ts-node main.ts
+        working-directory: typescript/examples/VaasExample
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/ts')
         run: |
