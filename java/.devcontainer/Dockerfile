@@ -1,24 +1,18 @@
-FROM mcr.microsoft.com/vscode/devcontainers/base:0-focal
+# See here for image contents: https://github.com/microsoft/vscode-dev-containers/tree/v0.245.2/containers/java/.devcontainer/base.Dockerfile
 
-ARG GRADLE_VERSION=7.2
+# [Choice] Java version (use -bullseye variants on local arm64/Apple Silicon): 11, 17, 11-bullseye, 17-bullseye, 11-buster, 17-buster
+ARG VARIANT="17-bullseye"
+FROM mcr.microsoft.com/vscode/devcontainers/java:0-${VARIANT}
 
-# Install common stuff
-RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
-    && apt-get -y install --no-install-recommends \
-    # common stuff
-    bash-completion gcc g++ make build-essential libssl-dev pkg-config \
-    software-properties-common
+# [Option] Install Maven
+ARG INSTALL_MAVEN="false"
+ARG MAVEN_VERSION=""
+# [Option] Install Gradle
+ARG INSTALL_GRADLE="false"
+ARG GRADLE_VERSION=""
+RUN if [ "${INSTALL_MAVEN}" = "true" ]; then su vscode -c "umask 0002 && . /usr/local/sdkman/bin/sdkman-init.sh && sdk install maven \"${MAVEN_VERSION}\""; fi \
+    && if [ "${INSTALL_GRADLE}" = "true" ]; then su vscode -c "umask 0002 && . /usr/local/sdkman/bin/sdkman-init.sh && sdk install gradle \"${GRADLE_VERSION}\""; fi
 
-# install Java related stuff
-RUN apt-get -y install --no-install-recommends default-jdk
-RUN curl -O -L https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip \
-    && unzip -d /opt/gradle gradle-$GRADLE_VERSION-bin.zip \
-    && rm gradle-$GRADLE_VERSION-bin.zip \
-    && ln -s /opt/gradle/gradle-$GRADLE_VERSION /opt/gradle/latest
-ENV PATH="/opt/gradle/latest/bin:${PATH}"
-
-
-USER vscode
-# setup search path
-ENV PATH="/home/vscode/.local/bin/:${PATH}"
-RUN mkdir -p ~/.local/bin
+# [Choice] Node.js version: none, lts/*, 16, 14, 12, 10
+ARG NODE_VERSION="none"
+RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi

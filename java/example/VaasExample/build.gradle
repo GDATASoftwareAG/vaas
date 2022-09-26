@@ -10,5 +10,5 @@ repositories {
 }
 
 dependencies {
-    implementation 'de.gdata:vaas'
+    implementation 'de.gdata:vaas:1.0.3'
 }

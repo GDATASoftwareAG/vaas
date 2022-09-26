@@ -23,7 +23,7 @@
 		"jeff-hykin.better-dockerfile-syntax",
 		"vscjava.vscode-java-pack",
 		"Gruntfuggly.todo-tree",
-		"GabrielBB.vscode-lombok",
+		"GabrielBB.vscode-lombok"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
