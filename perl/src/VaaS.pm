@@ -62,7 +62,6 @@ sub connect {
     while ($self->{'authenticated'} == 3) {
         $self->_receive_data();
     }
-
     return $self->{'authenticated'};
 }
 
@@ -101,7 +100,6 @@ sub _create_websocket_connection {
         read => sub {
             my $ws_client = shift;
             my ($buf) = @_;
-            
             $self->_response_handler(@_);
         }
     );
@@ -114,7 +112,6 @@ sub _create_tcp_socket {
     my $url = shift;
 
     $url =~ m/(?<host>[^\/:]+)$/;
-
     $self->{'tcp_socket'} =  IO::Socket::SSL->new(
         PeerAddr           => $+{host},
         PeerPort           => "wss(443)",
@@ -130,35 +127,41 @@ sub _authenticate {
     my $client_secret = shift;
     my $token_endpoint = shift;
 
-    $self->{'http_client'} = Furl->new();
+
+    $self->{'http_client'} = Furl->new(
+        ssl_opts => {
+            SSL_verify_mode => SSL_VERIFY_NONE(),
+        },
+    );
+
     my $response = $self->{'http_client'}->post($token_endpoint, [], [grant_type=>'client_credentials',client_id=>$client_id,client_secret=>$client_secret]);
 
     if ($response->is_success) {
         my $response_ref  = decode_json($response->body);
         my %response_hash = %$response_ref;
-
+        $self->{'authenticated'} = 1;
         return $response_hash{'access_token'};
-
     } else {
-        print "Error: ", $response->code, $response->message, "\n";
+        die "Error: ", $response->code, $response->message, "\n";
     }
 }
 
-sub get_verdict_by_sha256 {
+sub for_sha256 {
     my $self   = shift;
     my $sha256 = $_[0];
 
     if ($self->{'authenticated'} == 1) {
         my $verdict_request = $self->_create_verdict_request($sha256);
+
         $self->{'ws_client'}->write($verdict_request);
 
         return $self->_get_verdict();
     } else {
-        print "Error: not authenticated\n";
+        die "Authentication failed\n";
     }
 }
 
-sub get_verdict_by_file {
+sub for_file {
     my $self   = shift;
     my $path   = shift;
 
@@ -166,7 +169,7 @@ sub get_verdict_by_file {
         my $buffer = $self->_read_file($path);
 
         my $sha256 = sha256_hex($buffer);
-        my $verdict = $self->get_verdict_by_sha256($sha256);
+        my $verdict = $self->for_sha256($sha256);
 
         if($verdict eq "Unknown"){
             $self->_upload($buffer);
@@ -175,7 +178,7 @@ sub get_verdict_by_file {
 
         return $verdict;
     } else {
-        print "Error: not authenticated\n";
+        die "Error: not authenticated\n";
     }
 }
 
@@ -184,15 +187,6 @@ sub _upload {
     my $buffer = shift;
     
     my $response = $self->{'http_client'}->put($self->{'upload_url'}, [Authorization=>$self->{'upload_token'}], $buffer);
-
-    if ($self->{'debug'} == 1){
-        if ($response->is_success) {
-            print "Upload successful.\n";
-        } else {
-            print "Status:  ", $response->code, "\n";
-            print "Message: ", $response->message, "\n";
-        }
-    }
 }
 
 sub _read_file {
@@ -211,6 +205,7 @@ sub _read_file {
 sub _get_verdict {
     my $self = shift;
     $self->{'got_verdict'} = 0;
+
 
     while (!$self->{'got_verdict'}) {
         $self->_receive_data();
@@ -252,8 +247,12 @@ sub _response_handler {
     my %response_hash = %$response_ref;
 
     if ($response_hash{'kind'} eq "AuthResponse") {
-        $self->{'authenticated'} = $response_hash{'success'};
-        $self->{'session_id'}    = $response_hash{'session_id'};
+        if ($response_hash{'success'}){
+            $self->{'authenticated'} = $response_hash{'success'};
+            $self->{'session_id'}    = $response_hash{'session_id'};
+        } else {
+            die "Error: $response_hash{'text'}";
+        }
     }
     if ($response_hash{'kind'} eq "VerdictResponse") {
         $self->{'got_verdict'} = 1;

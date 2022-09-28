@@ -20,7 +20,7 @@ $vaas->connect_with_credentials($client_id, $client_secret, $token_endpoint, $va
 
 #Get verdict 'Clean' for sha256
 ok(
-    $vaas->get_verdict_by_sha256(
+    $vaas->for_sha256(
         "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23") eq
     "Clean",
     "Got verdict 'Clean' for sha256\n"
@@ -28,7 +28,7 @@ ok(
 
 #Get verdict 'Malicious' for eicar
 ok(
-    $vaas->get_verdict_by_sha256(
+    $vaas->for_sha256(
         "00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c") eq
     "Malicious",
     "Got verdict 'Malicious' for sha256\n"
@@ -41,7 +41,7 @@ my $random_str = join '' => map $set[rand @set], 1 .. 512;
 create_file(testfile, $random_string);
 
 ok(
-    $vaas->get_verdict_by_file('testfile') eq
+    $vaas->for_file('testfile') eq
     "Clean",
     "Got verdict 'Clean' for random testfile\n"
 );
@@ -54,7 +54,7 @@ my $eicar = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJ
 create_file(eicarfile, $eicar);
 
 ok(
-    $vaas->get_verdict_by_file('eicarfile') eq
+    $vaas->for_file('eicarfile') eq
     "Malicious",
     "Got verdict 'Malicious' for eicar file\n"
 );
