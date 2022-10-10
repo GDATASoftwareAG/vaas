@@ -11,6 +11,11 @@ import { v4 as uuidv4 } from "uuid";
 import { Verdict } from "./Verdict";
 import * as axios from "axios";
 import { CancellationToken } from "./CancellationToken";
+import {
+  VaasAuthenticationError,
+  VaasConnectionClosedError,
+  VaasInvalidStateError,
+} from "./VaasErrors";
 
 const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
 export { VAAS_URL };
@@ -22,30 +27,37 @@ const timeout = <T>(promise: Promise<T>, timeoutInMs: number) => {
     promise,
     new Promise<never>(
       (_resolve, reject) =>
+        //TODO: VaaS Timeout Error
         (timer = setTimeout(reject, timeoutInMs, new Error("Timeout")))
     ),
   ]).finally(() => clearTimeout(timer));
 };
 
-export interface VerdictCallback {
-  (verdictResponse: VerdictResponse): Promise<void>;
+export interface VerdictPromise {
+  resolve(verdictResponse: VerdictResponse): Promise<void>;
+  reject(reason?: any): void;
 }
 
 export type VaasConnection = {
   ws: WebSocket;
-  sessionId: string;
+  sessionId?: string;
 };
 
 export class Vaas {
-  callbacks: Map<string, VerdictCallback>;
+  verdictPromises: Map<string, VerdictPromise>;
+
   connection: VaasConnection | null = null;
+  closeEvent?: WebSocket.CloseEvent;
+  // TODO: AuthenticationResponse
+  authenticationError?: VaasAuthenticationError;
+  pingTimeout?: NodeJS.Timeout;
+
   defaultTimeoutHashReq: number = 2_000;
   defaultTimeoutFileReq: number = 600_000;
   debug = false;
-  pingTimeout?: NodeJS.Timeout;
 
   constructor() {
-    this.callbacks = new Map<string, VerdictCallback>();
+    this.verdictPromises = new Map<string, VerdictPromise>();
   }
 
   public static toHexString(byteArray: Uint8Array) {
@@ -101,25 +113,24 @@ export class Vaas {
   public async forRequest(
     sample: string | Uint8Array
   ): Promise<VerdictResponse> {
+    const ws = this.getAuthenticatedWebSocket();
     return new Promise((resolve, reject) => {
-      if (this.connection === null) {
-        reject(new Error("Not connected"));
-        return;
-      }
-
       const guid = uuidv4();
       if (this.debug) console.debug("uuid", guid);
-      this.callbacks.set(guid, async (verdictResponse: VerdictResponse) => {
-        if (
-          verdictResponse.verdict === Verdict.UNKNOWN &&
-          typeof sample !== "string"
-        ) {
-          await this.upload(verdictResponse, sample);
-          return;
-        }
+      this.verdictPromises.set(guid, {
+        resolve: async (verdictResponse: VerdictResponse) => {
+          if (
+            verdictResponse.verdict === Verdict.UNKNOWN &&
+            typeof sample !== "string"
+          ) {
+            await this.upload(verdictResponse, sample);
+            return;
+          }
 
-        this.callbacks.delete(guid);
-        resolve(verdictResponse);
+          this.verdictPromises.delete(guid);
+          resolve(verdictResponse);
+        },
+        reject: (reason) => reject(reason),
       });
 
       let hash =
@@ -127,15 +138,22 @@ export class Vaas {
           ? sample
           : Vaas.toHexString(sha256.hash(sample));
       const verdictReq = JSON.stringify(
-        serialize(new VerdictRequest(hash, guid, this.connection!.sessionId))
+        serialize(
+          new VerdictRequest(hash, guid, this.connection!.sessionId as string)
+        )
       );
-      this.connection!.ws.send(verdictReq);
+      ws.send(verdictReq);
     });
   }
 
   public async connect(token: string, url = VAAS_URL): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const ws = new WebSocket(url);
+      this.connection = { ws: ws };
+      this.closeEvent = undefined;
+      this.authenticationError = undefined;
+      this.pingTimeout = undefined;
+
       // ws library does not have auto-keepalive
       // https://github.com/websockets/ws/issues/767
       if (ws.on !== undefined) {
@@ -148,14 +166,24 @@ export class Vaas {
       }
       ws.onopen = async () => {
         try {
-          this.authenticate(ws, token);
+          this.authenticate(token);
         } catch (error) {
           reject(error);
         }
       };
-      ws.onerror = (error) => {
-        console.log("Error here");
-        reject(error);
+      ws.onclose = (event) => {
+        if (this.pingTimeout) {
+          clearTimeout(this.pingTimeout);
+          this.pingTimeout = undefined;
+        }
+        if (!event.wasClean) {
+          this.closeEvent = event;
+        }
+        if (this.verdictPromises.size > 0) {
+          const reason = new VaasConnectionClosedError(event);
+          this.verdictPromises.forEach((c) => c.reject(reason));
+          this.verdictPromises.clear();
+        }
       };
       ws.onmessage = async (event) => {
         const message = deserialize<Message>(event.data, Message);
@@ -167,7 +195,7 @@ export class Vaas {
               AuthenticationResponse
             );
             if (authResponse.success) {
-              this.connection = { ws: ws, sessionId: authResponse.session_id };
+              this.connection!.sessionId = authResponse.session_id;
               resolve();
               return;
             }
@@ -183,9 +211,9 @@ export class Vaas {
               event.data,
               VerdictResponse
             );
-            const callback = this.callbacks.get(verdictResponse.guid);
-            if (callback) {
-              await callback(verdictResponse);
+            const promise = this.verdictPromises.get(verdictResponse.guid);
+            if (promise) {
+              await promise.resolve(verdictResponse);
             }
             break;
           default:
@@ -227,23 +255,46 @@ export class Vaas {
   }
 
   public close() {
-    if (this.pingTimeout) {
-      clearTimeout(this.pingTimeout);
-      this.pingTimeout = undefined;
-    }
     if (this.connection) {
       this.connection.ws.close();
       this.connection = null;
+      this.authenticationError = undefined;
     }
   }
 
-  private authenticate(ws: WebSocket, token: string): void {
+  private authenticate(token: string): void {
     const authReq: string = JSON.stringify(
       serialize(new AuthenticationRequest(token))
     );
+    const ws = this.getConnectedWebSocket();
     ws.send(authReq);
     if (ws.ping !== undefined) {
       ws.ping();
     }
+  }
+
+  private getConnectedWebSocket() {
+    const ws = this.connection?.ws;
+    if (!ws) {
+      throw new VaasInvalidStateError("connect() was not called");
+    }
+    if (ws.readyState === ws.CONNECTING) {
+      throw new VaasInvalidStateError("connect() was not awaited");
+    }
+    if (ws.readyState !== ws.OPEN) {
+      throw new VaasConnectionClosedError(this.closeEvent);
+    }
+    return ws;
+  }
+
+  private getAuthenticatedWebSocket() {
+    const ws = this.getConnectedWebSocket();
+    if (!this.connection?.sessionId) {
+      if (this.authenticationError) throw new VaasAuthenticationError();
+      throw new VaasInvalidStateError(
+        "Not yet authenticated - connect() was not awaited"
+      );
+    }
+    return ws;
   }
 }
