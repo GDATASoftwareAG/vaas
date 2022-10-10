@@ -66,6 +66,11 @@ export class Vaas {
     }).join("");
   }
 
+  /** Get verdict for a SHA256
+   * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
+   * @throws {VaasAuthenticationError} Authentication failed.
+   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   */
   public async forSha256(
     sha256: string,
     ct: CancellationToken = CancellationToken.fromMilliseconds(
@@ -78,6 +83,11 @@ export class Vaas {
     return timeout(request, ct.timeout());
   }
 
+  /** Get verdict for list of SHA256
+   * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
+   * @throws {VaasAuthenticationError} Authentication failed.
+   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   */
   public async forSha256List(
     sha256List: string[],
     ct: CancellationToken = CancellationToken.fromMilliseconds(
@@ -88,6 +98,11 @@ export class Vaas {
     return Promise.all(promises);
   }
 
+  /** Get verdict for a file
+   * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
+   * @throws {VaasAuthenticationError} Authentication failed.
+   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   */
   public async forFile(
     fileBuffer: Uint8Array,
     ct: CancellationToken = CancellationToken.fromMilliseconds(
@@ -100,6 +115,11 @@ export class Vaas {
     return timeout(request, ct.timeout());
   }
 
+  /** Get verdict for a list of files
+   * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
+   * @throws {VaasAuthenticationError} Authentication failed.
+   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   */
   public async forFileList(
     fileBuffers: Uint8Array[],
     ct: CancellationToken = CancellationToken.fromMilliseconds(
@@ -110,7 +130,7 @@ export class Vaas {
     return Promise.all(promises);
   }
 
-  public async forRequest(
+  private async forRequest(
     sample: string | Uint8Array
   ): Promise<VerdictResponse> {
     const ws = this.getAuthenticatedWebSocket();
@@ -145,7 +165,10 @@ export class Vaas {
       ws.send(verdictReq);
     });
   }
-
+  /** Connect to VaaS
+   * @throws {VaasAuthenticationError} Authentication failed.
+   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   */
   public async connect(token: string, url = VAAS_URL): Promise<void> {
     return new Promise(async (resolve, reject) => {
       const ws = new WebSocket(url);
@@ -179,11 +202,12 @@ export class Vaas {
         if (!event.wasClean) {
           this.closeEvent = event;
         }
+        const reason = new VaasConnectionClosedError(event);
         if (this.verdictPromises.size > 0) {
-          const reason = new VaasConnectionClosedError(event);
           this.verdictPromises.forEach((c) => c.reject(reason));
           this.verdictPromises.clear();
         }
+        reject(reason);
       };
       ws.onmessage = async (event) => {
         const message = deserialize<Message>(event.data, Message);
@@ -225,7 +249,7 @@ export class Vaas {
     });
   }
 
-  public async upload(
+  private async upload(
     verdictResponse: VerdictResponse,
     fileBuffer: Uint8Array
   ) {

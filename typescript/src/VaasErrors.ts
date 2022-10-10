@@ -1,9 +1,13 @@
 import WebSocket from "isomorphic-ws";
 
-/** Connection was closed with error - Code and reason are public memebers of error.closeEvent. */
+/** Connection was closed with error. */
 export class VaasConnectionClosedError extends Error {
-  constructor(public closeEvent?: WebSocket.CloseEvent) {
+  /** Code and reason for connection close. */
+  public closeEvent?: WebSocket.CloseEvent;
+
+  constructor(closeEvent?: WebSocket.CloseEvent) {
     super("Connection was closed with error");
+    this.closeEvent = closeEvent;
   }
 }
 
@@ -14,7 +18,9 @@ export class VaasAuthenticationError extends Error {
   }
 }
 
-/** Vaas invalid state error. */
+/** Vaas invalid state error.
+ * @description These are coding errors and be prevented by the developer.
+ */
 export class VaasInvalidStateError extends Error {
   constructor(message: string) {
     super(message);
