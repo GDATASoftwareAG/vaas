@@ -26,3 +26,10 @@ export class VaasInvalidStateError extends Error {
     super(message);
   }
 }
+
+/** Vaas timeout. */
+export class VaasTimeoutError extends Error {
+  constructor() {
+    super("Timeout");
+  }
+}
