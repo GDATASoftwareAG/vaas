@@ -63,6 +63,7 @@ jobs:
           git config --global user.email "ata-no-one@gdata.de"
           git config --global user.name "Version Bot"
           sed -i "s/\"version\": \"0.0.0\"/\"version\": \"$RELEASE_VERSION\"/g" ./composer.json
+          cp ../../../Readme.md .
           git init
           git add .
           git commit -m"publish php $RELEASE_VERSION"
