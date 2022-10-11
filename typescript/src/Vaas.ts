@@ -48,8 +48,7 @@ export class Vaas {
 
   connection: VaasConnection | null = null;
   closeEvent?: WebSocket.CloseEvent;
-  // TODO: AuthenticationResponse
-  authenticationError?: VaasAuthenticationError;
+  authenticationError?: AuthenticationResponse;
   pingTimeout?: NodeJS.Timeout;
 
   defaultTimeoutHashReq: number = 2_000;
@@ -227,6 +226,7 @@ export class Vaas {
               resolve();
               return;
             }
+            this.authenticationError = authResponse;
             reject(new VaasAuthenticationError());
             break;
           case Kind.Error:
