@@ -255,9 +255,11 @@ describe("Vaas", async () => {
           VaasAuthenticationError,
           "Vaas authentication failed"
         );
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasAuthenticationError,
+          "Vaas authentication failed"
+        );
       });
-
-      //
     });
   });
 });

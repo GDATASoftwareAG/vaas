@@ -15,6 +15,7 @@ import {
   VaasAuthenticationError,
   VaasConnectionClosedError,
   VaasInvalidStateError,
+  VaasTimeoutError,
 } from "./VaasErrors";
 
 const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
@@ -27,8 +28,7 @@ const timeout = <T>(promise: Promise<T>, timeoutInMs: number) => {
     promise,
     new Promise<never>(
       (_resolve, reject) =>
-        //TODO: VaaS Timeout Error
-        (timer = setTimeout(reject, timeoutInMs, new Error("Timeout")))
+        (timer = setTimeout(reject, timeoutInMs, new VaasTimeoutError()))
     ),
   ]).finally(() => clearTimeout(timer));
 };
@@ -48,8 +48,7 @@ export class Vaas {
 
   connection: VaasConnection | null = null;
   closeEvent?: WebSocket.CloseEvent;
-  // TODO: AuthenticationResponse
-  authenticationError?: VaasAuthenticationError;
+  authenticationError?: AuthenticationResponse;
   pingTimeout?: NodeJS.Timeout;
 
   defaultTimeoutHashReq: number = 2_000;
@@ -70,6 +69,7 @@ export class Vaas {
    * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   * @throws {VaasTimeoutError} Timeout. Retry request.
    */
   public async forSha256(
     sha256: string,
@@ -87,6 +87,7 @@ export class Vaas {
    * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   * @throws {VaasTimeoutError} Timeout. Retry request.
    */
   public async forSha256List(
     sha256List: string[],
@@ -102,6 +103,7 @@ export class Vaas {
    * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   * @throws {VaasTimeoutError} Timeout. Retry request.
    */
   public async forFile(
     fileBuffer: Uint8Array,
@@ -119,6 +121,7 @@ export class Vaas {
    * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   * @throws {VaasTimeoutError} Timeout. Retry request.
    */
   public async forFileList(
     fileBuffers: Uint8Array[],
@@ -223,6 +226,7 @@ export class Vaas {
               resolve();
               return;
             }
+            this.authenticationError = authResponse;
             reject(new VaasAuthenticationError());
             break;
           case Kind.Error:
