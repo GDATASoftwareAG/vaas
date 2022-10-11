@@ -52,4 +52,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/php')
         env:
           PACKAGIST_API_TOKEN: ${{ secrets.PACKAGIST_API_TOKEN }}
-        run: curl -XPOST -H'content-type:application/json' 'https://packagist.org/api/update-package?username=gdatacyberdefense&apiToken=$PACKAGIST_API_TOKEN' -d'{"repository":{"url":"https://packagist.org/packages/gdata/vaas"}}'
+        run: curl -XPOST -H'content-type:application/json' "https://packagist.org/api/update-package?username=gdatacyberdefense&apiToken=$PACKAGIST_API_TOKEN" -d'{"repository":{"url":"https://packagist.org/packages/gdata/vaas"}}'
