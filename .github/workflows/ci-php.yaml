@@ -66,9 +66,7 @@ jobs:
       - name: commit
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_user_name: ata-no-one
-          commit_user_email: ata-no-one@gdata.de
-          commit_author: ata-no-one <ata-no-one@gdata.de>
+          commit_message: publish $RELEASE_VERSION
 
       - name: sync packagist
         if: startsWith(github.ref, 'refs/tags/php')
