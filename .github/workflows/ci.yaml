@@ -101,44 +101,6 @@ jobs:
           gradle-version: "7.2"
           build-root-directory: java
 
-  build-php:
-    name: Build & Test PHP SDK
-    runs-on: ubuntu-20.04
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup PHP with PECL extension
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: "7.4"
-
-      - name: install php dependencies
-        uses: php-actions/composer@v6
-        with:
-          working_dir: php/tests/vaas
-
-      - name: run tests
-        if: github.ref == 'refs/heads/main'
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
-          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: ./vendor/bin/phpunit --colors --testdox
-        working-directory: php/tests/vaas
-
-      - name: run tests staging
-        if: github.ref != 'refs/heads/main'
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
-          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
-          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: ./vendor/bin/phpunit --colors --testdox
-        working-directory: php/tests/vaas
-
   build-typescript:
     name: Build & Test TypeScript SDK
     runs-on: ubuntu-20.04
