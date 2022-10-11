@@ -5,6 +5,13 @@ import { Vaas } from "../src/Vaas";
 import * as randomBytes from "random-bytes";
 import { CancellationToken } from "../src/CancellationToken";
 import { CreateVaasWithClientCredentialsGrant } from "../src/CreateVaasWithClientCredentialsGrant";
+import WebSocket from "isomorphic-ws";
+import {
+  VaasAuthenticationError,
+  VaasConnectionClosedError,
+  VaasInvalidStateError,
+} from "../src/VaasErrors";
+import { AuthenticationResponse } from "../src/messages/authentication_response";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -43,6 +50,10 @@ async function createVaas() {
 
 const defaultTimeout: number = 15_000;
 
+const eicarSha256 =
+  "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+const randomFile = randomBytes.sync(50);
+
 describe("Test authentication", function () {
   this.timeout(defaultTimeout);
 
@@ -50,7 +61,8 @@ describe("Test authentication", function () {
     const token = "ThisIsAnInvalidToken";
     const vaas = new Vaas();
     await expect((() => vaas.connect(token))()).to.be.rejectedWith(
-      "Unauthorized"
+      VaasAuthenticationError,
+      "Vaas authentication failed"
     );
   });
 });
@@ -83,9 +95,7 @@ describe("Test verdict requests", function () {
 
   it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
     const vaas = await createVaas();
-    const verdict = await vaas.forSha256(
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-    );
+    const verdict = await vaas.forSha256(eicarSha256);
     expect(verdict).to.equal("Malicious");
   });
 
@@ -155,5 +165,99 @@ describe("Test verdict requests", function () {
       "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
     let verdict = await vaas.forSha256(sha256);
     expect(verdict).to.equal("Pup");
+  });
+});
+
+describe("Vaas", async () => {
+  let methodsAndParams: [string, any[]][] = [
+    ["forSha256", [eicarSha256]],
+    ["forSha256List", [[eicarSha256]]],
+    ["forFile", [randomFile]],
+    ["forFileList", [[randomFile]]],
+  ];
+
+  let webSocket: WebSocket;
+  let vaas: Vaas;
+
+  beforeEach(() => {
+    webSocket = {
+      readyState: WebSocket.CONNECTING as number,
+      onopen: () => {},
+      onclose: () => {},
+      onmessage: () => {},
+      send: (data: any) => {},
+    } as any;
+    vaas = new Vaas((url) => webSocket);
+  });
+
+  methodsAndParams.forEach(([method, params]) => {
+    describe(`#${method}()`, () => {
+      it("throws if connect() has not been called", async () => {
+        const vaas = new Vaas();
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasInvalidStateError,
+          "connect() was not called"
+        );
+      });
+
+      it("throws if connect() was not awaited", async () => {
+        vaas.connect("token");
+        (webSocket as any).readyState = WebSocket.CONNECTING;
+
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasInvalidStateError,
+          "connect() was not awaited"
+        );
+      });
+
+      it("throws not authenticated if connect() was not awaited", async () => {
+        vaas.connect("token");
+        (webSocket as any).readyState = WebSocket.OPEN;
+
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasInvalidStateError,
+          "Not yet authenticated - connect() was not awaited"
+        );
+      });
+
+      it("throws if connection was closed", async () => {
+        const vaas = await createVaas();
+        vaas.close();
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasConnectionClosedError,
+          "Connection was closed"
+        );
+      });
+
+      it("is rejected if connection is closed by server", async () => {
+        const authResponse = new AuthenticationResponse(
+          "sessionId",
+          true,
+          "Authenticated."
+        );
+        const connected = vaas.connect("token");
+        (webSocket as any).readyState = WebSocket.OPEN;
+        webSocket.onopen!({} as any);
+        webSocket.onmessage!({ data: JSON.stringify(authResponse) } as any);
+        await connected;
+        const promise = (vaas as any)[method](...params);
+        webSocket.onclose!({ wasClean: true } as any);
+
+        await expect(promise).to.be.rejectedWith(
+          VaasConnectionClosedError,
+          "Connection was closed"
+        );
+      });
+
+      it("throws if authentication failed", async () => {
+        const vaas = new Vaas();
+        await expect(vaas.connect("token")).to.be.rejectedWith(
+          VaasAuthenticationError,
+          "Vaas authentication failed"
+        );
+      });
+
+      //
+    });
   });
 });
