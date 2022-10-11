@@ -59,7 +59,7 @@ jobs:
         run: |
           git config --global user.email "ata-no-one@gdata.de"
           git config --global user.name "Version Bot"
-          git pull
+          git fetch
           cp php/src/vaas/composer.* .
           sed -i "s/\"version\": \"0.0.0\"/\"version\": \"$RELEASE_VERSION\"/g" ./composer.json
           git branch php > /dev/null
