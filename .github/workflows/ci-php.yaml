@@ -56,16 +56,18 @@ jobs:
 
       - name: set version
         if: startsWith(github.ref, 'refs/tags/php')
+        working-directory: php/src/vaas
         run: |
           git config --global user.email "ata-no-one@gdata.de"
           git config --global user.name "Version Bot"
-          cp php/src/vaas/composer.* .
           sed -i "s/\"version\": \"0.0.0\"/\"version\": \"$RELEASE_VERSION\"/g" ./composer.json
-          git branch php > /dev/null
-          git checkout php
-          git add composer.*
+          git init
           git commit -m"publish php $RELEASE_VERSION"
-          git push --set-upstream origin php --force
+          git branch -M main
+          git add .
+          git tag v$RELEASE_VERSION
+          git remote add origin git@github.com:GDATASoftwareAG/vaas-php.git
+          git push origin main --tags
 
       - name: sync packagist
         if: startsWith(github.ref, 'refs/tags/php')
