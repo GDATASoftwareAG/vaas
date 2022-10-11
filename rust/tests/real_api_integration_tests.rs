@@ -321,3 +321,18 @@ async fn from_file_single_clean_file_with_credentials() {
     std::fs::remove_file(&tmp_file).unwrap();
     assert_eq!(Verdict::Clean, verdict.unwrap());
 }
+
+#[tokio::test]
+async fn from_file_empty_sile() {
+    let empty_file: [u8; 0] = [];
+    let tmp_file = std::env::temp_dir().join("clean2.txt");
+    std::fs::write(&tmp_file, empty_file).unwrap();
+
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    std::fs::remove_file(&tmp_file).unwrap();
+    assert_eq!(Verdict::Clean, verdict.unwrap());
+}

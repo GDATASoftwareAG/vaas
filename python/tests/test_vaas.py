@@ -12,7 +12,8 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TOKEN_URL = os.getenv("TOKEN_URL")
 VAAS_URL = os.getenv("VAAS_URL")
-SSL_VERIFICATION = os.getenv("SSL_VERIFICATION", "True").lower() in ["true", "1"]
+SSL_VERIFICATION = os.getenv(
+    "SSL_VERIFICATION", "True").lower() in ["true", "1"]
 
 EICAR_BASE64 = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo="
 
@@ -110,6 +111,12 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict, "Clean")
             tracing.trace_hash_request.assert_called_with(ANY)
             tracing.trace_upload_request.assert_called_with(ANY, 1024)
+
+    async def test_for_empty_buffer_returns_clean(self):
+        async with await create_and_connect() as vaas:
+            buffer = bytes("", 'utf-8')
+            verdict = await vaas.for_buffer(buffer)
+            self.assertEqual(verdict, "Clean")
 
 
 if __name__ == "__main__":
