@@ -61,6 +61,8 @@ jobs:
           sed -i "s/\"version\": \"0.0.0\"/\"version\": \"$RELEASE_VERSION\"/g" ./composer.json
           git branch php > /dev/null
           git checkout php
+          git add composer.*
+          git commit -m"publish php $RELEASE_VERSION"
           git tag $RELEASE_VERSION
           git push --tags --set-upstream origin php
 
