@@ -6,7 +6,7 @@ export class VaasConnectionClosedError extends Error {
   public closeEvent?: WebSocket.CloseEvent;
 
   constructor(closeEvent?: WebSocket.CloseEvent) {
-    super("Connection was closed with error");
+    super("Connection was closed");
     this.closeEvent = closeEvent;
   }
 }

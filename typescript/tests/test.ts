@@ -7,7 +7,11 @@ import { CancellationToken } from "../src/CancellationToken";
 import { CreateVaasWithClientCredentialsGrant } from "../src/CreateVaasWithClientCredentialsGrant";
 import * as sinon from "sinon";
 import WebSocket from "isomorphic-ws";
-import { VaasInvalidStateError } from "../src/VaasErrors";
+import {
+  VaasAuthenticationError,
+  VaasConnectionClosedError,
+  VaasInvalidStateError,
+} from "../src/VaasErrors";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -200,11 +204,36 @@ describe("Vaas", async () => {
       });
 
       it("throws not authenticated if connect() was not awaited", async () => {
-        // connect
-        // readyState = OPEN
-        // onopen
-        // do method call
+        vaas.connect("token");
+        sinon.stub(webSocket, "readyState").value(webSocket.OPEN);
+
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasInvalidStateError,
+          "Not yet authenticated - connect() was not awaited"
+        );
       });
+
+      it("throws if connection was closed", async () => {
+        const vaas = await createVaas();
+        vaas.close();
+        // TODO: Check closeEvent == undefined
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasConnectionClosedError,
+          "Connection was closed"
+        );
+      });
+
+      // "throws if connection was already closed by server"
+
+      it("throws if authentication failed", async () => {
+        const vaas = new Vaas();
+        await expect(vaas.connect("token")).to.be.rejectedWith(
+          VaasAuthenticationError,
+          "Blah"
+        );
+      });
+
+      // "is rejected if connection is closed by server"
     });
   });
 });

@@ -281,7 +281,6 @@ export class Vaas {
   public close() {
     if (this.connection) {
       this.connection.ws.close();
-      this.connection = null;
       this.authenticationError = undefined;
     }
   }
