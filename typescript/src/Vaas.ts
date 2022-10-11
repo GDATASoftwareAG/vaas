@@ -169,8 +169,8 @@ export class Vaas {
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
    */
-  public async connect(token: string, url = VAAS_URL): Promise<void> {
-    return new Promise(async (resolve, reject) => {
+  public connect(token: string, url = VAAS_URL): Promise<void> {
+    return new Promise((resolve, reject) => {
       const ws = this.webSocketFactory(url);
       this.connection = { ws: ws };
       this.closeEvent = undefined;
@@ -183,11 +183,11 @@ export class Vaas {
         ws.on("ping", (payload) => {
           ws.pong(payload);
         });
-        ws.on("pong", async () => {
+        ws.on("pong", () => {
           this.pingTimeout = setTimeout(() => ws.ping(), 10000);
         });
       }
-      ws.onopen = async () => {
+      ws.onopen = () => {
         try {
           this.authenticate(token);
         } catch (error) {
@@ -223,7 +223,7 @@ export class Vaas {
               resolve();
               return;
             }
-            reject(new Error("Unauthorized"));
+            reject(new VaasAuthenticationError());
             break;
           case Kind.Error:
             reject(
@@ -301,10 +301,10 @@ export class Vaas {
     if (!ws) {
       throw new VaasInvalidStateError("connect() was not called");
     }
-    if (ws.readyState === ws.CONNECTING) {
+    if (ws.readyState === WebSocket.CONNECTING) {
       throw new VaasInvalidStateError("connect() was not awaited");
     }
-    if (ws.readyState !== ws.OPEN) {
+    if (ws.readyState !== WebSocket.OPEN) {
       throw new VaasConnectionClosedError(this.closeEvent);
     }
     return ws;

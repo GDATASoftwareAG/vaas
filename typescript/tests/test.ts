@@ -5,13 +5,13 @@ import { Vaas } from "../src/Vaas";
 import * as randomBytes from "random-bytes";
 import { CancellationToken } from "../src/CancellationToken";
 import { CreateVaasWithClientCredentialsGrant } from "../src/CreateVaasWithClientCredentialsGrant";
-import * as sinon from "sinon";
 import WebSocket from "isomorphic-ws";
 import {
   VaasAuthenticationError,
   VaasConnectionClosedError,
   VaasInvalidStateError,
 } from "../src/VaasErrors";
+import { AuthenticationResponse } from "../src/messages/authentication_response";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -61,7 +61,8 @@ describe("Test authentication", function () {
     const token = "ThisIsAnInvalidToken";
     const vaas = new Vaas();
     await expect((() => vaas.connect(token))()).to.be.rejectedWith(
-      "Unauthorized"
+      VaasAuthenticationError,
+      "Vaas authentication failed"
     );
   });
 });
@@ -175,11 +176,17 @@ describe("Vaas", async () => {
     ["forFileList", [[randomFile]]],
   ];
 
-  let webSocket: sinon.SinonStubbedInstance<WebSocket>;
+  let webSocket: WebSocket;
   let vaas: Vaas;
 
   beforeEach(() => {
-    webSocket = sinon.createStubInstance(WebSocket);
+    webSocket = {
+      readyState: WebSocket.CONNECTING as number,
+      onopen: () => {},
+      onclose: () => {},
+      onmessage: () => {},
+      send: (data: any) => {},
+    } as any;
     vaas = new Vaas((url) => webSocket);
   });
 
@@ -195,7 +202,7 @@ describe("Vaas", async () => {
 
       it("throws if connect() was not awaited", async () => {
         vaas.connect("token");
-        sinon.stub(webSocket, "readyState").value(webSocket.CONNECTING);
+        (webSocket as any).readyState = WebSocket.CONNECTING;
 
         await expect((vaas as any)[method](...params)).to.be.rejectedWith(
           VaasInvalidStateError,
@@ -205,7 +212,7 @@ describe("Vaas", async () => {
 
       it("throws not authenticated if connect() was not awaited", async () => {
         vaas.connect("token");
-        sinon.stub(webSocket, "readyState").value(webSocket.OPEN);
+        (webSocket as any).readyState = WebSocket.OPEN;
 
         await expect((vaas as any)[method](...params)).to.be.rejectedWith(
           VaasInvalidStateError,
@@ -216,24 +223,41 @@ describe("Vaas", async () => {
       it("throws if connection was closed", async () => {
         const vaas = await createVaas();
         vaas.close();
-        // TODO: Check closeEvent == undefined
         await expect((vaas as any)[method](...params)).to.be.rejectedWith(
           VaasConnectionClosedError,
           "Connection was closed"
         );
       });
 
-      // "throws if connection was already closed by server"
+      it("is rejected if connection is closed by server", async () => {
+        const authResponse = new AuthenticationResponse(
+          "sessionId",
+          true,
+          "Authenticated."
+        );
+        const connected = vaas.connect("token");
+        (webSocket as any).readyState = WebSocket.OPEN;
+        webSocket.onopen!({} as any);
+        webSocket.onmessage!({ data: JSON.stringify(authResponse) } as any);
+        await connected;
+        const promise = (vaas as any)[method](...params);
+        webSocket.onclose!({ wasClean: true } as any);
+
+        await expect(promise).to.be.rejectedWith(
+          VaasConnectionClosedError,
+          "Connection was closed"
+        );
+      });
 
       it("throws if authentication failed", async () => {
         const vaas = new Vaas();
         await expect(vaas.connect("token")).to.be.rejectedWith(
           VaasAuthenticationError,
-          "Blah"
+          "Vaas authentication failed"
         );
       });
 
-      // "is rejected if connection is closed by server"
+      //
     });
   });
 });
