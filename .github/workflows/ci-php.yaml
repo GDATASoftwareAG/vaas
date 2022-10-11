@@ -70,7 +70,7 @@ jobs:
           git branch -M main
           git tag v$RELEASE_VERSION
           git remote add origin https://ata-no-one:$GITHUB_TOKEN@github.com/GDATASoftwareAG/vaas-php
-          git push origin main --tags
+          git push origin main --tags --force
 
       - name: sync packagist
         if: startsWith(github.ref, 'refs/tags/php')
