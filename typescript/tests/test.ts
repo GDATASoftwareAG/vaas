@@ -5,6 +5,9 @@ import { Vaas } from "../src/Vaas";
 import * as randomBytes from "random-bytes";
 import { CancellationToken } from "../src/CancellationToken";
 import { CreateVaasWithClientCredentialsGrant } from "../src/CreateVaasWithClientCredentialsGrant";
+import * as sinon from "sinon";
+import WebSocket from "isomorphic-ws";
+import { VaasInvalidStateError } from "../src/VaasErrors";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -42,6 +45,10 @@ async function createVaas() {
 }
 
 const defaultTimeout: number = 15_000;
+
+const eicarSha256 =
+  "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+const randomFile = randomBytes.sync(50);
 
 describe("Test authentication", function () {
   this.timeout(defaultTimeout);
@@ -83,9 +90,7 @@ describe("Test verdict requests", function () {
 
   it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
     const vaas = await createVaas();
-    const verdict = await vaas.forSha256(
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-    );
+    const verdict = await vaas.forSha256(eicarSha256);
     expect(verdict).to.equal("Malicious");
   });
 
@@ -155,5 +160,51 @@ describe("Test verdict requests", function () {
       "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
     let verdict = await vaas.forSha256(sha256);
     expect(verdict).to.equal("Pup");
+  });
+});
+
+describe("Vaas", async () => {
+  let methodsAndParams: [string, any[]][] = [
+    ["forSha256", [eicarSha256]],
+    ["forSha256List", [[eicarSha256]]],
+    ["forFile", [randomFile]],
+    ["forFileList", [[randomFile]]],
+  ];
+
+  let webSocket: sinon.SinonStubbedInstance<WebSocket>;
+  let vaas: Vaas;
+
+  beforeEach(() => {
+    webSocket = sinon.createStubInstance(WebSocket);
+    vaas = new Vaas((url) => webSocket);
+  });
+
+  methodsAndParams.forEach(([method, params]) => {
+    describe(`#${method}()`, () => {
+      it("throws if connect() has not been called", async () => {
+        const vaas = new Vaas();
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasInvalidStateError,
+          "connect() was not called"
+        );
+      });
+
+      it("throws if connect() was not awaited", async () => {
+        vaas.connect("token");
+        sinon.stub(webSocket, "readyState").value(webSocket.CONNECTING);
+
+        await expect((vaas as any)[method](...params)).to.be.rejectedWith(
+          VaasInvalidStateError,
+          "connect() was not awaited"
+        );
+      });
+
+      it("throws not authenticated if connect() was not awaited", async () => {
+        // connect
+        // readyState = OPEN
+        // onopen
+        // do method call
+      });
+    });
   });
 });

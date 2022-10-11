@@ -56,7 +56,7 @@ export class Vaas {
   defaultTimeoutFileReq: number = 600_000;
   debug = false;
 
-  constructor() {
+  constructor(private webSocketFactory = (url: string) => new WebSocket(url)) {
     this.verdictPromises = new Map<string, VerdictPromise>();
   }
 
@@ -171,7 +171,7 @@ export class Vaas {
    */
   public async connect(token: string, url = VAAS_URL): Promise<void> {
     return new Promise(async (resolve, reject) => {
-      const ws = new WebSocket(url);
+      const ws = this.webSocketFactory(url);
       this.connection = { ws: ws };
       this.closeEvent = undefined;
       this.authenticationError = undefined;
