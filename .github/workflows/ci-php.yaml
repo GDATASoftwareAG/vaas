@@ -68,7 +68,7 @@ jobs:
           git commit -m"publish php $RELEASE_VERSION"
           git branch -M main
           git tag v$RELEASE_VERSION
-          git remote add origin ata-no-one@gdata.de:$GITHUB_TOKEN@github.com:GDATASoftwareAG/vaas-php.git
+          git remote add origin ata-no-one:$GITHUB_TOKEN@github.com:GDATASoftwareAG/vaas-php.git
           git push origin main --tags
 
       - name: sync packagist
