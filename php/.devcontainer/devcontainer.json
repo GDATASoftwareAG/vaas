@@ -19,6 +19,7 @@
 	// Set *default* container specific settings.json values on container create.
 	"settings": {},
 	// Add the IDs of extensions you want installed when the container is created.
+	"postStartCommand": "composer install -d tests/vaas/",
 	"extensions": [
 		"bmewburn.vscode-intelephense-client",
 		"jeff-hykin.better-dockerfile-syntax",
@@ -26,7 +27,8 @@
 		"johnbillion.vscode-wordpress-hooks",
 		"hridoy.wordpress",
 		"Gruntfuggly.todo-tree",
-		"xdebug.php-debug"
+		"xdebug.php-debug",
+		"recca0120.vscode-phpunit"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

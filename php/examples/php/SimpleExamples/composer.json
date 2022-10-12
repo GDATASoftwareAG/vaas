@@ -1,11 +1,5 @@
 {
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../../../src/vaas"
-        }
-    ],
     "require": {
-        "gdata/vaas": "@dev"
+        "gdata/vaas": "0.0.20"
     }
 }

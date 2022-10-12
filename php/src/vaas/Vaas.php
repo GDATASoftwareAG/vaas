@@ -36,7 +36,11 @@ class Vaas
     public function __construct()
     {
         $arguments = func_get_args();
-        $this->connectWithCredentials(...$arguments);
+        if (count($arguments) > 2) {
+            $this->connectWithCredentials(...$arguments);
+        } else {
+            $this->connect(...$arguments);
+        }
     }
 
     /**

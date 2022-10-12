@@ -1,0 +1,3 @@
+{
+    "phpunit.phpunit": "/workspaces/vaas/php/tests/vaas/vendor/bin/phpunit"
+}
