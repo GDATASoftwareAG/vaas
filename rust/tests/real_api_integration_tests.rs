@@ -336,7 +336,7 @@ async fn from_file_single_clean_file_with_credentials() {
 }
 
 #[tokio::test]
-async fn from_file_empty_sile() {
+async fn from_file_empty_file() {
     let empty_file: [u8; 0] = [];
     let tmp_file = std::env::temp_dir().join("empty.txt");
     std::fs::write(&tmp_file, empty_file).unwrap();
