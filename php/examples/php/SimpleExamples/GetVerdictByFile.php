@@ -9,25 +9,31 @@ include_once("./vendor/autoload.php");
 
 const CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ12345678901234567890";
 
-function GeneratePseudoRandomString(int $numberOfCharacters): string {
+function GeneratePseudoRandomString(int $numberOfCharacters): string
+{
     $string = "";
-    for ($i=0; $i<$numberOfCharacters; $i++) {
-        $string .= CHARS[rand(0,strlen(CHARS)-1)];
+    for ($i = 0; $i < $numberOfCharacters; $i++) {
+        $string .= CHARS[rand(0, strlen(CHARS) - 1)];
     }
     return $string;
 }
 
 function GenerateFileWithRandomContent($file_name, $size_in_bytes)
-{  
-   $data = GeneratePseudoRandomString($size_in_bytes);
-   file_put_contents($file_name, $data); //writes $data in a file   
+{
+    $data = GeneratePseudoRandomString($size_in_bytes);
+    file_put_contents($file_name, $data); //writes $data in a file   
 }
 
-$vaas = new Vaas("Token");
+$vaas = new Vaas(
+    $USER,
+    $PASSWORD,
+    "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token",
+    "wss://staging-gateway-vaas.gdatasecurity.de"
+);
 $randomFileName = GeneratePseudoRandomString(10);
 GenerateFileWithRandomContent("./${randomFileName}", 100);
 try {
-    fwrite(STDOUT, $vaas->ForFile("./${randomFileName}")."\n");
+    fwrite(STDOUT, $vaas->ForFile("./${randomFileName}") . "\n");
 } finally {
     unlink($randomFileName);
 }
