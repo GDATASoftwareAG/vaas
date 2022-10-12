@@ -19,8 +19,8 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
     # nodejs
     nodejs \
-    && apt-get -y clean && apt-get -y autoclean && apt-get -y autoremove
-
+    && apt-get -y clean && apt-get -y autoclean && apt-get -y autoremove \
+    && npm install -g pnpm
 
 USER vscode
 # setup search path

@@ -16,7 +16,7 @@
 	"runArgs": [
 		"--network=host"
 	],
-	"postStartCommand": "npm install",
+	"postStartCommand": "pnpm install",
 	// Set *default* container specific settings.json values on container create.
 	"settings": {},
 	// Add the IDs of extensions you want installed when the container is created.

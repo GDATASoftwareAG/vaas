@@ -8,6 +8,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -20,14 +21,15 @@ import lombok.Getter;
 import lombok.NonNull;
 
 public class Vaas {
-    private final int defaultTimeout = 10;
-    private final TimeUnit defaultTimeoutUnit = TimeUnit.MINUTES;
+    private final Duration defaultTimeout = Duration.ofMinutes(10);
 
     @Getter
     @NonNull
     private final WsConfig config;
 
     private WsClient client;
+
+    private HttpClient httpClient = HttpClient.newBuilder().build();
 
     public Vaas(WsConfig config) {
         this.config = config;
@@ -44,22 +46,38 @@ public class Vaas {
         this.client.closeBlocking();
     }
 
-    public VerdictResult forSha256(Sha256 sha256)
-            throws Exception {
-        return this.forSha256(sha256, defaultTimeout, defaultTimeoutUnit);
+    public VerdictResult forSha256(Sha256 sha256) throws InterruptedException, ExecutionException, TimeoutException {
+        return this.forSha256(sha256, defaultTimeout);
+    }
+
+    public VerdictResult forSha256(Sha256 sha256, Duration timeout)
+            throws InterruptedException, ExecutionException, TimeoutException {
+        return this.forSha256Async(sha256).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
     public VerdictResult forSha256(Sha256 sha256, long timeout, TimeUnit unit)
-            throws Exception {
+            throws InterruptedException, ExecutionException, TimeoutException {
+        return this.forSha256Async(sha256).get(timeout, unit);
+    }
+
+    public CompletableFuture<VerdictResult> forSha256Async(Sha256 sha256) {
         var request = new VerdictRequest(sha256, this.client.getSessionId());
-        return this.forRequest(request).get(timeout, unit);
+        return this.forRequest(request);
     }
 
     public VerdictResult forFile(Path file) throws Exception {
-        return forFile(file, defaultTimeout, defaultTimeoutUnit);
+        return forFile(file, defaultTimeout);
+    }
+
+    public VerdictResult forFile(Path file, Duration timeout) throws Exception {
+        return forFile(file, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
     public VerdictResult forFile(Path file, long timeout, TimeUnit unit) throws Exception {
+        return forFileAsync(file).get(timeout, unit);
+    }
+
+    public CompletableFuture<VerdictResult> forFileAsync(Path file) throws Exception {
         var sha256 = new Sha256(file);
         var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId());
 
@@ -80,7 +98,7 @@ public class Vaas {
                         return null;
                     }
                 });
-        return verdictResultFuture.get(timeout, unit);
+        return verdictResultFuture;
     }
 
     private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)
@@ -92,9 +110,7 @@ public class Vaas {
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(bytes))
                 .build();
 
-        var futureResponse = HttpClient
-                .newBuilder()
-                .build()
+        var futureResponse = this.httpClient
                 .sendAsync(request, HttpResponse.BodyHandlers.ofString());
 
         return futureResponse.thenAccept(response -> {
@@ -111,7 +127,7 @@ public class Vaas {
         throw (E) exception;
     }
 
-    private CompletableFuture<VerdictResult> forRequest(VerdictRequest verdictRequest) throws Exception {
+    private CompletableFuture<VerdictResult> forRequest(VerdictRequest verdictRequest) {
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());

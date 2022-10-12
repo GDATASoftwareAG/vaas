@@ -1,24 +1,7 @@
-import URLSearchParams from "@ungap/url-search-params";
-import * as axios from "axios";
+import getTokenWithClientCredentialsGrant from "./getTokenWithClientCredentialsGrant";
 import { Vaas, VAAS_URL } from "./Vaas";
 
-async function getTokenWithClientCredentialsGrant(
-  clientId: string,
-  clientSecret: string,
-  tokenEndpoint: string
-) {
-  var formData = new URLSearchParams();
-  formData.append("client_id", clientId);
-  formData.append("client_secret", clientSecret);
-  formData.append("grant_type", "client_credentials");
-
-  const instance = axios.default.create();
-  const response = await instance.post(tokenEndpoint, formData, {
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-  });
-  return response.data.access_token;
-}
-
+/** @deprecated Use ClientCredentialsGrantAuthenticator */
 export async function CreateVaasWithClientCredentialsGrant(
   clientId: string,
   clientSecret: string,
