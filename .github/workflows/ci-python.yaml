@@ -3,11 +3,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "python/**"
     tags:
       - "*"
   pull_request:
     branches:
       - main
+    paths:
+      - "python/**"
 
 jobs:
   build-python:

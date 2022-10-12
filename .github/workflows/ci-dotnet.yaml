@@ -3,11 +3,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "dotnet/**"
     tags:
       - "*"
   pull_request:
     branches:
       - main
+    paths:
+      - "dotnet/**"
 
 jobs:
   build-dotnet:
