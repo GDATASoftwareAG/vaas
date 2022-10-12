@@ -3,11 +3,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "rust/**"
     tags:
       - "*"
   pull_request:
     branches:
       - main
+    paths:
+      - "rust/**"
 
 jobs:
   build-rust:

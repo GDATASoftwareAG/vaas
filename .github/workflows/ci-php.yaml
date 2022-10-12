@@ -3,11 +3,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "php/**"
     tags:
       - "*"
   pull_request:
     branches:
       - main
+    paths:
+      - "php/**"
 
 jobs:
   build-php:
