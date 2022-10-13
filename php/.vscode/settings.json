@@ -1,3 +1,8 @@
 {
-    "phpunit.phpunit": "/workspaces/vaas/php/tests/vaas/vendor/bin/phpunit"
+    "phpunit.phpunit": "/workspaces/vaas/php/tests/vaas/vendor/bin/phpunit",
+    "php.docblock.functionSnippet": false,
+    "php.docblock.classSnippet": false,
+    "php.docblock.getterSetterSnippet": false,
+    "php.docblock.packageSnippet": false,
+    "php.docblock.propertySnippet": false
 }
