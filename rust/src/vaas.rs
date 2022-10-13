@@ -17,8 +17,8 @@ pub struct Vaas {
 }
 
 impl Vaas {
-    /// Get an OpenID Connect token to use for authentication.
-    pub async fn get_token(
+    /// Get an OpenID Connect token to use for authentication from a custom authentication provider URL.
+    pub async fn get_token_from_url(
         client_id: &str,
         client_secret: &str,
         token_endpoint: Url,
@@ -41,6 +41,15 @@ impl Vaas {
                 token_response.text().await.unwrap_or_default(),
             )),
         }
+    }
+
+    /// Get an OpenID Connect token to use for authentication from the default authentication provider.
+    pub async fn get_token(client_id: &str, client_secret: &str) -> VResult<String> {
+        let default_auth_url = Url::parse(
+            "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token",
+        )
+        .unwrap();
+        Vaas::get_token_from_url(client_id, client_secret, default_auth_url).await
     }
 
     /// Create a new [Builder] instance to configure the `Vaas` instance.

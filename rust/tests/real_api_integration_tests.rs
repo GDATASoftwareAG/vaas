@@ -13,7 +13,7 @@ async fn get_vaas() -> Connection {
         .expect("No CLIENT_ID environment variable set to be used in the integration tests");
     let client_secret = dotenv::var("CLIENT_SECRET")
         .expect("No CLIENT_SECRET environment variable set to be used in the integration tests");
-    let token = Vaas::get_token(&client_id, &client_secret, token_url)
+    let token = Vaas::get_token_from_url(&client_id, &client_secret, token_url)
         .await
         .unwrap();
     let vaas_url = dotenv::var("VAAS_URL")
