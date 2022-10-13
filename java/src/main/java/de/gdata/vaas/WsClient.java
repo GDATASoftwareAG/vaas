@@ -53,7 +53,11 @@ public class WsClient extends WebSocketClient {
 
     public WsClient(WsConfig config) throws URISyntaxException, IOException, InterruptedException {
         super(config.getUrl());
-        this.token = config.getToken();
+    }
+
+    public void connect(ClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator)
+            throws URISyntaxException, IOException, InterruptedException {
+        this.token = clientCredentialsGrantAuthenticator.getToken();
     }
 
     public void authenticate() throws InterruptedException, ExecutionException, TimeoutException {
