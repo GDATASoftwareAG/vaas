@@ -83,6 +83,19 @@ async fn from_sha256_single_pup_hash() {
 }
 
 #[tokio::test]
+async fn from_sha256_single_empty_file_hash() {
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+    let sha256 =
+        Sha256::try_from("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+            .unwrap();
+
+    let verdict = vaas.for_sha256(&sha256, &ct).await;
+
+    assert_eq!(Verdict::Clean, verdict.unwrap());
+}
+
+#[tokio::test]
 async fn from_sha256_multiple_malicious_hash() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
@@ -312,6 +325,21 @@ async fn from_file_single_clean_file_with_credentials() {
     let clean: [u8; 8] = [0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a];
     let tmp_file = std::env::temp_dir().join("clean2.txt");
     std::fs::write(&tmp_file, clean).unwrap();
+
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    std::fs::remove_file(&tmp_file).unwrap();
+    assert_eq!(Verdict::Clean, verdict.unwrap());
+}
+
+#[tokio::test]
+async fn from_file_empty_file() {
+    let empty_file: [u8; 0] = [];
+    let tmp_file = std::env::temp_dir().join("empty.txt");
+    std::fs::write(&tmp_file, empty_file).unwrap();
 
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);

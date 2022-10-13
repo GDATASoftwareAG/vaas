@@ -1,7 +1,13 @@
 package de.gdata.test.integration;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.testng.AssertJUnit.assertEquals;
+import de.gdata.vaas.Sha256;
+import de.gdata.vaas.Vaas;
+import de.gdata.vaas.WsConfig;
+import de.gdata.vaas.messages.Verdict;
+import io.github.cdimascio.dotenv.Dotenv;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.URI;
@@ -11,15 +17,8 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-
-import de.gdata.vaas.Sha256;
-import de.gdata.vaas.Vaas;
-import de.gdata.vaas.WsConfig;
-import de.gdata.vaas.messages.Verdict;
-import io.github.cdimascio.dotenv.Dotenv;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.testng.AssertJUnit.assertEquals;
 
 public class RealApiIntegrationTests {
     @Test
@@ -128,7 +127,7 @@ public class RealApiIntegrationTests {
     @Test
     public void fromFileSingleCleanFile()
             throws Exception {
-        byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
+        byte[] clean = {0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a};
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
         Files.write(tmpFile, clean);
         var vaas = this.getVaasWithCredentials();
@@ -153,6 +152,21 @@ public class RealApiIntegrationTests {
 
         Files.deleteIfExists(tmpFile);
         assert (verdict != null);
+        assertEquals(Verdict.CLEAN, verdict.getVerdict());
+    }
+
+    @Test
+    public void fromFileEmptyFile()
+            throws Exception {
+        byte[] clean = {};
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "empty.txt");
+        Files.write(tmpFile, clean);
+        var vaas = this.getVaasWithCredentials();
+
+        var verdict = vaas.forFile(tmpFile);
+        vaas.disconnect();
+
+        Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
 

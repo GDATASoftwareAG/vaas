@@ -285,6 +285,19 @@ final class VaasTest extends TestCase
         $this->assertEquals("Malicious", $vaas->ForSha256("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a", $uuid));
     }
 
+    public function testForEmptyFile_GetsCleanResponse(): void
+    {
+        $uuid = $this->getUuid();
+
+        $tmp = tmpfile();
+        fwrite($tmp, "");
+        fseek($tmp, 0);
+
+        $vaas = new Vaas($_ENV['CLIENT_ID'], $_ENV['CLIENT_SECRET'], $_ENV["TOKEN_URL"], $_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $this->assertEquals("Clean", $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true, $uuid));
+        fclose($tmp);
+    }
+
     /**
      * @outputBuffering disabled
      */

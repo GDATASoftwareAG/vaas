@@ -15,7 +15,7 @@ public class IntegrationTests
         var verdict = await vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
         Assert.Equal(Verdict.Malicious, verdict);
     }
-        
+
     [Fact]
     public async void FromSha256SingleCleanHash()
     {
@@ -58,9 +58,9 @@ public class IntegrationTests
         Assert.Equal(Verdict.Malicious, verdictList[0]);
         Assert.Equal(Verdict.Clean, verdictList[1]);
         Assert.Equal(Verdict.Unknown, verdictList[2]);
-    } 
-            
-            
+    }
+
+
     [Fact]
     public async Task GenerateFileUnknownHash()
     {
@@ -85,13 +85,13 @@ public class IntegrationTests
         rnd.NextBytes(b);
         await File.WriteAllBytesAsync("test3.txt", b);
         var vaas = await AuthenticateWithCredentials();
-        var resultList = await vaas.ForFileListAsync(new List<string>{"test1.txt","test2.txt","test3.txt"});
+        var resultList = await vaas.ForFileListAsync(new List<string> {"test1.txt", "test2.txt", "test3.txt"});
         Assert.Equal(Verdict.Clean, resultList[0]);
         Assert.Equal(Verdict.Clean, resultList[1]);
         Assert.Equal(Verdict.Clean, resultList[2]);
     }
 
-    
+
     [Fact]
     public async void FromSha256_ReturnsPup_ForAmtsoSample()
     {
@@ -114,5 +114,14 @@ public class IntegrationTests
         var vaas = new Vaas();
         await vaas.ConnectWithCredentials(clientId, clientSecret, tokenEndpoint, url);
         return vaas;
+    }
+
+    [Fact]
+    public async Task UploadEmptyFile()
+    {
+        await File.WriteAllBytesAsync("empty.txt", Array.Empty<byte>());
+        var vaas = await AuthenticateWithCredentials();
+        var result = await vaas.ForFileAsync("empty.txt");
+        Assert.Equal(Verdict.Clean, result);
     }
 }
