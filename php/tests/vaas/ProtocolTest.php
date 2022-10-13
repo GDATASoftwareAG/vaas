@@ -11,6 +11,7 @@ use Mockery;
 use VaasSdk\Exceptions\VaasAccessDeniedException;
 use VaasSdk\Exceptions\VaasConnectionClosedException;
 use VaasSdk\Exceptions\VaasInvalidStateException;
+use WebSocket\Client;
 
 final class ProtocolTest extends TestCase
 {
