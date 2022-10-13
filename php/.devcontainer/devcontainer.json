@@ -28,7 +28,9 @@
 		"hridoy.wordpress",
 		"Gruntfuggly.todo-tree",
 		"xdebug.php-debug",
-		"recca0120.vscode-phpunit"
+		"recca0120.vscode-phpunit",
+		"DEVSENSE.phptools-vscode",
+		"DEVSENSE.profiler-php-vscode"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
