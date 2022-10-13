@@ -15,6 +15,7 @@ use WebSocket\Client;
 
 /**
  * @runTestsInSeparateProcesses
+ * @preserveGlobalState disabled
  */
 final class ProtocolTest extends TestCase
 {
