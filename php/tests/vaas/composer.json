@@ -1,8 +1,10 @@
 {
-    "repositories": [{
-        "type": "path",
-        "url": "../../src/vaas"
-    }],
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../src/vaas"
+        }
+    ],
     "require": {
         "gdata/vaas": "@dev",
         "vlucas/phpdotenv": "^5.4"

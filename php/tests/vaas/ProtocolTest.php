@@ -13,6 +13,9 @@ use VaasSdk\Exceptions\VaasConnectionClosedException;
 use VaasSdk\Exceptions\VaasInvalidStateException;
 use WebSocket\Client;
 
+/**
+ * @runTestsInSeparateProcesses
+ */
 final class ProtocolTest extends TestCase
 {
     use ProphecyTrait;
@@ -22,9 +25,6 @@ final class ProtocolTest extends TestCase
         Mockery::close();
     }
 
-    /**
-     * @preserveGlobalState disabled
-     */
     public function testForConnectWithInvalidToken_ThrowsAccessDeniedException(): void
     {
         $this->expectException(VaasAccessDeniedException::class);
@@ -40,9 +40,6 @@ final class ProtocolTest extends TestCase
         (new Vaas("url"))->Connect("invalid");
     }
 
-    /**
-     * @preserveGlobalState disabled
-     */
     public function testConnectionGetsClosedAfterConnecting_ThrowsVaasConnectionClosedException(): void
     {
         $this->expectException(VaasConnectionClosedException::class);
@@ -59,9 +56,6 @@ final class ProtocolTest extends TestCase
         $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
     }
 
-    /**
-     * @preserveGlobalState disabled
-     */
     public function testForSha256CallBeforeConnection_ThrowsVaasInvalidStateException(): void
     {
         $this->expectException(VaasInvalidStateException::class);
