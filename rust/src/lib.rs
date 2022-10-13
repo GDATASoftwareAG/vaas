@@ -50,7 +50,7 @@
 //! #[tokio::main]
 //! async fn main() -> vaas::error::VResult<()> {
 //!     // Cancel the request after 10 seconds if no response is received.
-//!     let ct = CancellationToken::from_seconds(10);;
+//!     let ct = CancellationToken::from_seconds(10);
 //!
 //!     // Create the SHA256 we want to check.
 //!     let file = std::path::PathBuf::from("myfile");
