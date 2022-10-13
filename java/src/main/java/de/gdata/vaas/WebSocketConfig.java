@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
-public class WsConfig {
+public class WebSocketConfig {
 
     @Getter
     private String clientID, clientSecret;
@@ -25,13 +25,13 @@ public class WsConfig {
     @Setter
     private int PullDelayMs;
 
-    public WsConfig(String clientId, String clientSecret) throws URISyntaxException {
+    public WebSocketConfig(String clientId, String clientSecret) throws URISyntaxException {
         this(clientId, clientSecret,
                 new URI("https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"),
                 new URI("wss://gateway-vaas.gdatasecurity.de"));
     }
 
-    public WsConfig(String clientId, String clientSecret, URI tokenEndpoint, URI url) throws URISyntaxException {
+    public WebSocketConfig(String clientId, String clientSecret, URI tokenEndpoint, URI url) throws URISyntaxException {
         this.clientID = clientId;
         this.clientSecret = clientSecret;
         this.tokenEndpoint = tokenEndpoint;
