@@ -4,6 +4,7 @@ namespace VaasSdk;
 
 use Exception;
 use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\GuzzleException;
 use JsonMapper;
 use Monolog\Formatter\JsonFormatter;
@@ -32,16 +33,39 @@ class Vaas
     private int $_waitTimeoutInSeconds = 600;
     private int $_uploadTimeoutInSeconds = 60;
     private LoggerInterface $_logger;
-
+    
+    /**
+     * @throws BadOpcodeException|TimeoutException
+     */
     public function __construct()
     {
-        $arguments = func_get_args();
-        if (count($arguments) > 2) {
-            $this->connectWithCredentials(...$arguments);
-        } else {
-            $this->connect(...$arguments);
-        }
     }
+
+    public function ConnectWithToken(
+        string $token,
+        ?LoggerInterface $logger = null
+    ): Vaas {
+        $this->connect($token, $logger);
+        return $this;
+    }
+
+    /**
+     * @throws BadOpcodeException|TimeoutException
+     */
+    public function ConnectWithCredentials(
+        string $clientId,
+        string $clientSecret,
+        string $tokenEndpoint,
+        string $vaasUrl,
+        ?LoggerInterface $logger = null
+    ): Vaas {
+        $this->_httpClient = new HttpClient();
+        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
+        $this->_vaasUrl = $vaasUrl;
+        $this->connect($token, $logger);
+        return $this;
+    }
+
 
     /**
      * @throws BadOpcodeException|TimeoutException
@@ -76,40 +100,28 @@ class Vaas
         $this->_sessionId = $authResponse->session_id;
     }
 
-    /**
-     * @throws BadOpcodeException|TimeoutException
-     */
-    private function connectWithCredentials(
-        string $clientId,
-        string $clientSecret,
-        string $tokenEndpoint,
-        string $vaasUrl,
-        ?LoggerInterface $logger = null
-    ) {
-        $this->_httpClient = new HttpClient();
-        $token = $this->getTokenFromTokenEndpoint($clientId, $clientSecret, $tokenEndpoint);
-        $this->_vaasUrl = $vaasUrl;
-        $this->connect($token, $logger);
-    }
-
     private function getTokenFromTokenEndpoint(string $clientId, string $clientSecret, string $tokenEndpoint)
     {
         $headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
 
-        $response = $this->_httpClient->request(
-            'POST',
-            $tokenEndpoint,
-            [
-                'form_params' => [
-                    'client_id' => $clientId,
-                    'client_secret' => $clientSecret,
-                    'grant_type' => "client_credentials"
-                ],
-                'headers' => $headers
-            ]
-        );
-        if ($response->getStatusCode() != 200) {
-            throw new AccessDeniedException($response->getReasonPhrase(), $response->getStatusCode());
+        try {
+            $response = $this->_httpClient->request(
+                'POST',
+                $tokenEndpoint,
+                [
+                    'form_params' => [
+                        'client_id' => $clientId,
+                        'client_secret' => $clientSecret,
+                        'grant_type' => "client_credentials"
+                    ],
+                    'headers' => $headers
+                ]
+            );
+            if ($response->getStatusCode() != 200) {
+                throw new AccessDeniedException($response->getReasonPhrase(), $response->getStatusCode());
+            }    
+        } catch(ClientException $e) {
+            throw new AccessDeniedException($e->getMessage(), $e->getCode());
         }
         $response_body = json_decode($response->getBody());
         return $response_body->access_token;
@@ -251,6 +263,7 @@ class Vaas
                     $this->_logger->debug("Result", json_decode($result, true));
 
                     $resultObject = json_decode($result);
+                    $this->_logger->warning($result);
                     if ($resultObject->kind == Kind::AUTH_RESPONSE) {
                         $authResponse =  (new JsonMapper())->map(
                             $resultObject,
@@ -262,7 +275,11 @@ class Vaas
                         return $authResponse;
                     }
                 }
-            } catch (Exception $e) {
+            }
+            catch(AccessDeniedException $e) {
+                throw $e;
+            } 
+            catch (Exception $e) {
                 $this->_logger->warning("Error", ["Error" => $e]);
             }
             sleep(1);
