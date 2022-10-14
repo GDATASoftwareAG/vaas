@@ -1,5 +1,14 @@
 package de.gdata.vaas;
 
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasConnectionClosedException;
+import de.gdata.vaas.exceptions.VaasInvalidStateException;
+import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.messages.VerdictRequest;
+import de.gdata.vaas.messages.VerdictResult;
+import lombok.Getter;
+import lombok.NonNull;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,53 +23,59 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import de.gdata.vaas.messages.Verdict;
-import de.gdata.vaas.messages.VerdictRequest;
-import de.gdata.vaas.messages.VerdictResult;
-import lombok.Getter;
-import lombok.NonNull;
-
 public class Vaas {
     private final Duration defaultTimeout = Duration.ofMinutes(10);
 
     @Getter
     @NonNull
-    private final WsConfig config;
+    private final VaasConfig config;
 
-    private WsClient client;
+    @Getter
+    @NonNull
+    private final IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator;
+
+    private WebSocketClient client;
 
     private HttpClient httpClient = HttpClient.newBuilder().build();
 
-    public Vaas(WsConfig config) {
+    public Vaas(VaasConfig config, IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
         this.config = config;
+        this.clientCredentialsGrantAuthenticator = clientCredentialsGrantAuthenticator;
     }
 
-    public void connect()
-            throws InterruptedException, URISyntaxException, IOException, ExecutionException, TimeoutException {
-        this.client = new WsClient(this.getConfig());
+    public void connect() throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException,
+            ExecutionException, TimeoutException {
+        this.client = new WebSocketClient(this.getConfig(), clientCredentialsGrantAuthenticator.getToken());
         this.client.connectBlocking();
-        this.client.authenticate();
+        try {
+            this.client.Authenticate();
+        } catch (ExecutionException e) {
+            throw new VaasAuthenticationException();
+        }
     }
 
     public void disconnect() throws InterruptedException {
-        this.client.closeBlocking();
+        if (this.client != null) {
+            this.client.closeBlocking();
+        }
     }
 
-    public VerdictResult forSha256(Sha256 sha256) throws InterruptedException, ExecutionException, TimeoutException {
+    public VerdictResult forSha256(Sha256 sha256) throws Exception {
         return this.forSha256(sha256, defaultTimeout);
     }
 
     public VerdictResult forSha256(Sha256 sha256, Duration timeout)
-            throws InterruptedException, ExecutionException, TimeoutException {
+            throws Exception {
         return this.forSha256Async(sha256).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
     public VerdictResult forSha256(Sha256 sha256, long timeout, TimeUnit unit)
-            throws InterruptedException, ExecutionException, TimeoutException {
+            throws Exception {
         return this.forSha256Async(sha256).get(timeout, unit);
     }
 
-    public CompletableFuture<VerdictResult> forSha256Async(Sha256 sha256) {
+    public CompletableFuture<VerdictResult> forSha256Async(Sha256 sha256) throws Exception {
+        EnsureClientIsCreatedAndAuthenticated();
         var request = new VerdictRequest(sha256, this.client.getSessionId());
         return this.forRequest(request);
     }
@@ -78,6 +93,7 @@ public class Vaas {
     }
 
     public CompletableFuture<VerdictResult> forFileAsync(Path file) throws Exception {
+        EnsureClientIsCreatedAndAuthenticated();
         var sha256 = new Sha256(file);
         var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId());
 
@@ -127,7 +143,7 @@ public class Vaas {
         throw (E) exception;
     }
 
-    private CompletableFuture<VerdictResult> forRequest(VerdictRequest verdictRequest) {
+    private CompletableFuture<VerdictResult> forRequest(VerdictRequest verdictRequest) throws Exception {
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());
@@ -135,5 +151,13 @@ public class Vaas {
 
         return verdictResponse
                 .thenApply(response -> new VerdictResult(response));
+    }
+
+    private void EnsureClientIsCreatedAndAuthenticated()
+            throws VaasConnectionClosedException, VaasInvalidStateException {
+        if (client == null) {
+            throw new VaasInvalidStateException("connect() was not called");
+        }
+        this.client.EnsureIsAuthenticated();
     }
 }

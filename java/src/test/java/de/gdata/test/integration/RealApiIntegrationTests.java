@@ -1,8 +1,9 @@
 package de.gdata.test.integration;
 
-import de.gdata.vaas.Sha256;
-import de.gdata.vaas.Vaas;
-import de.gdata.vaas.WsConfig;
+import de.gdata.vaas.*;
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasConnectionClosedException;
+import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.jetbrains.annotations.NotNull;
@@ -53,9 +54,33 @@ public class RealApiIntegrationTests {
         var clientSecret = "A wizard is never late, Frodo Baggins. He arrives precisely when he means to!";
         var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
-        var config = new WsConfig(clientId, clientSecret, new URI(tokenUrl), new URI(vaasUrl));
-        var client = new Vaas(config);
+        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var client = new Vaas(config, authenticator);
         assertThrows(Exception.class, () -> client.connect());
+    }
+
+    @Test
+    public void wrongTokenUsedToAuthenticateWebsocket() throws URISyntaxException {
+        class MockAuthenticator implements IClientCredentialsGrantAuthenticator {
+
+            @Override
+            public String getToken() throws URISyntaxException, IOException, InterruptedException {
+                return "arbitrary_wrong_token";
+            }
+        }
+
+        var dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        var tokenUrl = dotenv.get("TOKEN_URL");
+        var vaasUrl = dotenv.get("VAAS_URL");
+        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var authenticator = new MockAuthenticator();
+
+        var client = new Vaas(config, authenticator);
+
+        assertThrows(VaasAuthenticationException.class, () -> client.connect());
     }
 
     @Test
@@ -193,6 +218,35 @@ public class RealApiIntegrationTests {
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
 
+    @Test
+    public void fromSha256_ThrowsConnectionClosed() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        vaas.disconnect();
+        var sha256 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        assertThrows(VaasConnectionClosedException.class, () -> {
+            vaas.forSha256(sha256);
+        });
+    }
+
+    @Test
+    public void fromSha256_ConnectHasntBeCalled() throws Exception {
+        var dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        var clientId = dotenv.get("CLIENT_ID");
+        var clientSecret = dotenv.get("CLIENT_SECRET");
+        var tokenUrl = dotenv.get("TOKEN_URL");
+        var vaasUrl = dotenv.get("VAAS_URL");
+
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var vaas = new Vaas(config, authenticator);
+        var sha256 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        assertThrows(VaasInvalidStateException.class, () -> {
+            vaas.forSha256(sha256);
+        });
+    }
+
     private @NotNull String getRandomString(int size) {
         String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvxyz0123456789";
         StringBuilder sb = new StringBuilder(size);
@@ -206,7 +260,8 @@ public class RealApiIntegrationTests {
     }
 
     private Vaas getVaasWithCredentials()
-            throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException {
+            throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException,
+            VaasAuthenticationException {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
@@ -214,8 +269,10 @@ public class RealApiIntegrationTests {
         var clientSecret = dotenv.get("CLIENT_SECRET");
         var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
-        var config = new WsConfig(clientId, clientSecret, new URI(tokenUrl), new URI(vaasUrl));
-        var client = new Vaas(config);
+
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var client = new Vaas(config, authenticator);
         client.connect();
         return client;
     }

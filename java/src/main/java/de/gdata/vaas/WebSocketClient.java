@@ -1,27 +1,21 @@
 package de.gdata.vaas;
 
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasConnectionClosedException;
+import de.gdata.vaas.exceptions.VaasInvalidStateException;
+import de.gdata.vaas.messages.Error;
+import de.gdata.vaas.messages.*;
+import lombok.Getter;
+import lombok.NonNull;
+import org.java_websocket.enums.ReadyState;
+import org.java_websocket.handshake.ServerHandshake;
+
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-
-import de.gdata.vaas.messages.AuthRequest;
-import de.gdata.vaas.messages.AuthResponse;
-import de.gdata.vaas.messages.Error;
-import de.gdata.vaas.messages.Kind;
-import de.gdata.vaas.messages.MessageType;
-import de.gdata.vaas.messages.VerdictResponse;
-import lombok.Getter;
-import lombok.NonNull;
-
-public class WsClient extends WebSocketClient {
+public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     private final int AuthenticationTimeoutInS = 10;
 
@@ -51,18 +45,33 @@ public class WsClient extends WebSocketClient {
         }
     }
 
-    public WsClient(WsConfig config) throws URISyntaxException, IOException, InterruptedException {
+    public WebSocketClient(VaasConfig config, String token)
+            throws URISyntaxException, IOException, InterruptedException {
         super(config.getUrl());
-        this.token = config.getToken();
+        this.token = token;
     }
 
-    public void authenticate() throws InterruptedException, ExecutionException, TimeoutException {
+    public void EnsureIsAuthenticated() throws VaasConnectionClosedException, VaasInvalidStateException {
+        if (this.getReadyState() != ReadyState.OPEN) {
+            throw new VaasConnectionClosedException();
+        }
+        if (this.sessionId == null) {
+            throw new VaasInvalidStateException("Not yet authenticated");
+        }
+    }
+
+    public void Authenticate()
+            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException {
         var authRequest = new AuthRequest(this.getToken());
         this.send(authRequest.toJson());
         waitForAuthentication();
+        if (this.sessionId == null) {
+            throw new VaasAuthenticationException();
+        }
     }
 
-    private void waitForAuthentication() throws InterruptedException, ExecutionException, TimeoutException {
+    private void waitForAuthentication()
+            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException {
         this.authenticated.get(AuthenticationTimeoutInS, TimeUnit.SECONDS);
     }
 
@@ -110,7 +119,7 @@ public class WsClient extends WebSocketClient {
                 this.sessionId = authResp.getSessionId();
                 this.authenticated.complete(null);
             } else {
-                this.authenticated.completeExceptionally(new Exception("Authentication failed"));
+                this.authenticated.completeExceptionally(new VaasAuthenticationException());
             }
         } else if (msg.getKind() == Kind.VerdictResponse) {
             var verdictResp = VerdictResponse.fromJson(message);
