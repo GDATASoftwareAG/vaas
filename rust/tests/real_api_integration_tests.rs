@@ -2,6 +2,7 @@ use futures::future::try_join_all;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Url;
 use std::convert::TryFrom;
+use vaas::error::Error::FailedAuthTokenRequest;
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
 async fn get_vaas() -> Connection {
@@ -25,6 +26,24 @@ async fn get_vaas() -> Connection {
         .connect()
         .await
         .unwrap()
+}
+
+#[tokio::test]
+async fn from_sha256_wrong_credentials() {
+    let token_url: Url = dotenv::var("TOKEN_URL")
+        .expect("No TOKEN_URL environment variable set to be used in the integration tests")
+        .parse()
+        .expect("Failed to parse TOKEN_URL environment variable");
+    let client_id = "invalid";
+    let client_secret = "invalid";
+    let token = Vaas::get_token_from_url(&client_id, &client_secret, token_url).await;
+
+    assert!(token.is_err());
+    assert!(match token {
+        Ok(_) => false,
+        Err(FailedAuthTokenRequest(_, _)) => true,
+        _ => false,
+    })
 }
 
 #[tokio::test]
