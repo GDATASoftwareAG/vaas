@@ -19,16 +19,19 @@ namespace Vaas;
 public class Vaas : IDisposable
 {
     private const int AuthenticationTimeoutInMs = 1000;
-    
-    private WebsocketClient? Client { get; set; }
+
+    private WebsocketClient? _client;
+    private WebsocketClient AuthenticatedClient => GetAuthenticatedWebSocket();
+
     private readonly HttpClient _httpClient = new();
         
     private string? SessionId { get; set; }
+    private bool AuthenticatedErrorOccured { get; set; }
 
     private readonly TaskCompletionSource _authenticatedSource = new();
     private Task Authenticated => _authenticatedSource.Task;
 
-    private Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
+    public Uri Url { get; set; } = new("wss://gateway-vaas.gdatasecurity.de");
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
 
@@ -41,34 +44,16 @@ public class Vaas : IDisposable
 
     public async Task Connect(string token)
     {
-        Client = new WebsocketClient(_url, WebsocketClientFactory);
-        Client.ReconnectTimeout = null;
-        Client.MessageReceived.Subscribe(HandleResponseMessage);
-        await Client.Start();
-        if (!Client.IsStarted)
+        _client = new WebsocketClient(Url, WebsocketClientFactory);
+        _client.ReconnectTimeout = null;
+        _client.MessageReceived.Subscribe(HandleResponseMessage);
+        await _client.Start();
+        if (!_client.IsStarted)
         {
             throw new WebsocketException("Could not start client");
         }
             
         await Authenticate(token);
-    }
-
-    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint, string url = "wss://gateway-vaas.gdatasecurity.de")
-    {
-        var response = await _httpClient.PostAsync(tokenEndpoint, new FormUrlEncodedContent(
-            new List<KeyValuePair<string, string>>
-            {
-                new("client_id", clientId),
-                new("client_secret", clientSecret),
-                new("grant_type", "client_credentials")
-            }));
-        var stringResponse = await response.Content.ReadAsStringAsync();
-        var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(stringResponse);
-        if (tokenResponse == null)
-            throw new JsonException("Access token is null");
-        
-        _url = new Uri(url);
-        await Connect(tokenResponse.AccessToken);
     }
 
     private void HandleResponseMessage(ResponseMessage msg)
@@ -81,10 +66,12 @@ public class Vaas : IDisposable
                 var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
                 if (authenticationResponse is { Success: true })
                 {
+                    AuthenticatedErrorOccured = false;
                     SessionId = authenticationResponse.SessionId;
                     _authenticatedSource.SetResult();
                 }
-
+                else
+                    AuthenticatedErrorOccured = true;
                 break;
 
             case "VerdictResponse":
@@ -108,18 +95,18 @@ public class Vaas : IDisposable
     {
         var authenticationRequest = new AuthenticationRequest(token);
         var jsonString = JsonSerializer.Serialize(authenticationRequest);
-        Client?.Send(jsonString);
+        _client?.Send(jsonString);
 
         var delay = Task.Delay(AuthenticationTimeoutInMs);
         if (await Task.WhenAny(Authenticated, delay) == delay)
         {
-            throw new UnauthorizedAccessException();
+            throw new VaasAuthenticationException();
         }
     }
 
     public async Task<Verdict> ForSha256Async(string sha256)
     {
-        var value = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
+        var value = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new VaasInvalidStateException())
         {
             UseCache = _options.UseCache,
             UseShed = _options.UseShed
@@ -174,12 +161,11 @@ public class Vaas : IDisposable
     {
         return (await Task.WhenAll(fileList.Select(ForFileAsync))).ToList();
     }
-
-        
+    
     private async Task<VerdictResponse> ForRequestAsync(VerdictRequest verdictRequest)
     {
         var jsonString = JsonSerializer.Serialize(verdictRequest);
-        Client?.Send(jsonString);
+        AuthenticatedClient.Send(jsonString);
 
         return await WaitForResponseAsync(verdictRequest.Guid);
     }
@@ -213,7 +199,7 @@ public class Vaas : IDisposable
     {
         if (!disposing) return;
         
-        Client?.Dispose();
+        AuthenticatedClient?.Dispose();
         _httpClient.Dispose();
     }
 
@@ -221,5 +207,21 @@ public class Vaas : IDisposable
     {
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    public WebsocketClient GetAuthenticatedWebSocket()
+    {
+        if (_client == null)
+            throw new VaasInvalidStateException();
+        if (!_client.IsRunning)
+            throw new VaasConnectionClosedException();
+        if (SessionId == null)
+        {
+            if (AuthenticatedErrorOccured)
+                throw new VaasAuthenticationException();
+            throw new VaasInvalidStateException();
+        }
+
+        return _client;
     }
 }
