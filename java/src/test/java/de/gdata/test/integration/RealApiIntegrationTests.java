@@ -1,10 +1,8 @@
 package de.gdata.test.integration;
 
-import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
-import de.gdata.vaas.Sha256;
-import de.gdata.vaas.Vaas;
-import de.gdata.vaas.VaasConfig;
+import de.gdata.vaas.*;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
 import io.github.cdimascio.dotenv.Dotenv;
@@ -60,6 +58,29 @@ public class RealApiIntegrationTests {
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var client = new Vaas(config, authenticator);
         assertThrows(Exception.class, () -> client.connect());
+    }
+
+    @Test
+    public void wrongTokenUsedToAuthenticateWebsocket() throws URISyntaxException {
+        class MockAuthenticator implements IClientCredentialsGrantAuthenticator {
+
+            @Override
+            public String getToken() throws URISyntaxException, IOException, InterruptedException {
+                return "arbitrary_wrong_token";
+            }
+        }
+
+        var dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        var tokenUrl = dotenv.get("TOKEN_URL");
+        var vaasUrl = dotenv.get("VAAS_URL");
+        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var authenticator = new MockAuthenticator();
+
+        var client = new Vaas(config, authenticator);
+
+        assertThrows(VaasAuthenticationException.class, () -> client.connect());
     }
 
     @Test
@@ -195,6 +216,16 @@ public class RealApiIntegrationTests {
         verdict = vaas.forSha256(sha256);
         assert (verdict != null);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
+    }
+
+    @Test
+    public void fromSha256_ThrowsConnectionClosed() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        vaas.disconnect();
+        var sha256 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        assertThrows(VaasConnectionClosedException.class, () -> {
+            vaas.forSha256(sha256);
+        });
     }
 
     @Test

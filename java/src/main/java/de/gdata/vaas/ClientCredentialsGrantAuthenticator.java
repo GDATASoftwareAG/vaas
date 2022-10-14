@@ -1,5 +1,11 @@
 package de.gdata.vaas;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import lombok.Getter;
+import lombok.NonNull;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -13,14 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import lombok.Getter;
-import lombok.NonNull;
-
-public class ClientCredentialsGrantAuthenticator {
+public class ClientCredentialsGrantAuthenticator implements IClientCredentialsGrantAuthenticator {
 
     @Getter
     private String clientId, clientSecret;

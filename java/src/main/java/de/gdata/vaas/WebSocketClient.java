@@ -119,7 +119,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
                 this.sessionId = authResp.getSessionId();
                 this.authenticated.complete(null);
             } else {
-                this.authenticated.completeExceptionally(new Exception("Authentication failed"));
+                this.authenticated.completeExceptionally(new VaasAuthenticationException());
             }
         } else if (msg.getKind() == Kind.VerdictResponse) {
             var verdictResp = VerdictResponse.fromJson(message);

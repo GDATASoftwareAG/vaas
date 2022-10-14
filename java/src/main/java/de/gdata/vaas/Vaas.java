@@ -32,13 +32,13 @@ public class Vaas {
 
     @Getter
     @NonNull
-    private final ClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator;
+    private final IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator;
 
     private WebSocketClient client;
 
     private HttpClient httpClient = HttpClient.newBuilder().build();
 
-    public Vaas(VaasConfig config, ClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
+    public Vaas(VaasConfig config, IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
         this.config = config;
         this.clientCredentialsGrantAuthenticator = clientCredentialsGrantAuthenticator;
     }
@@ -47,7 +47,11 @@ public class Vaas {
             ExecutionException, TimeoutException {
         this.client = new WebSocketClient(this.getConfig(), clientCredentialsGrantAuthenticator.getToken());
         this.client.connectBlocking();
-        this.client.Authenticate();
+        try {
+            this.client.Authenticate();
+        } catch (ExecutionException e) {
+            throw new VaasAuthenticationException();
+        }
     }
 
     public void disconnect() throws InterruptedException {
