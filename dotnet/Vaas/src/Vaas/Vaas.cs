@@ -31,7 +31,7 @@ public class Vaas : IDisposable
     private readonly TaskCompletionSource _authenticatedSource = new();
     private Task Authenticated => _authenticatedSource.Task;
 
-    private Uri _url = new("wss://gateway-vaas.gdatasecurity.de");
+    public Uri Url { get; set; } = new("wss://gateway-vaas.gdatasecurity.de");
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
 
@@ -44,7 +44,7 @@ public class Vaas : IDisposable
 
     public async Task Connect(string token)
     {
-        _client = new WebsocketClient(_url, WebsocketClientFactory);
+        _client = new WebsocketClient(Url, WebsocketClientFactory);
         _client.ReconnectTimeout = null;
         _client.MessageReceived.Subscribe(HandleResponseMessage);
         await _client.Start();
@@ -54,24 +54,6 @@ public class Vaas : IDisposable
         }
             
         await Authenticate(token);
-    }
-
-    public async Task ConnectWithCredentials(string clientId, string clientSecret, Uri tokenEndpoint, string url = "wss://gateway-vaas.gdatasecurity.de")
-    {
-        var response = await _httpClient.PostAsync(tokenEndpoint, new FormUrlEncodedContent(
-            new List<KeyValuePair<string, string>>
-            {
-                new("client_id", clientId),
-                new("client_secret", clientSecret),
-                new("grant_type", "client_credentials")
-            }));
-        var stringResponse = await response.Content.ReadAsStringAsync();
-        var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(stringResponse);
-        if (tokenResponse == null)
-            throw new JsonException("Access token is null");
-        
-        _url = new Uri(url);
-        await Connect(tokenResponse.AccessToken);
     }
 
     private void HandleResponseMessage(ResponseMessage msg)
@@ -84,6 +66,7 @@ public class Vaas : IDisposable
                 var authenticationResponse = JsonSerializer.Deserialize<AuthenticationResponse>(msg.Text);
                 if (authenticationResponse is { Success: true })
                 {
+                    AuthenticatedErrorOccured = false;
                     SessionId = authenticationResponse.SessionId;
                     _authenticatedSource.SetResult();
                 }

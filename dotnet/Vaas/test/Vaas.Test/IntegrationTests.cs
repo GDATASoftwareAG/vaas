@@ -9,7 +9,7 @@ namespace Vaas.Test;
 public class IntegrationTests
 {
     [Fact]
-    public async void ConnectWithCredentialsThrowsVaasAuthenticationException()
+    public async void ConnectWithWrongCredentialsThrowsVaasAuthenticationException()
     {
         DotNetEnv.Env.TraversePath().Load();
         var url = DotNetEnv.Env.GetString(
@@ -20,8 +20,10 @@ public class IntegrationTests
             "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"));
         const string clientId = "foobar";
         const string clientSecret = "foobar2";
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenEndpoint);
+        
         var vaas = new Vaas();
-        await Assert.ThrowsAsync<VaasAuthenticationException>(() =>  vaas.ConnectWithCredentials(clientId, clientSecret, tokenEndpoint, url));
+        await Assert.ThrowsAsync<VaasAuthenticationException>(async () => await vaas.Connect(await authenticator.GetToken()));
     }
     
     [Fact]
@@ -134,16 +136,19 @@ public class IntegrationTests
     private static async Task<Vaas> AuthenticateWithCredentials()
     {
         DotNetEnv.Env.TraversePath().Load();
-        var url = DotNetEnv.Env.GetString(
+        var url = new Uri(DotNetEnv.Env.GetString(
             "VAAS_URL",
-            "wss://gateway-vaas.gdatasecurity.de");
+            "wss://gateway-vaas.gdatasecurity.de"));
         var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
             "TOKEN_URL",
             "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"));
         var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
         var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenEndpoint);
+        
         var vaas = new Vaas();
-        await vaas.ConnectWithCredentials(clientId, clientSecret, tokenEndpoint, url);
+        vaas.Url = url;
+        await vaas.Connect(await authenticator.GetToken());
         return vaas;
     }
 
