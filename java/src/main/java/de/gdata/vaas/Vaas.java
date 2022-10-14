@@ -1,5 +1,14 @@
 package de.gdata.vaas;
 
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasConnectionClosedException;
+import de.gdata.vaas.exceptions.VaasInvalidStateException;
+import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.messages.VerdictRequest;
+import de.gdata.vaas.messages.VerdictResult;
+import lombok.Getter;
+import lombok.NonNull;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,21 +23,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import de.gdata.vaas.exceptions.VaasAuthenticationException;
-import de.gdata.vaas.exceptions.VaasConnectionClosedException;
-import de.gdata.vaas.exceptions.VaasInvalidStateException;
-import de.gdata.vaas.messages.Verdict;
-import de.gdata.vaas.messages.VerdictRequest;
-import de.gdata.vaas.messages.VerdictResult;
-import lombok.Getter;
-import lombok.NonNull;
-
 public class Vaas {
     private final Duration defaultTimeout = Duration.ofMinutes(10);
 
     @Getter
     @NonNull
-    private final WebSocketConfig config;
+    private final VaasConfig config;
 
     @Getter
     @NonNull
@@ -38,7 +38,7 @@ public class Vaas {
 
     private HttpClient httpClient = HttpClient.newBuilder().build();
 
-    public Vaas(WebSocketConfig config, ClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
+    public Vaas(VaasConfig config, ClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
         this.config = config;
         this.clientCredentialsGrantAuthenticator = clientCredentialsGrantAuthenticator;
     }

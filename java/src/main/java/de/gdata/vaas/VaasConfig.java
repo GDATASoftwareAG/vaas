@@ -1,16 +1,13 @@
 package de.gdata.vaas;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
-public class WebSocketConfig {
+import java.net.URI;
+import java.net.URISyntaxException;
 
-    @Getter
-    private String clientID, clientSecret;
-
+public class VaasConfig {
     @Getter
     @Setter
     @NonNull
@@ -25,15 +22,13 @@ public class WebSocketConfig {
     @Setter
     private int PullDelayMs;
 
-    public WebSocketConfig(String clientId, String clientSecret) throws URISyntaxException {
-        this(clientId, clientSecret,
+    public VaasConfig() throws URISyntaxException {
+        this(
                 new URI("https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"),
                 new URI("wss://gateway-vaas.gdatasecurity.de"));
     }
 
-    public WebSocketConfig(String clientId, String clientSecret, URI tokenEndpoint, URI url) throws URISyntaxException {
-        this.clientID = clientId;
-        this.clientSecret = clientSecret;
+    public VaasConfig(URI tokenEndpoint, URI url) {
         this.tokenEndpoint = tokenEndpoint;
         this.url = url;
         this.PullDelayMs = 100;

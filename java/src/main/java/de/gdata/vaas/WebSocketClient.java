@@ -1,28 +1,19 @@
 package de.gdata.vaas;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.java_websocket.enums.ReadyState;
-import org.java_websocket.handshake.ServerHandshake;
-
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
-import de.gdata.vaas.messages.AuthRequest;
-import de.gdata.vaas.messages.AuthResponse;
 import de.gdata.vaas.messages.Error;
-import de.gdata.vaas.messages.Kind;
-import de.gdata.vaas.messages.MessageType;
-import de.gdata.vaas.messages.VerdictResponse;
+import de.gdata.vaas.messages.*;
 import lombok.Getter;
 import lombok.NonNull;
+import org.java_websocket.enums.ReadyState;
+import org.java_websocket.handshake.ServerHandshake;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.ByteBuffer;
+import java.util.concurrent.*;
 
 public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
@@ -54,7 +45,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         }
     }
 
-    public WebSocketClient(WebSocketConfig config, String token)
+    public WebSocketClient(VaasConfig config, String token)
             throws URISyntaxException, IOException, InterruptedException {
         super(config.getUrl());
         this.token = token;
