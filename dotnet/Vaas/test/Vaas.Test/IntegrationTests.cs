@@ -9,6 +9,37 @@ namespace Vaas.Test;
 public class IntegrationTests
 {
     [Fact]
+    public async void ConnectWithCredentialsThrowsVaasAuthenticationException()
+    {
+        DotNetEnv.Env.TraversePath().Load();
+        var url = DotNetEnv.Env.GetString(
+            "VAAS_URL",
+            "wss://gateway-vaas.gdatasecurity.de");
+        var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
+            "TOKEN_URL",
+            "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"));
+        const string clientId = "foobar";
+        const string clientSecret = "foobar2";
+        var vaas = new Vaas();
+        await Assert.ThrowsAsync<VaasAuthenticationException>(() =>  vaas.ConnectWithCredentials(clientId, clientSecret, tokenEndpoint, url));
+    }
+    
+    [Fact]
+    public async void FromSha256VaasInvalidStateException()
+    {
+        var vaas = new Vaas();
+        await Assert.ThrowsAsync<VaasInvalidStateException>(() => vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
+    }
+    
+    [Fact]
+    public async void FromSha256ThrowsVaasConnectionClosedException()
+    {
+        var vaas = await AuthenticateWithCredentials();
+        vaas.Dispose();
+        await Assert.ThrowsAsync<VaasConnectionClosedException>(() => vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
+    }
+    
+    [Fact]
     public async void FromSha256SingleMaliciousHash()
     {
         var vaas = await AuthenticateWithCredentials();
