@@ -25,7 +25,7 @@ jobs:
       - name: setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "7.4"
+          php-version: "8.1"
 
       - name: install php dependencies
         uses: php-actions/composer@v6
@@ -51,6 +51,18 @@ jobs:
           TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
         run: ./vendor/bin/phpunit --colors --testdox
         working-directory: php/tests/vaas
+
+      - name: install example requirements
+        run: composer install
+        working-directory: php/examples/VaasExample
+
+      - name: run example
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "GetVerdictByFile.php"
+        run: php GetVerdictByFile.php
+        working-directory: php/examples/VaasExample
 
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/php')

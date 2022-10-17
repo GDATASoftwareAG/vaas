@@ -8,12 +8,12 @@ use VaasSdk\Vaas;
 include_once("./vendor/autoload.php");
 
 $authenticator = new ClientCredentialsGrantAuthenticator(
-    $user,
-    $password,
-    "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+    getenv("CLIENT_ID"),
+    getenv("CLIENT_SECRET"),
+    "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
 );
 $vaas = new Vaas(
-    "wss://staging-gateway-vaas.gdatasecurity.de"
+    "wss://gateway-vaas.gdatasecurity.de"
 );
 $vaas->Connect($authenticator->getToken());
 
