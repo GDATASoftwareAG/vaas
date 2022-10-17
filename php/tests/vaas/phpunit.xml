@@ -1,8 +1,10 @@
 <phpunit>
   <testsuites>
-    <testsuite name="VaasTesting">
+    <testsuite name="VaasTesting" >
       <file>Sha256Test.php</file>
       <file>VaasTest.php</file>
+      <file>ProtocolTest.php</file>
+      <file>ClientCredentialsGrantAuthenticatorTest.php</file>
     </testsuite>
   </testsuites>
 </phpunit>

@@ -1,39 +1,38 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.187.0/containers/ubuntu
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.245.2/containers/php
 {
-	"name": "Ubuntu",
+	"name": "PHP",
 	"build": {
 		"dockerfile": "Dockerfile",
-		// Update 'VARIANT' to pick an Ubuntu version: focal, bionic
 		"args": {
-			"VARIANT": "focal"
+			// Update VARIANT to pick a PHP version: 8, 8.1, 8.0, 7, 7.4
+			// Append -bullseye or -buster to pin to an OS version.
+			// Use -bullseye variants on local on arm64/Apple Silicon.
+			"VARIANT": "8",
+			"NODE_VERSION": "lts/*"
 		}
 	},
-	"mounts": [
-		"source=${localEnv:HOME}/.docker/config.json,target=/root/.docker/config.json,type=bind,consistency=cached",
-		"source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind,consistency=consistent"
-	],
-	"runArgs": [
-		"--network=host"
-	],
-	// Set *default* container specific settings.json values on container create.
-	"settings": {},
-	// Add the IDs of extensions you want installed when the container is created.
-	"postStartCommand": "composer install -d tests/vaas/",
-	"extensions": [
-		"bmewburn.vscode-intelephense-client",
-		"jeff-hykin.better-dockerfile-syntax",
-		"felixfbecker.php-debug",
-		"johnbillion.vscode-wordpress-hooks",
-		"hridoy.wordpress",
-		"Gruntfuggly.todo-tree",
-		"xdebug.php-debug",
-		"recca0120.vscode-phpunit"
-	],
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			// Set *default* container specific settings.json values on container create.
+			"settings": {
+				"php.validate.executablePath": "/usr/local/bin/php"
+			},
+			// Add the IDs of extensions you want installed when the container is created.
+			"extensions": [
+				"xdebug.php-debug",
+				"bmewburn.vscode-intelephense-client"
+			]
+		}
+	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": [
+		8080
+	],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
-	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+	// "postCreateCommand": "sudo chmod a+x \"$(pwd)\" && sudo rm -rf /var/www/html && sudo ln -s \"$(pwd)\" /var/www/html"
+	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"
 }
