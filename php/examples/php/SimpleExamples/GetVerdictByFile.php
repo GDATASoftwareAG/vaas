@@ -2,8 +2,8 @@
 
 namespace VaasExamples;
 
+use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Vaas;
-use Exception;
 
 include_once("./vendor/autoload.php");
 
@@ -24,12 +24,16 @@ function GenerateFileWithRandomContent($file_name, $size_in_bytes)
     file_put_contents($file_name, $data); //writes $data in a file   
 }
 
+$authenticator = new ClientCredentialsGrantAuthenticator(
+    $user,
+    $password,
+    "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+);
 $vaas = new Vaas(
-    $USER,
-    $PASSWORD,
-    "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token",
     "wss://staging-gateway-vaas.gdatasecurity.de"
 );
+$vaas->Connect($authenticator->getToken());
+
 $randomFileName = GeneratePseudoRandomString(10);
 GenerateFileWithRandomContent("./${randomFileName}", 100);
 try {

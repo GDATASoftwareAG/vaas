@@ -2,16 +2,20 @@
 
 namespace VaasExamples;
 
+use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Vaas;
 
 include_once("./vendor/autoload.php");
 
+$authenticator = new ClientCredentialsGrantAuthenticator(
+    $user,
+    $password,
+    "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+);
 $vaas = new Vaas(
-    $USER,
-    $PASSWORD,
-    "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token",
     "wss://staging-gateway-vaas.gdatasecurity.de"
 );
+$vaas->Connect($authenticator->getToken());
 
 // EICAR
 $verdict = $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
