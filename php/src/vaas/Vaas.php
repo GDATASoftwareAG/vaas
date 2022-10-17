@@ -54,8 +54,8 @@ class Vaas
      */
     public function Connect(
         string $token,
-        ?LoggerInterface $logger,
-        ?VaasConnection $vaasConnection
+        ?LoggerInterface $logger = null,
+        ?VaasConnection $vaasConnection = null
     ) {
         if (isset($vaasConnection)) {
             $this->_vaasConnection = $vaasConnection;
