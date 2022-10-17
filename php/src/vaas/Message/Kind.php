@@ -39,7 +39,7 @@ class Kind implements JsonSerializable
         return $this->_kindString;
     }
 
-    public function jsonSerialize()
+    public function jsonSerialize(): string
     {
         return $this->_kindString;
     }

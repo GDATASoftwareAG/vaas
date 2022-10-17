@@ -11,9 +11,12 @@ class VaasConnection
     public Client $WebSocketClient;
     public string $SessionId;
 
-    public function __construct(string $url)
+    public function __construct(string $url, Client $WebSocketClient = null)
     {
-        $this->WebSocketClient = new Client($url);
+        if (!isset($WebSocketClient))
+            $this->WebSocketClient = new Client($url);
+        else 
+            $this->WebSocketClient = $WebSocketClient;
         $this->WebSocketClient->ping();
     }
 

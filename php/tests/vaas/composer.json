@@ -2,16 +2,20 @@
     "repositories": [
         {
             "type": "path",
-            "url": "../../src/vaas"
+            "url": "../../src/vaas",
+            "options": {
+                "versions": {
+                    "gdata/vaas": "999"
+                }
+            }
         }
     ],
     "require": {
-        "gdata/vaas": "@dev",
+        "gdata/vaas": "999",
         "vlucas/phpdotenv": "^5.4"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9",
-        "phpspec/prophecy-phpunit": "^2.0",
-        "mockery/mockery": "^1.5"
+        "phpunit/phpunit": "9.5.25",
+        "phpspec/prophecy-phpunit": "^2.0"
     }
 }

@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Mockery;
 use VaasSdk\ClientCredentialsGrantAuthenticator;
-use VaasSdk\Exceptions\VaasAccessDeniedException;
+use VaasSdk\Exceptions\VaasAuthenticationException;
 
 final class ClientCredentialsGrantAuthenticatorTest extends TestCase
 {
@@ -35,7 +35,7 @@ final class ClientCredentialsGrantAuthenticatorTest extends TestCase
 
     public function testAuthenticatorWithInvalidCredentials_ThrowsAccessDeniedException(): void
     {
-        $this->expectException(VaasAccessDeniedException::class);
+        $this->expectException(VaasAuthenticationException::class);
         $authenticator = new ClientCredentialsGrantAuthenticator("invalid", "invalid", $_ENV["TOKEN_URL"]);
         $token = $authenticator->getToken();
     }

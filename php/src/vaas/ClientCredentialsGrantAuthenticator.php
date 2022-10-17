@@ -4,7 +4,7 @@ namespace VaasSdk;
 
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Exception\ClientException;
-use VaasSdk\Exceptions\VaasAccessDeniedException;
+use VaasSdk\Exceptions\VaasAuthenticationException;
 
 class ClientCredentialsGrantAuthenticator
 {
@@ -39,11 +39,11 @@ class ClientCredentialsGrantAuthenticator
                 ]
             );
             if ($response->getStatusCode() != 200) {
-                throw new VaasAccessDeniedException($response->getReasonPhrase(), $response->getStatusCode());
+                throw new VaasAuthenticationException($response->getReasonPhrase(), $response->getStatusCode());
             }
         }
         catch (ClientException $e) {
-            throw new VaasAccessDeniedException($e->getMessage(), $e->getCode());
+            throw new VaasAuthenticationException($e->getMessage(), $e->getCode());
         }
         $response_body = json_decode($response->getBody());
         return $response_body->access_token;

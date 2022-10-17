@@ -7,7 +7,7 @@ require_once __DIR__ . "/vendor/autoload.php";
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use VaasSdk\ClientCredentialsGrantAuthenticator;
-use VaasSdk\Exceptions\VaasAccessDeniedException;
+use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Monolog\Formatter\JsonFormatter;
@@ -72,7 +72,7 @@ final class VaasTest extends TestCase
 
     public function testForConnectingWithInvalidToken_ThrowsVaasAccessDeniedException()
     {
-        $this->expectException(VaasAccessDeniedException::class);
+        $this->expectException(VaasAuthenticationException::class);
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $vaas->Connect("invalid");
     }

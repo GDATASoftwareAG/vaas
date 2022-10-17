@@ -10,7 +10,8 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
-use VaasSdk\Exceptions\VaasAccessDeniedException;
+use VaasSdk\Exceptions\VaasAuthenticationException;
+use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Message\AuthRequest;
 use VaasSdk\Message\AuthResponse;
 use VaasSdk\Message\Verdict;
@@ -33,7 +34,6 @@ class Vaas
      */
     public function __construct(?string $vaasUrl, ?LoggerInterface $logger = null)
     {
-        $this->_vaasConnection = new VaasConnection($this->_vaasUrl);
         $this->_httpClient = new HttpClient();
         if ($logger == null) {
             $monoLogger = new Logger("VaaS");
@@ -41,12 +41,11 @@ class Vaas
             $streamHandler = new StreamHandler(
                 fopen('php://stdout', 'w'),
                 Logger::INFO
-                );
+            );
             $streamHandler->setFormatter(new JsonFormatter());
             $monoLogger->pushHandler($streamHandler);
             $this->_logger = $monoLogger;
-        }
-        else {
+        } else {
             $this->_logger = $logger;
         }
     }
@@ -55,10 +54,14 @@ class Vaas
      */
     public function Connect(
         string $token,
-        ?LoggerInterface $logger = null
-    )
-    {
-        $this->_vaasConnection = new VaasConnection($this->_vaasUrl);
+        ?LoggerInterface $logger,
+        ?VaasConnection $vaasConnection
+    ) {
+        if (isset($vaasConnection)) {
+            $this->_vaasConnection = $vaasConnection;
+        } else {
+            $this->_vaasConnection = new VaasConnection($this->_vaasUrl);
+        }
         $webSocket = $this->_vaasConnection->GetConnectedWebsocket();
 
         if ($logger == null) {
@@ -67,12 +70,11 @@ class Vaas
             $streamHandler = new StreamHandler(
                 fopen('php://stdout', 'w'),
                 Logger::INFO
-                );
+            );
             $streamHandler->setFormatter(new JsonFormatter());
             $monoLogger->pushHandler($streamHandler);
             $this->_logger = $monoLogger;
-        }
-        else {
+        } else {
             $this->_logger = $logger;
         }
         $authRequest = new AuthRequest($token);
@@ -204,8 +206,7 @@ class Vaas
                 $result = null;
                 try {
                     $result = $websocket->receive();
-                }
-                catch (\WebSocket\TimeoutException $e) {
+                } catch (\WebSocket\TimeoutException $e) {
                     $this->_logger->debug("Read timeout, send ping");
                     $websocket->ping();
                 }
@@ -214,23 +215,21 @@ class Vaas
                     $this->_logger->debug("Result", json_decode($result, true));
 
                     $resultObject = json_decode($result);
-                    $this->_logger->warning($result);
                     if ($resultObject->kind == Kind::AUTH_RESPONSE) {
                         $authResponse = (new JsonMapper())->map(
                             $resultObject,
                             new AuthResponse()
                         );
+                        $this->_logger->debug($result);
                         if ($authResponse->success === false) {
-                            throw new VaasAccessDeniedException();
+                            throw new VaasAuthenticationException($result);
                         }
                         return $authResponse;
                     }
                 }
-            }
-            catch (VaasAccessDeniedException $e) {
+            } catch (VaasAuthenticationException $e) {
                 throw $e;
-            }
-            catch (Exception $e) {
+            } catch (Exception $e) {
                 $this->_logger->warning("Error", ["Error" => $e]);
             }
             sleep(1);
@@ -247,6 +246,9 @@ class Vaas
         $this->_logger->debug("WaitForVerdict");
         $start_time = time();
 
+        if (!isset($this->_vaasConnection)) {
+            throw new VaasInvalidStateException("connect() was not called");
+        }
         while (true) {
             $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
             if ((time() - $start_time) > $this->_waitTimeoutInSeconds) {
@@ -256,8 +258,7 @@ class Vaas
                 $result = null;
                 try {
                     $result = $websocket->receive();
-                }
-                catch (\WebSocket\TimeoutException $e) {
+                } catch (\WebSocket\TimeoutException $e) {
                     $this->_logger->debug("Read timeout, send ping");
                     $websocket->ping();
                 }
@@ -278,8 +279,7 @@ class Vaas
                         return $result;
                     }
                 }
-            }
-            catch (Exception $e) {
+            } catch (Exception $e) {
                 $this->_logger->warning("Error", ["Error" => $e]);
             }
             sleep(1);
@@ -295,6 +295,9 @@ class Vaas
     {
         $this->_logger->debug("_verdictResponseForSha256");
 
+        if (!isset($this->_vaasConnection)) {
+            throw new VaasInvalidStateException("connect() was not called");
+        }
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_vaasConnection->SessionId);
