@@ -4,7 +4,11 @@ import os
 import unittest
 from unittest.mock import MagicMock, ANY
 from dotenv import load_dotenv
-from src.vaas import Vaas, VaasTracing, VaasOptions
+from src.vaas import get_ssl_context
+import websockets.client
+
+from src.vaas import Vaas, VaasTracing, VaasOptions, ClientCredentialsGrantAuthenticator
+from src.vaas.vaas_errors import VaasConnectionClosedError, VaasInvalidStateError
 
 load_dotenv()
 
@@ -12,17 +16,19 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TOKEN_URL = os.getenv("TOKEN_URL")
 VAAS_URL = os.getenv("VAAS_URL")
-SSL_VERIFICATION = os.getenv(
-    "SSL_VERIFICATION", "True").lower() in ["true", "1"]
+SSL_VERIFICATION = os.getenv("SSL_VERIFICATION", "True").lower() in ["true", "1"]
 
 EICAR_BASE64 = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo="
 
 
 async def create_and_connect(tracing=VaasTracing(), options=VaasOptions()):
-    vaas = Vaas(tracing=tracing, options=options)
-    await vaas.connect_with_client_credentials(
-        CLIENT_ID, CLIENT_SECRET, TOKEN_URL, VAAS_URL, SSL_VERIFICATION
+    authenticator = ClientCredentialsGrantAuthenticator(
+        CLIENT_ID, CLIENT_SECRET, TOKEN_URL, SSL_VERIFICATION
     )
+    vaas = Vaas(tracing=tracing, options=options, url=VAAS_URL)
+
+    token = await authenticator.get_token()
+    await vaas.connect(token, verify=SSL_VERIFICATION)
     return vaas
 
 
@@ -41,7 +47,7 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
                 await vaas.connect(token)
 
     async def test_connects(self):
-        async with await create_and_connect() as vaas:
+        async with await create_and_connect():
             pass
 
     async def test_for_sha256_returns_clean_for_clean_sha256(self):
@@ -50,6 +56,31 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
                 "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"
             )
             self.assertEqual(verdict, "Clean")
+
+    async def test_use_for_sha256_when_connection_already_closed(self):
+        authenticator = ClientCredentialsGrantAuthenticator(
+            CLIENT_ID, CLIENT_SECRET, TOKEN_URL, SSL_VERIFICATION
+        )
+        vaas = Vaas(tracing=VaasTracing(), options=VaasOptions(), url=VAAS_URL)
+        ssl_context = get_ssl_context(VAAS_URL, SSL_VERIFICATION)
+        websocket = await websockets.client.connect(VAAS_URL, ssl=ssl_context)
+        await vaas.connect(
+            await authenticator.get_token(),
+            websocket=websocket,
+            verify=SSL_VERIFICATION,
+        )
+        await websocket.close()
+        with self.assertRaises(VaasConnectionClosedError):
+            await vaas.for_sha256(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+            )
+
+    async def test_use_for_sha256_if_not_connected(self):
+        vaas = Vaas(tracing=VaasTracing(), options=VaasOptions(), url=VAAS_URL)
+        with self.assertRaises(VaasInvalidStateError):
+            await vaas.for_sha256(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+            )
 
     async def test_for_sha256_returns_malicious_for_eicar(self):
         async with await create_and_connect() as vaas:
@@ -114,7 +145,7 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_for_empty_buffer_returns_clean(self):
         async with await create_and_connect() as vaas:
-            buffer = bytes("", 'utf-8')
+            buffer = bytes("", "utf-8")
             verdict = await vaas.for_buffer(buffer)
             self.assertEqual(verdict, "Clean")
 
