@@ -4,7 +4,7 @@
 from authlib.integrations.base_client import OAuthError
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
-from src.vaas import VaasAuthenticationError
+from .vaas_errors import VaasAuthenticationError
 
 
 class ClientCredentialsGrantAuthenticator:
