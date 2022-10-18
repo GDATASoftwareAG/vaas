@@ -1,1 +1,1 @@
-gdata-vaas==0.5.0
+gdata-vaas==0.6.2
