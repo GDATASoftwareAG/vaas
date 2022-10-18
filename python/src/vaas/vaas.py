@@ -1,7 +1,6 @@
 """Verdict-as-a-Service
 
 :mod:`vaas` is a Python library for the VaaS-API."""
-import os
 import hashlib
 import json
 import time
@@ -15,10 +14,12 @@ import aiofiles
 from jwt import JWT
 import httpx
 import websockets.client
-from authlib.integrations.httpx_client import AsyncOAuth2Client
+from .vaas_errors import (
+    VaasInvalidStateError,
+    VaasConnectionClosedError,
+    VaasTimeoutError,
+)
 
-
-URL = "wss://gateway-vaas.gdatasecurity.de"
 TIMEOUT = 60
 HTTP2 = False
 # TODO: Set to default of 5 once Vaas upload endpoint is 100% streaming
@@ -42,10 +43,6 @@ class VaasTracing:
 
     def trace_upload_timeout(self, file_size):
         """Trace upload timeout"""
-
-
-class VaasTimeoutError(BaseException):
-    """Generic timeout"""
 
 
 class VaasOptions:
@@ -86,16 +83,15 @@ def get_ssl_context(url, verify):
     return ssl._create_unverified_context()  # pylint: disable=W0212
 
 
-def connect_websocket(url, verify):
-    """returns a websocket instance"""
-    ssl_context = get_ssl_context(url, verify)
-    return websockets.client.connect(url, ssl=ssl_context)
-
-
 class Vaas:
     """Verdict-as-a-Service client"""
 
-    def __init__(self, tracing=VaasTracing(), options=VaasOptions()):
+    def __init__(
+        self,
+        tracing=VaasTracing(),
+        options=VaasOptions(),
+        url="wss://gateway-vaas.gdatasecurity.de",
+    ):
         self.tracing = tracing
         self.loop_result = None
         self.websocket = None
@@ -103,15 +99,31 @@ class Vaas:
         self.results = {}
         self.httpx_client: Optional[httpx.AsyncClient] = None
         self.options = options
+        self.url = url
 
-    async def connect(self, token, url=URL, verify=True):
+    def get_authenticated_websocket(self):
+        if self.websocket is None:
+            raise VaasInvalidStateError("connect() was not called")
+        if not self.websocket.open:
+            raise VaasConnectionClosedError(
+                "connection closed or connect() was not awaited"
+            )
+        if self.session_id is None:
+            raise VaasConnectionClosedError("connect() was not awaited")
+        return self.websocket
+
+    async def connect(self, token, verify=True, websocket=None):
         """Connect to VaaS
 
         token -- OpenID Connect token signed by a trusted identity provider
         """
-        self.websocket = await connect_websocket(url, verify)
-        authenticate_request = {"kind": "AuthRequest", "token": token}
+        ssl_context = get_ssl_context(self.url, verify)
+        if websocket is not None:
+            self.websocket = websocket
+        else:
+            self.websocket = await websockets.client.connect(self.url, ssl=ssl_context)
 
+        authenticate_request = {"kind": "AuthRequest", "token": token}
         await self.websocket.send(json.dumps(authenticate_request))
 
         authentication_response = json.loads(await self.websocket.recv())
@@ -124,22 +136,6 @@ class Vaas:
         )  # fire and forget async_foo()
 
         self.httpx_client = httpx.AsyncClient(http2=HTTP2, verify=verify)
-
-    async def connect_with_client_credentials(
-        self, client_id, client_secret, token_endpoint, url=URL, verify=True
-    ):
-        """Connect to VaaS with client credentials grant
-
-        :param str client_id: Client ID provided by G DATA
-        :param str client_secret: Client secret provided by G DATA
-        :param str token_endpoint: Token endpoint of identity provider
-        :param str url: Websocket endpoint for verdict requests
-        :param bool verify: This switch turns off SSL validation when set to False; default: True
-
-        """
-        async with AsyncOAuth2Client(client_id, client_secret, verify=verify) as client:
-            token = (await client.fetch_token(token_endpoint))["access_token"]
-        await self.connect(token, url, verify)
 
     async def close(self):
         """Close the connection"""
@@ -163,6 +159,7 @@ class Vaas:
         return verdict
 
     async def __for_sha256(self, sha256):
+        websocket = self.get_authenticated_websocket()
         start = time.time()
         guid = str(uuid.uuid4())
         verdict_request = {
@@ -174,7 +171,7 @@ class Vaas:
             "use_cache": self.options.use_cache,
         }
         response_message = self.__response_message_for_guid(guid)
-        await self.websocket.send(json.dumps(verdict_request))
+        await websocket.send(json.dumps(verdict_request))
 
         try:
             result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
@@ -191,13 +188,17 @@ class Vaas:
         return result
 
     async def __receive_loop(self):
-        async for message in self.websocket:
-            vaas_message = json.loads(message)
-            if vaas_message.get("kind") == "VerdictResponse":
-                guid = vaas_message.get("guid")
-                future = self.results.get(guid)
-                if future is not None:
-                    future.set_result(vaas_message)
+        websocket = self.get_authenticated_websocket()
+        try:
+            async for message in websocket:
+                vaas_message = json.loads(message)
+                if vaas_message.get("kind") == "VerdictResponse":
+                    guid = vaas_message.get("guid")
+                    future = self.results.get(guid)
+                    if future is not None:
+                        future.set_result(vaas_message)
+        except Exception as e:
+            raise VaasConnectionClosedError(e)
 
     async def for_buffer(self, buffer):
         """Returns the verdict for a buffer"""
