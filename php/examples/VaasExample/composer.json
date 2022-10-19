@@ -1,5 +1,5 @@
 {
     "require": {
-        "gdata/vaas": "0.1.0"
+        "gdata/vaas": "1.0.0"
     }
 }
