@@ -1,13 +1,16 @@
 # pylint: disable=C0114,C0116,C0115
 import base64
+import hashlib
 import os
 import unittest
 from unittest.mock import MagicMock, ANY
-from dotenv import load_dotenv
-from src.vaas import get_ssl_context
+
 import websockets.client
+from dotenv import load_dotenv
 
 from src.vaas import Vaas, VaasTracing, VaasOptions, ClientCredentialsGrantAuthenticator
+from src.vaas import get_ssl_context
+from src.vaas.vaas import hash_file
 from src.vaas.vaas_errors import VaasConnectionClosedError, VaasInvalidStateError
 
 load_dotenv()
@@ -55,7 +58,8 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_sha256(
                 "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"
             )
-            self.assertEqual(verdict, "Clean")
+            self.assertEqual(verdict["Verdict"], "Clean")
+            self.assertEqual(verdict["Sha256"].casefold(), "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23".casefold())
 
     async def test_use_for_sha256_when_connection_already_closed(self):
         authenticator = ClientCredentialsGrantAuthenticator(
@@ -87,33 +91,41 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_sha256(
                 "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
             )
-            self.assertEqual(verdict, "Malicious")
+            self.assertEqual(verdict["Verdict"], "Malicious")
+            self.assertEqual(verdict["Sha256"].casefold(), "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f".casefold())
 
     async def test_for_sha256_returns_pup_for_amtso(self):
         async with await create_and_connect() as vaas:
             verdict = await vaas.for_sha256(
                 "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
             )
-            self.assertEqual(verdict, "Pup")
+            self.assertEqual(verdict["Verdict"], "Pup")
+            self.assertEqual(verdict["Sha256"].casefold(), "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad".casefold())
 
     async def test_for_buffer_returns_malicious_for_eicar(self):
         async with await create_and_connect() as vaas:
             buffer = base64.b64decode(EICAR_BASE64)
+            sha256 = hashlib.sha256(buffer).hexdigest()
             verdict = await vaas.for_buffer(buffer)
-            self.assertEqual(verdict, "Malicious")
+            self.assertEqual(verdict["Verdict"], "Malicious")
+            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
 
     async def test_for_buffer_returns_unknown_for_random_buffer(self):
         async with await create_and_connect() as vaas:
             buffer = os.urandom(1024)
+            sha256 = hashlib.sha256(buffer).hexdigest()
             verdict = await vaas.for_buffer(buffer)
-            self.assertEqual(verdict, "Clean")
+            self.assertEqual(verdict["Verdict"], "Clean")
+            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
 
     async def test_for_file_returns_verdict(self):
         async with await create_and_connect() as vaas:
             with open("eicar.txt", "wb") as f:
                 f.write(base64.b64decode(EICAR_BASE64))
+            sha256 = hash_file("eicar.txt")
             verdict = await vaas.for_file("eicar.txt")
-            self.assertEqual(verdict, "Malicious")
+            self.assertEqual(verdict["Verdict"], "Malicious")
+            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
 
     async def test_for_file_returns_verdict_if_no_cache_or_shed(self):
         options = VaasOptions()
@@ -123,14 +135,16 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
         async with await create_and_connect(options=options) as vaas:
             with open("eicar.txt", "wb") as f:
                 f.write(base64.b64decode(EICAR_BASE64))
+            sha256 = hash_file("eicar.txt")
             verdict = await vaas.for_file("eicar.txt")
-            self.assertEqual(verdict, "Malicious")
+            self.assertEqual(verdict["Verdict"], "Malicious")
+            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
 
     async def test_for_url_returns_malicious_for_eicar(self):
         options = get_disabled_options()
         async with await create_and_connect(options=options) as vaas:
             verdict = await vaas.for_url("https://secure.eicar.org/eicarcom2.zip")
-            self.assertEqual(verdict, "Malicious")
+            self.assertEqual(verdict["Verdict"], "Malicious")
 
     async def test_for_buffer_traces(self):
         tracing = VaasTracing()
@@ -138,16 +152,20 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
         tracing.trace_upload_request = MagicMock()
         async with await create_and_connect(tracing=tracing) as vaas:
             buffer = os.urandom(1024)
+            sha256 = hashlib.sha256(buffer).hexdigest()
             verdict = await vaas.for_buffer(buffer)
-            self.assertEqual(verdict, "Clean")
+            self.assertEqual(verdict["Verdict"], "Clean")
+            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
             tracing.trace_hash_request.assert_called_with(ANY)
             tracing.trace_upload_request.assert_called_with(ANY, 1024)
 
     async def test_for_empty_buffer_returns_clean(self):
         async with await create_and_connect() as vaas:
             buffer = bytes("", "utf-8")
+            sha256 = hashlib.sha256(buffer).hexdigest()
             verdict = await vaas.for_buffer(buffer)
-            self.assertEqual(verdict, "Clean")
+            self.assertEqual(verdict["Verdict"], "Clean")
+            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
 
 
 if __name__ == "__main__":
