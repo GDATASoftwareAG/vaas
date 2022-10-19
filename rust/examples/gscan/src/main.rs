@@ -51,7 +51,7 @@ async fn main() -> VResult<()> {
             "File: {:?} -> {}",
             f,
             match v {
-                Ok(v) => v.Verdict.to_string(),
+                Ok(v) => v.verdict.to_string(),
                 Err(e) => e.to_string(),
             }
         )
