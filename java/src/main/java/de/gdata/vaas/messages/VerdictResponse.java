@@ -20,7 +20,8 @@ public class VerdictResponse extends MessageType {
     @NonNull
     Verdict verdict;
     @Getter
-    String url;
+    @SerializedName("url")
+    String uploadUrl;
     @Getter
     @SerializedName("upload_token")
     String uploadToken;
