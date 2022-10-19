@@ -4,6 +4,7 @@ use crate::error::{Error, VResult};
 use crate::message::{MessageType, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
 use crate::options::Options;
 use crate::sha256::Sha256;
+use crate::vaas_verdict::VaasVerdict;
 use crate::CancellationToken;
 use futures::future::join_all;
 use std::convert::TryFrom;
@@ -66,7 +67,11 @@ impl Connection {
     }
 
     /// Request a verdict for a SHA256 file hash.
-    pub async fn for_sha256(&self, sha256: &Sha256, ct: &CancellationToken) -> VResult<Verdict> {
+    pub async fn for_sha256(
+        &self,
+        sha256: &Sha256,
+        ct: &CancellationToken,
+    ) -> VResult<VaasVerdict> {
         let request = VerdictRequest::new(sha256, self.session_id.clone());
         let response = Self::for_request(
             request,
@@ -75,7 +80,7 @@ impl Connection {
             ct,
         )
         .await?;
-        Verdict::try_from(&response)
+        VaasVerdict::try_from(response)
     }
 
     /// Request verdicts for a list of SHA256 file hashes.
@@ -84,7 +89,7 @@ impl Connection {
         &self,
         sha256_list: &[Sha256],
         ct: &CancellationToken,
-    ) -> Vec<VResult<Verdict>> {
+    ) -> Vec<VResult<VaasVerdict>> {
         let req = sha256_list
             .iter()
             .map(|sha256| self.for_sha256(sha256, ct))
@@ -93,7 +98,7 @@ impl Connection {
     }
 
     /// Request a verdict for a file.
-    pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<Verdict> {
+    pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<VaasVerdict> {
         let sha256 = Sha256::try_from(file)?;
         let request = VerdictRequest::new(&sha256, self.session_id.clone());
         let guid = request.guid().to_string();
@@ -119,7 +124,7 @@ impl Connection {
                 )
                 .await
             }
-            _ => Ok(verdict),
+            _ => VaasVerdict::try_from(response),
         }
     }
 
@@ -130,7 +135,7 @@ impl Connection {
         upload_url: UploadUrl,
         result_channel: &mut ResultChannelRx,
         ct: &CancellationToken,
-    ) -> Result<Verdict, Error> {
+    ) -> Result<VaasVerdict, Error> {
         let auth_token = response
             .upload_token
             .as_ref()
@@ -145,7 +150,7 @@ impl Connection {
         }
 
         let resp = Self::wait_for_response(guid, result_channel, ct).await?;
-        Verdict::try_from(&resp)
+        VaasVerdict::try_from(resp)
     }
 
     /// Request a verdict for a list of files.
@@ -154,7 +159,7 @@ impl Connection {
         &self,
         files: &[PathBuf],
         ct: &CancellationToken,
-    ) -> Vec<VResult<Verdict>> {
+    ) -> Vec<VResult<VaasVerdict>> {
         let req = files.iter().map(|f| self.for_file(f, ct));
         join_all(req).await
     }

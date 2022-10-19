@@ -5,7 +5,8 @@ import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
-import de.gdata.vaas.messages.VerdictResult;
+import de.gdata.vaas.messages.VerdictResponse;
+import de.gdata.vaas.messages.VaasVerdict;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -60,61 +61,63 @@ public class Vaas {
         }
     }
 
-    public VerdictResult forSha256(Sha256 sha256) throws Exception {
+    public VaasVerdict forSha256(Sha256 sha256) throws Exception {
         return this.forSha256(sha256, defaultTimeout);
     }
 
-    public VerdictResult forSha256(Sha256 sha256, Duration timeout)
+    public VaasVerdict forSha256(Sha256 sha256, Duration timeout)
             throws Exception {
-        return this.forSha256Async(sha256).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        var verdictResponse = this.forSha256Async(sha256).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        return new VaasVerdict(verdictResponse);
     }
 
-    public VerdictResult forSha256(Sha256 sha256, long timeout, TimeUnit unit)
+    public VaasVerdict forSha256(Sha256 sha256, long timeout, TimeUnit unit)
             throws Exception {
-        return this.forSha256Async(sha256).get(timeout, unit);
+        var verdictResponse = this.forSha256Async(sha256).get(timeout, unit);
+        return new VaasVerdict(verdictResponse);
     }
 
-    public CompletableFuture<VerdictResult> forSha256Async(Sha256 sha256) throws Exception {
+    public CompletableFuture<VerdictResponse> forSha256Async(Sha256 sha256) throws Exception {
         EnsureClientIsCreatedAndAuthenticated();
         var request = new VerdictRequest(sha256, this.client.getSessionId());
         return this.forRequest(request);
     }
 
-    public VerdictResult forFile(Path file) throws Exception {
+    public VaasVerdict forFile(Path file) throws Exception {
         return forFile(file, defaultTimeout);
     }
 
-    public VerdictResult forFile(Path file, Duration timeout) throws Exception {
+    public VaasVerdict forFile(Path file, Duration timeout) throws Exception {
         return forFile(file, timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
-    public VerdictResult forFile(Path file, long timeout, TimeUnit unit) throws Exception {
-        return forFileAsync(file).get(timeout, unit);
+    public VaasVerdict forFile(Path file, long timeout, TimeUnit unit) throws Exception {
+        var verdictResponse = forFileAsync(file).get(timeout, unit);
+        return new VaasVerdict(verdictResponse);
     }
 
-    public CompletableFuture<VerdictResult> forFileAsync(Path file) throws Exception {
+    private CompletableFuture<VerdictResponse> forFileAsync(Path file) throws Exception {
         EnsureClientIsCreatedAndAuthenticated();
         var sha256 = new Sha256(file);
         var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId());
 
-        var verdictResultFuture = this.forRequest(verdictRequest)
-                .thenCompose(verdictResult -> {
-                    var verdict = verdictResult.getVerdict();
+        var verdictResponseFuture = this.forRequest(verdictRequest)
+                .thenCompose(verdictResponse -> {
+                    var verdict = verdictResponse.getVerdict();
                     if (verdict != Verdict.UNKNOWN) {
-                        return CompletableFuture.completedStage(verdictResult);
+                        return CompletableFuture.completedStage(verdictResponse);
                     }
                     try {
                         var uploadResponseFuture = this.client.waitForVerdict(verdictRequest.getGuid());
 
-                        return UploadFile(file, verdictResult.getUploadUrl(), verdictResult.getUploadToken())
-                                .thenCompose((v) -> uploadResponseFuture)
-                                .thenApply(uploadResponse -> new VerdictResult(uploadResponse));
+                        return UploadFile(file, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
+                                .thenCompose((v) -> uploadResponseFuture);
                     } catch (Exception e) {
                         throwAsUnchecked(e);
                         return null;
                     }
                 });
-        return verdictResultFuture;
+        return verdictResponseFuture;
     }
 
     private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)
@@ -143,14 +146,13 @@ public class Vaas {
         throw (E) exception;
     }
 
-    private CompletableFuture<VerdictResult> forRequest(VerdictRequest verdictRequest) throws Exception {
+    private CompletableFuture<VerdictResponse> forRequest(VerdictRequest verdictRequest) throws Exception {
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());
         this.client.send(verdictRequest.toJson());
 
-        return verdictResponse
-                .thenApply(response -> new VerdictResult(response));
+        return verdictResponse;
     }
 
     private void EnsureClientIsCreatedAndAuthenticated()

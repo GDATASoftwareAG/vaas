@@ -40,7 +40,7 @@ class Verdict implements JsonSerializable
         return $this->_verdictString;
     }
 
-    public function jsonSerialize()
+    public function jsonSerialize(): string
     {
         return $this->_verdictString;
     }

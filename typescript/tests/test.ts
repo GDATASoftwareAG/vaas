@@ -6,6 +6,7 @@ import * as randomBytes from "random-bytes";
 import {CancellationToken} from "../src/CancellationToken";
 import {CreateVaasWithClientCredentialsGrant} from "../src/CreateVaasWithClientCredentialsGrant";
 import WebSocket from "isomorphic-ws";
+import * as sha256 from "fast-sha256";
 import {
     VaasAuthenticationError,
     VaasConnectionClosedError,
@@ -89,7 +90,8 @@ describe("Test verdict requests", function () {
         const verdict = await vaas.forSha256(
             "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"
         );
-        expect(verdict).to.equal("Clean");
+        expect(verdict.verdict).to.equal("Clean");
+        expect(verdict.sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
     });
 
     it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
@@ -97,7 +99,8 @@ describe("Test verdict requests", function () {
         const verdict = await vaas.forSha256(
             "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
         );
-        expect(verdict).to.equal("Malicious");
+        expect(verdict.verdict).to.equal("Malicious");
+        expect(verdict.sha256).to.equal("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
     });
 
     it("test if eicar file is detected as malicious based on the SHA256", async () => {
@@ -106,14 +109,17 @@ describe("Test verdict requests", function () {
         const eicarByteArray = new TextEncoder().encode(eicarString);
         const vaas = await createVaas();
         const verdict = await vaas.forFile(eicarByteArray);
-        expect(verdict).to.equal("Malicious");
+        expect(verdict.verdict).to.equal("Malicious");
+        expect(verdict.sha256).to.equal("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
     });
 
     it("test if unknown file is uploaded and detected as clean", async () => {
         const randomFileContent = await randomBytes.sync(50);
+        var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
         const vaas = await createVaas();
         const verdict = await vaas.forFile(randomFileContent);
-        expect(verdict).to.equal("Clean");
+        expect(verdict.verdict).to.equal("Clean");
+        expect(verdict.sha256).to.equal(fileSha256);
     });
 
     it("if a list of SHA256 is uploaded, they are detected", async () => {
@@ -122,26 +128,35 @@ describe("Test verdict requests", function () {
             "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
             "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23",
         ]);
-        expect(verdicts[0]).to.equal("Malicious");
-        expect(verdicts[1]).to.equal("Clean");
+        expect(verdicts[0].verdict).to.equal("Malicious");
+        expect(verdicts[0].sha256).to.equal("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        expect(verdicts[1].verdict).to.equal("Clean");
+        expect(verdicts[1].sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
     });
 
     it("if a list unknown files is uploaded, they are detected as clean", async () => {
         const randomFileContent1 = await randomBytes.sync(50);
         const randomFileContent2 = await randomBytes.sync(50);
+        var file1Sha256 = Vaas.toHexString(sha256.hash(randomFileContent1));
+        var file2Sha256 = Vaas.toHexString(sha256.hash(randomFileContent2));
         const vaas = await createVaas();
         const verdict = await vaas.forFileList([
             randomFileContent1,
             randomFileContent2,
         ]);
-        expect(verdict[0]).to.equal("Clean");
+        expect(verdict[0].verdict).to.equal("Clean");
+        expect(verdict[0].sha256).to.equal(file1Sha256);
+        expect(verdict[1].verdict).to.equal("Clean");
+        expect(verdict[1].sha256).to.equal(file2Sha256);
     });
 
     it("if an empty file is uploaded, it is detected as clean", async () => {
         const emptyFile = new Uint8Array();
+        var fileSha256 = Vaas.toHexString(sha256.hash(emptyFile));
         const vaas = await createVaas();
         const verdict = await vaas.forFile(emptyFile);
-        expect(verdict).to.equal("Clean");
+        expect(verdict.verdict).to.equal("Clean");
+        expect(verdict.sha256).to.equal(fileSha256);
     });
 
     it("if we request the same guid twice, both calls return a result", async () => {
@@ -152,8 +167,10 @@ describe("Test verdict requests", function () {
         const request2 = vaas.forSha256(sha256);
         const verdict1 = await request1;
         const verdict2 = await request2;
-        expect(verdict1).to.equal("Clean");
-        expect(verdict2).to.equal("Clean");
+        expect(verdict1.verdict).to.equal("Clean");
+        expect(verdict1.sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        expect(verdict2.verdict).to.equal("Clean");
+        expect(verdict2.sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
     });
 
     xit("keeps connection alive", async () => {
@@ -161,10 +178,11 @@ describe("Test verdict requests", function () {
         const sha256 =
             "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
         let verdict = await vaas.forSha256(sha256);
-        expect(verdict).to.equal("Clean");
+        expect(verdict.verdict).to.equal("Clean");
         await delay(40000);
         verdict = await vaas.forSha256(sha256);
-        expect(verdict).to.equal("Clean");
+        expect(verdict.verdict).to.equal("Clean");
+        expect(verdict.sha256.toUpperCase()).to.equal(sha256);
     }).timeout(45000);
 
     it("returns Pup for AMTSO pup sample", async () => {
@@ -172,7 +190,8 @@ describe("Test verdict requests", function () {
         const sha256 =
             "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
         let verdict = await vaas.forSha256(sha256);
-        expect(verdict).to.equal("Pup");
+        expect(verdict.verdict).to.equal("Pup");
+        expect(verdict.sha256).to.equal(sha256);
     });
 });
 

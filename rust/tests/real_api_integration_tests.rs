@@ -2,6 +2,7 @@ use futures::future::try_join_all;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Url;
 use std::convert::TryFrom;
+use std::ops::Deref;
 use vaas::error::Error::FailedAuthTokenRequest;
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
@@ -67,12 +68,24 @@ async fn from_sha256_list_multiple_hashes() {
 
     let results = vaas.for_sha256_list(&sha256_list, &ct).await;
 
-    assert_eq!(&Verdict::Malicious, results[0].as_ref().unwrap());
-    assert_eq!(&Verdict::Clean, results[1].as_ref().unwrap());
+    assert_eq!(Verdict::Malicious, results[0].as_ref().unwrap().verdict);
+    assert_eq!(
+        "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
+        results[0].as_ref().unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Clean, results[1].as_ref().unwrap().verdict);
+    assert_eq!(
+        "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23".to_lowercase(),
+        results[1].as_ref().unwrap().sha256.deref()
+    );
     assert!(matches!(
-        results[2].as_ref().unwrap(),
+        results[2].as_ref().unwrap().verdict,
         Verdict::Unknown { .. }
     ));
+    assert_eq!(
+        "00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fbbb",
+        results[2].as_ref().unwrap().sha256.deref()
+    );
 }
 
 #[tokio::test]
@@ -85,7 +98,11 @@ async fn from_sha256_single_malicious_hash() {
 
     let verdict = vaas.for_sha256(&sha256, &ct).await;
 
-    assert_eq!(Verdict::Malicious, verdict.unwrap());
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
+        verdict.unwrap().sha256.deref()
+    );
 }
 
 #[tokio::test]
@@ -98,7 +115,11 @@ async fn from_sha256_single_pup_hash() {
 
     let verdict = vaas.for_sha256(&sha256, &ct).await;
 
-    assert_eq!(Verdict::Pup, verdict.unwrap());
+    assert_eq!(Verdict::Pup, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
+        verdict.unwrap().sha256.deref()
+    );
 }
 
 #[tokio::test]
@@ -111,7 +132,11 @@ async fn from_sha256_single_empty_file_hash() {
 
     let verdict = vaas.for_sha256(&sha256, &ct).await;
 
-    assert_eq!(Verdict::Clean, verdict.unwrap());
+    assert_eq!(Verdict::Clean, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        verdict.unwrap().sha256.deref()
+    );
 }
 
 #[tokio::test]
@@ -131,9 +156,21 @@ async fn from_sha256_multiple_malicious_hash() {
     let verdict_2 = vaas.for_sha256(&sha256_2, &ct).await;
     let verdict_3 = vaas.for_sha256(&sha256_3, &ct).await;
 
-    assert_eq!(Verdict::Malicious, verdict_1.unwrap());
-    assert_eq!(Verdict::Malicious, verdict_2.unwrap());
-    assert_eq!(Verdict::Malicious, verdict_3.unwrap());
+    assert_eq!(
+        "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
+        verdict_1.as_ref().unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Malicious, verdict_1.unwrap().verdict);
+    assert_eq!(
+        "00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c",
+        verdict_2.as_ref().unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Malicious, verdict_2.unwrap().verdict);
+    assert_eq!(
+        "00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a",
+        verdict_3.as_ref().unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Malicious, verdict_3.unwrap().verdict);
 }
 
 #[tokio::test]
@@ -153,9 +190,21 @@ async fn from_sha256_multiple_clean_hash() {
     let verdict_2 = vaas.for_sha256(&sha256_2, &ct).await;
     let verdict_3 = vaas.for_sha256(&sha256_3, &ct).await;
 
-    assert_eq!(Verdict::Clean, verdict_1.unwrap());
-    assert_eq!(Verdict::Clean, verdict_2.unwrap());
-    assert_eq!(Verdict::Clean, verdict_3.unwrap());
+    assert_eq!(Verdict::Clean, verdict_1.as_ref().unwrap().verdict);
+    assert_eq!(
+        "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23".to_lowercase(),
+        verdict_1.unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Clean, verdict_2.as_ref().unwrap().verdict);
+    assert_eq!(
+        "1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391".to_lowercase(),
+        verdict_2.unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Clean, verdict_3.as_ref().unwrap().verdict);
+    assert_eq!(
+        "4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783".to_lowercase(),
+        verdict_3.unwrap().sha256.deref()
+    );
 }
 
 #[tokio::test]
@@ -175,9 +224,21 @@ async fn from_sha256_multiple_unknown_hash() {
     let verdict_2 = vaas.for_sha256(&sha256_2, &t).await.unwrap();
     let verdict_3 = vaas.for_sha256(&sha256_3, &t).await.unwrap();
 
-    assert!(matches!(verdict_1, Verdict::Unknown { .. }));
-    assert!(matches!(verdict_2, Verdict::Unknown { .. }));
-    assert!(matches!(verdict_3, Verdict::Unknown { .. }));
+    assert!(matches!(verdict_1.verdict, Verdict::Unknown { .. }));
+    assert_eq!(
+        verdict_1.sha256.deref(),
+        "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
+    );
+    assert!(matches!(verdict_2.verdict, Verdict::Unknown { .. }));
+    assert_eq!(
+        verdict_2.sha256.deref(),
+        "11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
+    );
+    assert!(matches!(verdict_3.verdict, Verdict::Unknown { .. }));
+    assert_eq!(
+        verdict_3.sha256.deref(),
+        "11000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a"
+    );
 }
 
 #[tokio::test]
@@ -191,8 +252,12 @@ async fn from_file_single_malicious_file() {
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file).unwrap(),
+        verdict.unwrap().sha256
+    );
     std::fs::remove_file(&tmp_file).unwrap();
-    assert_eq!(Verdict::Malicious, verdict.unwrap());
 }
 
 #[tokio::test]
@@ -206,8 +271,12 @@ async fn from_file_single_clean_file() {
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
+    assert_eq!(Verdict::Clean, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file).unwrap(),
+        verdict.unwrap().sha256
+    );
     std::fs::remove_file(&tmp_file).unwrap();
-    assert_eq!(Verdict::Clean, verdict.unwrap());
 }
 
 #[tokio::test]
@@ -226,8 +295,12 @@ async fn from_file_single_unknown_file() {
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
+    assert_eq!(Verdict::Clean, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file).unwrap(),
+        verdict.unwrap().sha256
+    );
     std::fs::remove_file(&tmp_file).unwrap();
-    assert_eq!(Verdict::Clean, verdict.unwrap());
 }
 
 #[tokio::test]
@@ -253,10 +326,18 @@ async fn from_files_unknown_files() {
     let ct = CancellationToken::from_minutes(10);
     let verdicts = vaas.for_file_list(&files, &ct).await;
 
+    assert_eq!(Verdict::Clean, verdicts[0].as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file1).unwrap(),
+        verdicts[0].as_ref().unwrap().sha256
+    );
+    assert_eq!(Verdict::Clean, verdicts[1].as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file2).unwrap(),
+        verdicts[1].as_ref().unwrap().sha256
+    );
     std::fs::remove_file(tmp_file1).unwrap();
     std::fs::remove_file(tmp_file2).unwrap();
-    assert_eq!(&Verdict::Clean, verdicts[0].as_ref().unwrap());
-    assert_eq!(&Verdict::Clean, verdicts[1].as_ref().unwrap());
 }
 
 #[tokio::test]
@@ -282,9 +363,9 @@ async fn from_sha256_multiple_clean_hash_on_separate_thread() {
     .await
     .unwrap();
 
-    assert_eq!(Verdict::Clean, v1.unwrap());
-    assert_eq!(Verdict::Clean, v2.unwrap());
-    assert_eq!(Verdict::Clean, v3.unwrap());
+    assert_eq!(Verdict::Clean, v1.unwrap().verdict);
+    assert_eq!(Verdict::Clean, v2.unwrap().verdict);
+    assert_eq!(Verdict::Clean, v3.unwrap().verdict);
 }
 
 #[tokio::test]
@@ -306,9 +387,9 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_fixed_jobs() {
     let v3 = vaas.for_sha256(&sha256_3, &ct);
 
     let (v1, v2, v3) = tokio::join!(v1, v2, v3);
-    assert_eq!(Verdict::Clean, v1.unwrap());
-    assert_eq!(Verdict::Clean, v2.unwrap());
-    assert_eq!(Verdict::Clean, v3.unwrap());
+    assert_eq!(Verdict::Clean, v1.unwrap().verdict);
+    assert_eq!(Verdict::Clean, v2.unwrap().verdict);
+    assert_eq!(Verdict::Clean, v3.unwrap().verdict);
 }
 
 #[tokio::test]
@@ -334,9 +415,9 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
     let result = try_join_all(handles).await;
     let verdicts = result.unwrap();
 
-    assert_eq!(Verdict::Clean, verdicts[0]);
-    assert_eq!(Verdict::Clean, verdicts[1]);
-    assert_eq!(Verdict::Clean, verdicts[2]);
+    assert_eq!(Verdict::Clean, verdicts[0].verdict);
+    assert_eq!(Verdict::Clean, verdicts[1].verdict);
+    assert_eq!(Verdict::Clean, verdicts[2].verdict);
 }
 
 #[tokio::test]
@@ -351,7 +432,7 @@ async fn from_file_single_clean_file_with_credentials() {
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
     std::fs::remove_file(&tmp_file).unwrap();
-    assert_eq!(Verdict::Clean, verdict.unwrap());
+    assert_eq!(Verdict::Clean, verdict.unwrap().verdict);
 }
 
 #[tokio::test]
@@ -366,5 +447,5 @@ async fn from_file_empty_file() {
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
     std::fs::remove_file(&tmp_file).unwrap();
-    assert_eq!(Verdict::Clean, verdict.unwrap());
+    assert_eq!(Verdict::Clean, verdict.unwrap().verdict);
 }

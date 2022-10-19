@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.testng.AssertJUnit.assertEquals;
 
 public class RealApiIntegrationTests {
@@ -31,6 +32,8 @@ public class RealApiIntegrationTests {
         vaas.disconnect();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+        assertTrue("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
+                .equalsIgnoreCase(verdict.getSha256()));
     }
 
     @Test
@@ -42,6 +45,8 @@ public class RealApiIntegrationTests {
         vaas.disconnect();
 
         assertEquals(Verdict.PUP, verdict.getVerdict());
+        assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
+                .equalsIgnoreCase(verdict.getSha256()));
     }
 
     @Test
@@ -98,6 +103,13 @@ public class RealApiIntegrationTests {
         assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
         assertEquals(Verdict.MALICIOUS, verdict_2.getVerdict());
         assertEquals(Verdict.MALICIOUS, verdict_3.getVerdict());
+
+        assertTrue("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
+                .equalsIgnoreCase(verdict_1.getSha256()));
+        assertTrue("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
+                .equalsIgnoreCase(verdict_2.getSha256()));
+        assertTrue("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a"
+                .equalsIgnoreCase(verdict_3.getSha256()));
     }
 
     @Test
@@ -115,6 +127,13 @@ public class RealApiIntegrationTests {
         assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
         assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
         assertEquals(Verdict.CLEAN, verdict_3.getVerdict());
+
+        assertTrue("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"
+                .equalsIgnoreCase(verdict_1.getSha256()));
+        assertTrue("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391"
+                .equalsIgnoreCase(verdict_2.getSha256()));
+        assertTrue("4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783"
+                .equalsIgnoreCase(verdict_3.getSha256()));
     }
 
     @Test
@@ -132,6 +151,13 @@ public class RealApiIntegrationTests {
         assertEquals(Verdict.UNKNOWN, verdict_1.getVerdict());
         assertEquals(Verdict.UNKNOWN, verdict_2.getVerdict());
         assertEquals(Verdict.UNKNOWN, verdict_3.getVerdict());
+
+        assertTrue("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
+                .equalsIgnoreCase(verdict_1.getSha256()));
+        assertTrue("11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
+                .equalsIgnoreCase(verdict_2.getSha256()));
+        assertTrue("11000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a"
+                .equalsIgnoreCase(verdict_3.getSha256()));
     }
 
     @Test
@@ -142,26 +168,32 @@ public class RealApiIntegrationTests {
         Files.writeString(tmpFile, eicar);
         var vaas = this.getVaasWithCredentials();
 
+        var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
         vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
+
     }
 
     @Test
     public void fromFileSingleCleanFile()
             throws Exception {
-        byte[] clean = {0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a};
+        byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
         Files.write(tmpFile, clean);
         var vaas = this.getVaasWithCredentials();
 
+        var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
         vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
+        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
+
     }
 
     @Test
@@ -172,12 +204,14 @@ public class RealApiIntegrationTests {
         Files.writeString(tmpFile, unknown);
         var vaas = this.getVaasWithCredentials();
 
+        var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
         vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assert (verdict != null);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
+        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
     }
 
     @Test
@@ -188,11 +222,13 @@ public class RealApiIntegrationTests {
         Files.write(tmpFile, clean);
         var vaas = this.getVaasWithCredentials();
 
+        var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
         vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
+        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
     }
 
     @Test

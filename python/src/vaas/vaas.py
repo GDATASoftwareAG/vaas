@@ -154,9 +154,12 @@ class Vaas:
 
     async def for_sha256(self, sha256):
         """Returns the verdict for a SHA256 checksum"""
-        result = await self.__for_sha256(sha256)
-        verdict = result.get("verdict")
-        return verdict
+        verdict_response = await self.__for_sha256(sha256)
+        return {
+            "Sha256": verdict_response.get("sha256"),
+            "Guid": verdict_response.get("guid"),
+            "Verdict": verdict_response.get("verdict")
+        }
 
     async def __for_sha256(self, sha256):
         websocket = self.get_authenticated_websocket()
@@ -208,13 +211,17 @@ class Vaas:
             None, lambda: hashlib.sha256(buffer).hexdigest()
         )
 
-        response = await self.__for_sha256(sha256)
-        verdict = response.get("verdict")
+        verdict_response = await self.__for_sha256(sha256)
+        verdict = verdict_response.get("verdict")
 
         if verdict == "Unknown":
-            verdict = await self._for_unknown_buffer(response, buffer, len(buffer))
+            verdict_response = await self._for_unknown_buffer(verdict_response, buffer, len(buffer))
 
-        return verdict
+        return {
+            "Sha256": verdict_response.get("sha256"),
+            "Guid": verdict_response.get("guid"),
+            "Verdict": verdict_response.get("verdict")
+        }
 
     async def _for_unknown_buffer(self, response, buffer, buffer_len):
         start = time.time()
@@ -224,14 +231,12 @@ class Vaas:
         response_message = self.__response_message_for_guid(guid)
         await self.__upload(token, url, buffer, buffer_len)
         try:
-            verdict = (await asyncio.wait_for(response_message, timeout=TIMEOUT)).get(
-                "verdict"
-            )
+            verdict_response = (await asyncio.wait_for(response_message, timeout=TIMEOUT))
         except asyncio.TimeoutError as ex:
             self.tracing.trace_upload_result_timeout(buffer_len)
             raise VaasTimeoutError() from ex
         self.tracing.trace_upload_request(time.time() - start, buffer_len)
-        return verdict
+        return verdict_response
 
     async def for_file(self, path):
         """Returns the verdict for a file"""
@@ -239,22 +244,19 @@ class Vaas:
         loop = asyncio.get_running_loop()
         sha256 = await loop.run_in_executor(None, lambda: hash_file(path))
 
-        response = await self.__for_sha256(sha256)
-        verdict = response.get("verdict")
-
-        # Read file block-by-block. Disabled, because this causes upload to be done with very small blocks (<1k),
-        # which destroys performance.
-        # if verdict == "Unknown":
-        #     content_length = os.path.getsize(path)
-        #     async with aiofiles.open(path, mode="rb") as file:
-        #         verdict = await self._for_unknown_buffer(response, file, content_length)
+        verdict_response = await self.__for_sha256(sha256)
+        verdict = verdict_response.get("verdict")
 
         if verdict == "Unknown":
             async with aiofiles.open(path, mode="rb") as file:
                 buffer = await file.read()
-                verdict = await self._for_unknown_buffer(response, buffer, len(buffer))
+                verdict_response = await self._for_unknown_buffer(verdict_response, buffer, len(buffer))
 
-        return verdict
+        return {
+            "Sha256": verdict_response.get("sha256"),
+            "Guid": verdict_response.get("guid"),
+            "Verdict": verdict_response.get("verdict")
+        }
 
     async def __upload(self, token, upload_uri, buffer_or_file, content_length):
         jwt = JWT()

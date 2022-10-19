@@ -1,5 +1,4 @@
 using System.Text.Json;
-using Snapshooter;
 using Snapshooter.Xunit;
 using Vaas.Messages;
 using Xunit;

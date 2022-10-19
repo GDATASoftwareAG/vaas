@@ -104,17 +104,17 @@ public class Vaas : IDisposable
         }
     }
 
-    public async Task<Verdict> ForSha256Async(string sha256)
+    public async Task<VaasVerdict> ForSha256Async(string sha256)
     {
-        var value = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new VaasInvalidStateException())
+        var verdictResponse = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new VaasInvalidStateException())
         {
             UseCache = _options.UseCache,
             UseShed = _options.UseShed
         });
-        return value.Verdict;
+        return new VaasVerdict(verdictResponse);
     }
         
-    public async Task<Verdict> ForFileAsync(string path)
+    public async Task<VaasVerdict> ForFileAsync(string path)
     {
         var sha256 = Sha256CheckSum(path);
         var verdictResponse = await ForRequestAsync(
@@ -125,7 +125,8 @@ public class Vaas : IDisposable
             });
         if (!verdictResponse.IsValid)
             throw new JsonException("VerdictResponse is not valid");
-        if (verdictResponse.Verdict != Verdict.Unknown) return verdictResponse.Verdict;
+        if (verdictResponse.Verdict != Verdict.Unknown) 
+            return new VaasVerdict(verdictResponse);
         if (string.IsNullOrWhiteSpace(verdictResponse.Url) ||
             string.IsNullOrWhiteSpace(verdictResponse.UploadToken))
         {
@@ -133,10 +134,9 @@ public class Vaas : IDisposable
         }
 
         var response = WaitForResponseAsync(verdictResponse.Guid);
-
         await UploadFile(path, verdictResponse.Url, verdictResponse.UploadToken);
-        
-        return (await response).Verdict;
+
+        return new VaasVerdict(await response);
     }
 
     private async Task UploadFile(string path, string url, string token)
@@ -152,12 +152,12 @@ public class Vaas : IDisposable
         httpResponse.EnsureSuccessStatusCode();
     }
 
-    public async Task<List<Verdict>> ForSha256ListAsync(IEnumerable<string> sha256List)
+    public async Task<List<VaasVerdict>> ForSha256ListAsync(IEnumerable<string> sha256List)
     {
         return (await Task.WhenAll(sha256List.Select(ForSha256Async))).ToList();
     }
 
-    public async Task<List<Verdict>> ForFileListAsync(IEnumerable<string> fileList)
+    public async Task<List<VaasVerdict>> ForFileListAsync(IEnumerable<string> fileList)
     {
         return (await Task.WhenAll(fileList.Select(ForFileAsync))).ToList();
     }
@@ -176,7 +176,7 @@ public class Vaas : IDisposable
         return tcs.Task;
     }
         
-    private static string Sha256CheckSum(string filePath)
+    public static string Sha256CheckSum(string filePath)
     {
         using var sha256 = SHA256.Create();
         using var fileStream = File.OpenRead(filePath);
