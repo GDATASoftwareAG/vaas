@@ -1,8 +1,5 @@
 {
     "phpunit.phpunit": "/workspaces/vaas/php/tests/vaas/vendor/bin/phpunit",
     "phpunit.php": "/usr/local/bin/php",
-    "php.debug.executablePath": "/usr/local/bin/php",
-    "intelephense.files.exclude": [
-        "*/.phpstorm.meta.php"
-    ]
+    "php.debug.executablePath": "/usr/local/bin/php"
 }
