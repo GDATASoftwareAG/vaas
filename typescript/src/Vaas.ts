@@ -17,6 +17,7 @@ import {
   VaasInvalidStateError,
   VaasTimeoutError,
 } from "./VaasErrors";
+import { VaasVerdict } from "./messages/vaas_verdict";
 
 const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
 export { VAAS_URL };
@@ -76,9 +77,9 @@ export class Vaas {
     ct: CancellationToken = CancellationToken.fromMilliseconds(
       this.defaultTimeoutHashReq
     )
-  ): Promise<Verdict> {
+  ): Promise<VaasVerdict> {
     const request = this.forRequest(sha256).then(
-      (response) => response.verdict
+      (response) => response
     );
     return timeout(request, ct.timeout());
   }
@@ -94,7 +95,7 @@ export class Vaas {
     ct: CancellationToken = CancellationToken.fromMilliseconds(
       this.defaultTimeoutHashReq
     )
-  ): Promise<Verdict[]> {
+  ): Promise<VaasVerdict[]> {
     const promises = sha256List.map((sha256) => this.forSha256(sha256, ct));
     return Promise.all(promises);
   }
@@ -110,9 +111,9 @@ export class Vaas {
     ct: CancellationToken = CancellationToken.fromMilliseconds(
       this.defaultTimeoutFileReq
     )
-  ): Promise<Verdict> {
+  ): Promise<VaasVerdict> {
     const request = this.forRequest(fileBuffer).then(
-      (response) => response.verdict
+      (response) => response
     );
     return timeout(request, ct.timeout());
   }
@@ -128,14 +129,14 @@ export class Vaas {
     ct: CancellationToken = CancellationToken.fromMilliseconds(
       this.defaultTimeoutFileReq
     )
-  ): Promise<Verdict[]> {
+  ): Promise<VaasVerdict[]> {
     const promises = fileBuffers.map((f) => this.forFile(f, ct));
     return Promise.all(promises);
   }
 
   private async forRequest(
     sample: string | Uint8Array
-  ): Promise<VerdictResponse> {
+  ): Promise<VaasVerdict> {
     const ws = this.getAuthenticatedWebSocket();
     return new Promise((resolve, reject) => {
       const guid = uuidv4();
@@ -151,7 +152,7 @@ export class Vaas {
           }
 
           this.verdictPromises.delete(guid);
-          resolve(verdictResponse);
+          resolve(new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict));
         },
         reject: (reason) => reject(reason),
       });
@@ -168,6 +169,7 @@ export class Vaas {
       ws.send(verdictReq);
     });
   }
+  
   /** Connect to VaaS
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
