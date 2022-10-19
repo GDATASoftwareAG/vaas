@@ -85,3 +85,4 @@ pub use cancellation::CancellationToken;
 pub use cancellation::*;
 pub use connection::Connection;
 pub use sha256::Sha256;
+pub use vaas_verdict::VaasVerdict;

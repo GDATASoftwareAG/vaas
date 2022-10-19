@@ -4,8 +4,12 @@ use crate::sha256::Sha256;
 use std::convert::TryFrom;
 
 #[derive(Debug, Clone)]
+
+/// VaaS Verdict.
 pub struct VaasVerdict {
+    /// Sha256
     pub sha256: Sha256,
+    /// Verdict
     pub verdict: Verdict,
 }
 
