@@ -14,7 +14,7 @@ async def main():
         await vaas.connect(await authenticator.get_token())
         path = os.getenv("SCAN_PATH")
         verdict = await vaas.for_file(path)
-        print(f"File {path} is detected as {verdict}")
+        print(f"{verdict['Sha256']} is detected as {verdict['Verdict']}")
 
 
 if __name__ == "__main__":
