@@ -22,10 +22,10 @@
 	"extensions": [
 		"nico-castell.linux-desktop-file",
 		"bungcip.better-toml",
-		"matklad.rust-analyzer",
 		"jeff-hykin.better-dockerfile-syntax",
 		"SixtyFPS.sixtyfps-vscode",
-		"Gruntfuggly.todo-tree"
+		"Gruntfuggly.todo-tree",
+		"rust-lang.rust-analyzer"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],

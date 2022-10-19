@@ -33,10 +33,10 @@
 //!         .build()?
 //!         .connect().await?;
 //!
-//!     let verdict = vaas.for_sha256(&sha256, &ct).await?;
+//!     let response = vaas.for_sha256(&sha256, &ct).await?;
 //!
 //!     // Prints "Clean", "Malicious" or "Unknown"
-//!     println!("{}", verdict);
+//!     println!("{}", response.verdict);
 //!     Ok(())
 //! }
 //! ```
@@ -60,10 +60,10 @@
 //!         .build()?
 //!         .connect().await?;
 //!
-//!     let verdict = vaas.for_file(&file, &ct).await?;
+//!     let response = vaas.for_file(&file, &ct).await?;
 //!
 //!     // Prints "Clean" or "Malicious"
-//!     println!("{}", verdict);
+//!     println!("{}", response.verdict);
 //!     Ok(())
 //! }
 #![warn(missing_docs)]
@@ -77,6 +77,7 @@ pub mod message;
 mod options;
 mod sha256;
 mod vaas;
+mod vaas_verdict;
 
 pub use crate::vaas::Vaas;
 pub use builder::Builder;

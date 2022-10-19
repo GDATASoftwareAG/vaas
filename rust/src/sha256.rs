@@ -34,6 +34,14 @@ impl TryFrom<&str> for Sha256 {
     }
 }
 
+impl Deref for Sha256 {
+    type Target = str;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 impl TryFrom<&PathBuf> for Sha256 {
     type Error = crate::error::Error;
 
@@ -55,14 +63,6 @@ impl TryFrom<&Path> for Sha256 {
 
     fn try_from(value: &Path) -> Result<Self, Self::Error> {
         Self::try_from(&value.to_path_buf())
-    }
-}
-
-impl Deref for Sha256 {
-    type Target = String;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
     }
 }
 
