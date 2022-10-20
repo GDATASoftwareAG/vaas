@@ -13,7 +13,8 @@ public class Main {
         var clientSecret = System.getenv("CLIENT_SECRET");
         var scanPath = System.getenv("SCAN_PATH");
 
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token");
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret,
+                "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token");
         var config = new VaasConfig(
                 new URI("https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"),
                 new URI("wss://gateway-vaas.gdatasecurity.de"));
@@ -23,6 +24,6 @@ public class Main {
         var file = Path.of(scanPath);
         var verdict = vaas.forFile(file);
         vaas.disconnect();
-        System.out.printf("File %s was detected as %s", file, verdict.getVerdict());
+        System.out.printf("File %s was detected as %s", verdict.getSha256(), verdict.getVerdict());
     }
 }
