@@ -1,6 +1,6 @@
 use clap::{App, Arg};
 use std::{path::PathBuf, str::FromStr};
-use vaas::{error::VResult, message::Verdict, CancellationToken, Vaas};
+use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
 
 #[tokio::main]
 async fn main() -> VResult<()> {
@@ -51,7 +51,7 @@ async fn main() -> VResult<()> {
             "File: {:?} -> {}",
             f,
             match v {
-                Ok(v) => v.to_string(),
+                Ok(v) => v.verdict.to_string(),
                 Err(e) => e.to_string(),
             }
         )
@@ -64,11 +64,8 @@ async fn main() -> VResult<()> {
 async fn scan_files<'a>(
     files: &'a [PathBuf],
     token: &str,
-) -> VResult<Vec<(&'a PathBuf, VResult<Verdict>)>> {
-    let vaas = Vaas::builder(token.into())
-        .build()?
-        .connect()
-        .await?;
+) -> VResult<Vec<(&'a PathBuf, VResult<VaasVerdict>)>> {
+    let vaas = Vaas::builder(token.into()).build()?.connect().await?;
 
     let ct = CancellationToken::from_minutes(1);
     let verdicts = vaas.for_file_list(files, &ct).await;

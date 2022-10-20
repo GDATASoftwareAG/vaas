@@ -2,8 +2,6 @@ import { promises as fs } from "fs";
 import {
   ClientCredentialsGrantAuthenticator,
   Vaas,
-  VaasConnectionClosedError,
-  VaasTimeoutError,
 } from "gdata-vaas";
 
 function throwError(errorMessage: string): never {

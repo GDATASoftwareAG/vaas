@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "109e0a10d59366d34daa1498182e28fe",
+    "content-hash": "203105912e6a65d99e8da171adac581e",
     "packages": [
         {
             "name": "brick/math",
@@ -64,16 +64,16 @@
         },
         {
             "name": "gdata/vaas",
-            "version": "0.1.0",
+            "version": "1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/GDATASoftwareAG/vaas-php.git",
-                "reference": "f333991619c7f7fdf7e72f4080312b064a92d904"
+                "reference": "c2b32a67aabd96764bbe1c81cd0d62cce4d1c8eb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/GDATASoftwareAG/vaas-php/zipball/f333991619c7f7fdf7e72f4080312b064a92d904",
-                "reference": "f333991619c7f7fdf7e72f4080312b064a92d904",
+                "url": "https://api.github.com/repos/GDATASoftwareAG/vaas-php/zipball/c2b32a67aabd96764bbe1c81cd0d62cce4d1c8eb",
+                "reference": "c2b32a67aabd96764bbe1c81cd0d62cce4d1c8eb",
                 "shasum": ""
             },
             "require": {
@@ -103,9 +103,9 @@
             ],
             "support": {
                 "issues": "https://github.com/GDATASoftwareAG/vaas-php/issues",
-                "source": "https://github.com/GDATASoftwareAG/vaas-php/tree/v0.1.0"
+                "source": "https://github.com/GDATASoftwareAG/vaas-php/tree/v1.0.0"
             },
-            "time": "2022-10-17T13:02:21+00:00"
+            "time": "2022-10-19T12:23:52+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",
