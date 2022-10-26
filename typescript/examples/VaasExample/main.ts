@@ -28,7 +28,8 @@ async function main() {
   );
 
   const vaas = new Vaas();
-  await vaas.connect(await authenticator.getToken());
+  const token = await authenticator.getToken()
+  await vaas.connect(token);
 
   const f = await fs.open(SCAN_PATH, "r");
 
