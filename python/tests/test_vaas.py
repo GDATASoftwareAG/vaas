@@ -153,8 +153,16 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_url("https://secure.eicar.org/eicarcom2.zip")
             self.assertEqual(verdict["Verdict"], "Malicious")
 
-    async def test_for_url_returns_clean_for_random_beer(self):
+    async def test_for_url_without_shed_and_cache_returns_clean_for_random_beer(self):
         options = get_disabled_options()
+        async with await create_and_connect(options=options) as vaas:
+            verdict = await vaas.for_url("https://random-data-api.com/api/v2/beers")
+            self.assertEqual(verdict["Verdict"], "Clean")
+
+    async def test_for_url_without_cache_returns_clean_for_random_beer(self):
+        options = VaasOptions()
+        options.use_cache = False
+        options.use_shed = True
         async with await create_and_connect(options=options) as vaas:
             verdict = await vaas.for_url("https://random-data-api.com/api/v2/beers")
             self.assertEqual(verdict["Verdict"], "Clean")
