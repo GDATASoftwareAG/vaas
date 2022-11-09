@@ -35,6 +35,9 @@ class VaasTracing:
     def trace_upload_request(self, elapsed_in_seconds, file_size):
         """Trace upload request in seconds"""
 
+    def trace_url_request(self, elapsed_in_seconds):
+        """Trace url request in seconds"""
+
     def trace_hash_request_timeout(self):
         """Trace timeout while waiting for hash verdict"""
 
@@ -158,7 +161,7 @@ class Vaas:
         return {
             "Sha256": verdict_response.get("sha256"),
             "Guid": verdict_response.get("guid"),
-            "Verdict": verdict_response.get("verdict")
+            "Verdict": verdict_response.get("verdict"),
         }
 
     async def __for_sha256(self, sha256):
@@ -200,8 +203,8 @@ class Vaas:
                     future = self.results.get(guid)
                     if future is not None:
                         future.set_result(vaas_message)
-        except Exception as e:
-            raise VaasConnectionClosedError(e)
+        except Exception as error:
+            raise VaasConnectionClosedError(error) from error
 
     async def for_buffer(self, buffer):
         """Returns the verdict for a buffer"""
@@ -215,12 +218,14 @@ class Vaas:
         verdict = verdict_response.get("verdict")
 
         if verdict == "Unknown":
-            verdict_response = await self._for_unknown_buffer(verdict_response, buffer, len(buffer))
+            verdict_response = await self._for_unknown_buffer(
+                verdict_response, buffer, len(buffer)
+            )
 
         return {
             "Sha256": verdict_response.get("sha256"),
             "Guid": verdict_response.get("guid"),
-            "Verdict": verdict_response.get("verdict")
+            "Verdict": verdict_response.get("verdict"),
         }
 
     async def _for_unknown_buffer(self, response, buffer, buffer_len):
@@ -231,7 +236,7 @@ class Vaas:
         response_message = self.__response_message_for_guid(guid)
         await self.__upload(token, url, buffer, buffer_len)
         try:
-            verdict_response = (await asyncio.wait_for(response_message, timeout=TIMEOUT))
+            verdict_response = await asyncio.wait_for(response_message, timeout=TIMEOUT)
         except asyncio.TimeoutError as ex:
             self.tracing.trace_upload_result_timeout(buffer_len)
             raise VaasTimeoutError() from ex
@@ -250,12 +255,14 @@ class Vaas:
         if verdict == "Unknown":
             async with aiofiles.open(path, mode="rb") as file:
                 buffer = await file.read()
-                verdict_response = await self._for_unknown_buffer(verdict_response, buffer, len(buffer))
+                verdict_response = await self._for_unknown_buffer(
+                    verdict_response, buffer, len(buffer)
+                )
 
         return {
             "Sha256": verdict_response.get("sha256"),
             "Guid": verdict_response.get("guid"),
-            "Verdict": verdict_response.get("verdict")
+            "Verdict": verdict_response.get("verdict"),
         }
 
     async def __upload(self, token, upload_uri, buffer_or_file, content_length):
@@ -279,6 +286,30 @@ class Vaas:
 
     async def for_url(self, url):
         """Returns the verdict for a file from an url"""
-        response = await self.httpx_client.get(url)
-        buffer = response.content
-        return await self.for_buffer(buffer)
+        websocket = self.get_authenticated_websocket()
+        start = time.time()
+        guid = str(uuid.uuid4())
+        verdict_request_for_url = {
+            "kind": "VerdictRequestForUrl",
+            "url": url,
+            "session_id": self.session_id,
+            "guid": guid,
+            "use_shed": self.options.use_shed,
+            "use_cache": self.options.use_cache,
+        }
+        response_message = self.__response_message_for_guid(guid)
+        await websocket.send(json.dumps(verdict_request_for_url))
+
+        try:
+            result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
+        except asyncio.TimeoutError as ex:
+            self.tracing.trace_hash_request_timeout()
+            raise VaasTimeoutError() from ex
+
+        self.tracing.trace_url_request(time.time() - start)
+
+        return {
+            "Sha256": result.get("sha256"),
+            "Guid": result.get("guid"),
+            "Verdict": result.get("verdict"),
+        }
