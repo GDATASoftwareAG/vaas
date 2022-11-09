@@ -137,9 +137,7 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
 
     async def test_for_file_returns_verdict_if_no_cache_or_shed(self):
-        options = VaasOptions()
-        options.use_cache = False
-        options.use_shed = False
+        options = get_disabled_options()
 
         async with await create_and_connect(options=options) as vaas:
             with open("eicar.txt", "wb") as f:
