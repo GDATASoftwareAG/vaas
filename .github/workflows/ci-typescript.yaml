@@ -24,7 +24,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v3
 
-      - uses: pnpm/action-setup@v2.2.3
+      - uses: pnpm/action-setup@v2
         name: install pnpm
         id: pnpm-install
         with:
