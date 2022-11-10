@@ -39,7 +39,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
           TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: python test.py
+        run: python -m unittest -v tests/test_*
         working-directory: python
 
       - name: run tests staging
@@ -49,7 +49,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
           VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
           TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: python test.py
+        run: python -m unittest -v tests/test_*
         working-directory: python
 
       - name: install example requirements
