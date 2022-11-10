@@ -34,7 +34,7 @@ jobs:
           gradle-version: "7.2"
 
       - name: run tests
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/java')
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
@@ -47,7 +47,7 @@ jobs:
           build-root-directory: java
 
       - name: run tests staging
-        if: github.ref != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main' && ! startsWith(github.ref, 'refs/tags/java')
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
