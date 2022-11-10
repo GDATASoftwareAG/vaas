@@ -103,6 +103,16 @@ public class Vaas : IDisposable
             throw new VaasAuthenticationException();
         }
     }
+    
+    public async Task<VaasVerdict> ForUrlAsync(Uri uri)
+    {
+        var verdictResponse = await ForUrlRequestAsync(new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
+        {
+            UseCache = _options.UseCache,
+            UseShed = _options.UseShed
+        });
+        return new VaasVerdict(verdictResponse);
+    }
 
     public async Task<VaasVerdict> ForSha256Async(string sha256)
     {
@@ -168,6 +178,14 @@ public class Vaas : IDisposable
         AuthenticatedClient.Send(jsonString);
 
         return await WaitForResponseAsync(verdictRequest.Guid);
+    }
+    
+    private async Task<VerdictResponse> ForUrlRequestAsync(VerdictRequestForUrl verdictRequestForUrl)
+    {
+        var jsonString = JsonSerializer.Serialize(verdictRequestForUrl);
+        AuthenticatedClient.Send(jsonString);
+
+        return await WaitForResponseAsync(verdictRequestForUrl.Guid);
     }
         
     private Task<VerdictResponse> WaitForResponseAsync(string guid)
