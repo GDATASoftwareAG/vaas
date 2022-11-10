@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
@@ -281,6 +282,40 @@ public class RealApiIntegrationTests {
         assertThrows(VaasInvalidStateException.class, () -> {
             vaas.forSha256(sha256);
         });
+    }
+
+    @Test
+    public void fromUrlMultipleMaliciousUrls() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var url_1 = new URL("https://secure.eicar.org/eicar.com");
+        var url_2 = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url_3 = new URL("https://secure.eicar.org/eicar_com.zip");
+
+        var verdict_1 = vaas.forUrl(url_1);
+        var verdict_2 = vaas.forUrl(url_2);
+        var verdict_3 = vaas.forUrl(url_3);
+        vaas.disconnect();
+
+        assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdict_2.getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdict_3.getVerdict());
+    }
+
+    @Test
+    public void fromUrlMultipleCleanUrls() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var url_1 = new URL("https://random-data-api.com/api/v2/beers");
+        var url_2 = new URL("https://random-data-api.com/api/v2/banks");
+        var url_3 = new URL("https://random-data-api.com/api/v2/blood_types");
+
+        var verdict_1 = vaas.forUrl(url_1);
+        var verdict_2 = vaas.forUrl(url_2);
+        var verdict_3 = vaas.forUrl(url_3);
+        vaas.disconnect();
+
+        assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
+        assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
+        assertEquals(Verdict.CLEAN, verdict_3.getVerdict());
     }
 
     private @NotNull String getRandomString(int size) {

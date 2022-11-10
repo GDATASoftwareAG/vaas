@@ -5,6 +5,7 @@ import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
+import de.gdata.vaas.messages.VerdictRequestForUrl;
 import de.gdata.vaas.messages.VerdictResponse;
 import de.gdata.vaas.messages.VaasVerdict;
 import lombok.Getter;
@@ -13,6 +14,7 @@ import lombok.NonNull;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -59,6 +61,22 @@ public class Vaas {
         if (this.client != null) {
             this.client.closeBlocking();
         }
+    }
+
+    public CompletableFuture<VerdictResponse> forUrlAsync(URL url) throws Exception {
+        EnsureClientIsCreatedAndAuthenticated();
+        var request = new VerdictRequestForUrl(url, this.client.getSessionId());
+        return this.forUrlRequest(request);
+    }
+
+    public VaasVerdict forUrl(URL url) throws Exception {
+        return this.forUrl(url, defaultTimeout);
+    }
+
+    public VaasVerdict forUrl(URL url, Duration timeout)
+            throws Exception {
+        var verdictResponse = this.forUrlAsync(url).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        return new VaasVerdict(verdictResponse);
     }
 
     public VaasVerdict forSha256(Sha256 sha256) throws Exception {
@@ -151,6 +169,15 @@ public class Vaas {
 
         verdictRequest.setSessionId(this.client.getSessionId());
         this.client.send(verdictRequest.toJson());
+
+        return verdictResponse;
+    }
+
+    private CompletableFuture<VerdictResponse> forUrlRequest(VerdictRequestForUrl verdictRequestForUrl) throws Exception {
+        var verdictResponse = this.client.waitForVerdict(verdictRequestForUrl.getGuid());
+
+        verdictRequestForUrl.setSessionId(this.client.getSessionId());
+        this.client.send(verdictRequestForUrl.toJson());
 
         return verdictResponse;
     }
