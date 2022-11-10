@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - "php/**"
+      - ".github/workflows/ci-php.yaml"
     tags:
       - "*"
   pull_request:
@@ -12,6 +13,7 @@ on:
       - main
     paths:
       - "php/**"
+      - ".github/workflows/ci-php.yaml"
 
 jobs:
   build-php:

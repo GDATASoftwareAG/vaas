@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - "dotnet/**"
+      - ".github/workflows/ci-dotnet.yaml"
     tags:
       - "*"
   pull_request:
@@ -12,6 +13,7 @@ on:
       - main
     paths:
       - "dotnet/**"
+      - ".github/workflows/ci-dotnet.yaml"
 
 jobs:
   build-dotnet:

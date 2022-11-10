@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - "java/**"
+      - ".github/workflows/ci-java.yaml"
     tags:
       - "*"
   pull_request:
@@ -12,6 +13,7 @@ on:
       - main
     paths:
       - "java/**"
+      - ".github/workflows/ci-java.yaml"
 
 jobs:
   build-java:
