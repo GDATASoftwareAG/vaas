@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - "rust/**"
+      - ".github/workflows/ci-rust.yaml"
     tags:
       - "*"
   pull_request:
@@ -12,6 +13,7 @@ on:
       - main
     paths:
       - "rust/**"
+      - ".github/workflows/ci-rust.yaml"
 
 jobs:
   build-rust:
@@ -27,12 +29,12 @@ jobs:
         with:
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
         with:
           working-directory: rust
 
       - name: run tests
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/rs')
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
@@ -42,7 +44,7 @@ jobs:
         working-directory: rust
 
       - name: run tests staging
-        if: github.ref != 'refs/heads/main'
+        if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/rs')
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
