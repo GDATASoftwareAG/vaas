@@ -195,6 +195,18 @@ describe("Test verdict requests", function () {
         expect(verdict.verdict).to.equal("Pup");
         expect(verdict.sha256).to.equal(sha256);
     });
+
+    it('if a clean url is submitted, a verdict "clean" is expected', async () => {
+        const vaas = await createVaas();
+        const verdict = await vaas.forUrl(new URL("https://random-data-api.com/api/v2/beers"));
+        expect(verdict.verdict).to.equal("Clean");
+    });
+    
+    it('if EICAR url is submitted, a verdict "clean" is expected', async () => {
+        const vaas = await createVaas();
+        const verdict = await vaas.forUrl(new URL("https://secure.eicar.org/eicar.com"));
+        expect(verdict.verdict).to.equal("Malicious");
+    });
 });
 
 describe("Vaas", async () => {
