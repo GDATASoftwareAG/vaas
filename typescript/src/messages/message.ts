@@ -10,6 +10,7 @@ export enum Kind {
   DetectionResponse = "DetectionResponse",
   PersistedRequest = "PersistedRequest",
   SampleProcessingResponse = "SampleProcessingResponse",
+  VerdictRequestForUrl = "VerdictRequestForUrl"
 }
 
 @Serializable()

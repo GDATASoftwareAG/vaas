@@ -18,6 +18,7 @@ import {
   VaasTimeoutError,
 } from "./VaasErrors";
 import { VaasVerdict } from "./messages/vaas_verdict";
+import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
 
 const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
 export { VAAS_URL };
@@ -64,6 +65,24 @@ export class Vaas {
     return Array.from(byteArray, function (byte) {
       return ("0" + (byte & 0xff).toString(16)).slice(-2);
     }).join("");
+  }
+
+  /** Get verdict for URL
+   * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
+   * @throws {VaasAuthenticationError} Authentication failed.
+   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   * @throws {VaasTimeoutError} Timeout. Retry request.
+   */
+   public async forUrl(
+    url: URL,
+    ct: CancellationToken = CancellationToken.fromMilliseconds(
+      this.defaultTimeoutHashReq
+    )
+  ): Promise<VaasVerdict> {
+    const request = this.forUrlRequest(url).then(
+      (response) => response
+    );
+    return timeout(request, ct.timeout());
   }
 
   /** Get verdict for a SHA256
@@ -164,6 +183,31 @@ export class Vaas {
       const verdictReq = JSON.stringify(
         serialize(
           new VerdictRequest(hash, guid, this.connection!.sessionId as string)
+        )
+      );
+      ws.send(verdictReq);
+    });
+  }
+
+  private async forUrlRequest(
+    url: URL
+  ): Promise<VaasVerdict> {
+    const ws = this.getAuthenticatedWebSocket();
+    return new Promise((resolve, reject) => {
+      const guid = uuidv4();
+      if (this.debug) console.debug("uuid", guid);
+      this.verdictPromises.set(guid, {
+        resolve: async (verdictResponse: VerdictResponse) => {
+          this.verdictPromises.delete(guid);
+          resolve(new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict));
+        },
+        reject: (reason) => reject(reason),
+      });
+
+    
+      const verdictReq = JSON.stringify(
+        serialize(
+          new VerdictRequestForUrl(url, guid, this.connection!.sessionId as string)
         )
       );
       ws.send(verdictReq);
