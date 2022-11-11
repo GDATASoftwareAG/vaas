@@ -12,5 +12,7 @@ public enum Kind {
     @SerializedName("AuthResponse")
     AuthResponse,
     @SerializedName("Error")
-    Error
-}
+    Error,
+    @SerializedName("VerdictRequestForUrl")
+    VerdictRequestForUrl
+}    
