@@ -136,7 +136,6 @@ public class IntegrationTests
         Assert.Equal(Vaas.Sha256CheckSum("test3.txt"), resultList[2].Sha256);
     }
 
-
     [Fact]
     public async void FromSha256_ReturnsPup_ForAmtsoSample()
     {
@@ -145,6 +144,17 @@ public class IntegrationTests
         Assert.Equal(Verdict.Pup, actual.Verdict);
         Assert.Equal("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", actual.Sha256, true);
     }
+    
+    [Theory]
+    [InlineData("https://random-data-api.com/api/v2/beers", Verdict.Clean)]
+    [InlineData("https://secure.eicar.org/eicar.com", Verdict.Malicious)]
+    public async void FromUrlReturnVerdict(string url, Verdict verdict)
+    {
+        var vaas = await AuthenticateWithCredentials();
+        var actual = await vaas.ForUrlAsync(new Uri(url));
+        Assert.Equal(verdict, actual.Verdict);
+    }
+    
 
     private static async Task<Vaas> AuthenticateWithCredentials()
     {
