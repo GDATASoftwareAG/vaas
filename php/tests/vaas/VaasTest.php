@@ -25,7 +25,8 @@ final class VaasTest extends TestCase
 {
     use ProphecyTrait;
 
-    const MALICOUS_HASH = "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8";
+    const MALICIOUS_HASH = "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8";
+    const MALICIOUS_URL = "https://secure.eicar.org/eicar.com.txt";
 
     public function setUp(): void
     {
@@ -54,13 +55,12 @@ final class VaasTest extends TestCase
             $streamHandler = new StreamHandler(
                 STDOUT,
                 Logger::DEBUG
-                );
-        }
-        else {
+            );
+        } else {
             $streamHandler = new StreamHandler(
                 STDOUT,
                 Logger::INFO
-                );
+            );
         }
         $streamHandler->setFormatter(new JsonFormatter());
         $monoLogger->pushHandler($streamHandler);
@@ -73,7 +73,7 @@ final class VaasTest extends TestCase
             $_ENV['CLIENT_ID'],
             $_ENV['CLIENT_SECRET'],
             $_ENV["TOKEN_URL"]
-            );
+        );
     }
 
     public function testForConnectingWithInvalidToken_ThrowsVaasAccessDeniedException()
@@ -87,7 +87,7 @@ final class VaasTest extends TestCase
     {
         $this->expectException(VaasInvalidStateException::class);
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
-        $vaas->ForSha256(self::MALICOUS_HASH, "someuuid");
+        $vaas->ForSha256(self::MALICIOUS_HASH, "someuuid");
     }
 
     public function testForSha256MaliciousSha256_GetsMaliciousResponse(): void
@@ -96,11 +96,11 @@ final class VaasTest extends TestCase
 
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $verdict = $vaas->ForSha256(self::MALICOUS_HASH, $uuid);
+        $verdict = $vaas->ForSha256(self::MALICIOUS_HASH, $uuid);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
         $this->assertEquals($uuid, $verdict->Guid);
-        $this->assertEqualsIgnoringCase(self::MALICOUS_HASH, $verdict->Sha256);
+        $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
     }
 
     public function testForMultipleMaliciousSha256_GetsMaliciousResponses(): void
@@ -118,7 +118,7 @@ final class VaasTest extends TestCase
         $verdict1 = $vaas->ForSha256($sha256_1, $uuid1);
         $verdict2 = $vaas->ForSha256($sha256_2, $uuid2);
         $verdict3 = $vaas->ForSha256($sha256_3, $uuid3);
-        
+
         $this->assertEquals(Verdict::MALICIOUS, $verdict1->Verdict);
         $this->assertEquals($uuid1, $verdict1->Guid);
         $this->assertEqualsIgnoringCase($sha256_1, $verdict1->Sha256);
@@ -140,7 +140,7 @@ final class VaasTest extends TestCase
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
         $verdict = $vaas->ForSha256($cleanSha256, $uuid);
-        
+
         $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
         $this->assertEquals($uuid, $verdict->Guid);
         $this->assertEqualsIgnoringCase($cleanSha256, $verdict->Sha256);
@@ -185,7 +185,6 @@ final class VaasTest extends TestCase
         $this->assertEquals(Verdict::CLEAN, $verdict3->Verdict);
         $this->assertEquals($uuid3, $verdict3->Guid);
         $this->assertEqualsIgnoringCase($cleanHash3, $verdict3->Sha256);
-
     }
 
     public function testForSha256UnknownSha256_GetsUnknownResponse(): void
@@ -308,6 +307,30 @@ final class VaasTest extends TestCase
         $this->assertEquals($sha256, $verdict->Sha256);
 
         fclose($tmp);
+    }
+
+    public function testForUrlMaliciousUrl_GetsMaliciousResponse(): void
+    {
+        $uuid = $this->getUuid();
+
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $verdict = $vaas->ForUrl(self::MALICIOUS_URL, $uuid);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
+        $this->assertEquals($uuid, $verdict->Guid);
+    }
+
+    public function testForUrlCleanUrl_GetsCleanResponse(): void
+    {
+        $uuid = $this->getUuid();
+
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $verdict = $vaas->ForUrl("https://random-data-api.com/api/v2/beers", $uuid);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+        $this->assertEquals($uuid, $verdict->Guid);
     }
 
     /**
