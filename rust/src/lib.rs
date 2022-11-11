@@ -67,7 +67,6 @@
 //!     Ok(())
 //! }
 #![warn(missing_docs)]
-#![warn(rustdoc::missing_doc_code_examples)]
 
 mod builder;
 mod cancellation;

@@ -3,7 +3,7 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Deref;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct UploadUrl(pub String);
 
 impl Deref for UploadUrl {
