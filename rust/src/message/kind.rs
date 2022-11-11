@@ -7,4 +7,5 @@ pub enum Kind {
     VerdictRequest,
     VerdictResponse,
     Error,
+    VerdictRequestForUrl,
 }

@@ -1,7 +1,9 @@
 //! The `Connection` module provides all functionality to create an active connection to the verdict backend.
 
 use crate::error::{Error, VResult};
-use crate::message::{MessageType, UploadUrl, Verdict, VerdictRequest, VerdictResponse};
+use crate::message::{
+    MessageType, UploadUrl, Verdict, VerdictRequest, VerdictRequestForUrl, VerdictResponse,
+};
 use crate::options::Options;
 use crate::sha256::Sha256;
 use crate::vaas_verdict::VaasVerdict;
@@ -64,6 +66,19 @@ impl Connection {
             return None;
         }
         Some(Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx).await)
+    }
+
+    /// Request a verdict for a given url.
+    pub async fn for_url(&self, url: String, ct: &CancellationToken) -> VResult<VaasVerdict> {
+        let request = VerdictRequestForUrl::new(url, self.session_id.clone());
+        let response = Self::for_url_request(
+            request,
+            self.ws_writer.clone(),
+            &mut self.result_channel.subscribe(),
+            ct,
+        )
+        .await?;
+        VaasVerdict::try_from(response)
     }
 
     /// Request a verdict for a SHA256 file hash.
@@ -166,6 +181,17 @@ impl Connection {
 
     async fn for_request(
         request: VerdictRequest,
+        ws_writer: WebSocketWriter,
+        result_channel: &mut ResultChannelRx,
+        ct: &CancellationToken,
+    ) -> VResult<VerdictResponse> {
+        let guid = request.guid().to_string();
+        ws_writer.lock().await.send_text(request.to_json()?).await?;
+        Self::wait_for_response(&guid, result_channel, ct).await
+    }
+
+    async fn for_url_request(
+        request: VerdictRequestForUrl,
         ws_writer: WebSocketWriter,
         result_channel: &mut ResultChannelRx,
         ct: &CancellationToken,
