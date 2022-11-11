@@ -1,5 +1,6 @@
 use crate::error::VResult;
 use crate::message::kind::Kind;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -11,10 +12,10 @@ pub struct VerdictRequestForUrl {
 }
 
 impl VerdictRequestForUrl {
-    pub fn new(url: String, session_id: String) -> Self {
+    pub fn new(url: Url, session_id: String) -> Self {
         Self {
             guid: uuid::Uuid::new_v4().to_string(),
-            url,
+            url: url.into(),
             kind: Kind::VerdictRequestForUrl,
             session_id,
         }

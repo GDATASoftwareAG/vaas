@@ -9,6 +9,7 @@ use crate::sha256::Sha256;
 use crate::vaas_verdict::VaasVerdict;
 use crate::CancellationToken;
 use futures::future::join_all;
+use reqwest::Url;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -68,8 +69,8 @@ impl Connection {
         Some(Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx).await)
     }
 
-    /// Request a verdict for a given url.
-    pub async fn for_url(&self, url: String, ct: &CancellationToken) -> VResult<VaasVerdict> {
+    /// Request a verdict for a given file located at an URL.
+    pub async fn for_url(&self, url: Url, ct: &CancellationToken) -> VResult<VaasVerdict> {
         let request = VerdictRequestForUrl::new(url, self.session_id.clone());
         let response = Self::for_url_request(
             request,
