@@ -18,6 +18,7 @@ use VaasSdk\Message\Verdict;
 use VaasSdk\Message\Kind;
 use VaasSdk\Message\VerdictRequest;
 use VaasSdk\Message\VerdictResponse;
+use VaasSdk\Message\VerdictRequestForUrl;
 use Psr\Log\LoggerInterface;
 use VaasSdk\Message\VaasVerdict;
 
@@ -103,6 +104,23 @@ class Vaas
         $sha256 = Sha256::TryFromString($hashString);
 
         return new VaasVerdict($this->_verdictResponseForSha256($sha256, $uuid));
+    }
+
+    /**
+     * Gets verdict by url
+     *
+     * @param string $url url to get the verdict for
+     * @param string $uuid       unique identifier
+     * 
+     * @throws Exceptions\TimeoutException
+     * 
+     * @return string the verdict
+     */
+    public function ForUrl(string $url, string $uuid = null): VaasVerdict
+    {
+        $this->_logger->debug("ForUrl", ["URL:" => $url]);
+
+        return new VaasVerdict($this->_verdictResponseForUrl($url, $uuid));
     }
 
     /**
@@ -259,6 +277,28 @@ class Vaas
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_vaasConnection->SessionId);
+        $websocket->send(json_encode($request));
+
+        $this->_logger->debug("verdictResponse", ["VerdictResponse" => json_encode($request)]);
+
+        return $this->_waitForVerdict($request->guid);
+    }
+
+    /**
+     * @throws TimeoutException
+     * 
+     * @return VerdictResponse
+     */
+    private function _verdictResponseForUrl(string $url, string $uuid = null): VerdictResponse
+    {
+        $this->_logger->debug("_verdictResponseForUrl");
+
+        if (!isset($this->_vaasConnection)) {
+            throw new VaasInvalidStateException("connect() was not called");
+        }
+        $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
+
+        $request = new VerdictRequestForUrl($url, $uuid, $this->_vaasConnection->SessionId);
         $websocket->send(json_encode($request));
 
         $this->_logger->debug("verdictResponse", ["VerdictResponse" => json_encode($request)]);
