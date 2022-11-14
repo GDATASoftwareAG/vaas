@@ -18,12 +18,20 @@ async fn main() -> VResult<()> {
                 .required(true),
         )
         .arg(
-            Arg::new("token")
-                .short('t')
-                .long("token")
-                .env("VAAS_TOKEN")
+            Arg::new("client_id")
+                .short('i')
+                .long("client_id")
+                .env("CLIENT_ID")
                 .action(ArgAction::Set)
-                .help("Set you secret token"),
+                .help("Set your vaas username"),
+        )
+        .arg(
+            Arg::new("client_secret")
+                .short('s')
+                .long("client_secret")
+                .env("CLIENT_SECRET")
+                .action(ArgAction::Set)
+                .help("Set your vaas password"),
         )
         .get_matches();
 
@@ -33,17 +41,10 @@ async fn main() -> VResult<()> {
         .map(|f| PathBuf::from_str(f).unwrap_or_else(|_| panic!("Not a valid file path: {}", f)))
         .collect::<Vec<PathBuf>>();
 
-    let token = matches.get_one::<String>("token");
+    let client_id = matches.get_one::<String>("client_id").unwrap();
+    let client_secret = matches.get_one::<String>("client_secret").unwrap();
 
-    let token_env = dotenv::var("VAAS_TOKEN");
-
-    let token = match token {
-        Some(token) => token.to_string(),
-        None => match token_env {
-            Ok(token_env) => token_env,
-            Err(_) => panic!("Please set token."),
-        },
-    };
+    let token = Vaas::get_token(&client_id, &client_secret).await?;
 
     let verdicts = scan_files(&files, &token).await?;
 
