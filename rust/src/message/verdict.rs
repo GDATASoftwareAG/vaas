@@ -8,7 +8,7 @@ use std::fmt;
 
 /// A `Verdict` is a response from the server that indicates whether the
 /// submission is `Clean`, `Malicious`, `Pup` or `Unknown`.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum Verdict {
     /// No malicious content found.
     Clean,

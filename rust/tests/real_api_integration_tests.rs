@@ -449,3 +449,25 @@ async fn from_file_empty_file() {
     std::fs::remove_file(&tmp_file).unwrap();
     assert_eq!(Verdict::Clean, verdict.unwrap().verdict);
 }
+
+#[tokio::test]
+async fn from_url_single_malicious_url() {
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+    let url = Url::parse("https://secure.eicar.org/eicar.com").unwrap();
+
+    let verdict = vaas.for_url(url, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+}
+
+#[tokio::test]
+async fn from_url_single_clean_url() {
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+    let url = Url::parse("https://random-data-api.com/api/v2/beers").unwrap();
+
+    let verdict = vaas.for_url(url, &ct).await;
+
+    assert_eq!(Verdict::Clean, verdict.as_ref().unwrap().verdict);
+}
