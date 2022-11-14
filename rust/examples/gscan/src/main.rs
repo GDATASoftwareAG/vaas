@@ -1,38 +1,39 @@
-use clap::{App, Arg};
+use clap::{Arg, ArgAction, Command};
 use std::{path::PathBuf, str::FromStr};
 use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
 
 #[tokio::main]
 async fn main() -> VResult<()> {
-    let matches = App::new("GDATA command line scanner")
+    let matches = Command::new("GDATA command line scanner")
         .version("0.1.0")
         .author("GDATA CyberDefense AG")
         .about("Scan files for malicious content")
         .arg(
-            Arg::with_name("files")
-                .short("f")
+            Arg::new("files")
+                .short('f')
                 .long("files")
+                .required(true)
+                .action(ArgAction::Append)
                 .help("List of files to scan spearated by whitepace")
-                .takes_value(true)
-                .multiple(true)
                 .required(true),
         )
         .arg(
-            Arg::with_name("token")
-                .short("t")
+            Arg::new("token")
+                .short('t')
                 .long("token")
-                .help("Set token with environment variable VAAS_TOKEN or with this flag")
-                .takes_value(true),
+                .env("VAAS_TOKEN")
+                .action(ArgAction::Set)
+                .help("Set you secret token"),
         )
         .get_matches();
 
     let files = matches
-        .values_of("files")
+        .get_many::<String>("files")
         .unwrap() // Safe to unwrap, as "files" is required.
         .map(|f| PathBuf::from_str(f).unwrap_or_else(|_| panic!("Not a valid file path: {}", f)))
         .collect::<Vec<PathBuf>>();
 
-    let token = matches.value_of("token");
+    let token = matches.get_one::<String>("token");
 
     let token_env = dotenv::var("VAAS_TOKEN");
 

@@ -8,8 +8,8 @@ description = "GDATA Verdict-as-a-Service CLI Scanner"
 publish = false
 
 [dependencies]
-vaas = { version = "1.0.0" }
+vaas = { version = "2.0.0" }
 tokio = { version = "1.9", features = [ "rt-multi-thread", "macros"] }
-clap = "2.33"
+clap = { version = "4.0", features = ["env"]}
 futures = "0.3"
 dotenv = "0.15"
