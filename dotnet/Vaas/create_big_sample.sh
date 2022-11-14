@@ -1,14 +1,11 @@
 #!/bin/sh
 
-if [ $# -ne 1 ]
-then
-	echo "Usage: create_big_sample <MB>" 
+if [ $# -ne 1 ]; then
+	echo "Usage: create_big_sample <MB>"
 	exit 1
 fi
 
-mkdir big 
-if [ $? -ne 0 ]
-then
+if mkdir big; then
 	echo Directory big already exists
 	exit 1
 fi
