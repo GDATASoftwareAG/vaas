@@ -3,10 +3,6 @@
 *Verdict-as-a-Service* (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware. 
 
 
-
-    ATTENTION: All SDKs are currently prototypes and under heavy construction!
-
-
 ## Integration of Malware Detection
 
 Easily integrate malware detection into **any kind** of application, service or platform.
