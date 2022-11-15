@@ -5,13 +5,13 @@ if [ $# -ne 1 ]; then
 	exit 1
 fi
 
-if mkdir big; then
-	echo Directory big already exists
+if mkdir "big"; then
+	echo "Directory big already exists"
 	exit 1
 fi
 
-dd if=/dev/urandom of=big/big.dat bs=1M count=$1
-curl https://secure.eicar.org/eicar.com.txt -o big/eicar.com.txt
-zip -0 -r big big/
+dd if="/dev/urandom" of="big/big.dat" bs="1M" count="$1"
+curl "https://secure.eicar.org/eicar.com.txt" -o "big/eicar.com.txt"
+zip -0 -r "big" "big/"
 
-rm -rf big
+rm -rf "big"
