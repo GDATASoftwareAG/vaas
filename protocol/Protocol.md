@@ -39,6 +39,18 @@ c->>s: upload file
 s->>c: verdict response
 ```
 
+When requesting a verdict for a URL, the server will download the files content from the given URL and will be forwarded to our analysis backend.
+```mermaid
+sequenceDiagram
+participant i as Internet
+participant s as Server
+participant c as Client
+
+c->>s: verdict request for url
+i->>s: downloads file from url
+s->>c: verdict response
+```
+
 
 The client is responsible for opening the websocket connection and sending the authentication message.
 
@@ -87,6 +99,18 @@ The *ping* message has to be a *ping* control frame, not a *text* message. The r
 }
 ```
 
+In case for an analysis from a URL, a different kind has to be set. Also, instead on a SHA256 hashsum, only the URL is needed.
+
+```javascript
+// Analysis request
+{
+    "kind": "VerdictRequestForUrl", // Unique identifier of the message kind
+    "url": "...", // URL for a located file to be analyzed
+    "guid": "...", // Unique identifier of the request
+    "session_id": "...", // Session identifier
+}
+```
+
 For each request, the server sends a corresponding response. The response contains the guid and the result of the analysis. As the server does not respond in the request order, the guid is used to sort the responses to the corresponding requests on the client side.
 
 ```javascript
@@ -101,7 +125,7 @@ For each request, the server sends a corresponding response. The response contai
 }
 ```
 
-There is one special case. If the response has the verdict *Unknown*, the client can upload the file for further analysis. In that case, the response message contains an URL and a JWT. The client has to upload the file to the url and send the JWT as a header.
+There is one special case. If the response has the verdict *Unknown*, the client can upload the file for further analysis. In that case, the response message contains an URL and a JWT. The client has to upload the file to the URL and send the JWT as a header.
 
 The file upload is a simple `HTTP PUT`, with the `Authorization` header set to the JsonWebToken `upload_token` from the verdict response.
 

@@ -5,10 +5,15 @@
         <TargetFramework>net6.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackageReadmeFile>Readme.md</PackageReadmeFile>        
     </PropertyGroup>
 
     <ItemGroup>
       <PackageReference Include="GDataCyberDefense.Vaas" Version="3.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="../../Readme.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>
