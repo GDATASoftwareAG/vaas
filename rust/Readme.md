@@ -8,23 +8,23 @@ _Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning
 
 It gives you as a developer a functions to talk to G DATA VaaS. It wraps away the complexity of the API into 5 basic functions.
 
-### forSha256
+### for_sha256
 
 If you calculate the sha256 for a file, you can request that sha256 against G DATA VaaS. It's the fastest way to get a verdict from our service.
 
-### forSha256List
+### for_sha256_list
 
 You can also request multiple sha256 with a single function call.
 
-### forUrl
+### for_url
 
 If you want to request if a file behind a URL is safe, you can specify the URL as well. Depending on the file size, the duration for the analysis can vary.
 
-### forFile
+### for_file
 
 You can also ask for a file itself. You will still get the benefit of a fast verdict via Sha256 because the SDK will do that for you first. But additionally, if we don't know the file, the file will get uploaded and (automatically) analyzed by us.
 
-### forFileList
+### for_file_list
 
 You can also request multiple files with a single function call.
 
@@ -33,7 +33,7 @@ You can also request multiple files with a single function call.
 ### Installation
 
 ```bash
-npm install gdata-vaas
+cargo add vaas
 ```
 
 ### Import
@@ -47,6 +47,7 @@ use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 Authentication & Initializing:
 ```rust
 let token = Vaas::get_token(&client_id, &client_secret).await?;
+let vaas = Vaas::builder(token.into()).build()?.connect().await?;
 ```
 
 Verdict Request for SHA256:
@@ -60,18 +61,15 @@ let verdict = vaas.for_sha256(&sha256, &ct).await;
 
 Verdict Request for a file:
 ```rust
-let sha256 =
-    Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
-        .unwrap();
-let verdict = vaas.for_file(&sha256, &ct).await;
-}
+let ct = CancellationToken::from_seconds(10);
+let pathToScan = Path::new("/path/to/scan");
+let verdict = vaas.for_file(&pathToScan, &ct).await;
 ```
 
 Verdict Request for a URL:
 ```rust
 let ct = CancellationToken::from_seconds(10);
-let url = Url::parse("https://random-data-api.com/api/v2/beers").unwrap();
-
+let url = Url::parse("https://www.gdatasoftware.com/oem/verdict-as-a-service").unwrap();
 let verdict = vaas.for_url(url, &ct).await;
 ```
 
