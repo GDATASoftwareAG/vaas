@@ -53,6 +53,13 @@ jobs:
         run: cargo test
         working-directory: rust
 
+      - name: Run example
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: cargo run -- --files Cargo.toml
+        working-directory: rust/examples/gscan
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/rs')
         run: |
