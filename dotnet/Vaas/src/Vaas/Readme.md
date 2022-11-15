@@ -79,7 +79,7 @@ var verdict = await vaas.ForUrlAsync(new Uri(url));;
 Console.WriteLine($"{verdict.Sha256} is detected as {verdict.Verdict}");
 ```
 
-## <a name="interested"></a>I'm interested in VaaS
+## I'm interested in VaaS
 
 You need credentials to use the service in your application. If you are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
 
