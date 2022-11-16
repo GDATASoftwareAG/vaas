@@ -70,7 +70,7 @@ impl Connection {
     }
 
     /// Request a verdict for a given file located at an URL.
-    pub async fn for_url(&self, url: Url, ct: &CancellationToken) -> VResult<VaasVerdict> {
+    pub async fn for_url(&self, url: &Url, ct: &CancellationToken) -> VResult<VaasVerdict> {
         let request = VerdictRequestForUrl::new(url, self.session_id.clone());
         let response = Self::for_url_request(
             request,
