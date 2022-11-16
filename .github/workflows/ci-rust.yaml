@@ -57,7 +57,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-        run: cargo run -- --files Cargo.toml
+        run: cargo run -- --files Cargo.toml --urls https://secure.eicar.org/eicar.com
         working-directory: rust/examples/gscan
 
       - name: extract version

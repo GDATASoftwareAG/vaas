@@ -13,14 +13,14 @@ async fn main() -> VResult<()> {
             Arg::new("files")
                 .short('f')
                 .long("files")
-                .required_unless_present("url")
+                .required_unless_present("urls")
                 .action(ArgAction::Append)
                 .help("List of files to scan spearated by whitepace"),
         )
         .arg(
-            Arg::new("url")
+            Arg::new("urls")
                 .short('u')
-                .long("url")
+                .long("urls")
                 .action(ArgAction::Append)
                 .required_unless_present("files")
                 .help("List of urls to scan spearated by whitepace"),
@@ -50,7 +50,7 @@ async fn main() -> VResult<()> {
         .collect::<Vec<PathBuf>>();
 
     let urls = matches
-        .get_many::<String>("url")
+        .get_many::<String>("urls")
         .unwrap_or_default()
         .map(|f| Url::parse(f).unwrap_or_else(|_| panic!("Not a valid url: {}", f)))
         .collect::<Vec<Url>>();
