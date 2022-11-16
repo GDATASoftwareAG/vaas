@@ -1,6 +1,5 @@
 plugins {
     id 'java'
-    id 'application'
 }
 
 group 'de.gdata.vaasexample'
@@ -11,9 +10,16 @@ repositories {
 }
 
 dependencies {
-    implementation 'de.gdata:vaas:3.0.0'
+    implementation 'org.slf4j:slf4j-nop:2.0.3'
+    implementation 'de.gdata:vaas:3.0.1'
 }
 
-application {
-    mainClass = 'de.gdata.vaasexample.Main' 
+task fileScan(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.FileScan'
+}
+
+task urlScan(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.UrlScan'
 }
