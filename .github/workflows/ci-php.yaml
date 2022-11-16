@@ -58,12 +58,26 @@ jobs:
         run: composer install
         working-directory: php/examples/VaasExample
 
-      - name: run example
+      - name: run example (scan file)
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           SCAN_PATH: "GetVerdictByFile.php"
         run: php GetVerdictByFile.php
+        working-directory: php/examples/VaasExample
+
+      - name: run example (scan url)
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: php GetVerdictByUrl.php
+        working-directory: php/examples/VaasExample
+
+      - name: run example (scan hash)
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: php GetVerdictByHash.php
         working-directory: php/examples/VaasExample
 
       - name: extract version
