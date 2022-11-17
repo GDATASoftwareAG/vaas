@@ -56,12 +56,19 @@ jobs:
         run: pip install -r requirements.txt
         working-directory: python/examples/VaasExample
 
-      - name: run example
+      - name: run example scan file
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           SCAN_PATH: "main.py"
         run: python main.py
+        working-directory: python/examples/VaasExample
+
+      - name: run example scan url
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: python main_url.py
         working-directory: python/examples/VaasExample
 
       - name: extract version
