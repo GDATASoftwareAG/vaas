@@ -5,7 +5,7 @@ use std::convert::TryFrom;
 
 #[derive(Debug, Clone)]
 
-/// VaaS Verdict.
+/// Response object from the api.
 pub struct VaasVerdict {
     /// Sha256
     pub sha256: Sha256,

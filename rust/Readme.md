@@ -36,42 +36,8 @@ You can also request multiple files with a single function call.
 cargo add vaas
 ```
 
-### Import
-
-```rust
-use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
-```
-
-### Request a verdict
-
-Authentication & Initializing:
-```rust
-let token = Vaas::get_token(&client_id, &client_secret).await?;
-let vaas = Vaas::builder(token.into()).build()?.connect().await?;
-```
-
-Verdict Request for SHA256:
-```rust
-let sha256 =
-    Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
-        .unwrap();
-let ct = CancellationToken::from_seconds(10);        
-let verdict = vaas.for_sha256(&sha256, &ct).await;
-```
-
-Verdict Request for a file:
-```rust
-let ct = CancellationToken::from_seconds(10);
-let pathToScan = Path::new("/path/to/scan");
-let verdict = vaas.for_file(&pathToScan, &ct).await;
-```
-
-Verdict Request for a URL:
-```rust
-let ct = CancellationToken::from_seconds(10);
-let url = Url::parse("https://www.gdatasoftware.com/oem/verdict-as-a-service").unwrap();
-let verdict = vaas.for_url(url, &ct).await;
-```
+### Examples
+For more insights about the api, please check out our documentation on [Docs.rs](https://docs.rs/vaas/latest/vaas/).
 
 ## <a name="interested"></a>I'm interested in VaaS
 
