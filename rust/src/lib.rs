@@ -29,14 +29,14 @@
 //!     let mut vaas = Vaas::builder(String::from("token"))
 //!         .build()?
 //!         .connect().await?;
-//! 
+//!
 //!     // Create the SHA256 we want to check.
 //!     let sha256 = Sha256::try_from("698CDA840A0B344639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")?;
 //!
 //!     let response = vaas.for_sha256(&sha256, &ct).await?;
 //!
 //!     // Prints "Clean", "Malicious" or "Unknown"
-//!     println!("{}", response.as_ref().unwrap().verdict);
+//!     println!("{}", response.verdict);
 //!     Ok(())
 //! }
 //! ```
@@ -51,18 +51,18 @@
 //! async fn main() -> VResult<()> {
 //!     // Cancel the request after 10 seconds if no response is received.
 //!     let ct = CancellationToken::from_seconds(10);
-//! 
+//!
 //!     //Authenticate and create VaaS instance
-//!     let token = Vaas::get_token(&client_id, &client_secret).await?;
+//!     let token = Vaas::get_token("client_id", "client_secret").await?;
 //!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
-//! 
+//!
 //!     // Create file we want to check.
 //!     let file = std::path::PathBuf::from("myfile");
 //!
 //!     let response = vaas.for_file(&file, &ct).await?;
 //!
 //!     // Prints "Clean", "Pup" or "Malicious"
-//!     println!("{}", response.as_ref().unwrap().verdict);
+//!     println!("{}", response.verdict);
 //!     Ok(())
 //! }
 //! ```
@@ -80,7 +80,7 @@
 //!     let ct = CancellationToken::from_seconds(10);
 //!     
 //!     //Authenticate and create VaaS instance
-//!     let token = Vaas::get_token(&client_id, &client_secret).await?;
+//!     let token = Vaas::get_token("client_id", "client_secret").await?;
 //!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
 //!
 //!     let url = Url::parse("https://mytesturl.test").unwrap();
@@ -97,7 +97,7 @@ pub mod cancellation;
 pub mod connection;
 pub mod error;
 pub mod message;
-pub mod options;
+mod options;
 pub mod sha256;
 pub mod vaas;
 pub mod vaas_verdict;
