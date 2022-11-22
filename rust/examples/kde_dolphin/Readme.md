@@ -1,8 +1,8 @@
 # KDE Dolphin VaaS Integration
 
-This repos contains a experimental prototype to integrate the G DATA VaaS API into KDE Dolphin.
+This repo contains an experimental prototype to integrate the G DATA VaaS API into KDE Dolphin.
 
-It allows the user to right click any file and click on *Scan with GDATA* to get a verdict for the file.
+It allows the user to right-click any file and click on *Scan with GDATA* to get a verdict for the file.
 
 ## Installation
 

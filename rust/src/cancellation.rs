@@ -1,3 +1,9 @@
+//! # Cancellation
+//!
+//! As a request for a verdict can take some time if, for example the file is huge or the network connection is slow, it is possible to cancel
+//! each verdict request after some time. This is done by using a `CancellationToken` which can be created from a `Duration`.
+//! If the duration is up, the request is aborted and an error is returned.
+
 use std::time::Duration;
 
 /// The `CancellationToken` allows to cancel a request after a specific time
