@@ -52,7 +52,7 @@ async fn main() {
                         handle_weak.clone(),
                         FileItem {
                             state: match v {
-                                Ok(v) => v.to_string().into(),
+                                Ok(v) => v.verdict.to_string().into(),
                                 Err(e) => e.to_string().into(),
                             },
                             ..f.clone()
@@ -67,7 +67,7 @@ async fn main() {
 }
 
 fn update_file_model(handle: slint::Weak<Ui>, fi: FileItem) {
-    handle.upgrade_in_event_loop(move |handle| {
+    let _ = handle.upgrade_in_event_loop(move |handle| {
         let fm = handle.get_file_model();
         fm.set_row_data((fi.id - 1) as usize, fi)
     });
