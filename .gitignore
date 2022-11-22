@@ -2,12 +2,12 @@
 target/
 Cargo.lock
 
-.run/
 .DS_Store
 node_modules
 dist/
 build/
 WixTools
+.build
 
 # php
 vendor/
