@@ -1,3 +1,4 @@
+//! Deserialzed message object including Sha256 & Verdict
 use crate::error::Error;
 use crate::message::{Verdict, VerdictResponse};
 use crate::sha256::Sha256;
@@ -5,7 +6,7 @@ use std::convert::TryFrom;
 
 #[derive(Debug, Clone)]
 
-/// VaaS Verdict.
+/// Response object from the api.
 pub struct VaasVerdict {
     /// Sha256
     pub sha256: Sha256,

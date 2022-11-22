@@ -69,7 +69,7 @@ impl Connection {
         Some(Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx).await)
     }
 
-    /// Request a verdict for a given file located at an URL.
+    /// Request a verdict for a file behind a URL.
     pub async fn for_url(&self, url: &Url, ct: &CancellationToken) -> VResult<VaasVerdict> {
         let request = VerdictRequestForUrl::new(url, self.session_id.clone());
         let response = Self::for_url_request(

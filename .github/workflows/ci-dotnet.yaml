@@ -70,12 +70,19 @@ jobs:
         run: dotnet test --no-restore --verbosity normal
         working-directory: dotnet/Vaas
 
-      - name: Run example
+      - name: Run example FileScan
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           SCAN_PATH: "Program.cs"
-        run: dotnet run
+        run: dotnet run FileScan
+        working-directory: dotnet/examples/VaasExample
+
+      - name: Run example UrlScan
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: dotnet run UrlScan
         working-directory: dotnet/examples/VaasExample
 
       - name: Pack
