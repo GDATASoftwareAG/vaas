@@ -1,7 +1,7 @@
 use clap::{Arg, ArgAction, Command};
-use std::{path::PathBuf, str::FromStr, collections::HashMap};
-use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
 use reqwest::Url;
+use std::{collections::HashMap, path::PathBuf, str::FromStr};
+use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
 
 #[tokio::main]
 async fn main() -> VResult<()> {
@@ -58,7 +58,7 @@ async fn main() -> VResult<()> {
     let client_id = matches.get_one::<String>("client_id").unwrap();
     let client_secret = matches.get_one::<String>("client_secret").unwrap();
 
-    let token = Vaas::get_token(&client_id, &client_secret).await?;
+    let token = Vaas::get_token(client_id, client_secret).await?;
 
     let file_verdicts = scan_files(&files, &token).await?;
     let url_verdicts = scan_urls(&urls, &token).await?;
@@ -88,7 +88,6 @@ async fn main() -> VResult<()> {
     Ok(())
 }
 
-#[allow(clippy::needless_lifetimes)] // Clippy wants to eliminate the lifetime parameter, but it's not possible.
 async fn scan_files<'a>(
     files: &'a [PathBuf],
     token: &str,
@@ -102,9 +101,8 @@ async fn scan_files<'a>(
     Ok(results)
 }
 
-#[allow(clippy::needless_lifetimes)] // Clippy wants to eliminate the lifetime parameter, but it's not possible.
-async fn scan_urls<'a>(
-    urls: &'a [Url],
+async fn scan_urls(
+    urls: &[Url],
     token: &str,
 ) -> VResult<HashMap<Url, Result<VaasVerdict, vaas::error::Error>>> {
     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
