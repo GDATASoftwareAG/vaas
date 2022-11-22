@@ -465,7 +465,7 @@ async fn from_url_single_malicious_url() {
 async fn from_url_single_clean_url() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
-    let url = Url::parse("https://random-data-api.com/api/v2/beers").unwrap();
+    let url = Url::parse("https://www.gdatasoftware.com/oem/verdict-as-a-service").unwrap();
 
     let verdict = vaas.for_url(&url, &ct).await;
 

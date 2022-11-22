@@ -1,3 +1,4 @@
+//! Deserialzed message object including Sha256 & Verdict
 use crate::error::Error;
 use crate::message::{Verdict, VerdictResponse};
 use crate::sha256::Sha256;
