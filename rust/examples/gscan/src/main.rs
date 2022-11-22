@@ -2,6 +2,7 @@ use clap::{Arg, ArgAction, Command};
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
+use reqwest::Url;
 
 #[tokio::main]
 async fn main() -> VResult<()> {
@@ -100,6 +101,7 @@ async fn scan_files<'a>(
 
     Ok(results)
 }
+
 
 async fn scan_urls(
     urls: &[Url],

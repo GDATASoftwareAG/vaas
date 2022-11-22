@@ -25,18 +25,17 @@
 //!     // Cancel the request after 10 seconds if no response is received.
 //!     let ct = CancellationToken::from_seconds(10);
 //!     
-//!     // Create a VaaS instance and request a verdict for the SHA256.
-//!     let mut vaas = Vaas::builder(String::from("token"))
-//!         .build()?
-//!         .connect().await?;
-//!
+//!     //Authenticate and create VaaS instance
+//!     let token = Vaas::get_token("client_id", "client_secret").await?;
+//!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
+//! 
 //!     // Create the SHA256 we want to check.
 //!     let sha256 = Sha256::try_from("698CDA840A0B344639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")?;
 //!
-//!     let response = vaas.for_sha256(&sha256, &ct).await?;
+//!     let verdict = vaas.for_sha256(&sha256, &ct).await?;
 //!
 //!     // Prints "Clean", "Malicious" or "Unknown"
-//!     println!("{}", response.verdict);
+//!     println!("{}", verdict.verdict);
 //!     Ok(())
 //! }
 //! ```
@@ -51,18 +50,43 @@
 //! async fn main() -> VResult<()> {
 //!     // Cancel the request after 10 seconds if no response is received.
 //!     let ct = CancellationToken::from_seconds(10);
+//! 
+//!     //Authenticate and create VaaS instance
+//!     let token = Vaas::get_token("client_id", "client_secret").await?;
+//!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
+//! 
+//!     // Create file we want to check.
+//!     let file = std::path::PathBuf::from("myfile");
 //!
+//!     let verdict = vaas.for_file(&file, &ct).await?;
+//!
+//!     // Prints "Clean", "Pup" or "Malicious"
+//!     println!("{}", verdict.verdict);
+//!     Ok(())
+//! }
+//! ```
+//!
+//! Check a file behind a URL for malicious content:
+//! ```rust,no_run
+//! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
+//! use reqwest::Url;
+//! use std::convert::TryFrom;
+//! use std::time::Duration;
+//!
+//! #[tokio::main]
+//! async fn main() -> VResult<()> {
+//!     // Cancel the request after 10 seconds if no response is received.
+//!     let ct = CancellationToken::from_seconds(10);
+//!     
 //!     //Authenticate and create VaaS instance
 //!     let token = Vaas::get_token("client_id", "client_secret").await?;
 //!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
 //!
-//!     // Create file we want to check.
-//!     let file = std::path::PathBuf::from("myfile");
-//!
-//!     let response = vaas.for_file(&file, &ct).await?;
+//!     let url = Url::parse("https://mytesturl.test").unwrap();
+//!     let verdict = vaas.for_url(&url, &ct).await?;
 //!
 //!     // Prints "Clean", "Pup" or "Malicious"
-//!     println!("{}", response.verdict);
+//!     println!("{}", verdict.verdict);
 //!     Ok(())
 //! }
 //! ```
