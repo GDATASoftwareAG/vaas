@@ -89,10 +89,35 @@
 //!     println!("{}", verdict.verdict);
 //!     Ok(())
 //! }
+//! ```
+//!
+//! Check a file behind a URL for malicious content:
+//! ```rust,no_run
+//! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
+//! use reqwest::Url;
+//! use std::convert::TryFrom;
+//! use std::time::Duration;
+//!
+//! #[tokio::main]
+//! async fn main() -> VResult<()> {
+//!     // Cancel the request after 10 seconds if no response is received.
+//!     let ct = CancellationToken::from_seconds(10);
+//!     
+//!     //Authenticate and create VaaS instance
+//!     let token = Vaas::get_token("client_id", "client_secret").await?;
+//!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
+//!
+//!     let url = Url::parse("https://mytesturl.test").unwrap();
+//!     let response = vaas.for_url(&url, &ct).await;
+//!
+//!     // Prints "Clean", "Pup" or "Malicious"
+//!     println!("{}", response.as_ref().unwrap().verdict);
+//!     Ok(())
+//! }
 #![warn(missing_docs)]
 
 pub mod builder;
-mod cancellation;
+pub mod cancellation;
 pub mod connection;
 pub mod error;
 pub mod message;

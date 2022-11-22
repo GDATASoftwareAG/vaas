@@ -1,4 +1,7 @@
-//! Deserialzed message object including Sha256 & Verdict
+//! # VaaS Verdict
+//!
+//! The `VaaSVerdict` is the result of a request for a verdict. It contains the verdict itself and the SHA256 hash of the requested file.
+
 use crate::error::Error;
 use crate::message::{Verdict, VerdictResponse};
 use crate::sha256::Sha256;
@@ -8,9 +11,9 @@ use std::convert::TryFrom;
 
 /// Response object from the api.
 pub struct VaasVerdict {
-    /// Sha256
+    /// Sha256 of the requested file
     pub sha256: Sha256,
-    /// Verdict
+    /// Verdict for the file
     pub verdict: Verdict,
 }
 
