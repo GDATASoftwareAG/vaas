@@ -23,7 +23,7 @@ class ClientCredentialsGrantAuthenticator
         $this->_httpClient = new HttpClient();
     }
 
-    public function getToken()
+    public function getToken(): string
     {
         $headers = ['Content-Type' => 'application/x-www-form-urlencoded'];
 
