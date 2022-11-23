@@ -16,7 +16,7 @@ dependencies {
 
 task fileScan(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'de.gdata.vaasexample.FileScan'
+    mainClass = 'de.gdata.vaasexample.Main'
 }
 
 task urlScan(type: JavaExec) {

@@ -7,7 +7,7 @@ import de.gdata.vaas.VaasConfig;
 import java.net.URI;
 import java.nio.file.Path;
 
-public class FileScan {
+public class Main {
     public static void main(String[] args) throws Exception {
         var clientId = System.getenv("CLIENT_ID");
         var clientSecret = System.getenv("CLIENT_SECRET");
