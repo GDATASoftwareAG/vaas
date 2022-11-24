@@ -75,8 +75,8 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          SCAN_PATH: "file_scan.ts"
-        run: npx ts-node file_scan.ts
+          SCAN_PATH: "main.ts"
+        run: npx ts-node main.ts
         working-directory: typescript/examples/VaasExample
 
       - name: run examples scan url
