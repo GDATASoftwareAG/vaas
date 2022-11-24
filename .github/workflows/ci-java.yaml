@@ -65,7 +65,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          SCAN_PATH: "src/main/java/de/gdata/vaasexample/FileScan.java"
+          SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
         uses: gradle/gradle-build-action@v2
         with:
           arguments: fileScan
