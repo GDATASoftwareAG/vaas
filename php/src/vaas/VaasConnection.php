@@ -20,7 +20,7 @@ class VaasConnection
         $this->WebSocketClient->ping();
     }
 
-    public function GetConnectedWebsocket()
+    public function GetConnectedWebsocket(): Client
     {
         if (!$this->WebSocketClient) {
             throw new VaasInvalidStateException("connect() was not called");
@@ -31,7 +31,7 @@ class VaasConnection
         return $this->WebSocketClient;
     }
 
-    public function GetAuthenticatedWebsocket()
+    public function GetAuthenticatedWebsocket(): Client
     {
         $websocket = $this->GetConnectedWebsocket();
         if (!isset($this->SessionId) || !$this->SessionId) {
