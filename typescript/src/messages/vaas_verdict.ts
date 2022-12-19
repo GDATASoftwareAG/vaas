@@ -1,7 +1,7 @@
-import { Serializable, JsonProperty } from "typescript-json-serializer";
+import { JsonProperty, JsonObject } from "typescript-json-serializer";
 import { Verdict } from "../Verdict";
 
-@Serializable()
+@JsonObject()
 export class VaasVerdict {
   public constructor(
     @JsonProperty() public sha256: string,

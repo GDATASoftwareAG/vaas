@@ -1,8 +1,8 @@
-import { Serializable, JsonProperty } from "typescript-json-serializer";
+import { JsonProperty, JsonObject } from "typescript-json-serializer";
 import { Kind, Message } from "./message";
 import { Verdict } from "../Verdict";
 
-@Serializable()
+@JsonObject()
 export class VerdictResponse extends Message {
   public constructor(
     @JsonProperty() public sha256: string,
