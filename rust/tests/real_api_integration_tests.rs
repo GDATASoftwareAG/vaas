@@ -456,7 +456,7 @@ async fn from_url_single_malicious_url() {
     let ct = CancellationToken::from_seconds(10);
     let url = Url::parse("https://secure.eicar.org/eicar.com").unwrap();
 
-    let verdict = vaas.for_url(url, &ct).await;
+    let verdict = vaas.for_url(&url, &ct).await;
 
     assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
 }
@@ -465,9 +465,9 @@ async fn from_url_single_malicious_url() {
 async fn from_url_single_clean_url() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
-    let url = Url::parse("https://random-data-api.com/api/v2/beers").unwrap();
+    let url = Url::parse("https://www.gdatasoftware.com/oem/verdict-as-a-service").unwrap();
 
-    let verdict = vaas.for_url(url, &ct).await;
+    let verdict = vaas.for_url(&url, &ct).await;
 
     assert_eq!(Verdict::Clean, verdict.as_ref().unwrap().verdict);
 }

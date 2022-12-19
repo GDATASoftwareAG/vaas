@@ -1,5 +1,3 @@
-
-import { promises as fs } from "fs";
 import {
   ClientCredentialsGrantAuthenticator,
   Vaas,
@@ -18,7 +16,6 @@ function getFromEnvironment(key: string) {
 async function main() {
   const CLIENT_ID = getFromEnvironment("CLIENT_ID");
   const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
-  const SCAN_PATH = getFromEnvironment("SCAN_PATH");
   const TOKEN_URL =
     "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
 
@@ -31,12 +28,11 @@ async function main() {
   const vaas = new Vaas();
   const token = await authenticator.getToken()
   await vaas.connect(token);
+  
+  const url = new URL("https://secure.eicar.org/eicar.com");
 
-  const f = await fs.open(SCAN_PATH, "r");
-
-  const verdict = await vaas.forFile(await f.readFile());
+  const verdict = await vaas.forUrl(url);
   console.log(verdict);
-  f.close();
   vaas.close();
 }
 

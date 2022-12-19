@@ -6,15 +6,11 @@ _Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning
 
 ## What does the SDK do?
 
-It gives you as a developer a functions to talk to G DATA VaaS. It wraps away the complexity of the API into 5 basic functions.
+It gives you as a developer a functions to talk to G DATA VaaS. It wraps away the complexity of the API into 3 basic functions.
 
 ### forSha256
 
 If you calculate the sha256 for a file, you can request that sha256 against G DATA VaaS. It's the fastest way to get a verdict from our service.
-
-### forSha256List
-
-You can also request multiple sha256 with a single function call.
 
 ### forUrl
 
@@ -24,62 +20,52 @@ If you want to request if a file behind a URL is safe, you can specify the URL a
 
 You can also ask for a file itself. You will still get the benefit of a fast verdict via Sha256 because the SDK will do that for you first. But additionally, if we don't know the file, the file will get uploaded and (automatically) analyzed by us.
 
-### forFileList
-
-You can also request multiple files with a single function call.
 
 ## How to use
 
 ### Installation
 
 ```bash
-npm install gdata-vaas
+composer require gdata/vaas
 ```
 
 ### Import
 
-```typescript
-import { ClientCredentialsGrantAuthenticator, Vaas } from "gdata-vaas";
+```php
+use VaasSdk\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Vaas;
 ```
 
 ### Request a verdict
 
 Authentication & Initializing:
-```typescript
-let authenticator = new ClientCredentialsGrantAuthenticator(
-    CLIENT_ID,
-    CLIENT_SECRET,
-    TOKEN_URL
+```php
+$authenticator = new ClientCredentialsGrantAuthenticator(
+    $CLIENT_ID,
+    $CLIENT_SECRET,
+    $TOKEN_URL
 );
-let vaas = new Vaas();
-let token = await authenticator.getToken()
-await vaas.connect(token, VAAS_URL)
+$vaas = new Vaas($VAAS_URL);
+$vaas->Connect($authenticator->getToken());
 ```
 
 Verdict Request for SHA256:
-```typescript
-const sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-const verdict = await vaas.forSha256(sha256);
-if (verdict.verdict === "Malicious") {
-  console.log("This was malware.");
-}
+```php
+$vaasVerdict = $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
+fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
 ```
 
 Verdict Request for a file:
-```typescript
-const verdict = await vaas.forFile(response.data);
-if (verdict.verdict === "Malicious") {
-  console.log("This was malware.");
-}
+```php
+$scanPath = getenv("SCAN_PATH");
+$vaasVerdict = $vaas->ForFile($scanPath);
+fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
 ```
 
 Verdict Request for a URL:
-```typescript
-const verdict = await vaas.forUrl(
-  new URL("https://www.gdatasoftware.com/oem/verdict-as-a-service"));
-if (verdict.verdict === "Clean") {
-  console.log("This URL is clean.");
-}
+```php
+$vaasVerdict = $vaas->ForUrl("https://www.gdatasoftware.com/oem/verdict-as-a-service");
+fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
 ```
 
 ## <a name="interested"></a>I'm interested in VaaS

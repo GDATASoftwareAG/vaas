@@ -12,10 +12,10 @@ pub struct VerdictRequestForUrl {
 }
 
 impl VerdictRequestForUrl {
-    pub fn new(url: Url, session_id: String) -> Self {
+    pub fn new(url: &Url, session_id: String) -> Self {
         Self {
             guid: uuid::Uuid::new_v4().to_string(),
-            url: url.into(),
+            url: url.to_string(),
             kind: Kind::VerdictRequestForUrl,
             session_id,
         }

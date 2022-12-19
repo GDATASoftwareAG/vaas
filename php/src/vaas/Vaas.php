@@ -95,7 +95,7 @@ class Vaas
      * @throws Exceptions\InvalidSha256Exception
      * @throws Exceptions\TimeoutException
      * 
-     * @return string the verdict
+     * @return VaasVerdict the verdict
      */
     public function ForSha256(string $hashString, string $uuid = null): VaasVerdict
     {
@@ -114,7 +114,7 @@ class Vaas
      * 
      * @throws Exceptions\TimeoutException
      * 
-     * @return string the verdict
+     * @return VaasVerdict the verdict
      */
     public function ForUrl(string $url, string $uuid = null): VaasVerdict
     {
@@ -135,7 +135,7 @@ class Vaas
      * @throws Exceptions\InvalidSha256Exception
      * @throws Exceptions\UploadFailedException
      * 
-     * @return string the verdict
+     * @return VaasVerdict the verdict
      */
     public function ForFile(string $path, bool $upload = true, string $uuid = null): VaasVerdict
     {

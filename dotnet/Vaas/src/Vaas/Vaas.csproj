@@ -9,6 +9,7 @@
     <Company>G DATA CyberDefense AG</Company>
     <PackageId>GDataCyberDefense.Vaas</PackageId>
     <PackageTags>security;malware;malware-analysis;it-security;malware-detection</PackageTags>
+    <PackageReadmeFile>Readme.md</PackageReadmeFile>
     <Description>
       Verdict-as-a-Service (VaaS) is a service that provides a platform for scanning files for malware and 
       other threats. It allows easy integration in your application. With a few lines of code, you can start 
@@ -23,5 +24,10 @@
   <ItemGroup>
     <PackageReference Include="Websocket.Client" Version="4.4.43" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Readme.md" Pack="true" PackagePath="\"/>
+  </ItemGroup>
+  
 
 </Project>

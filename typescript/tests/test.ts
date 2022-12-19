@@ -198,7 +198,7 @@ describe("Test verdict requests", function () {
 
     it('if a clean url is submitted, a verdict "clean" is expected', async () => {
         const vaas = await createVaas();
-        const verdict = await vaas.forUrl(new URL("https://random-data-api.com/api/v2/beers"));
+        const verdict = await vaas.forUrl(new URL("https://www.gdatasoftware.com/oem/verdict-as-a-service"));
         expect(verdict.verdict).to.equal("Clean");
     });
     

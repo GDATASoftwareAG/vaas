@@ -61,14 +61,24 @@ jobs:
           gradle-version: "7.2"
           build-root-directory: java
 
-      - name: run examples
+      - name: run examples for file
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
         uses: gradle/gradle-build-action@v2
         with:
-          arguments: run
+          arguments: fileScan
+          gradle-version: "7.2"
+          build-root-directory: java/examples/VaasExample
+
+      - name: run examples for url
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: urlScan
           gradle-version: "7.2"
           build-root-directory: java/examples/VaasExample
 

@@ -5,6 +5,7 @@ edition = "2021"
 license = "MIT"
 authors = ["GDATA CyberDefense AG"]
 description = "Check files and hashes for malicious content."
+readme = "Readme.md"
 keywords = ["malware", "anti-virus", "security"]
 categories = ["api-bindings"]
 homepage = "https://github.com/GDATASoftwareAG/vaas"
