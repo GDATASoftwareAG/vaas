@@ -8,68 +8,86 @@ require 'digest'
 require 'protocol/http/body/file'
 
 require_relative 'vaas_verdict'
-
-URL = "wss://gateway-vaas.gdatasecurity.de"
-
-
+require_relative 'vaas_errors'
 
 class Vaas
 
-  attr_accessor :session_id, :connection
+  attr_accessor :session_id, :websocket, :url, :connection_status
 
   def initialize
     @session_id = nil
-    @connection = nil
+    @websocket = nil
+    @url = "wss://gateway-vaas.gdatasecurity.de"
+    @connection_status = false
   end
-
 
   def connect(token)
+    endpoint = Async::HTTP::Endpoint.parse(url, alpn_protocols: Async::HTTP::Protocol::HTTP11.names)
+    self.websocket = Async::WebSocket::Client.connect(endpoint)
 
-      endpoint = Async::HTTP::Endpoint.parse(URL, alpn_protocols: Async::HTTP::Protocol::HTTP11.names)
-      self.connection = Async::WebSocket::Client.connect(endpoint)
-      authenticate(token)
 
+    auth_request = JSON.generate({:kind => "AuthRequest", :token => "#{token}"})
+    websocket.write(auth_request)
+
+    while message = websocket.read
+      message = JSON.parse(message)
+      if message['success'] == true
+        self.session_id = message['session_id']
+        self.connection_status = true
+        break
+      else
+        raise VaasAuthenticationError
+      end
+    end
   end
 
-  def authenticate(token)
-    auth_request = JSON.generate({:kind => "AuthRequest", :token => "#{token}"})
-    connection.write(auth_request)
+  def get_authenticated_websocket
+      raise VaasInvalidStateError if websocket == nil
+      raise VaasConnectionClosedError "connection closed or connect() was not awaited" unless connection_status
+      raise VaasConnectionClosedError, "connect() was not awaited" if session_id == nil
+      websocket
+  end
 
-    while message = connection.read
+  def close
+      websocket&.close
+      self.websocket = nil
+  end
+
+  def __for_sha256(sha256)
+    websocket = get_authenticated_websocket
+    guid = SecureRandom.uuid
+    verdict_request =  JSON.generate({:kind => "VerdictRequest",
+                                      :session_id => "#{session_id}",
+                                      :sha256 => "#{sha256}",
+                                      :guid => "#{guid}"})
+    websocket.write(verdict_request)
+
+    while message = websocket.read
       message = JSON.parse(message)
-      if message['kind'] == "AuthResponse"
-        self.session_id = message['session_id']
-        break
+      if message['kind'] == "VerdictResponse"
+        return message
       end
-
     end
   end
 
   def for_sha256(sha256)
-    verdict_request =  JSON.generate({:kind => "VerdictRequest", :session_id => "#{session_id}", :sha256 => "#{sha256}", :guid => "#{SecureRandom.uuid}"})
-    connection.write(verdict_request)
-
-    while message = connection.read
-      message = JSON.parse(message)
-      if message['kind'] == "VerdictResponse"
-        return VaasVerdict.new(message)
-      end
-    end
+    response = __for_sha256(sha256)
+    VaasVerdict.new(response)
   end
 
   def for_file(path)
     sha256 = Digest::SHA256.file(path).hexdigest
-    verdict_request =  JSON.generate({:kind => "VerdictRequest", :session_id => "#{session_id}", :sha256 => "#{sha256}", :guid => "#{SecureRandom.uuid}"})
-    connection.write(verdict_request)
+    response = __for_sha256(sha256)
+    if response['verdict'] == 'Unknown'
+      upload(response, path)
+    else
+      return VaasVerdict.new(response)
+    end
 
-    while message = connection.read
+    while message = websocket.read
       message = JSON.parse(message)
       if message['kind'] == "VerdictResponse" and message['verdict'] != "Unknown"
         return VaasVerdict.new(message)
-      elsif message['kind'] == "VerdictResponse" and message['verdict'] == "Unknown"
-        upload(message, path)
-      else
-        p message
       end
     end
   end
@@ -84,10 +102,10 @@ class Vaas
       header = [['authorization', token]]
       body = Protocol::HTTP::Body::File.open(File.join(path))
 
-      response = client.put(url, header, body)
-      p response.status
+      client.put(url, header, body).read
+
     rescue => e
-      p e
+      raise VaasUploadError, e
     ensure
       client&.close
     end
