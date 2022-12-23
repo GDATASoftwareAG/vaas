@@ -6,6 +6,7 @@ require 'json'
 require 'securerandom'
 require 'digest'
 require 'protocol/http/body/file'
+require 'uri'
 
 require_relative 'vaas_verdict'
 require_relative 'vaas_errors'
@@ -14,26 +15,24 @@ class Vaas
 
   attr_accessor :session_id, :websocket, :url, :connection_status
 
-  def initialize
+  def initialize(url="wss://gateway-vaas.gdatasecurity.de")
     @session_id = nil
     @websocket = nil
-    @url = "wss://gateway-vaas.gdatasecurity.de"
+    @url = url
     @connection_status = false
   end
 
   def connect(token)
-    endpoint = Async::HTTP::Endpoint.parse(url, alpn_protocols: Async::HTTP::Protocol::HTTP11.names)
+    endpoint = Async::HTTP::Endpoint.parse(url, alpn_protocols: Async::HTTP::Protocol::HTTP1.names)
     self.websocket = Async::WebSocket::Client.connect(endpoint)
 
-
-    auth_request = JSON.generate({:kind => "AuthRequest", :token => "#{token}"})
+    auth_request = JSON.generate({:kind => "AuthRequest", :token => token})
     websocket.write(auth_request)
 
     while message = websocket.read
       message = JSON.parse(message)
       if message['success'] == true
         self.session_id = message['session_id']
-        self.connection_status = true
         break
       else
         raise VaasAuthenticationError
@@ -42,24 +41,27 @@ class Vaas
   end
 
   def get_authenticated_websocket
-      raise VaasInvalidStateError if websocket == nil
-      raise VaasConnectionClosedError "connection closed or connect() was not awaited" unless connection_status
-      raise VaasConnectionClosedError, "connect() was not awaited" if session_id == nil
-      websocket
+    raise VaasInvalidStateError if websocket == nil
+    raise VaasInvalidStateError, "connect() was not awaited" if session_id == nil
+    begin
+      websocket.write("ping") # test connection
+    rescue IOError => e # still not working
+      raise VaasConnectionClosedError e.message
+    end
+    websocket
   end
 
   def close
       websocket&.close
-      self.websocket = nil
   end
 
   def __for_sha256(sha256)
     websocket = get_authenticated_websocket
-    guid = SecureRandom.uuid
+    guid = SecureRandom.uuid.to_s
     verdict_request =  JSON.generate({:kind => "VerdictRequest",
-                                      :session_id => "#{session_id}",
-                                      :sha256 => "#{sha256}",
-                                      :guid => "#{guid}"})
+                                      :session_id => session_id,
+                                      :sha256 => sha256,
+                                      :guid => guid})
     websocket.write(verdict_request)
 
     while message = websocket.read
@@ -87,6 +89,24 @@ class Vaas
     while message = websocket.read
       message = JSON.parse(message)
       if message['kind'] == "VerdictResponse" and message['verdict'] != "Unknown"
+        return VaasVerdict.new(message)
+      end
+    end
+  end
+
+  def for_url(url)
+    websocket = get_authenticated_websocket
+    guid = SecureRandom.uuid.to_s
+    url = URI(url).to_s
+    verdict_request =  JSON.generate({:kind => "VerdictRequestForUrl",
+                                      :session_id => session_id,
+                                      :guid => guid,
+                                      :url => url})
+    websocket.write(verdict_request)
+
+    while message = websocket.read
+      message = JSON.parse(message)
+      if message['kind'] == "VerdictResponse"
         return VaasVerdict.new(message)
       end
     end

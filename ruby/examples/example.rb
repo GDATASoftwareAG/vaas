@@ -1,7 +1,7 @@
 require 'async'
 
-require_relative 'client_credentials_grant_authenticator'
-require_relative 'vaas'
+require_relative '../src/client_credentials_grant_authenticator'
+require_relative '../src/vaas'
 
 CLIENT_ID = "YOUR ID"
 CLIENT_SECRET = "YOUR SECRET"
