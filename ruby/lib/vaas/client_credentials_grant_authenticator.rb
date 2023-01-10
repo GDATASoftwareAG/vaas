@@ -2,6 +2,7 @@ require 'json'
 require 'async'
 require 'async/http/internet'
 
+module VAAS
 class ClientCredentialsGrantAuthenticator
 
     attr_accessor :client_id, :client_secret, :token_endpoint, :token
@@ -28,4 +29,5 @@ class ClientCredentialsGrantAuthenticator
         end
         token
     end
+end
 end

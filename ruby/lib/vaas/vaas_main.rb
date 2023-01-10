@@ -11,6 +11,7 @@ require 'uri'
 require_relative 'vaas_verdict'
 require_relative 'vaas_errors'
 
+module VAAS
 class VaasMain
 
   attr_accessor :session_id, :websocket, :url, :connection_status
@@ -130,4 +131,5 @@ class VaasMain
     end
   end
 
+end
 end

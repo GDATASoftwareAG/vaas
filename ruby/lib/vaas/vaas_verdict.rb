@@ -1,3 +1,4 @@
+module VAAS
 class VaasVerdict
 
   attr_reader :sha256, :verdict, :guid
@@ -8,4 +9,5 @@ class VaasVerdict
     @guid = response['guid']
   end
 
+end
 end

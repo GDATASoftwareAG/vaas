@@ -1,3 +1,4 @@
+module VAAS
 # Authentication Error
 class VaasAuthenticationError < StandardError
   def initialize(msg = "authentication failed")
@@ -30,4 +31,5 @@ class VaasUploadError < StandardError
   def initialize(msg = "upload failed")
     super
   end
+end
 end
