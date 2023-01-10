@@ -33,26 +33,25 @@ class Vaas
       message = JSON.parse(message)
       if message['success'] == true
         self.session_id = message['session_id']
+        self.connection_status = true
         break
       else
         raise VaasAuthenticationError
       end
     end
+
   end
 
   def get_authenticated_websocket
     raise VaasInvalidStateError if websocket == nil
     raise VaasInvalidStateError, "connect() was not awaited" if session_id == nil
-    begin
-      websocket.write("ping") # test connection
-    rescue IOError => e # still not working
-      raise VaasConnectionClosedError e.message
-    end
+    raise VaasConnectionClosedError unless connection_status
     websocket
   end
 
   def close
       websocket&.close
+      self.connection_status = false
   end
 
   def __for_sha256(sha256)

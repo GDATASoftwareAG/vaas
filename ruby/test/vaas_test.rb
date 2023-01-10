@@ -17,7 +17,7 @@ class VaasTest < Minitest::Test
   describe TOOL_CLASS do
 
 
-  def create_and_connect(token=nil)
+  def create(token=nil)
     authenticator = ClientCredentialsGrantAuthenticator.new(
       CLIENT_ID,
       CLIENT_SECRET,
@@ -26,45 +26,61 @@ class VaasTest < Minitest::Test
     vaas = Vaas.new(VAAS_URL)
     token = token || authenticator.get_token
 
-    auth_task = Async do
-      vaas.connect(token)
-    end
-    auth_task.wait
-    vaas
+    return [vaas, token]
   end
 
   describe 'succeeds' do
 
     specify 'for_sha356' do
-      vaas = create_and_connect
-      result = vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
-      verdict = result.verdict
-      assert_equal verdict, "Malicious"
-      Async {vaas.close}
+      vaas, token = create
+      Async do
+        Async { vaas.connect(token) }.wait
+
+        result = vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+        verdict = result.verdict
+        assert_equal "Malicious", verdict
+      ensure
+        Async { vaas.close }
+      end
     end
 
     specify 'for_file' do
-      vaas = create_and_connect
-      result = vaas.for_file("./test.txt")
-      verdict = result.verdict
-      assert_equal verdict, "Clean"
-      Async {vaas.close}
+      vaas, token = create
+      Async do
+        Async { vaas.connect(token) }.wait
+
+        result = vaas.for_file("./test.txt")
+        verdict = result.verdict
+        assert_equal "Clean", verdict
+      ensure
+        Async { vaas.close }
+      end
     end
 
     specify 'for_url' do
-      vaas = create_and_connect
-      result = vaas.for_url("https://secure.eicar.org/eicar.com.txt")
-      verdict = result.verdict
-      assert_equal verdict, "Malicious"
-      Async {vaas.close}
+      vaas, token = create
+      Async do
+        Async { vaas.connect(token) }.wait
+
+        result = vaas.for_url("https://secure.eicar.org/eicar.com.txt")
+        verdict = result.verdict
+        assert_equal verdict, "Malicious"
+      ensure
+        Async { vaas.close }
+      end
     end
 
     specify 'pup' do
-      vaas = create_and_connect
-      result = vaas.for_sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
-      verdict = result.verdict
-      assert_equal verdict, "Pup"
-      Async {vaas.close}
+      vaas, token = create
+      Async do
+        Async { vaas.connect(token) }.wait
+
+        result = vaas.for_sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
+        verdict = result.verdict
+        assert_equal verdict, "Pup"
+      ensure
+        Async { vaas.close }
+      end
     end
   end
 
@@ -75,24 +91,30 @@ class VaasTest < Minitest::Test
       assert_raises VaasInvalidStateError do
         vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
       end
-      Async {vaas.close}
     end
 
     specify 'not_authenticated' do
-      # TO-DO: handle warning
-      assert_raises VaasAuthenticationError do
-        create_and_connect("invalid token")
+      vaas, token = create("invalid token")
+      Async do
+        assert_raises VaasAuthenticationError do
+          vaas.connect(token)
+        end
+      ensure
+        Async { vaas.close }
       end
     end
 
     specify 'connection_closed' do
-      vaas = create_and_connect
-      Async {vaas.close}
-      assert_raises VaasConnectionClosedError do
-        result vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+      vaas, token = create
+      Async do
+        Async { vaas.connect(token) }.wait
+        Async {vaas.close}
+        assert_raises VaasConnectionClosedError do
+          result vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+        end
       end
     end
-  end
 
+  end
   end
   end

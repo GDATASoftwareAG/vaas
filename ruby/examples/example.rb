@@ -17,18 +17,14 @@ def main
   vaas = Vaas.new
   token = authenticator.get_token
 
-  auth_task = Async do
-    vaas.connect(token)
-  end
-
-  auth_task.wait
   Async do
-    result2 = vaas.for_file(PATH)
-    puts "Verdict #{result2.sha256} is detected as #{result2.verdict}"
-  end
+    Async { vaas.connect(token) }.wait
 
-ensure
-  Async do
+    result = vaas.for_file(PATH)
+
+    puts "Verdict #{result.sha256} is detected as #{result.verdict}"
+
+  ensure
     vaas.close
   end
 end
