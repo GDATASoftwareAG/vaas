@@ -3,8 +3,8 @@ require 'minitest/spec'
 require 'dotenv'
 require 'async'
 
-require_relative '../src/client_credentials_grant_authenticator'
-require_relative '../src/vaas'
+require_relative '../lib/client_credentials_grant_authenticator'
+require_relative '../lib/vaas'
 
 Dotenv.load
 CLIENT_ID = ENV["CLIENT_ID"]
