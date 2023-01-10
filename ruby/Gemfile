@@ -1,0 +1,12 @@
+source 'https://rubygems.org'
+
+gem 'async'
+gem 'async-http'
+gem 'async-websocket'
+gem 'digest'
+gem 'uri'
+
+group :test do
+  gem 'minitest'
+  gem 'dotenv'
+end

@@ -1,21 +1,19 @@
 require 'async'
-require 'vaas'
-
-require_relative '../lib/client_credentials_grant_authenticator'
-require_relative '../lib/vaas'
+require 'vaas/client_credentials_grant_authenticator'
+require 'vaas/vaas_main'
 
 CLIENT_ID = "YOUR ID"
 CLIENT_SECRET = "YOUR SECRET"
 PATH = "PATH FOR TEST-FILE"
 
 def main
-  authenticator = ClientCredentialsGrantAuthenticator.new(
+  authenticator = VAAS::ClientCredentialsGrantAuthenticator.new(
     CLIENT_ID,
     CLIENT_SECRET,
     "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
   )
 
-  vaas = Vaas.new
+  vaas = VAAS::VaasMain.new
   token = authenticator.get_token
 
   Async do

@@ -3,8 +3,8 @@ require 'minitest/spec'
 require 'dotenv'
 require 'async'
 
-require_relative '../lib/client_credentials_grant_authenticator'
-require_relative '../lib/vaas'
+require_relative '../lib/vaas/client_credentials_grant_authenticator'
+require_relative '../lib/vaas/vaas_main'
 
 Dotenv.load
 CLIENT_ID = ENV["CLIENT_ID"]
@@ -18,12 +18,12 @@ class VaasTest < Minitest::Test
 
 
   def create(token=nil)
-    authenticator = ClientCredentialsGrantAuthenticator.new(
+    authenticator = VAAS::ClientCredentialsGrantAuthenticator.new(
       CLIENT_ID,
       CLIENT_SECRET,
       TOKEN_URL
     )
-    vaas = Vaas.new(VAAS_URL)
+    vaas = VAAS::VaasMain.new(VAAS_URL)
     token = token || authenticator.get_token
 
     return [vaas, token]
@@ -87,8 +87,8 @@ class VaasTest < Minitest::Test
   describe 'fail' do
 
     specify 'not_connected' do
-      vaas = Vaas.new
-      assert_raises VaasInvalidStateError do
+      vaas = VAAS::VaasMain.new
+      assert_raises VAAS::VaasInvalidStateError do
         vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
       end
     end
@@ -96,7 +96,7 @@ class VaasTest < Minitest::Test
     specify 'not_authenticated' do
       vaas, token = create("invalid token")
       Async do
-        assert_raises VaasAuthenticationError do
+        assert_raises VAAS::VaasAuthenticationError do
           vaas.connect(token)
         end
       ensure
@@ -109,7 +109,7 @@ class VaasTest < Minitest::Test
       Async do
         Async { vaas.connect(token) }.wait
         Async {vaas.close}
-        assert_raises VaasConnectionClosedError do
+        assert_raises VAAS::VaasConnectionClosedError do
           result vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
         end
       end
