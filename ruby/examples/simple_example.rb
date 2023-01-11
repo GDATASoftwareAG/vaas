@@ -13,15 +13,18 @@ def main
     "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
   )
 
+  # create a vaas object and get a token to authenticate
   vaas = VAAS::VaasMain.new
   token = authenticator.get_token
 
   Async do
+    # wait to connect and authenticate
     Async { vaas.connect(token) }.wait
 
-    result = vaas.for_file(PATH)
+    # simple method to get the verdict of a file
+    verdict = vaas.for_file(PATH)
 
-    puts "Verdict #{result.sha256} is detected as #{result.verdict}"
+    puts "Verdict #{verdict.sha256} is detected as #{verdict.verdict}"
 
   ensure
     vaas.close
