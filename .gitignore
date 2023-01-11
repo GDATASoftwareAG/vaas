@@ -52,3 +52,4 @@ _trial_temp*/
 
 # Ruby
 !ruby/lib
+ruby/.idea
