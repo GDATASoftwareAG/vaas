@@ -15,11 +15,12 @@ Gem::Specification.new do |s|
   s.bindir        = "exe"
   s.executables   = s.files.grep(%r{^exe/}) { |f| File.basename(f) }
 
-  s.add_dependency 'async'
-  s.add_dependency 'async-http'
-  s.add_dependency 'async-websocket'
-  s.add_dependency 'digest'
-  s.add_dependency 'uri'
+  s.add_dependency 'async', '~> 2.3.1'
+  s.add_dependency 'async-http', '~> 0.59.4'
+  s.add_dependency 'async-websocket', '~> 0.22.1'
+  s.add_dependency 'digest', '~> 3.1.1'
+  s.add_dependency 'uri', '~> 0.12.0'
 
-  s.add_development_dependency "minitest"
+  s.add_development_dependency "minitest", '~> 5.17.0'
+  s.add_development_dependency 'dotenv', '~> 2.8.1'
 end
