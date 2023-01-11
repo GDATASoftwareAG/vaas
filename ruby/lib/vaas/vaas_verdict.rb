@@ -1,13 +1,13 @@
 module VAAS
-class VaasVerdict
+  class VaasVerdict
 
-  attr_reader :sha256, :verdict, :guid
+    attr_reader :sha256, :verdict, :guid
 
-  def initialize(response)
-    @sha256 = response['sha256']
-    @verdict = response['verdict']
-    @guid = response['guid']
+    def initialize(response)
+      @sha256 = response['sha256']
+      @verdict = response['verdict']
+      @guid = response['guid']
+    end
+
   end
-
-end
 end
