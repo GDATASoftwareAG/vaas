@@ -22,8 +22,8 @@ module VAAS
 
         response = client.post(token_endpoint, header, body)
         self.token = JSON.parse(response.read)['access_token']
-      rescue
-        raise VaasAuthenticationError
+      rescue => e
+        raise VaasAuthenticationError, e
       ensure
         client&.close
       end

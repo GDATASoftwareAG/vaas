@@ -43,7 +43,6 @@ module VAAS
           raise VaasAuthenticationError
         end
       end
-
     end
 
     def get_authenticated_websocket
@@ -63,9 +62,9 @@ module VAAS
       websocket = get_authenticated_websocket
       guid = SecureRandom.uuid.to_s
       verdict_request =  JSON.generate({:kind => "VerdictRequest",
-                                            :session_id => session_id,
-                                            :sha256 => sha256,
-                                            :guid => guid})
+                                        :session_id => session_id,
+                                        :sha256 => sha256,
+                                        :guid => guid})
       websocket.write(verdict_request)
 
       # receive verdict message
@@ -109,9 +108,9 @@ module VAAS
       guid = SecureRandom.uuid.to_s
       url = URI(url).to_s
       verdict_request =  JSON.generate({:kind => "VerdictRequestForUrl",
-                                            :session_id => session_id,
-                                            :guid => guid,
-                                            :url => url})
+                                        :session_id => session_id,
+                                        :guid => guid,
+                                        :url => url})
       websocket.write(verdict_request)
 
       # receive verdict message
@@ -142,6 +141,5 @@ module VAAS
         client&.close
       end
     end
-
   end
 end
