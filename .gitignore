@@ -49,3 +49,6 @@ obj/
 __pycache__/
 _trial_temp*/
 *.zip
+
+# Ruby
+!ruby/lib
