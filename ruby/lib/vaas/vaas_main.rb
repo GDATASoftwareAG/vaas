@@ -46,8 +46,8 @@ module VAAS
     end
 
     def get_authenticated_websocket
-      raise VaasInvalidStateError if websocket == nil
-      raise VaasInvalidStateError, "connect() was not awaited" if session_id == nil
+      raise VaasInvalidStateError if websocket.nil?
+      raise VaasInvalidStateError, "connect() was not awaited" if session_id.nil?
       raise VaasConnectionClosedError unless connection_status
       websocket
     end
@@ -96,7 +96,7 @@ module VAAS
       # receive verdict message of uploaded file
       while message = websocket.read
         message = JSON.parse(message)
-        if message['kind'] == "VerdictResponse" and message['verdict'] != "Unknown"
+        if message['kind'] == "VerdictResponse" && message['verdict'] != "Unknown"
           return VaasVerdict.new(message)
         end
       end
@@ -121,7 +121,6 @@ module VAAS
         end
       end
     end
-
 
     def upload (message, path)
       token = message['upload_token']
