@@ -46,8 +46,8 @@ module VAAS
     end
 
     def get_authenticated_websocket
-      raise VaasInvalidStateError if websocket.nil?
-      raise VaasInvalidStateError, "connect() was not awaited" if session_id.nil?
+      raise VaasInvalidStateError unless websocket
+      raise VaasInvalidStateError, "connect() was not awaited" unless session_id
       raise VaasConnectionClosedError unless connection_status
       websocket
     end
