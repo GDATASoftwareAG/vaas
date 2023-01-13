@@ -57,10 +57,10 @@ module VAAS
         self.connection_status = false
     end
 
-    def __for_sha256(sha256)
+    def __for_sha256(sha256, guid)
       # send verdict request with sha256
       websocket = get_authenticated_websocket
-      guid = SecureRandom.uuid.to_s
+      guid = guid || SecureRandom.uuid.to_s
       verdict_request =  JSON.generate({:kind => "VerdictRequest",
                                         :session_id => session_id,
                                         :sha256 => sha256,
@@ -76,15 +76,15 @@ module VAAS
       end
     end
 
-    def for_sha256(sha256)
-      response = __for_sha256(sha256)
+    def for_sha256(sha256, guid = nil)
+      response = __for_sha256(sha256, guid)
       VaasVerdict.new(response)
     end
 
-    def for_file(path)
+    def for_file(path, guid = nil)
       # get sha256 of file and send verdict request
       sha256 = Digest::SHA256.file(path).hexdigest
-      response = __for_sha256(sha256)
+      response = __for_sha256(sha256, guid)
 
       # upload file if verdict is unknown
       if response['verdict'] == 'Unknown'
@@ -102,10 +102,10 @@ module VAAS
       end
     end
 
-    def for_url(url)
+    def for_url(url, guid = nil)
       #send verdict request with url
       websocket = get_authenticated_websocket
-      guid = SecureRandom.uuid.to_s
+      guid = guid || SecureRandom.uuid.to_s
       url = URI(url).to_s
       verdict_request =  JSON.generate({:kind => "VerdictRequestForUrl",
                                         :session_id => session_id,
