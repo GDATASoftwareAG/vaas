@@ -24,6 +24,7 @@ You can also ask for a file itself. You will still get the benefit of a fast ver
 
 ### Installation
 
+This gem works only on a Linux distribution!
 ```bash
 gem install vaas
 ```
