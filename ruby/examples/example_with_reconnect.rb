@@ -2,9 +2,9 @@ require 'async'
 require 'vaas/client_credentials_grant_authenticator'
 require 'vaas/vaas_main'
 
-CLIENT_ID = "YOUR ID"
-CLIENT_SECRET = "YOUR SECRET"
-PATH = "PATH FOR TEST-FILE"
+CLIENT_ID = ENV.fetch('CLIENT_ID')
+CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
+PATH = ENV.fetch('PATH')
 
 def main
   authenticator = VAAS::ClientCredentialsGrantAuthenticator.new(
