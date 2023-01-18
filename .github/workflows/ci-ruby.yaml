@@ -1,0 +1,94 @@
+name: vaas-ruby-ci
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "ruby/**"
+      - ".github/workflows/ci-ruby.yaml"
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "ruby/**"
+      - ".github/workflows/ci-ruby.yaml"
+
+jobs:
+  build-ruby:
+    name: Build & Test Ruby SDK
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: build gem
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.1' # Not needed with a .ruby-version file
+          bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+        run: gem build vaas.gemspec
+        working-directory: ruby
+
+      - name: extract version
+        if: startsWith(github.ref, 'refs/tags/rb')
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/rb}" >> $GITHUB_ENV
+          echo $RELEASE_VERSION
+
+      - name: set version
+        if: startsWith(github.ref, 'refs/tags/rb')
+        run: |
+          sed -i "s/VERSION = '0.0.1'/VERSION = '$RELEASE_VERSION'/g" ./ruby/lib/vaas/version.rb
+
+      - name: Test
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/rb')
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        run: ruby vaas_test.rb
+        working-directory: ruby/test
+
+      - name: Test staging
+        if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/rb')
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
+          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
+          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        run: ruby vaas_test.rb
+        working-directory: ruby/test
+
+      - name: Run simple example
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          PATH: "simple_example.rb"
+        run: ruby simple_example.rb
+        working-directory: ruby/examples
+
+      - name: Run example with lists
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          PATHS: ["simple_example.rb", "example_with_reconnect.rb", "example_with_lists.rb"]
+        run: ruby example_with_lists.rb
+        working-directory: ruby/examples
+
+      - name: Run example with reconnect
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          PATH: "simple_example.rb"
+        run: ruby example_with_reconnect.rb
+        working-directory: ruby/examples
+
+      - name: Push to rubygems.org
+        if: startsWith(github.ref, 'refs/tags/rb')
+        env:
+          RUBY_GEMS_TOKEN: ${{ secrets.RUBY_GEMS_TOKEN }}
+        run: gem push -k $RUBY_GEMS_TOKEN vaas-$RELEASE_VERSION.gem
+        working-directory: ruby
