@@ -22,12 +22,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-
-      - name: build gem
-        uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '3.1' # Not needed with a .ruby-version file
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
+      - name: build gem
         run: gem build vaas.gemspec
         working-directory: ruby
 
@@ -74,7 +73,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          PATHS: ["simple_example.rb", "example_with_reconnect.rb", "example_with_lists.rb"]
+          PATHS: "simple_example.rb, example_with_reconnect.rb, example_with_lists.rb"
         run: ruby example_with_lists.rb
         working-directory: ruby/examples
 
