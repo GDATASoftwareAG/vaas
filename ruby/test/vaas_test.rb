@@ -1,12 +1,10 @@
 require 'minitest/autorun'
 require 'minitest/spec'
-require 'dotenv'
 require 'async'
 
 require_relative '../lib/vaas/client_credentials_grant_authenticator'
 require_relative '../lib/vaas/vaas_main'
 
-Dotenv.load
 CLIENT_ID = ENV["CLIENT_ID"]
 CLIENT_SECRET = ENV["CLIENT_SECRET"]
 TOKEN_URL = ENV["TOKEN_URL"]
