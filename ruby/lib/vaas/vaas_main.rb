@@ -14,13 +14,10 @@ require_relative 'vaas_errors'
 module VAAS
   class VaasMain
 
-    attr_accessor :session_id, :websocket, :url, :connection_status
+    attr_accessor :session_id, :websocket, :url
 
     def initialize(url="wss://gateway-vaas.gdatasecurity.de")
-      @session_id = nil
-      @websocket = nil
       @url = url
-      @connection_status = false
     end
 
     def connect(token)
@@ -37,7 +34,6 @@ module VAAS
         message = JSON.parse(message)
         if message['success'] == true
           self.session_id = message['session_id']
-          self.connection_status = true
           break
         else
           raise VaasAuthenticationError
@@ -48,13 +44,12 @@ module VAAS
     def get_authenticated_websocket
       raise VaasInvalidStateError unless websocket
       raise VaasInvalidStateError, "connect() was not awaited" unless session_id
-      raise VaasConnectionClosedError unless connection_status
+      raise VaasConnectionClosedError if websocket.closed?
       websocket
     end
 
     def close
         websocket&.close
-        self.connection_status = false
     end
 
     def __for_sha256(sha256, guid)
