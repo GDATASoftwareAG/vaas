@@ -51,7 +51,7 @@ jobs:
       - name: install dependencies/gem
         run: |
           echo $RELEASE_VERSION
-          gem install "VAAS-$RELEASE_VERSION.gem"
+          gem install "vaas-$RELEASE_VERSION.gem"
         working-directory: ruby
 
       - name: Test
@@ -111,5 +111,5 @@ jobs:
           chmod 0600 ~/.gem/credentials
           set -x
           gem update --system
-          gem push "VAAS-$RELEASE_VERSION.gem"
+          gem push "vaas-$RELEASE_VERSION.gem"
         working-directory: ruby
