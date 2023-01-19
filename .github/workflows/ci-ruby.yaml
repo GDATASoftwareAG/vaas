@@ -102,5 +102,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/rb')
         env:
           RUBY_GEMS_TOKEN: ${{ secrets.RUBY_GEMS_TOKEN }}
-        run: gem push "VAAS-$RELEASE_VERSION.gem" -k $RUBY_GEMS_TOKEN 
+        run: | 
+          mkdir -p ~/.gem
+          cat << EOF > ~/.gem/credentials
+          ---
+          :rubygems_api_key: ${RUBY_GEMS_TOKEN}
+          EOF
+          chmod 0600 ~/.gem/credentials
+          set -x
+          gem update --system
+          gem push "VAAS-$RELEASE_VERSION.gem"
         working-directory: ruby
