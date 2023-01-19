@@ -1,3 +1,10 @@
+[![vaas-dotnet-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-dotnet.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-dotnet.yaml)
+[![vaas-rust-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-rust.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-rust.yaml)[![vaas-typescript-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-typescript.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-typescript.yaml)
+[![vaas-ruby-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-ruby.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-ruby.yaml)
+[![vaas-java-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-java.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-java.yaml)
+[![vaas-python-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-python.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-python.yaml)
+[![vaas-php-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-php.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-php.yaml)
+
 # Verdict-as-a-Service
 
 *Verdict-as-a-Service* (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware. 
