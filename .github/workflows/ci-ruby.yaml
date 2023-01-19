@@ -102,5 +102,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/rb')
         env:
           RUBY_GEMS_TOKEN: ${{ secrets.RUBY_GEMS_TOKEN }}
-        run: gem push -k $RUBY_GEMS_TOKEN "VAAS-$RELEASE_VERSION.gem"
+        run: gem push "VAAS-$RELEASE_VERSION.gem" -k $RUBY_GEMS_TOKEN 
         working-directory: ruby
