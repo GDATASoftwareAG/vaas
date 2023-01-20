@@ -13,11 +13,11 @@
     "license": "MIT",
     "homepage": "https://github.com/GDATASoftwareAG/vaas",
     "require": {
-        "ramsey/uuid": "^4.1",
-        "textalk/websocket": "^1.5",
-        "netresearch/jsonmapper": "^4.0",
-        "guzzlehttp/guzzle": "^7.3",
-        "monolog/monolog": "^2.3"
+        "ramsey/uuid": "^4.6",
+        "textalk/websocket": "^1.6",
+        "netresearch/jsonmapper": "^4.1",
+        "guzzlehttp/guzzle": "^7.5",
+        "monolog/monolog": "^3.2"
     },
     "autoload": {
         "psr-4": {
