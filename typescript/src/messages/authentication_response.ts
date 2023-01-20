@@ -1,7 +1,7 @@
-import { Serializable, JsonProperty } from "typescript-json-serializer";
+import { JsonProperty, JsonObject } from "typescript-json-serializer";
 import { Message, Kind } from "./message";
 
-@Serializable()
+@JsonObject()
 export class AuthenticationResponse extends Message {
   public constructor(session_id: string, success: boolean, text: string) {
     super(Kind.AuthResponse);
