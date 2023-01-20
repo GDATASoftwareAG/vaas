@@ -1,90 +1,173 @@
 package vaas
 
 import (
-	"crypto/sha256"
-	"encoding/json"
-	"io"
-	"log"
+	"errors"
 	"net/url"
-	"os"
+	"sync"
+	"time"
 
 	msg "vaas/pkg/messages"
+	"vaas/pkg/options"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
+
+const TIMEOUT = 60
 
 type Vaas struct {
 	sessionId           string
 	websocketConnection *websocket.Conn
 	Url                 url.URL `default:"wss://gateway-vaas.gdatasecurity.de"`
-	options             VaasOptions
+	options             options.VaasOptions
+	writeLock           sync.Mutex
+	readLock            sync.Mutex
 }
 
-func New(options VaasOptions) *Vaas {
+func New(options options.VaasOptions) *Vaas {
 	vaas := &Vaas{options: options}
 	return vaas
 }
 
-func (v *Vaas) Connect(token string, url string) error {
-	connection, _, websocketErr := websocket.DefaultDialer.Dial(url, nil)
-	if websocketErr != nil {
-		log.Println("Could not start client")
-		return websocketErr
-	}
+func (v *Vaas) Connect(token string) <-chan error {
+	channel := make(chan error)
 
-	v.websocketConnection = connection
-	v.Authenticate(token)
-	var authResponse msg.AuthResponse
-	v.websocketConnection.ReadJSON(authResponse)
-	v.sessionId = authResponse.SessionId
+	go func() {
+		connection, _, websocketErr := websocket.DefaultDialer.Dial("wss://gateway-vaas.gdatasecurity.de", nil)
+		if websocketErr != nil {
+			channel <- websocketErr
+		}
 
-	return nil
+		v.websocketConnection = connection
+
+		err := <-v.Authenticate(token)
+		if err != nil {
+			channel <- errors.New("failed to authenticate: " + err.Error())
+		}
+		channel <- nil
+	}()
+
+	return channel
 }
 
-func (v Vaas) Authenticate(token string) error {
-	var authenticationRequest, marshalErr = json.Marshal(msg.AuthRequest{
-		Token: token,
-	})
-	if marshalErr != nil {
-		log.Fatalf("%v", marshalErr)
-		return marshalErr
-	}
+func (v *Vaas) Authenticate(token string) <-chan error {
+	channel := make(chan error)
 
-	v.websocketConnection.WriteJSON(authenticationRequest)
+	go func() {
+		v.websocketConnection.WriteJSON(msg.AuthRequest{
+			Kind:  "AuthRequest",
+			Token: token,
+		})
 
-	return nil
+		var authResponse msg.AuthResponse
+		v.websocketConnection.ReadJSON(&authResponse)
+		if authResponse.Kind == "Error" {
+			channel <- errors.New(authResponse.Text)
+		}
+		if !authResponse.Success {
+			channel <- errors.New("failed to authenticate")
+		}
+
+		v.sessionId = authResponse.SessionId
+		channel <- nil
+	}()
+
+	return channel
 }
 
-func (v Vaas) ForFile(path string) (msg.VaasVerdict, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	sha256 := sha256.New()
-	if _, err := io.Copy(sha256, file); err != nil {
-		log.Fatal(err)
-	}
-
+func (v *Vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
-		log.Fatal("invalid operation")
+		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	v.forRequest(msg.VerdictRequest{
-		Sha256:   sha256,
-		UseCache: v.options.UseCache,
-		UseShed:  v.options.UseShed,
-	})
-	var verdict msg.VaasVerdict
+	verdict, err := v.ForSha256List([]string{sha256})
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
 
-	return verdict, nil
+	return verdict[0], nil
 }
 
-func (v Vaas) forRequest(verdictRequest msg.VerdictRequest) msg.VerdictResponse {
-	v.websocketConnection.WriteJSON(verdictRequest)
-	var verdictResponse msg.VerdictResponse
-	v.websocketConnection.ReadJSON(verdictResponse)
+func (v *Vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
+	if v.sessionId == "" {
+		return []msg.VaasVerdict{}, errors.New("invalid operation")
+	}
 
-	return verdictResponse
+	var verdicts []msg.VaasVerdict
+	var sentSha256Counter int
+	var writerGroup sync.WaitGroup
+	var readerGroup sync.WaitGroup
+
+	for _, sha256 := range sha256List {
+		writerGroup.Add(1)
+		go func(sha256 string) {
+			defer writerGroup.Done()
+			request := msg.VerdictRequest{
+				Kind:      "VerdictRequest",
+				Sha256:    sha256,
+				SessionID: v.sessionId,
+				Guid:      uuid.New().String(),
+				UseCache:  false,
+				UseShed:   true,
+			}
+			if err := v.forRequest(request); err != nil {
+				verdicts = append(verdicts, msg.VaasVerdict{
+					Sha256:  sha256,
+					Verdict: msg.Verdict(msg.Error),
+				})
+			} else {
+				sentSha256Counter++
+			}
+		}(sha256)
+	}
+	writerGroup.Wait()
+
+	verdicts = v.waitForResponses(sentSha256Counter, &readerGroup)
+
+	return verdicts, nil
+}
+
+func (v *Vaas) waitForResponses(expectedResponses int, readerGroup *sync.WaitGroup) []msg.VaasVerdict {
+	var verdicts []msg.VaasVerdict
+
+	for i := 0; i < expectedResponses; i++ {
+		readerGroup.Add(1)
+		go func() {
+			defer readerGroup.Done()
+			v.websocketConnection.SetReadDeadline(time.Now().Add(TIMEOUT * time.Second))
+			if response, err := v.forResponse(); err != nil {
+				verdicts = append(verdicts, msg.VaasVerdict{Verdict: msg.Verdict(msg.Error)})
+			} else {
+				verdicts = append(verdicts, msg.VaasVerdict{
+					Verdict: response.Verdict,
+					Sha256:  response.Sha256,
+				})
+			}
+		}()
+	}
+
+	readerGroup.Wait()
+	return verdicts
+}
+
+func (v *Vaas) forRequest(verdictRequest msg.VerdictRequest) error {
+	defer v.writeLock.Unlock()
+	v.writeLock.Lock()
+	return v.websocketConnection.WriteJSON(verdictRequest)
+}
+
+func (v *Vaas) forResponse() (msg.VerdictResponse, error) {
+	defer v.readLock.Unlock()
+	v.readLock.Lock()
+
+	var verdictResponse msg.VerdictResponse
+	if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
+		return msg.VerdictResponse{}, err
+	}
+
+	if verdictResponse.IsValid() {
+		return verdictResponse, nil
+	} else {
+		return msg.VerdictResponse{}, errors.New("invalid response")
+	}
 }

@@ -1,6 +1,6 @@
-package vaas
+package options
 
-type VaasOptions struct{
+type VaasOptions struct {
 	UseShed  bool
 	UseCache bool
 }
