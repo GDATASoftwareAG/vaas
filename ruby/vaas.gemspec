@@ -12,12 +12,11 @@ Gem::Specification.new do |s|
   s.homepage    = "https://github.com/GDATASoftwareAG/vaas"
   s.license     = "MIT"
   s.require_paths = ["lib"]
+  s.required_ruby_version = '>= 3.1.1'
   s.metadata = { "documentation_uri" => "https://github.com/GDATASoftwareAG/vaas/blob/main/ruby/README.md" }
 
-  s.add_dependency 'async', '~> 2.3.1'
   s.add_dependency 'async-http', '~> 0.59.4'
   s.add_dependency 'async-websocket', '~> 0.22.1'
 
   s.add_development_dependency "minitest", '~> 5.17.0'
-  s.add_development_dependency 'dotenv', '~> 2.8.1'
 end
