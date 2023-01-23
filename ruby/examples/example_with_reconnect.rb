@@ -30,7 +30,7 @@ def main
       retry
     end
 
-    puts "Verdict #{verdict.sha256} is detected as #{verdict.verdict}"
+    puts "Verdict #{verdict[0].sha256} is detected as #{verdict[0].verdict}"
 
   ensure
     vaas.close

@@ -24,7 +24,7 @@ def main
     # simple method to get the verdict of a file
     verdict = vaas.for_file(PATH)
 
-    puts "Verdict #{verdict.sha256} is detected as #{verdict.verdict}"
+    puts "Verdict #{verdict[0].sha256} is detected as #{verdict[0].verdict}"
 
   ensure
     vaas.close

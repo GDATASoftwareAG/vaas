@@ -21,11 +21,9 @@ def main
     # wait to connect and authenticate
     Async { vaas.connect(token) }.wait
 
-    # simple loop to get the verdict of a list of files
-    PATHS.each do |file|
-      verdict = vaas.for_file(file)
-      puts "Verdict #{verdict.sha256} is detected as #{verdict.verdict}"
-    end
+    # simple loop to get the verdict of a list of files (PATHS)
+    verdicts = vaas.for_file(PATHS)
+    verdicts.each { |verdict| puts "Verdict #{verdict.sha256} is detected as #{verdict.verdict}" }
 
   ensure
     vaas.close
