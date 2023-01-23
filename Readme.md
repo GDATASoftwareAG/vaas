@@ -34,14 +34,15 @@ You need credentials to use the service in your application. If you are interest
 
 At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [Microsoft .NET](./dotnet/), [Python](./python/), [PHP](./php/) and [Ruby](./ruby/) are available.
 
-|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby|
-|---|---|---|---|---|---|---|---|
-|Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check SHA256 list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|
-|Check URL|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|
-|Custom Guids for tracability on user side|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#10060;|&#9989;|
+| Functionality                             |Rust|Java|PHP|TypeScript|.NET|Python|Ruby|
+|-------------------------------------------|---|---|---|---|---|---|---|
+| Check SHA256                              |&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+| Check SHA256 list                         |&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|
+| Check URL                                 |&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+| Check URL list                            |&#10060;|&#10060;|&#10060;|&#10060;|&#10060;|&#10060;|&#9989;|
+| Check file                                |&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+| Check file list                           |&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|
+| Custom Guids for tracability on user side |&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#10060;|&#10060;|
 
 ### Documentation
 

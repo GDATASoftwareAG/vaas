@@ -54,3 +54,5 @@ _trial_temp*/
 !ruby/lib
 ruby/.idea
 ruby/Gemfile.lock
+ruby/test/test.txt
+ruby/test/test2.txt
