@@ -28,16 +28,19 @@ module VAAS
       # send authentication request
       auth_request = JSON.generate({:kind => "AuthRequest", :token => token})
       websocket.write(auth_request)
+      websocket.flush
 
       # receive authentication message
-      while message = websocket.read
-        message = JSON.parse(message)
-        if message['success'] == true
-          self.session_id = message['session_id']
-          break
-        else
-          raise VaasAuthenticationError
-        end
+      begin
+        message = websocket.read
+      rescue EOFError
+        raise VaasTimeoutError, "Timed out while authenticating"
+      end
+      message = JSON.parse(message)
+      if message['success'] == true
+        self.session_id = message['session_id']
+      else
+        raise VaasAuthenticationError
       end
     end
 
@@ -52,69 +55,111 @@ module VAAS
         websocket&.close
     end
 
-    def __for_sha256(sha256, guid)
-      # send verdict request with sha256
+    def __for_sha256(sha256_list)
+      # send verdict requests with a list of sha256s
       websocket = get_authenticated_websocket
-      guid = guid || SecureRandom.uuid.to_s
-      verdict_request =  JSON.generate({:kind => "VerdictRequest",
-                                        :session_id => session_id,
-                                        :sha256 => sha256,
-                                        :guid => guid})
-      websocket.write(verdict_request)
+      sha256_list = [sha256_list] if sha256_list.is_a? String
 
-      # receive verdict message
-      while message = websocket.read
+      sha256_list.each do |sha256|
+        guid = SecureRandom.uuid.to_s
+        verdict_request =  JSON.generate({:kind => "VerdictRequest",
+                                          :session_id => session_id,
+                                          :sha256 => sha256,
+                                          :guid => guid})
+        websocket.write(verdict_request)
+      end
+      websocket.flush
+
+      # receive verdict messages
+      messages = []
+      sha256_list.size.times do
+        begin
+          message = websocket.read
+        rescue EOFError
+          warn "Timed out while reading"
+          break
+        end
         message = JSON.parse(message)
         if message['kind'] == "VerdictResponse"
-          return message
+          messages.append(message)
+        else
+          redo
         end
       end
+      messages
     end
 
-    def for_sha256(sha256, guid = nil)
-      response = __for_sha256(sha256, guid)
-      VaasVerdict.new(response)
+    def for_sha256(sha256_list)
+      messages = __for_sha256(sha256_list)
+      messages.map { |message|  VaasVerdict.new(message)}
     end
 
-    def for_file(path, guid = nil)
-      # get sha256 of file and send verdict request
-      sha256 = Digest::SHA256.file(path).hexdigest
-      response = __for_sha256(sha256, guid)
+    def for_file(path_list)
+      # get sha256s of files and send verdict requests
+      file_hash = {}
+      path_list = [path_list] if path_list.is_a? String
+      path_list.each { |path| file_hash[Digest::SHA256.file(path).hexdigest] = path}
+      messages = __for_sha256(file_hash.keys)
 
-      # upload file if verdict is unknown
-      if response['verdict'] == 'Unknown'
-        upload(response, path)
-      else
-        return VaasVerdict.new(response)
-      end
-
-      # receive verdict message of uploaded file
-      while message = websocket.read
-        message = JSON.parse(message)
-        if message['kind'] == "VerdictResponse" && message['verdict'] != "Unknown"
-          return VaasVerdict.new(message)
+      # upload files if verdict is unknown
+      upload_count = 0
+      messages.each do |message|
+        if message['verdict'] == 'Unknown'
+          upload(message, file_hash[message['sha256']])
+          upload_count += 1
         end
       end
-    end
 
-    def for_url(url, guid = nil)
-      #send verdict request with url
-      websocket = get_authenticated_websocket
-      guid = guid || SecureRandom.uuid.to_s
-      url = URI(url).to_s
-      verdict_request =  JSON.generate({:kind => "VerdictRequestForUrl",
-                                        :session_id => session_id,
-                                        :guid => guid,
-                                        :url => url})
-      websocket.write(verdict_request)
-
-      # receive verdict message
-      while message = websocket.read
+      # read messages of uploaded files
+      upload_count.times do
+        begin
+          message = websocket.read
+        rescue EOFError
+          warn "Timed out while reading"
+          break
+        end
         message = JSON.parse(message)
         if message['kind'] == "VerdictResponse"
-          return VaasVerdict.new(message)
+          messages = messages.map {|m| m['guid'] == message['guid'] ? message : m }
+        else
+          redo
         end
       end
+      messages.map { |message|  VaasVerdict.new(message)}
+    end
+
+    def for_url(url_list)
+      #send verdict request with a list of urls
+      websocket = get_authenticated_websocket
+      url_list = [url_list] if url_list.is_a? String
+
+      url_list.each do |url|
+        guid = SecureRandom.uuid.to_s
+        verdict_request =  JSON.generate({:kind => "VerdictRequestForUrl",
+                                          :session_id => session_id,
+                                          :guid => guid,
+                                          :url => url})
+        websocket.write(verdict_request)
+      end
+      websocket.flush
+
+      # receive verdict messages
+      verdicts = []
+      url_list.size.times do
+        begin
+          message = websocket.read
+        rescue EOFError
+          warn "Timed out while reading"
+          break
+        end
+        message = JSON.parse(message)
+        if message['kind'] == "VerdictResponse"
+          verdicts.append(VaasVerdict.new(message))
+        else
+          redo
+        end
+      end
+      verdicts
     end
 
     def upload (message, path)
