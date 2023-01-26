@@ -53,6 +53,7 @@ module VAAS
         while message = @websocket.read
           message = JSON.parse(message)
           if message['kind'] == "AuthResponse"
+            raise VaasAuthenticationError if message['success'] == false
             @auth_notification.signal(message)
           elsif message['kind'] == "VerdictResponse"
             @requests[message['guid']].signal(message)
@@ -142,10 +143,10 @@ module VAAS
         header = [['authorization', token]]
         body = Protocol::HTTP::Body::File.open(File.join(path))
 
-        client.put(url, header, body).read
-        # TODO: error handling for status
-      rescue => e
-        raise VaasUploadError, e
+        response = client.put(url, header, body)
+        response.read
+
+        raise VaasUploadError, "Upload failed with code: #{response.status}" if response.status != 200
       ensure
         client&.close
       end
