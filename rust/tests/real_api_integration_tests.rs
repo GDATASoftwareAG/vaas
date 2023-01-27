@@ -248,7 +248,7 @@ async fn from_file_single_malicious_file() {
     std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
 
     let vaas = get_vaas().await;
-    let ct = CancellationToken::from_seconds(10);
+    let ct = CancellationToken::from_seconds(30);
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 

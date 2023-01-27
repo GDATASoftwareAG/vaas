@@ -27,7 +27,7 @@ impl fmt::Display for Verdict {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Verdict::Unknown { upload_url: _ } => write!(f, "Unknown"),
-            _ => write!(f, "{:?}", self),
+            _ => write!(f, "{self:?}"),
         }
     }
 }
@@ -43,6 +43,20 @@ impl TryFrom<&VerdictResponse> for Verdict {
             "Unknown" => Ok(Verdict::Unknown {
                 upload_url: UploadUrl(value.url.to_owned().ok_or(NoUploadUrl)?),
             }),
+            v => Err(Error::InvalidVerdict(v.to_string())),
+        }
+    }
+}
+
+impl TryFrom<&str> for Verdict {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        // It is not possible to construct a Verdict::Unknown from a string, as the upload_url is not known.
+        match value {
+            "Clean" => Ok(Verdict::Clean),
+            "Malicious" => Ok(Verdict::Malicious),
+            "Pup" => Ok(Verdict::Pup),
             v => Err(Error::InvalidVerdict(v.to_string())),
         }
     }
