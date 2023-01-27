@@ -82,6 +82,15 @@ impl Connection {
         VaasVerdict::try_from(response)
     }
 
+    /// Request a verdict for files behind a list of URLs.
+    pub async fn for_url_list(&self, url_list: &[Url], ct: &CancellationToken) -> Vec<VResult<VaasVerdict>> {
+        let req = url_list.iter()
+            .map(|url| self.for_url(url, ct))
+            .collect::<Vec<_>>();
+
+        join_all(req).await
+    }
+
     /// Request a verdict for a SHA256 file hash.
     pub async fn for_sha256(
         &self,
