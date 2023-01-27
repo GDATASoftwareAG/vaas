@@ -6,6 +6,7 @@ import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
 import de.gdata.vaas.messages.VerdictRequestForUrl;
+import de.gdata.vaas.messages.VerdictRequestOptions;
 import de.gdata.vaas.messages.VerdictResponse;
 import de.gdata.vaas.messages.VaasVerdict;
 import lombok.Getter;
@@ -20,15 +21,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class Vaas {
-    private final Duration defaultTimeout = Duration.ofMinutes(10);
-
     @Getter
     @NonNull
     private final VaasConfig config;
@@ -70,28 +68,26 @@ public class Vaas {
     }
 
     public VaasVerdict forUrl(URL url) throws Exception {
-        return this.forUrl(url, defaultTimeout);
+        var verdictRequestOptions = new VerdictRequestOptions();
+        return this.forUrl(url, verdictRequestOptions);
     }
 
-    public VaasVerdict forUrl(URL url, Duration timeout)
+    public VaasVerdict forUrl(URL url, VerdictRequestOptions verdictRequestOptions)
             throws Exception {
-        var verdictResponse = this.forUrlAsync(url).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        var verdictResponse = this.forUrlAsync(url).get(this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
     public VaasVerdict forSha256(Sha256 sha256) throws Exception {
-        return this.forSha256(sha256, defaultTimeout);
+        var verdictRequestOptions = new VerdictRequestOptions();
+        return this.forSha256(sha256, verdictRequestOptions);
     }
 
-    public VaasVerdict forSha256(Sha256 sha256, Duration timeout)
+    public VaasVerdict forSha256(Sha256 sha256, VerdictRequestOptions verdictRequestOptions)
             throws Exception {
-        var verdictResponse = this.forSha256Async(sha256).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
-        return new VaasVerdict(verdictResponse);
-    }
-
-    public VaasVerdict forSha256(Sha256 sha256, long timeout, TimeUnit unit)
-            throws Exception {
-        var verdictResponse = this.forSha256Async(sha256).get(timeout, unit);
+        var verdictResponse = this.forSha256Async(sha256).get(this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
@@ -102,15 +98,13 @@ public class Vaas {
     }
 
     public VaasVerdict forFile(Path file) throws Exception {
-        return forFile(file, defaultTimeout);
+        var verdictRequestOptions = new VerdictRequestOptions();
+        return forFile(file, verdictRequestOptions);
     }
 
-    public VaasVerdict forFile(Path file, Duration timeout) throws Exception {
-        return forFile(file, timeout.toNanos(), TimeUnit.NANOSECONDS);
-    }
-
-    public VaasVerdict forFile(Path file, long timeout, TimeUnit unit) throws Exception {
-        var verdictResponse = forFileAsync(file).get(timeout, unit);
+    public VaasVerdict forFile(Path file, VerdictRequestOptions verdictRequestOptions) throws Exception {
+        var verdictResponse = this.forFileAsync(file).get(this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
@@ -173,7 +167,8 @@ public class Vaas {
         return verdictResponse;
     }
 
-    private CompletableFuture<VerdictResponse> forUrlRequest(VerdictRequestForUrl verdictRequestForUrl) throws Exception {
+    private CompletableFuture<VerdictResponse> forUrlRequest(VerdictRequestForUrl verdictRequestForUrl)
+            throws Exception {
         var verdictResponse = this.client.waitForVerdict(verdictRequestForUrl.getGuid());
 
         verdictRequestForUrl.setSessionId(this.client.getSessionId());
