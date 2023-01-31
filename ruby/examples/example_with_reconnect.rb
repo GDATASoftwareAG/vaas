@@ -4,7 +4,7 @@ require 'vaas/vaas_main'
 
 CLIENT_ID = ENV.fetch('CLIENT_ID')
 CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
-PATH = ENV.fetch('PATH')
+URL = ENV.fetch('URL')
 
 def main
   authenticator = VAAS::ClientCredentialsGrantAuthenticator.new(
@@ -22,13 +22,13 @@ def main
 
     # reconnect if connection closed
     begin
-      verdict = vaas.for_file(PATH)
+      verdict = vaas.for_url(URL)
     rescue VAAS::VaasConnectionClosedError
       token = authenticator.get_token
       vaas.connect(token)
       retry
     end
-    puts "Verdict #{verdict.sha256} is detected as #{verdict.verdict}"
+    puts "Verdict #{verdict.wait.sha256} is detected as #{verdict.wait.verdict}"
 
     vaas.close
   end

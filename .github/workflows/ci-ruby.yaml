@@ -78,7 +78,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          PATH: "simple_example.rb"
+          URL: "https://www.gdata.de/"
         run: ruby simple_example.rb
         working-directory: ruby/examples
 
@@ -86,7 +86,7 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          PATH: "simple_example.rb"
+          URL: "https://www.gdata.de/"
         run: ruby example_with_reconnect.rb
         working-directory: ruby/examples
 

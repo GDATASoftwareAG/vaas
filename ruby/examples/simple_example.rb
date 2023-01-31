@@ -4,7 +4,7 @@ require 'vaas/vaas_main'
 
 CLIENT_ID = ENV.fetch('CLIENT_ID')
 CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
-PATH = ENV.fetch('PATH')
+URL = ENV.fetch('URL')
 
 def main
   authenticator = VAAS::ClientCredentialsGrantAuthenticator.new(
@@ -20,7 +20,7 @@ def main
   Async do
     vaas.connect(token)
 
-    verdict = vaas.for_file(PATH)
+    verdict = vaas.for_url(URL)
     puts "Verdict #{verdict.wait.sha256} is detected as #{verdict.wait.verdict}"
 
     vaas.close
