@@ -5,17 +5,19 @@ require 'async'
 require_relative '../lib/vaas/client_credentials_grant_authenticator'
 require_relative '../lib/vaas/vaas_main'
 
-require 'dotenv'
-Dotenv.load
-CLIENT_ID = ENV['CLIENT_ID']
-CLIENT_SECRET = ENV['CLIENT_SECRET']
-TOKEN_URL = ENV['TOKEN_URL']
-VAAS_URL = ENV['VAAS_URL']
+# # test locally with .env file (comment this when push)
+# require 'dotenv'
+# Dotenv.load
+# CLIENT_ID = ENV['CLIENT_ID']
+# CLIENT_SECRET = ENV['CLIENT_SECRET']
+# TOKEN_URL = ENV['TOKEN_URL']
+# VAAS_URL = ENV['VAAS_URL']
 
-#CLIENT_ID = ENV.fetch('CLIENT_ID')
-#CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
-#TOKEN_URL = ENV.fetch('TOKEN_URL')
-#VAAS_URL = ENV.fetch('VAAS_URL')
+# automatic test (need this when push)
+CLIENT_ID = ENV.fetch('CLIENT_ID')
+CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
+TOKEN_URL = ENV.fetch('TOKEN_URL')
+VAAS_URL = ENV.fetch('VAAS_URL')
 
 class VaasTest < Minitest::Test
   TEST_CLASS = self
