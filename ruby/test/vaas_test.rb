@@ -138,13 +138,28 @@ class VaasTest < Minitest::Test
 
       specify 'timeout' do
         vaas, token = create(nil, 0.001)
+        random_text = (0...8).map { (65 + rand(26)).chr }.join
+        File.open("test.txt", "w") { |f| f.write(random_text) }
+        Async do
+          assert_raises VAAS::VaasTimeoutError do
+            vaas.connect(token)
+            vaas.for_file("./test.txt").wait
+          end
+        ensure
+          vaas.close
+        end
+      end
+
+      specify 'upload_failed' do
+        vaas, token = create
+        message = {"url" => "https://upload-vaas.gdatasecurity.de/upload", "upload_token" => "invalid_token"}
         Async do
           random_text = (0...8).map { (65 + rand(26)).chr }.join
           File.open("test.txt", "w") { |f| f.write(random_text) }
 
-          assert_raises VAAS::VaasTimeoutError do
-            vaas.connect(token)
-            vaas.for_file("./test.txt").wait
+          vaas.connect(token)
+          assert_raises VAAS::VaasUploadError do
+            vaas.upload(message, "./test.txt").wait
           end
         ensure
           vaas.close

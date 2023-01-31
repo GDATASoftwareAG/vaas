@@ -57,7 +57,7 @@ Async do
   vaas.connect(token)
   sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
   verdict = vaas.for_sha256(sha256) # starts a task
-  p verdict.wait.verdict # await task
+  puts verdict.wait.verdict # await task
   vaas.close
 end
 ```
@@ -68,7 +68,7 @@ Async do
   vaas.connect(token)
   path = "/path/to/file"
   verdict = vaas.for_file(path) # starts a task
-  p verdict.wait.verdict # await task
+  puts verdict.wait.verdict # await task
   vaas.close
 end
 ```
@@ -79,7 +79,7 @@ Async do
   vaas.connect(token)
   url = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
   verdict = vaas.for_url(url) # starts a task
-  p verdict.wait.verdict # await task
+  puts verdict.wait.verdict # await task
   vaas.close
 end
 ```
