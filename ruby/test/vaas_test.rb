@@ -91,19 +91,20 @@ class VaasTest < Minitest::Test
         end
       end
 
-      # # Tested locally with 1.5 GB File
-      # specify 'for_big_file' do
-      #   vaas, token = create
-      #   Async do
-      #     vaas.connect(token)
-      #
-      #     result = vaas.for_file("BIG_FILE")
-      #     verdict = result.wait.verdict
-      #     assert_equal "Clean", verdict
-      #
-      #     vaas.close
-      #   end
-      # end
+      specify 'for_big_file' do
+        skip
+        vaas, token = create
+        File.open("test.txt", "w") { |file| file.write("\n" * 500000000) }
+        Async do
+          vaas.connect(token)
+
+          result = vaas.for_file("./test.txt")
+          verdict = result.wait.verdict
+          assert_equal "Clean", verdict
+
+          vaas.close
+        end
+      end
     end
 
     describe 'fail' do
