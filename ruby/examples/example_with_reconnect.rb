@@ -18,21 +18,18 @@ def main
   token = authenticator.get_token
 
   Async do
-    # wait to connect and authenticate
-    Async { vaas.connect(token) }.wait
+    vaas.connect(token)
 
     # reconnect if connection closed
     begin
       verdict = vaas.for_file(PATH)
     rescue VAAS::VaasConnectionClosedError
       token = authenticator.get_token
-      Async { vaas.connect(token) }.wait
+      vaas.connect(token)
       retry
     end
-
     puts "Verdict #{verdict.sha256} is detected as #{verdict.verdict}"
 
-  ensure
     vaas.close
   end
 end
