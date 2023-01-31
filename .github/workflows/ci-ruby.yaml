@@ -78,23 +78,15 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          PATH: "simple_example.rb"
+          URL: "https://www.gdata.de/"
         run: ruby simple_example.rb
-        working-directory: ruby/examples
-
-      - name: Run example with lists
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          PATHS: "simple_example.rb, example_with_reconnect.rb, example_with_lists.rb"
-        run: ruby example_with_lists.rb
         working-directory: ruby/examples
 
       - name: Run example with reconnect
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          PATH: "simple_example.rb"
+          URL: "https://www.gdata.de/"
         run: ruby example_with_reconnect.rb
         working-directory: ruby/examples
 
