@@ -1,15 +1,13 @@
 package messages
 
-import (
-	"net/url"
-)
+import ()
 
 type VerdictResponse struct {
 	Kind        string  `json:"kind"`
 	Sha256      string  `json:"sha256"`
 	Guid        string  `json:"guid"`
 	Verdict     Verdict `json:"verdict"`
-	Url         url.URL `json:"url"`
+	Url         string  `json:"url"`
 	UploadToken string  `json:"upload_token"`
 }
 
