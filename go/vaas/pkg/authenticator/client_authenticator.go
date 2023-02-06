@@ -10,6 +10,10 @@ import (
 	msg "vaas/pkg/messages"
 )
 
+type IClientCredentialsGrantAuthenticator interface {
+	GetToken(accessToken *string) error
+}
+
 type ClientCredentialsGrantAuthenticator struct {
 	cliendId      string
 	clientSecret  string
