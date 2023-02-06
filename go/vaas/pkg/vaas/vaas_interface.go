@@ -1,17 +1,15 @@
 package vaas
 
 import (
-	"hash"
-	"net/url"
-
 	msg "vaas/pkg/messages"
 )
 
 type IVaaS interface {
-	Connect(token string)
-	ForUrl(uri url.URL) msg.VaasVerdict
-	ForSha256(sha256 hash.Hash) msg.VaasVerdict
-	ForFile(path string) msg.VaasVerdict
-	ForSha256List(sha256List []hash.Hash) []msg.VaasVerdict
-	ForFileList(fileList []string) []msg.VaasVerdict
+	Connect(token string) error
+	Authenticate(token string) error
+	ForUrl(uri string) (msg.VaasVerdict, error)
+	ForSha256(sha256 string) (msg.VaasVerdict, error)
+	ForFile(path string) (msg.VaasVerdict, error)
+	ForSha256List(sha256List []string) ([]msg.VaasVerdict, error)
+	ForFileList(fileList []string) ([]msg.VaasVerdict, error)
 }
