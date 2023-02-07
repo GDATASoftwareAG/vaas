@@ -5,16 +5,19 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/joho/godotenv"
 
 	"vaas/pkg/authenticator"
+	"vaas/pkg/messages"
 	"vaas/pkg/options"
 	"vaas/pkg/vaas"
 )
 
 var sha256Check = flag.Bool("s", false, "sha256")
 var fileCheck = flag.Bool("f", false, "file")
+var urlCheck = flag.Bool("u", false, "url")
 
 func main() {
 	flag.Parse()
@@ -32,7 +35,7 @@ func main() {
 
 	vaasClient := vaas.New(options.VaasOptions{
 		UseShed:  true,
-		UseCache: true,
+		UseCache: false,
 	})
 
 	if err := vaasClient.Connect(accessToken); err != nil {
@@ -42,6 +45,13 @@ func main() {
 	if *sha256Check {
 		sha256List := flag.Args()
 		if err := checkSha256(sha256List, vaasClient); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *urlCheck {
+		urlList := flag.Args()
+		if err := checkUrl(urlList, vaasClient); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -111,6 +121,41 @@ func checkSha256(sha256List []string, vaasClient *vaas.Vaas) error {
 			return err
 		}
 
+		for _, verdict := range results {
+			fmt.Println(verdict.Sha256, verdict.Verdict)
+		}
+	}
+	return nil
+}
+
+func checkUrl(urlList []string, vaasClient *vaas.Vaas) error {
+	if len(urlList) == 0 {
+		log.Fatal("no url entered in arguments")
+	}
+
+	if len(urlList) == 1 {
+		result, err := vaasClient.ForUrl(urlList[0])
+		if err != nil {
+			return err
+		}
+		fmt.Println(result.Verdict)
+
+	} else if len(urlList) > 1 {
+		var results []messages.VaasVerdict
+		var waitGroup sync.WaitGroup
+		for _, url := range urlList {
+			waitGroup.Add(1)
+			go func(url string){
+				defer waitGroup.Done()
+				result, err := vaasClient.ForUrl(url)
+				if err != nil {
+					results = append(results, messages.VaasVerdict{
+						Verdict: messages.Verdict(messages.Error)})
+				}
+				results = append(results, result)
+			}(url)
+		}
+		waitGroup.Wait()
 		for _, verdict := range results {
 			fmt.Println(verdict.Sha256, verdict.Verdict)
 		}
