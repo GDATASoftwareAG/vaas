@@ -7,7 +7,6 @@ import (
 	"vaas/pkg/authenticator"
 	utilities "vaas/test/test_utilities"
 
-
 	"github.com/joho/godotenv"
 )
 
@@ -18,7 +17,7 @@ func TestGetToken_WithValidCredentials_GotToken(t *testing.T) {
 
 	CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT := utilities.ReadCredentials()
 
-	authenticator := authenticator.New(CLIENT_ID,CLIENT_SECRET, TOKEN_ENDPOINT)
+	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
 	var accessToken string
 	err := authenticator.GetToken(&accessToken)
 	if accessToken == "" || err != nil {
@@ -36,7 +35,7 @@ func TestGetToken_WithWrongCredentials_Error(t *testing.T) {
 	authenticator := authenticator.New("foo", "bar", TOKEN_ENDPOINT)
 	var accessToken string
 	err := authenticator.GetToken(&accessToken)
-	if err == nil{
+	if err == nil {
 		t.Fatalf(`GetToken(&accessToken) = %q, expected "accesstoken is null"`, err)
 	}
 }
