@@ -32,54 +32,37 @@ func New(options options.VaasOptions) *Vaas {
 }
 
 func (v *Vaas) Connect(token string) error {
-	var waitgroup sync.WaitGroup
-	var connectErr error = nil
+	connection, _, websocketErr := websocket.DefaultDialer.Dial("wss://gateway-vaas.gdatasecurity.de", nil)
+	if websocketErr != nil {
+		return websocketErr
+	}
+	v.websocketConnection = connection
 
-	waitgroup.Add(1)
-	go func() {
-		defer waitgroup.Done()
-
-		connection, _, websocketErr := websocket.DefaultDialer.Dial("wss://gateway-vaas.gdatasecurity.de", nil)
-		if websocketErr != nil {
-			connectErr = websocketErr
-		}
-		v.websocketConnection = connection
-
-		if err := v.Authenticate(token); err != nil {
-			connectErr = errors.New("failed to authenticate: " + err.Error())
-		}
-	}()
-	waitgroup.Wait()
-
-	return connectErr
+	if err := v.Authenticate(token); err != nil {
+		return errors.New("failed to authenticate: " + err.Error())
+	}
+	
+	return nil
 }
 
 func (v *Vaas) Authenticate(token string) error {
-	var waitGroup sync.WaitGroup
-	var authError error = nil
+	v.websocketConnection.WriteJSON(msg.AuthRequest{
+		Kind:  "AuthRequest",
+		Token: token,
+	})
 
-	waitGroup.Add(1)
-	go func() {
-		defer waitGroup.Done()
-		v.websocketConnection.WriteJSON(msg.AuthRequest{
-			Kind:  "AuthRequest",
-			Token: token,
-		})
+	var authResponse msg.AuthResponse
+	v.websocketConnection.ReadJSON(&authResponse)
+	if authResponse.Kind == "Error" {
+		return errors.New(authResponse.Text)
+	}
+	if !authResponse.Success {
+		return errors.New("failed to authenticate")
+	}
 
-		var authResponse msg.AuthResponse
-		v.websocketConnection.ReadJSON(&authResponse)
-		if authResponse.Kind == "Error" {
-			authError = errors.New(authResponse.Text)
-		}
-		if !authResponse.Success {
-			authError = errors.New("failed to authenticate")
-		}
+	v.sessionId = authResponse.SessionId
 
-		v.sessionId = authResponse.SessionId
-	}()
-	waitGroup.Wait()
-
-	return authError
+	return nil
 }
 
 func (v *Vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
@@ -87,33 +70,27 @@ func (v *Vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	var waitGroup sync.WaitGroup
-	var verdict msg.VaasVerdict
-	var err error = nil
+	request := msg.VerdictRequest{}.New(v.sessionId, v.options, sha256)
+	if requestErr := v.forRequest(request); requestErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+			Sha256: sha256,
+		}, requestErr
+	}
 
-	waitGroup.Add(1)
-	go func() {
-		defer waitGroup.Done()
-		request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
-		if requestErr := v.forRequest(request); requestErr != nil {
-			err = requestErr
-			return
-		}
+	response, responseErr := v.forResponse()
+	if responseErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+			Sha256: sha256,
+		}, responseErr
 
-		response, responseErr := v.forResponse()
-		if responseErr != nil {
-			err = responseErr
-			return
-		}
+	}
 
-		verdict = msg.VaasVerdict{
-			Verdict: response.Verdict,
-			Sha256:  response.Sha256,
-		}
-	}()
-	waitGroup.Wait()
-
-	return verdict, err
+	return msg.VaasVerdict{
+		Verdict: response.Verdict,
+		Sha256:  response.Sha256,
+	}, nil
 }
 
 func (v *Vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
@@ -128,7 +105,6 @@ func (v *Vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
 		writerGroup.Add(1)
 		go func(sha256 string) {
 			defer writerGroup.Done()
-
 			verdict, err := v.ForSha256(sha256)
 			if err != nil {
 				verdicts = append(verdicts, msg.VaasVerdict{Sha256: sha256, Verdict: msg.Verdict(msg.Error)})
@@ -147,64 +123,60 @@ func (v *Vaas) ForFile(file string) (msg.VaasVerdict, error) {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	var waitGroup sync.WaitGroup
-	var verdict msg.VaasVerdict
-	var err error
+	data, fileErr := os.Open(file)
+	if fileErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+		}, fileErr
 
-	waitGroup.Add(1)
-	go func() {
-		defer waitGroup.Done()
-		data, fileErr := os.Open(file)
-		if fileErr != nil {
-			err = fileErr
-			return
-		}
+	}
 
-		sha256, parseErr := utilities.ToSha256String(data)
-		if parseErr != nil {
-			err = parseErr
-			return
-		}
+	sha256, parseErr := utilities.ToSha256String(data)
+	if parseErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+		}, parseErr
+	}
 
-		request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
-		if requestErr := v.forRequest(request); err != nil {
-			err = requestErr
-			return
-		}
+	request := msg.VerdictRequest{}.New(v.sessionId, v.options, sha256)
+	if requestErr := v.forRequest(request); requestErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+			Sha256: sha256,
+		}, requestErr
+	}
 
-		response, responseErr := v.forResponse()
-		if err != nil {
-			err = responseErr
-			return
-		}
+	response, responseErr := v.forResponse()
+	if responseErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+			Sha256: sha256,
+		}, responseErr
+	}
 
-		verdict = msg.VaasVerdict{
-			Verdict: response.Verdict,
-			Sha256:  request.Sha256,
-		}
-
-		if response.Verdict == msg.Verdict(msg.Unknown) {
-			if uploadErr := v.uploadFile(data, response.Url, response.UploadToken); uploadErr != nil {
-				err = uploadErr
-				return
+	if response.Verdict == msg.Verdict(msg.Unknown) {
+		if uploadErr := v.uploadFile(data, response.Url, response.UploadToken); uploadErr != nil {
+			return msg.VaasVerdict{
+				Verdict: msg.Verdict(msg.Unknown),
+				Sha256: sha256,
+			}, uploadErr
+		} else {
+			uploadResponse, responseErr := v.forResponse()
+			if responseErr != nil {
+				return msg.VaasVerdict{
+					Verdict: msg.Verdict(msg.Error),
+					Sha256: sha256,
+				}, responseErr
 			} else {
-				uploadResponse, responseErr := v.forResponse()
-				if responseErr != nil {
-					err = responseErr
-					return
-				} else {
-					verdict = msg.VaasVerdict{
-						Verdict: uploadResponse.Verdict,
-						Sha256:  uploadResponse.Sha256,
-					}
-				}
+				response = uploadResponse
 			}
 		}
-	}()
-
-	waitGroup.Wait()
-
-	return verdict, nil
+	}
+	
+	return msg.VaasVerdict{
+		Verdict: response.Verdict,
+		Sha256: response.Sha256,
+	}, nil
 }
 
 func (v *Vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
@@ -238,35 +210,26 @@ func (v *Vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	var waitGroup sync.WaitGroup
-	var verdict msg.VaasVerdict
-	var err error = nil
+	request := msg.VerdictRequestForUrl{}.New(v.sessionId, v.options, url)
+	if requestErr := v.forRequest(request); requestErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+		}, requestErr
+	}
 
-	waitGroup.Add(1)
-	go func() {
-		defer waitGroup.Done()
-		request := msg.NewVerdictRequest(v.sessionId, v.options, url)
-		if requestErr := v.forRequest(request); requestErr != nil {
-			err = requestErr
-			return
-		}
+	response, responseErr := v.forResponse()
+	if responseErr != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+		}, responseErr
+	}
 
-		response, responseErr := v.forResponse()
-		if responseErr != nil {
-			err = responseErr
-			return
-		}
-		verdict = msg.VaasVerdict{
-			Verdict: response.Verdict,
-			Sha256:  request.Sha256,
-		}
-	}()
-	waitGroup.Wait()
-
-	return verdict, err
+	return msg.VaasVerdict{
+		Verdict: response.Verdict,
+	}, nil
 }
 
-func (v *Vaas) forRequest(verdictRequest msg.VerdictRequest) error {
+func (v *Vaas) forRequest(verdictRequest msg.IVerdictRequest) error {
 	defer v.writeLock.Unlock()
 	v.writeLock.Lock()
 	return v.websocketConnection.WriteJSON(verdictRequest)

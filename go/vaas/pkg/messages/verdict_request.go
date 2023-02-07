@@ -14,7 +14,11 @@ type VerdictRequest struct {
 	UseShed   bool   `json:"use_shed"`
 }
 
-func NewVerdictRequest(sessionId string, options options.VaasOptions, sha256 string) VerdictRequest {
+func (r VerdictRequest) GetSessionId() string {
+	return r.SessionID
+}
+
+func (r VerdictRequest) New(sessionId string, options options.VaasOptions, sha256 string) VerdictRequest {
 	return VerdictRequest{
 		Kind:      "VerdictRequest",
 		Sha256:    sha256,

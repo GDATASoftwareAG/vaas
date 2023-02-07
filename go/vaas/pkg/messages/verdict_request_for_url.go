@@ -14,7 +14,11 @@ type VerdictRequestForUrl struct {
 	UseShed   bool   `json:"use_shed"`
 }
 
-func NewVerdictRequestForUrl(sessionId string, options options.VaasOptions, url string) VerdictRequestForUrl {
+func (r VerdictRequestForUrl) GetSessionId() string {
+	return r.SessionID
+}
+
+func (r VerdictRequestForUrl) New(sessionId string, options options.VaasOptions, url string) VerdictRequestForUrl {
 	return VerdictRequestForUrl{
 		Kind:      "VerdictRequestForUrl",
 		Url:       url,
