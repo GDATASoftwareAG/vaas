@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 public class VerdictRequest extends MessageType {
@@ -24,8 +25,8 @@ public class VerdictRequest extends MessageType {
     @Getter
     @Setter
     @SerializedName("verdict_request_options")
-    VerdictRequestOptions verdictRequestOptions;
-
+    HashMap<String, String> verdictRequestAttributes;
+    
     public VerdictRequest(Sha256 sha256, String sessionId) {
         super(Kind.VerdictRequest);
         this.sessionId = sessionId;
@@ -33,9 +34,9 @@ public class VerdictRequest extends MessageType {
         this.sha256 = sha256.getValue();
     }
 
-    public VerdictRequest(Sha256 sha256, String sessionId, VerdictRequestOptions verdictRequestOptions) {
+    public VerdictRequest(Sha256 sha256, String sessionId, HashMap<String, String> verdictRequestAttributes) {
         this(sha256, sessionId);
-        this.verdictRequestOptions = verdictRequestOptions;
+        this.verdictRequestAttributes = verdictRequestAttributes;
     }
 
     public String toJson() {
