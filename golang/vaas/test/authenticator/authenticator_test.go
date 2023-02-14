@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"vaas/pkg/authenticator"
-	credentials "vaas/test/credentials_reader"
+	credentials "vaas/pkg/credentials_reader"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ func TestGetToken_WithValidCredentials_GotToken(t *testing.T) {
 		log.Println(err)
 	}
 
-	CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT := credentials.ReadCredentials()
+	CLIENT_ID, CLIENT_SECRET, _, TOKEN_ENDPOINT := credentials.ReadCredentials()
 	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
 	var accessToken string
 
@@ -33,7 +33,7 @@ func TestGetToken_WithWrongCredentials_Error(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	_, _, TOKEN_ENDPOINT := credentials.ReadCredentials()
+	_, _, _, TOKEN_ENDPOINT := credentials.ReadCredentials()
 
 	authenticator := authenticator.New("foo", "bar", TOKEN_ENDPOINT)
 	var accessToken string

@@ -1,8 +1,8 @@
 package credentialsreader
 
 import (
+	"log"
 	"os"
-	"log"	
 )
 
 func ReadCredentials() (CLIENT_ID string, CLIENT_SECRET string, VAAS_URL string, TOKEN_ENDPOINT string) {
@@ -22,6 +22,6 @@ func ReadCredentials() (CLIENT_ID string, CLIENT_SECRET string, VAAS_URL string,
 	if !exists {
 		log.Fatal("no token endpoint configured")
 	}
-	
+
 	return ci, cs, vu, te
 }

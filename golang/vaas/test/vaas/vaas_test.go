@@ -11,7 +11,7 @@ import (
 	"vaas/pkg/messages"
 	"vaas/pkg/options"
 	"vaas/pkg/vaas"
-	credentials "vaas/test/credentials_reader"
+	credentials "vaas/pkg/credentials_reader"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +25,7 @@ func setUp() {
 		log.Fatal(err)
 	}
 
-	CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT := credentials.ReadCredentials()
+	CLIENT_ID, CLIENT_SECRET, VAAS_URL, TOKEN_ENDPOINT := credentials.ReadCredentials()
 	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
 
 	var accessToken string
@@ -37,7 +37,7 @@ func setUp() {
 		UseShed:  true,
 		UseCache: false,
 	}
-	VaasClient = *vaas.New(testingOptions)
+	VaasClient = *vaas.New(testingOptions, VAAS_URL)
 	AccessToken = accessToken
 
 	err := VaasClient.Connect(AccessToken)

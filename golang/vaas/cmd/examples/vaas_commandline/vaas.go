@@ -4,11 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 
 	"github.com/joho/godotenv"
 
+	credentials "vaas/pkg/credentials_reader"
 	"vaas/pkg/authenticator"
 	"vaas/pkg/messages"
 	"vaas/pkg/options"
@@ -25,7 +25,7 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal(err)
 	}
-	CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT := readCredentials()
+	CLIENT_ID, CLIENT_SECRET, VAAS_URL, TOKEN_ENDPOINT := credentials.ReadCredentials()
 	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
 
 	var accessToken string
@@ -36,7 +36,7 @@ func main() {
 	vaasClient := vaas.New(options.VaasOptions{
 		UseShed:  true,
 		UseCache: false,
-	})
+	}, VAAS_URL)
 
 	if err := vaasClient.Connect(accessToken); err != nil {
 		log.Fatal("Something went wrong", err.Error())
@@ -62,22 +62,6 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-}
-
-func readCredentials() (string, string, string) {
-	CLIENT_ID, exists := os.LookupEnv("CLIENT_ID")
-	if !exists {
-		log.Fatal("no Client ID set")
-	}
-	CLIENT_SECRET, exists := os.LookupEnv("CLIENT_SECRET")
-	if !exists {
-		log.Fatal("no Client Secret set")
-	}
-	TOKEN_ENDPOINT, exists := os.LookupEnv("TOKEN_ENDPOINT")
-	if !exists {
-		log.Fatal("no token endpoint configured")
-	}
-	return CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT
 }
 
 func checkFile(fileList []string, vaasClient *vaas.Vaas) error {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -27,18 +26,19 @@ type Vaas struct {
 	broadcastChannel    *BroadcastChannel.BroadcastChannel[msg.VerdictResponse]
 	requestChannel      chan msg.IVerdictRequest
 	responseChannel     chan msg.VerdictResponse
-	Url                 url.URL `default:"wss://gateway-vaas.gdatasecurity.de"`
+	vaasUrl             string
 	options             options.VaasOptions
 	Ctx                 context.Context
 }
 
-func New(options options.VaasOptions) *Vaas {
+func New(options options.VaasOptions, vaasUrl string) *Vaas {
 	rc := make(chan msg.VerdictResponse)
 	ctx := context.Background()
 	bc := BroadcastChannel.New(ctx, rc)
 
 	vaas := &Vaas{
 		options:          options,
+		vaasUrl:          vaasUrl,
 		requestChannel:   make(chan msg.IVerdictRequest, 1),
 		responseChannel:  rc,
 		broadcastChannel: bc,
@@ -49,7 +49,7 @@ func New(options options.VaasOptions) *Vaas {
 }
 
 func (v *Vaas) Connect(token string) error {
-	connection, _, websocketErr := websocket.DefaultDialer.Dial("wss://gateway-vaas.gdatasecurity.de", nil)
+	connection, _, websocketErr := websocket.DefaultDialer.Dial(v.vaasUrl, nil)
 	if websocketErr != nil {
 		return websocketErr
 	}
@@ -273,7 +273,7 @@ func (v *Vaas) waitForResponse(subscription <-chan msg.VerdictResponse, guid str
 				verdictResponse = response
 				return verdictResponse, nil
 			}
-		case <-time.After(60 * time.Second):
+		case <-time.After(TIMEOUT * time.Second):
 			return verdictResponse, errors.New("timeout while waiting for response")
 		}
 	}
