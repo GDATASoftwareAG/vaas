@@ -8,8 +8,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	credentials "vaas/pkg/credentials_reader"
 	"vaas/pkg/authenticator"
+	credentials "vaas/pkg/credentials_reader"
 	"vaas/pkg/messages"
 	"vaas/pkg/options"
 	"vaas/pkg/vaas"
@@ -64,7 +64,7 @@ func main() {
 	}
 }
 
-func checkFile(fileList []string, vaasClient *vaas.Vaas) error {
+func checkFile(fileList []string, vaasClient vaas.Vaas) error {
 	if len(fileList) == 0 {
 		log.Fatal("no file entered in arguments")
 
@@ -88,7 +88,7 @@ func checkFile(fileList []string, vaasClient *vaas.Vaas) error {
 	return nil
 }
 
-func checkSha256(sha256List []string, vaasClient *vaas.Vaas) error {
+func checkSha256(sha256List []string, vaasClient vaas.Vaas) error {
 	if len(sha256List) == 0 {
 		log.Fatal("no sha256 entered in arguments")
 	}
@@ -112,7 +112,7 @@ func checkSha256(sha256List []string, vaasClient *vaas.Vaas) error {
 	return nil
 }
 
-func checkUrl(urlList []string, vaasClient *vaas.Vaas) error {
+func checkUrl(urlList []string, vaasClient vaas.Vaas) error {
 	if len(urlList) == 0 {
 		log.Fatal("no url entered in arguments")
 	}

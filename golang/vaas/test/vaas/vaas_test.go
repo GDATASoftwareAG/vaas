@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"vaas/pkg/authenticator"
+	credentials "vaas/pkg/credentials_reader"
 	"vaas/pkg/messages"
 	"vaas/pkg/options"
 	"vaas/pkg/vaas"
-	credentials "vaas/pkg/credentials_reader"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +37,7 @@ func setUp() {
 		UseShed:  true,
 		UseCache: false,
 	}
-	VaasClient = *vaas.New(testingOptions, VAAS_URL)
+	VaasClient = vaas.New(testingOptions, VAAS_URL)
 	AccessToken = accessToken
 
 	err := VaasClient.Connect(AccessToken)
@@ -47,7 +47,11 @@ func setUp() {
 }
 
 func TestForSha256_InvalidOperation(t *testing.T) {
-	var vaas vaas.Vaas
+	testingOptions := options.VaasOptions{
+		UseShed:  true,
+		UseCache: false,
+	}
+	vaas := vaas.New(testingOptions, "")
 
 	_, err := vaas.ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
 

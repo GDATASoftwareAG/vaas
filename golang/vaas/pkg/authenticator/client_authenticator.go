@@ -11,19 +11,19 @@ import (
 	msg "vaas/pkg/messages"
 )
 
-type IClientCredentialsGrantAuthenticator interface {
+type ClientCredentialsGrantAuthenticator interface {
 	GetToken(accessToken *string) error
 }
 
-type ClientCredentialsGrantAuthenticator struct {
+type clientCredentialsGrantAuthenticator struct {
 	cliendId      string
 	clientSecret  string
 	tokenEndpoint string
 	httpClient    *http.Client
 }
 
-func New(clientId string, clientSecret string, tokenEndpoint string) *ClientCredentialsGrantAuthenticator {
-	return &ClientCredentialsGrantAuthenticator{
+func New(clientId string, clientSecret string, tokenEndpoint string) *clientCredentialsGrantAuthenticator {
+	return &clientCredentialsGrantAuthenticator{
 		cliendId:      clientId,
 		clientSecret:  clientSecret,
 		tokenEndpoint: tokenEndpoint,
@@ -31,7 +31,7 @@ func New(clientId string, clientSecret string, tokenEndpoint string) *ClientCred
 	}
 }
 
-func (c ClientCredentialsGrantAuthenticator) GetToken(accessToken *string) error {
+func (c clientCredentialsGrantAuthenticator) GetToken(accessToken *string) error {
 	data := url.Values{}
 	data.Set("client_id", c.cliendId)
 	data.Set("client_secret", c.clientSecret)

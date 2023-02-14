@@ -6,7 +6,7 @@ import (
 )
 
 type VerdictRequestForUrl struct {
-	Kind      string `json:"kind" default:"VerdictRequestForUrl"`
+	Kind      Kind   `json:"kind" default:"VerdictRequestForUrl"`
 	Url       string `json:"url"`
 	Guid      string `json:"guid"`
 	SessionID string `json:"session_id"`
@@ -14,13 +14,13 @@ type VerdictRequestForUrl struct {
 	UseShed   bool   `json:"use_shed"`
 }
 
-func (r VerdictRequestForUrl) GetSessionId() string {
-	return r.SessionID
+func (r VerdictRequestForUrl) GetGuid() string {
+	return r.Guid
 }
 
-func (r VerdictRequestForUrl) New(sessionId string, options options.VaasOptions, url string) VerdictRequestForUrl {
+func NewVerdictRequestForUrl(sessionId string, options options.VaasOptions, url string) VerdictRequest {
 	return VerdictRequestForUrl{
-		Kind:      "VerdictRequestForUrl",
+		Kind:      VerdictRequestForUrlKind,
 		Url:       url,
 		SessionID: sessionId,
 		Guid:      uuid.New().String(),

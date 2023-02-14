@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	BroadcastChannel "vaas/pkg/broadcast_channel"
+	broadcast "vaas/pkg/broadcast_channel"
 	"vaas/pkg/hash"
 	msg "vaas/pkg/messages"
 	"vaas/pkg/options"
@@ -20,52 +20,63 @@ import (
 
 const TIMEOUT = 60
 
-type Vaas struct {
+type Vaas interface {
+	Connect(token string) error
+	Authenticate(token string) error
+	ForUrl(uri string) (msg.VaasVerdict, error)
+	ForSha256(sha256 string) (msg.VaasVerdict, error)
+	ForFile(path string) (msg.VaasVerdict, error)
+	ForSha256List(sha256List []string) ([]msg.VaasVerdict, error)
+	ForFileList(fileList []string) ([]msg.VaasVerdict, error)
+}
+
+type vaas struct {
 	sessionId           string
 	websocketConnection *websocket.Conn
-	broadcastChannel    *BroadcastChannel.BroadcastChannel[msg.VerdictResponse]
-	requestChannel      chan msg.IVerdictRequest
+	broadcastChannel    broadcast.Channel[msg.VerdictResponse]
+	requestChannel      chan msg.VerdictRequest
 	responseChannel     chan msg.VerdictResponse
 	vaasUrl             string
 	options             options.VaasOptions
 	Ctx                 context.Context
 }
 
-func New(options options.VaasOptions, vaasUrl string) *Vaas {
+func New(options options.VaasOptions, vaasUrl string) Vaas {
 	rc := make(chan msg.VerdictResponse)
-	ctx := context.Background()
-	bc := BroadcastChannel.New(ctx, rc)
 
-	vaas := &Vaas{
-		options:          options,
-		vaasUrl:          vaasUrl,
-		requestChannel:   make(chan msg.IVerdictRequest, 1),
-		responseChannel:  rc,
-		broadcastChannel: bc,
-		Ctx:              ctx,
+	vaas := &vaas{
+		options:         options,
+		vaasUrl:         vaasUrl,
+		requestChannel:  make(chan msg.VerdictRequest, 1),
+		responseChannel: rc,
 	}
 
 	return vaas
 }
 
-func (v *Vaas) Connect(token string) error {
-	connection, _, websocketErr := websocket.DefaultDialer.Dial(v.vaasUrl, nil)
-	if websocketErr != nil {
-		return websocketErr
+func (v *vaas) SetBroadcastChannel(broadcastChannel broadcast.Channel[msg.VerdictResponse]) {
+	v.broadcastChannel = broadcastChannel
+}
+
+func (v *vaas) Connect(token string) error {
+	connection, _, err := websocket.DefaultDialer.Dial(v.vaasUrl, nil)
+	if err != nil {
+		return err
 	}
 	v.websocketConnection = connection
 
 	if err := v.Authenticate(token); err != nil {
 		return errors.New("failed to authenticate: " + err.Error())
 	}
-
-	go v.sendRequests()
-	go v.readResponses()
+	ctx := context.Background()
+	v.SetBroadcastChannel(broadcast.New(ctx, v.responseChannel))
+	go v.sendRequests(ctx)
+	go v.readResponses(ctx)
 
 	return nil
 }
 
-func (v *Vaas) Authenticate(token string) error {
+func (v *vaas) Authenticate(token string) error {
 	v.websocketConnection.WriteJSON(msg.AuthRequest{
 		Kind:  "AuthRequest",
 		Token: token,
@@ -85,21 +96,21 @@ func (v *Vaas) Authenticate(token string) error {
 	return nil
 }
 
-func (v *Vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
+func (v *vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 	subscription := v.broadcastChannel.Subscribe()
 	defer v.broadcastChannel.RemoveSubscription(subscription)
-	request := msg.VerdictRequest{}.New(v.sessionId, v.options, sha256)
+	request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
 	v.requestChannel <- request
 
-	verdictResponse, responseErr := v.waitForResponse(subscription, request.Guid)
-	if responseErr != nil {
+	verdictResponse, err := v.waitForResponse(subscription, request.GetGuid())
+	if err != nil {
 		return msg.VaasVerdict{
 			Verdict: msg.Verdict(msg.Error),
 			Sha256:  sha256,
-		}, responseErr
+		}, err
 	}
 
 	return msg.VaasVerdict{
@@ -108,7 +119,7 @@ func (v *Vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
 	}, nil
 }
 
-func (v *Vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
+func (v *vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return []msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -133,53 +144,53 @@ func (v *Vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
 	return verdicts, nil
 }
 
-func (v *Vaas) ForFile(file string) (msg.VaasVerdict, error) {
+func (v *vaas) ForFile(file string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	data, fileErr := os.Open(file)
-	if fileErr != nil {
+	data, err := os.Open(file)
+	if err != nil {
 		return msg.VaasVerdict{
 			Verdict: msg.Verdict(msg.Error),
-		}, fileErr
+		}, err
 
 	}
 
-	sha256, parseErr := hash.CalculateSha256(data)
-	if parseErr != nil {
+	sha256, err := hash.CalculateSha256(data)
+	if err != nil {
 		return msg.VaasVerdict{
 			Verdict: msg.Verdict(msg.Error),
-		}, parseErr
+		}, err
 	}
 
 	subscription := v.broadcastChannel.Subscribe()
 	defer v.broadcastChannel.RemoveSubscription(subscription)
 
-	request := msg.VerdictRequest{}.New(v.sessionId, v.options, sha256)
+	request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
 	v.requestChannel <- request
 
-	response, responseErr := v.waitForResponse(subscription, request.Guid)
-	if responseErr != nil {
+	response, err := v.waitForResponse(subscription, request.GetGuid())
+	if err != nil {
 		return msg.VaasVerdict{
 			Verdict: msg.Verdict(msg.Error),
 			Sha256:  sha256,
-		}, responseErr
+		}, err
 	}
 
 	if response.Verdict == msg.Verdict(msg.Unknown) {
-		if uploadErr := v.uploadFile(data, response.Url, response.UploadToken); uploadErr != nil {
+		if err := v.uploadFile(data, response.Url, response.UploadToken); err != nil {
 			return msg.VaasVerdict{
 				Verdict: msg.Verdict(msg.Unknown),
 				Sha256:  sha256,
-			}, uploadErr
+			}, err
 		} else {
-			uploadResponse, responseErr := v.waitForResponse(subscription, response.Guid)
-			if responseErr != nil {
+			uploadResponse, err := v.waitForResponse(subscription, response.Guid)
+			if err != nil {
 				return msg.VaasVerdict{
 					Verdict: msg.Verdict(msg.Error),
 					Sha256:  sha256,
-				}, responseErr
+				}, err
 			} else {
 				response = uploadResponse
 			}
@@ -192,7 +203,7 @@ func (v *Vaas) ForFile(file string) (msg.VaasVerdict, error) {
 	}, nil
 }
 
-func (v *Vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
+func (v *vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return []msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -218,16 +229,16 @@ func (v *Vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
 	return verdicts, nil
 }
 
-func (v *Vaas) ForUrl(url string) (msg.VaasVerdict, error) {
+func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 	subscription := v.broadcastChannel.Subscribe()
 	defer v.broadcastChannel.RemoveSubscription(subscription)
-	request := msg.VerdictRequestForUrl{}.New(v.sessionId, v.options, url)
+	request := msg.NewVerdictRequestForUrl(v.sessionId, v.options, url)
 	v.requestChannel <- request
 
-	verdictResponse, responseErr := v.waitForResponse(subscription, request.Guid)
+	verdictResponse, responseErr := v.waitForResponse(subscription, request.GetGuid())
 	if responseErr != nil {
 		return msg.VaasVerdict{
 			Verdict: msg.Verdict(msg.Error),
@@ -240,7 +251,7 @@ func (v *Vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 	}, nil
 }
 
-func (v *Vaas) uploadFile(file *os.File, url string, token string) error {
+func (v *vaas) uploadFile(file *os.File, url string, token string) error {
 	httpClient := &http.Client{}
 	file.Seek(0, 0)
 	info, _ := file.Stat()
@@ -263,7 +274,7 @@ func (v *Vaas) uploadFile(file *os.File, url string, token string) error {
 	return nil
 }
 
-func (v *Vaas) waitForResponse(subscription <-chan msg.VerdictResponse, guid string) (msg.VerdictResponse, error) {
+func (v *vaas) waitForResponse(subscription <-chan msg.VerdictResponse, guid string) (msg.VerdictResponse, error) {
 	var verdictResponse msg.VerdictResponse
 
 	for {
@@ -279,10 +290,10 @@ func (v *Vaas) waitForResponse(subscription <-chan msg.VerdictResponse, guid str
 	}
 }
 
-func (v *Vaas) sendRequests() {
+func (v *vaas) sendRequests(ctx context.Context) {
 	for {
 		select {
-		case <-v.Ctx.Done():
+		case <-ctx.Done():
 			return
 		case request := <-v.requestChannel:
 			v.websocketConnection.WriteJSON(request)
@@ -290,30 +301,36 @@ func (v *Vaas) sendRequests() {
 	}
 }
 
-func (v *Vaas) readResponses() {
+func (v *vaas) readResponses(ctx context.Context) {
 	responseChan := make(chan msg.VerdictResponse, 1)
 
 	go func() {
 		for {
 			var verdictResponse msg.VerdictResponse
+			select {
+			case <-ctx.Done():
+				v.websocketConnection.Close()
+				return
+			default:
 
-			if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
-				log.Fatal(err)
-				close(responseChan)
+				if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
+					log.Fatal(err)
+					close(responseChan)
+				}
+
+				if !verdictResponse.IsValid() {
+					log.Fatal("invalid response")
+					close(responseChan)
+				}
+
+				responseChan <- verdictResponse
 			}
-
-			if !verdictResponse.IsValid() {
-				log.Fatal("invalid response")
-				close(responseChan)
-			}
-
-			responseChan <- verdictResponse
 		}
 	}()
 
 	for {
 		select {
-		case <-v.Ctx.Done():
+		case <-ctx.Done():
 			v.websocketConnection.Close()
 			return
 		case response := <-responseChan:

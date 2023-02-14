@@ -5,8 +5,8 @@ import (
 	"vaas/pkg/options"
 )
 
-type VerdictRequest struct {
-	Kind      string `json:"kind" default:"VerdictRequest"`
+type verdictRequest struct {
+	Kind      Kind   `json:"kind" default:"VerdictRequest"`
 	Sha256    string `json:"sha256"`
 	Guid      string `json:"guid"`
 	SessionID string `json:"session_id"`
@@ -14,13 +14,13 @@ type VerdictRequest struct {
 	UseShed   bool   `json:"use_shed"`
 }
 
-func (r VerdictRequest) GetSessionId() string {
-	return r.SessionID
+func (r verdictRequest) GetGuid() string {
+	return r.Guid
 }
 
-func (r VerdictRequest) New(sessionId string, options options.VaasOptions, sha256 string) VerdictRequest {
-	return VerdictRequest{
-		Kind:      "VerdictRequest",
+func NewVerdictRequest(sessionId string, options options.VaasOptions, sha256 string) VerdictRequest {
+	return verdictRequest{
+		Kind:      VerdictRequestKind,
 		Sha256:    sha256,
 		SessionID: sessionId,
 		Guid:      uuid.New().String(),
