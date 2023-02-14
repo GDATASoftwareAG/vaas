@@ -145,7 +145,7 @@ func checkUrl(urlList []string, vaasClient *vaas.Vaas) error {
 		var waitGroup sync.WaitGroup
 		for _, url := range urlList {
 			waitGroup.Add(1)
-			go func(url string){
+			go func(url string) {
 				defer waitGroup.Done()
 				result, err := vaasClient.ForUrl(url)
 				if err != nil {

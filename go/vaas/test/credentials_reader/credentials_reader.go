@@ -1,9 +1,8 @@
-package test_utilities
+package credentials_reader
 
 import (
 	"log"
 	"os"
-	"vaas/pkg/messages"
 )
 
 func ReadCredentials() (string, string, string) {
@@ -20,14 +19,4 @@ func ReadCredentials() (string, string, string) {
 		log.Fatal("no token endpoint configured")
 	}
 	return CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT
-}
-
-func Index(s []messages.VaasVerdict, str string) int {
-	for i, v := range s {
-		if v.Sha256 == str {
-			return i
-		}
-	}
-
-	return -1
 }

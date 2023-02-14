@@ -52,7 +52,7 @@ func (c ClientCredentialsGrantAuthenticator) GetToken(accessToken *string) error
 	if json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
 		return err
 	}
-	
+
 	if tokenResponse.Accesstoken == "" {
 		return errors.New("accesstoken is null")
 	}
