@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	broadcast "vaas/pkg/broadcast_channel"
+	broadcast "vaas/pkg/broadcast"
 	"vaas/pkg/hash"
 	msg "vaas/pkg/messages"
 	"vaas/pkg/options"

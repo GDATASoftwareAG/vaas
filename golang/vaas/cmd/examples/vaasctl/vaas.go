@@ -9,7 +9,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"vaas/pkg/authenticator"
-	credentials "vaas/pkg/credentials_reader"
+	credentials "vaas/pkg/credentials"
 	"vaas/pkg/messages"
 	"vaas/pkg/options"
 	"vaas/pkg/vaas"

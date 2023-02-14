@@ -1,4 +1,4 @@
-package credentialsreader
+package credentials
 
 import (
 	"log"

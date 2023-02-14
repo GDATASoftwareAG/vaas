@@ -1,4 +1,4 @@
-package vaas_test
+package vaas
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"vaas/pkg/authenticator"
-	credentials "vaas/pkg/credentials_reader"
+	credentials "vaas/pkg/credentials"
 	"vaas/pkg/messages"
 	"vaas/pkg/options"
 	"vaas/pkg/vaas"

@@ -1,11 +1,11 @@
-package authenticator_test
+package authenticator
 
 import (
 	"log"
 	"testing"
 
 	"vaas/pkg/authenticator"
-	credentials "vaas/pkg/credentials_reader"
+	credentials "vaas/pkg/credentials"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"

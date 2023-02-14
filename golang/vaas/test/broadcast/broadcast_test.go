@@ -1,11 +1,11 @@
-package broadcast_channel_test
+package broadcast
 
 import (
 	"context"
 	"sync"
 	"testing"
 
-	BroadcastChannel "vaas/pkg/broadcast_channel"
+	BroadcastChannel "vaas/pkg/broadcast"
 
 	"github.com/stretchr/testify/assert"
 )
