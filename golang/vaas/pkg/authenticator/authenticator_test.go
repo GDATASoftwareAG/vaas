@@ -7,37 +7,68 @@ import (
 	credentials "vaas/pkg/credentials"
 
 	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestGetToken_WithValidCredentials_GotToken(t *testing.T) {
-	if err := godotenv.Load(); err != nil {
-		log.Println(err)
+func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
+	type fields struct{}
+	type args struct {
+		clientId      string
+		clientSecret  string
+		tokenEndpoint string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "With valid credentials - got token",
+			args: func() args {
+				if err := godotenv.Load(); err != nil {
+					log.Println(err)
+				}
+
+				clientId, clientSecret, _, tokenEndpoint := credentials.ReadCredentials()
+				return args{
+					clientId:      clientId,
+					clientSecret:  clientSecret,
+					tokenEndpoint: tokenEndpoint,
+				}
+			}(),
+			wantErr: false,
+		},
+		{
+			name: "With invalid credentials - error",
+			args: func() args {
+				if err := godotenv.Load(); err != nil {
+					log.Println(err)
+				}
+
+				_, _, _, tokenEndpoint := credentials.ReadCredentials()
+				return args{
+					clientId:      "foo",
+					clientSecret:  "bar",
+					tokenEndpoint: tokenEndpoint,
+				}
+			}(),
+			wantErr: true,
+		},
 	}
 
-	CLIENT_ID, CLIENT_SECRET, _, TOKEN_ENDPOINT := credentials.ReadCredentials()
-	authenticator := New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
-	var accessToken string
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			authenticator := New(tt.args.clientId, tt.args.clientSecret, tt.args.tokenEndpoint)
+			var accessToken string
+			err := authenticator.GetToken(&accessToken)
 
-	err := authenticator.GetToken(&accessToken)
-	if err != nil {
-		t.Fatal(err)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error - %v", err)
+			}
+
+			if err == nil && accessToken == "" {
+				t.Errorf("token should not be empty")
+			}
+		})
 	}
-
-	assert.NotEmpty(t, accessToken)
-}
-
-func TestGetToken_WithWrongCredentials_Error(t *testing.T) {
-	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
-	}
-
-	_, _, _, TOKEN_ENDPOINT := credentials.ReadCredentials()
-
-	authenticator := New("foo", "bar", TOKEN_ENDPOINT)
-	var accessToken string
-	err := authenticator.GetToken(&accessToken)
-
-	assert.NotEqual(t, err, nil)
-	assert.Empty(t, accessToken)
 }
