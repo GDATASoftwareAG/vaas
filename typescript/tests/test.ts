@@ -11,8 +11,8 @@ import {
     VaasConnectionClosedError,
     VaasInvalidStateError,
 } from "../src/VaasErrors";
-import {AuthenticationResponse} from "../src/messages/authentication_response";
-import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
+import {ClientCredentialsGrantAuthenticator} from "../src/ClientCredentialsGrantAuthenticator";
+
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");

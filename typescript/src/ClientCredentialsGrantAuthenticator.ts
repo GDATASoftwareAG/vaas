@@ -1,6 +1,6 @@
 import getTokenWithClientCredentialsGrant from "./getTokenWithClientCredentialsGrant";
 
-export default class ClientCredentialsGrantAuthenticator {
+export class ClientCredentialsGrantAuthenticator {
   constructor(
     private clientId: string,
     private clientSecret: string,

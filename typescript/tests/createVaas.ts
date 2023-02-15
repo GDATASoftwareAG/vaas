@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import { Vaas, CreateVaasWithClientCredentialsGrant } from "../src/Index";
+import {ClientCredentialsGrantAuthenticator, Vaas} from "../src/Index";
 
 function throwError(errorMessage: string): never {
   throw new Error(errorMessage);
@@ -11,17 +11,21 @@ function getFromEnvironment(key: string) {
   );
 }
 
-export default function createVaas(): Promise<Vaas> {
+export default async function createVaas(): Promise<Vaas> {
   dotenv.config();
   const CLIENT_ID = getFromEnvironment("CLIENT_ID");
   const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
   const VAAS_URL = getFromEnvironment("VAAS_URL");
   const TOKEN_URL = getFromEnvironment("TOKEN_URL");
 
-  return CreateVaasWithClientCredentialsGrant(
+  const authenticator = new ClientCredentialsGrantAuthenticator(
     CLIENT_ID,
     CLIENT_SECRET,
     TOKEN_URL,
-    VAAS_URL
   );
+
+  let vaas = new Vaas();
+  let token = await authenticator.getToken()
+  await vaas.connect(token, VAAS_URL);
+  return vaas;
 }
