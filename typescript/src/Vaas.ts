@@ -231,7 +231,7 @@ export class Vaas {
       // ws library does not have auto-keepalive
       // https://github.com/websockets/ws/issues/767
       if (ws.on !== undefined) {
-        ws.on("ping", (payload) => {
+        ws.on("ping", (payload: Buffer) => {
           ws.pong(payload);
         });
         ws.on("pong", () => {
@@ -245,7 +245,7 @@ export class Vaas {
           reject(error);
         }
       };
-      ws.onclose = (event) => {
+      ws.onclose = (event: CloseEvent) => {
         if (this.pingTimeout) {
           clearTimeout(this.pingTimeout);
           this.pingTimeout = undefined;
@@ -260,7 +260,7 @@ export class Vaas {
         }
         reject(reason);
       };
-      ws.onmessage = async (event) => {
+      ws.onmessage = async (event: WebSocket.MessageEvent) => {
         const message = defaultSerializer.deserializeObject(event.data, Message) as Message;
 
         switch (message.kind) {
