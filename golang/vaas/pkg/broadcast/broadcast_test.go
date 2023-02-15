@@ -5,8 +5,6 @@ import (
 	"sync"
 	"testing"
 
-	BroadcastChannel "vaas/pkg/broadcast"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -14,7 +12,7 @@ func TestSingleSubscriber(t *testing.T) {
 	ctx := context.Background()
 	defer ctx.Done()
 	inputChan := make(chan int)
-	broadcastChannel := BroadcastChannel.New(ctx, inputChan)
+	broadcastChannel := New(ctx, inputChan)
 	sub := broadcastChannel.Subscribe()
 	defer broadcastChannel.RemoveSubscription(sub)
 
@@ -28,7 +26,7 @@ func TestMultipleSubscriberRoutines(t *testing.T) {
 	ctx := context.Background()
 	defer ctx.Done()
 	inputChan := make(chan int)
-	broadcastChannel := BroadcastChannel.New(ctx, inputChan)
+	broadcastChannel := New(ctx, inputChan)
 	var subList []<-chan int
 	for i := 0; i < 5; i++ {
 		sub := broadcastChannel.Subscribe()
