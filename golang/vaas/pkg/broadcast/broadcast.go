@@ -52,6 +52,7 @@ func (c *channel[T]) Serve(ctx context.Context) {
 					c.subscribers[i] = c.subscribers[subCount]
 					c.subscribers[subCount] = make(chan T)
 					c.subscribers = c.subscribers[:subCount]
+					close(subscriber)
 				}
 			}
 		case val, ok := <-c.input:
