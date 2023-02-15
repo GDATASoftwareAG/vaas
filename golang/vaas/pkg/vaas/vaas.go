@@ -54,7 +54,7 @@ func New(options options.VaasOptions, vaasUrl string) Vaas {
 	return vaas
 }
 
-func (v *vaas) SetBroadcastChannel(broadcastChannel broadcast.Channel[msg.VerdictResponse]) {
+func (v *vaas) setBroadcastChannel(broadcastChannel broadcast.Channel[msg.VerdictResponse]) {
 	v.broadcastChannel = broadcastChannel
 }
 
@@ -69,7 +69,7 @@ func (v *vaas) Connect(token string) error {
 		return errors.New("failed to authenticate: " + err.Error())
 	}
 	ctx := context.Background()
-	v.SetBroadcastChannel(broadcast.New(ctx, v.responseChannel))
+	v.setBroadcastChannel(broadcast.New(ctx, v.responseChannel))
 	go v.sendRequests(ctx)
 	go v.readResponses(ctx)
 
@@ -185,7 +185,7 @@ func (v *vaas) ForFile(file string) (msg.VaasVerdict, error) {
 				Sha256:  sha256,
 			}, err
 		} else {
-			uploadResponse, err := v.waitForResponse(subscription, response.Guid)
+			uploadResponse, err := v.waitForResponse(subscription, request.GetGuid())
 			if err != nil {
 				return msg.VaasVerdict{
 					Verdict: msg.Verdict(msg.Error),

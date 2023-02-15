@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSingleSubscriber(t *testing.T) {
+func TestBroadcast_SingleSubscriber(t *testing.T) {
 	ctx := context.Background()
 	defer ctx.Done()
 	inputChan := make(chan int)
@@ -22,7 +22,7 @@ func TestSingleSubscriber(t *testing.T) {
 	assert.Equal(t, foo, 1)
 }
 
-func TestMultipleSubscriberRoutines(t *testing.T) {
+func TestBroadcast_MultipleSubscriberRoutines(t *testing.T) {
 	ctx := context.Background()
 	defer ctx.Done()
 	inputChan := make(chan int)
