@@ -5,7 +5,7 @@ import (
 	"vaas/pkg/options"
 )
 
-type VerdictRequestForUrl struct {
+type verdictRequestForUrl struct {
 	Kind      Kind   `json:"kind" default:"VerdictRequestForUrl"`
 	Url       string `json:"url"`
 	Guid      string `json:"guid"`
@@ -14,12 +14,12 @@ type VerdictRequestForUrl struct {
 	UseShed   bool   `json:"use_shed"`
 }
 
-func (r VerdictRequestForUrl) GetGuid() string {
+func (r verdictRequestForUrl) GetGuid() string {
 	return r.Guid
 }
 
 func NewVerdictRequestForUrl(sessionId string, options options.VaasOptions, url string) VerdictRequest {
-	return VerdictRequestForUrl{
+	return verdictRequestForUrl{
 		Kind:      VerdictRequestForUrlKind,
 		Url:       url,
 		SessionID: sessionId,
