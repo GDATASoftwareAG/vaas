@@ -27,7 +27,7 @@ func New(clientId string, clientSecret string, tokenEndpoint string) *clientCred
 		cliendId:      clientId,
 		clientSecret:  clientSecret,
 		tokenEndpoint: tokenEndpoint,
-		httpClient:    &http.Client{Timeout: 2 * time.Second},
+		httpClient:    &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
