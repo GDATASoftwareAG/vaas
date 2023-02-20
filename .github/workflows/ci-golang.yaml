@@ -33,7 +33,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
           TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: go test ./test/authenticator ./test/broadcastchannel ./test/vaas
+        run: go test ./pkg/authenticator ./pkg/broadcastchannel ./pkg/vaas
         working-directory: golang/vaas/
       - name: run tests staging
         if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/go')
@@ -42,5 +42,5 @@ jobs:
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
           VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
           TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: go test ./test/authenticator ./test/broadcastchannel ./test/vaas
+        run: go test ./pkg/authenticator ./pkg/broadcastchannel ./pkg/vaas
         working-directory: golang/vaas/
