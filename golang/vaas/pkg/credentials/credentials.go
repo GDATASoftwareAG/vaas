@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func ReadCredentials() (CLIENT_ID string, CLIENT_SECRET string, VAAS_URL string, TOKEN_ENDPOINT string) {
+func ReadCredentials() (CLIENT_ID string, CLIENT_SECRET string, VAAS_URL string, TOKEN_URL string) {
 	ci, exists := os.LookupEnv("CLIENT_ID")
 	if !exists {
 		log.Fatal("no Client ID set")
@@ -16,7 +16,7 @@ func ReadCredentials() (CLIENT_ID string, CLIENT_SECRET string, VAAS_URL string,
 	}
 	vu, exists := os.LookupEnv("VAAS_URL")
 	if !exists {
-		log.Fatal("no token endpoint configured")
+		log.Fatal("no vaas endpoint configured")
 	}
 	te, exists := os.LookupEnv("TOKEN_URL")
 	if !exists {
