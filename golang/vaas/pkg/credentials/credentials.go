@@ -18,7 +18,7 @@ func ReadCredentials() (CLIENT_ID string, CLIENT_SECRET string, VAAS_URL string,
 	if !exists {
 		log.Fatal("no token endpoint configured")
 	}
-	te, exists := os.LookupEnv("TOKEN_ENDPOINT")
+	te, exists := os.LookupEnv("TOKEN_URL")
 	if !exists {
 		log.Fatal("no token endpoint configured")
 	}
