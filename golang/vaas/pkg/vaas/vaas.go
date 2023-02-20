@@ -18,7 +18,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const TIMEOUT = 60
+const TIMEOUT = 180
 
 type Vaas interface {
 	Connect(token string) error
