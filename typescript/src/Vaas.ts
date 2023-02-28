@@ -3,7 +3,7 @@ import * as sha256 from "fast-sha256";
 import { Kind, Message } from "./messages/message";
 import { AuthenticationResponse } from "./messages/authentication_response";
 import { AuthenticationRequest } from "./messages/authentication_request";
-import { deserialize, serialize } from "typescript-json-serializer";
+import { JsonSerializer } from "typescript-json-serializer";
 import { VerdictResponse } from "./messages/verdict_response";
 import { WebsocketError } from "./messages/websocket_error";
 import { VerdictRequest } from "./messages/verdict_request";
@@ -21,6 +21,8 @@ import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
 
 const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+const defaultSerializer = new JsonSerializer();
+
 export { VAAS_URL };
 
 // See https://advancedweb.hu/how-to-add-timeout-to-a-promise-in-javascript/
@@ -181,7 +183,7 @@ export class Vaas {
           ? sample
           : Vaas.toHexString(sha256.hash(sample));
       const verdictReq = JSON.stringify(
-        serialize(
+        defaultSerializer.serialize(
           new VerdictRequest(hash, guid, this.connection!.sessionId as string)
         )
       );
@@ -206,7 +208,7 @@ export class Vaas {
 
     
       const verdictReq = JSON.stringify(
-        serialize(
+        defaultSerializer.serialize(
           new VerdictRequestForUrl(url, guid, this.connection!.sessionId as string)
         )
       );
@@ -259,14 +261,14 @@ export class Vaas {
         reject(reason);
       };
       ws.onmessage = async (event) => {
-        const message = deserialize<Message>(event.data, Message);
+        const message = defaultSerializer.deserializeObject(event.data, Message) as Message;
 
         switch (message.kind) {
           case Kind.AuthResponse:
-            const authResponse = deserialize<AuthenticationResponse>(
+            const authResponse = defaultSerializer.deserializeObject(
               event.data,
               AuthenticationResponse
-            );
+            ) as AuthenticationResponse;
             if (authResponse.success) {
               this.connection!.sessionId = authResponse.session_id;
               resolve();
@@ -277,14 +279,14 @@ export class Vaas {
             break;
           case Kind.Error:
             reject(
-              deserialize<WebsocketError>(event.data, WebsocketError).text
+              (defaultSerializer.deserialize(event.data, WebsocketError) as WebsocketError).text
             );
             break;
           case Kind.VerdictResponse:
-            const verdictResponse = deserialize<VerdictResponse>(
+            const verdictResponse = defaultSerializer.deserialize(
               event.data,
               VerdictResponse
-            );
+            ) as VerdictResponse;
             const promise = this.verdictPromises.get(verdictResponse.guid);
             if (promise) {
               await promise.resolve(verdictResponse);
@@ -337,7 +339,7 @@ export class Vaas {
 
   private authenticate(token: string): void {
     const authReq: string = JSON.stringify(
-      serialize(new AuthenticationRequest(token))
+      defaultSerializer.serialize(new AuthenticationRequest(token))
     );
     const ws = this.getConnectedWebSocket();
     ws.send(authReq);

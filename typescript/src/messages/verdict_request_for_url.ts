@@ -1,7 +1,7 @@
-import { JsonProperty, Serializable } from "typescript-json-serializer";
+import { JsonProperty, JsonObject } from "typescript-json-serializer";
 import { Kind, Message } from "./message";
 
-@Serializable()
+@JsonObject()
 export class VerdictRequestForUrl extends Message {
   public constructor(url: URL, guid: string, session_id: string) {
     super(Kind.VerdictRequestForUrl);

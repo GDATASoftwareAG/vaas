@@ -1,7 +1,7 @@
-import { Serializable, JsonProperty } from "typescript-json-serializer";
+import { JsonProperty, JsonObject } from "typescript-json-serializer";
 import { Kind, Message } from "./message";
 
-@Serializable()
+@JsonObject()
 export class WebsocketError extends Message {
   public constructor(
     @JsonProperty() public type: string,

@@ -53,7 +53,7 @@ impl TryFrom<&PathBuf> for Sha256 {
         hasher.update(&bytes);
         let result = hasher.finalize();
 
-        let hex_string = result.iter().map(|b| format!("{:02x}", b)).collect();
+        let hex_string = result.iter().map(|b| format!("{b:02x}")).collect();
         Ok(Self(hex_string))
     }
 }

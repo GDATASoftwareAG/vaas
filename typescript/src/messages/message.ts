@@ -1,4 +1,4 @@
-import { Serializable, JsonProperty } from "typescript-json-serializer";
+import { JsonProperty, JsonObject } from "typescript-json-serializer";
 
 export enum Kind {
   Error = "Error",
@@ -13,7 +13,10 @@ export enum Kind {
   VerdictRequestForUrl = "VerdictRequestForUrl"
 }
 
-@Serializable()
+@JsonObject()
 export class Message {
-  public constructor(@JsonProperty() public kind: Kind) {}
+  @JsonProperty() public kind: Kind;
+  public constructor(kind: Kind) {
+    this.kind = kind;
+  }
 }
