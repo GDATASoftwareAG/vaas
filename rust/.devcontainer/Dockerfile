@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/vscode/devcontainers/base:0-focal
+FROM mcr.microsoft.com/vscode/devcontainers/base:1-focal
 
 # Install common stuff
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
