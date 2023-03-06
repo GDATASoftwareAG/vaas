@@ -13,11 +13,11 @@
     "dependencies": {
         "gdata-vaas": "4.1.0",
         "ts-node": "^10.9.1",
-        "@types/node": "17.0.45",
+        "@types/node": "18.14.6",
         "typescript": "4.9.5"
     },
     "devDependencies": {
-        "dotenv": "^14.2.0",
+        "dotenv": "^16.0.0",
         "ts-node": "^10.9.1"
     }
 }
