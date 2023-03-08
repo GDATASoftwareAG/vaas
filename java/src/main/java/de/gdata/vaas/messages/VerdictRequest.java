@@ -24,9 +24,9 @@ public class VerdictRequest extends MessageType {
     String guid;
     @Getter
     @Setter
-    @SerializedName("verdict_request_options")
+    @SerializedName("verdict_request_attributes")
     HashMap<String, String> verdictRequestAttributes;
-    
+
     public VerdictRequest(Sha256 sha256, String sessionId) {
         super(Kind.VerdictRequest);
         this.sessionId = sessionId;
