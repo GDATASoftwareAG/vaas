@@ -22,7 +22,7 @@ type clientCredentialsGrantAuthenticator struct {
 	httpClient    *http.Client
 }
 
-func New(clientId string, clientSecret string, tokenEndpoint string) *clientCredentialsGrantAuthenticator {
+func New(clientId string, clientSecret string, tokenEndpoint string) ClientCredentialsGrantAuthenticator {
 	return &clientCredentialsGrantAuthenticator{
 		cliendId:      clientId,
 		clientSecret:  clientSecret,

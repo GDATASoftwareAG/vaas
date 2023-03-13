@@ -17,8 +17,8 @@ type channel[T any] struct {
 	removeSubscriber chan (<-chan T)
 }
 
-func New[T any](ctx context.Context, input <-chan T) *channel[T] {
-	c := channel[T]{
+func New[T any](ctx context.Context, input <-chan T) Channel[T] {
+	c := &channel[T]{
 		input:            input,
 		subscribers:      make([]chan T, 0),
 		addSubscriber:    make(chan chan T),
@@ -27,7 +27,7 @@ func New[T any](ctx context.Context, input <-chan T) *channel[T] {
 
 	go c.Serve(ctx)
 
-	return &c
+	return c
 }
 
 func (c *channel[T]) Serve(ctx context.Context) {
