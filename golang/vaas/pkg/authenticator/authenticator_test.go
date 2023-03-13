@@ -3,7 +3,7 @@ package authenticator
 import (
 	"testing"
 
-	credentials "vaas/pkg/credentials"
+	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
 
 	"github.com/joho/godotenv"
 )

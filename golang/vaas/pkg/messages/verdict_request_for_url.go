@@ -2,7 +2,7 @@ package messages
 
 import (
 	"github.com/google/uuid"
-	"vaas/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 )
 
 type verdictRequestForUrl struct {

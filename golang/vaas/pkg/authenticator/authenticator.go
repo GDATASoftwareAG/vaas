@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	msg "vaas/pkg/messages"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 )
 
 type ClientCredentialsGrantAuthenticator interface {

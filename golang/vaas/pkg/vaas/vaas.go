@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	broadcast "vaas/pkg/broadcast"
-	"vaas/pkg/hash"
-	msg "vaas/pkg/messages"
-	"vaas/pkg/options"
+	broadcast "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/broadcast"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/hash"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 
 	"github.com/gorilla/websocket"
 )

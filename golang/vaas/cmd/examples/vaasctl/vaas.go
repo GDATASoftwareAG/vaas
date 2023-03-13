@@ -8,11 +8,11 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"vaas/pkg/authenticator"
-	credentials "vaas/pkg/credentials"
-	"vaas/pkg/messages"
-	"vaas/pkg/options"
-	"vaas/pkg/vaas"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
+
+	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 )
 
 var sha256Check = flag.Bool("s", false, "sha256")
@@ -125,7 +125,6 @@ func checkUrl(urlList []string, vaasClient vaas.Vaas) error {
 		fmt.Println(result.Verdict)
 
 	} else if len(urlList) > 1 {
-		var results []messages.VaasVerdict
 		var waitGroup sync.WaitGroup
 		for _, url := range urlList {
 			waitGroup.Add(1)
@@ -133,16 +132,13 @@ func checkUrl(urlList []string, vaasClient vaas.Vaas) error {
 				defer waitGroup.Done()
 				result, err := vaasClient.ForUrl(url)
 				if err != nil {
-					results = append(results, messages.VaasVerdict{
-						Verdict: messages.Verdict(messages.Error)})
+					fmt.Println(err)
+				} else {
+					fmt.Println(result)
 				}
-				results = append(results, result)
 			}(url)
 		}
-		waitGroup.Wait()
-		for _, verdict := range results {
-			fmt.Println(verdict.Sha256, verdict.Verdict)
-		}
+		waitGroup.Wait()	
 	}
 	return nil
 }

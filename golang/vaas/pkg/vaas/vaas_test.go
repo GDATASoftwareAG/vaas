@@ -8,10 +8,10 @@ import (
 	"os"
 	"testing"
 
-	"vaas/pkg/authenticator"
-	credentials "vaas/pkg/credentials"
-	"vaas/pkg/messages"
-	"vaas/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
+	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"

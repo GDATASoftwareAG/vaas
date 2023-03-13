@@ -1,4 +1,4 @@
-module vaas
+module github.com/GDATASoftwareAG/vaas/golang/vaas
 
 go 1.20
 
