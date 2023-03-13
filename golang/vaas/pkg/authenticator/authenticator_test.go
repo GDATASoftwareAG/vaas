@@ -38,7 +38,7 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 		{
 			name: "With invalid credentials - error",
 			args: func() args {
-				godotenv.Load();
+				godotenv.Load()
 				_, _, _, tokenEndpoint := credentials.ReadCredentials()
 				return args{
 					clientId:      "foo",
