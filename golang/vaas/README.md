@@ -8,31 +8,23 @@ _Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning
 
 It gives you as a developer a functions to talk to G DATA VaaS. It wraps away the complexity of the API into 5 basic functions.
 
-### `vaas.New(options VaasOptions, vaasUrl string) Vaas`
-
-Creates a new instance of the Vaas interface with the given options and URL. options is an instance of VaasOptions which allows you to customize how the VaaS client behaves. vaasUrl is the URL of the G DATA VaaS API.
-
-### `vaas.Connect(token string) error`
+### Connect(token string) error
 
 Connects to the G DATA VaaS API using the given authentication token. token is the authentication token provided by G DATA. If authentication fails, an error will be returned.
 
-### `vaas.Authenticate(token string) error`
+### Authenticate(token string) error
 
 Sends an authentication request to the G DATA VaaS API using the given authentication token. If authentication is successful, the session ID will be stored in the vaas object.
 
-### `vaas.ForSha256(sha256 string) (messages.VaasVerdict, error)`
+### ForSha256(sha256 string) (messages.VaasVerdict, error)
 
 Retrieves the verdict for the given SHA256 hash from the G DATA VaaS API. sha256 is the SHA256 hash of the file. If the request fails, an error will be returned. Otherwise, a messages.VaasVerdict object containing the verdict will be returned.
 
-### `vaas.ForSha256List(sha256List []string) ([]messages.VaasVerdict, error)`
-
-Retrieves the verdict for a list of SHA256 hashes from the G DATA VaaS API. sha256List is a list of SHA256 hashes. If the request fails, an error will be returned. Otherwise, a list of messages.VaasVerdict objects containing the verdicts will be returned.
-
-### `vaas.ForFile(file string) (messages.VaasVerdict, error)`
+### ForFile(file string) (messages.VaasVerdict, error)
 
 Retrieves the verdict for the given file from the G DATA VaaS API. file is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a messages.VaasVerdict object containing the verdict will be returned.
 
-### `vaas.ForUrl(url string) (messages.VaasVerdict, error)`
+### ForUrl(url string) (messages.VaasVerdict, error)
 
 Retrieves the verdict for the given url from the G DATA VaaS API. url is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a messages.VaasVerdict object containing the verdict will be returned.
 
@@ -85,7 +77,7 @@ fmt.Println(result.Verdict)
 
 Verdict Request for a file:
 ```go
-result, err := vaasClient.ForFile(fileList[0])
+result, err := vaasClient.ForFile(file)
 if err != nil {
   return err
 }
@@ -94,7 +86,7 @@ fmt.Println(result.Verdict)
 
 Verdict Request for a URL:
 ```go
-result, err := vaasClient.ForUrl(urlList[0])
+result, err := vaasClient.ForUrl(url)
 if err != nil {
   return err
 }
@@ -106,4 +98,4 @@ You need credentials to use the service in your application. If you are interest
 
 ## Developing with Visual Studio Code
 
-Every single SDKs also includes [Devcontainer](./devcontainer/). If you use the [Visual Studio Code Dev Containers extension](https://code.visualstudio.com/docs/devcontainers/containers), you can run the code in a full-featured development environment.
+Every single SDKs also includes [Devcontainer](./.devcontainer/). If you use the [Visual Studio Code Dev Containers extension](https://code.visualstudio.com/docs/devcontainers/containers), you can run the code in a full-featured development environment.
