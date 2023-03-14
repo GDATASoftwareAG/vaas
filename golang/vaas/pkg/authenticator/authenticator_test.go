@@ -2,6 +2,7 @@ package authenticator
 
 import (
 	"testing"
+	"log"
 
 	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
 
@@ -25,7 +26,7 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 			name: "With valid credentials - got token",
 			args: func() args {
 				if err := godotenv.Load(); err != nil {
-					t.Fatalf("failed to load environment - %v", err)
+					log.Printf("failed to load environment - %v", err)
 				}
 
 				clientId, clientSecret, _, tokenEndpoint := credentials.ReadCredentials()
@@ -41,7 +42,7 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 			name: "With invalid credentials - error",
 			args: func() args {
 				if err := godotenv.Load(); err != nil {
-					t.Fatalf("failed to load environment - %v", err)
+					log.Printf("failed to load environment - %v", err)
 				}
 				_, _, _, tokenEndpoint := credentials.ReadCredentials()
 				return args{
