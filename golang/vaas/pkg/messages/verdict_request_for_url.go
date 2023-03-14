@@ -1,8 +1,8 @@
 package messages
 
 import (
-	"github.com/google/uuid"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
+	"github.com/google/uuid"
 )
 
 type verdictRequestForUrl struct {
