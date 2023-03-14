@@ -18,7 +18,9 @@ import (
 )
 
 func setUp() Vaas {
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		log.Fatal(err)
+	}
 
 	CLIENT_ID, CLIENT_SECRET, VAAS_URL, TOKEN_ENDPOINT := credentials.ReadCredentials()
 	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
@@ -40,7 +42,6 @@ func setUp() Vaas {
 	}
 
 	return vaasClient
-
 }
 
 func TestVaas_ForSha256(t *testing.T) {

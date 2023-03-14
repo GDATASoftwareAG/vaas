@@ -49,7 +49,7 @@ func (c clientCredentialsGrantAuthenticator) GetToken(accessToken *string) error
 	}
 
 	var tokenResponse msg.TokenResponse
-	if json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
+	if err := json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
 		return err
 	}
 

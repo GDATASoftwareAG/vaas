@@ -24,7 +24,9 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 		{
 			name: "With valid credentials - got token",
 			args: func() args {
-				godotenv.Load()
+				if err := godotenv.Load(); err != nil {
+					t.Fatalf("failed to load environment - %v", err)
+				}
 
 				clientId, clientSecret, _, tokenEndpoint := credentials.ReadCredentials()
 				return args{
@@ -38,7 +40,9 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 		{
 			name: "With invalid credentials - error",
 			args: func() args {
-				godotenv.Load()
+				if err := godotenv.Load(); err != nil {
+					t.Fatalf("failed to load environment - %v", err)
+				}
 				_, _, _, tokenEndpoint := credentials.ReadCredentials()
 				return args{
 					clientId:      "foo",

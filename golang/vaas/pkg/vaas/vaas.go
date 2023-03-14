@@ -77,13 +77,17 @@ func (v *vaas) Connect(token string) error {
 }
 
 func (v *vaas) Authenticate(token string) error {
-	v.websocketConnection.WriteJSON(msg.AuthRequest{
+	if err := v.websocketConnection.WriteJSON(msg.AuthRequest{
 		Kind:  "AuthRequest",
 		Token: token,
-	})
+	}); err != nil {
+		return err
+	}
 
 	var authResponse msg.AuthResponse
-	v.websocketConnection.ReadJSON(&authResponse)
+	if err := v.websocketConnection.ReadJSON(&authResponse); err != nil {
+		return err
+	}
 	if authResponse.Kind == "Error" {
 		return errors.New(authResponse.Text)
 	}
@@ -253,12 +257,20 @@ func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 
 func (v *vaas) uploadFile(file *os.File, url string, token string) error {
 	httpClient := &http.Client{}
-	file.Seek(0, 0)
-	info, _ := file.Stat()
+	if _, err := file.Seek(0, 0); err != nil {
+		return err
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
 	req, err := http.NewRequest(http.MethodPut, url, file)
 	if err != nil {
 		return err
 	}
+
 	req.Header.Add("Authorization", token)
 	req.ContentLength = int64(info.Size())
 
@@ -296,7 +308,9 @@ func (v *vaas) sendRequests(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case request := <-v.requestChannel:
-			v.websocketConnection.WriteJSON(request)
+			if err := v.websocketConnection.WriteJSON(request); err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 }
