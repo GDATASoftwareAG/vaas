@@ -23,7 +23,7 @@ func main() {
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
+		log.Printf("failed to load environment - %v", err)
 	}
 	CLIENT_ID, CLIENT_SECRET, VAAS_URL, TOKEN_ENDPOINT := credentials.ReadCredentials()
 	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)

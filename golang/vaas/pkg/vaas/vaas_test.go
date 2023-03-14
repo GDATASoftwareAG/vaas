@@ -19,7 +19,7 @@ import (
 
 func setUp() Vaas {
 	if err := godotenv.Load(); err != nil {
-		log.Fatal(err)
+		log.Printf("failed to load environment - %v", err)
 	}
 
 	CLIENT_ID, CLIENT_SECRET, VAAS_URL, TOKEN_ENDPOINT := credentials.ReadCredentials()
