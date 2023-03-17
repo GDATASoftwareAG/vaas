@@ -1,9 +1,11 @@
 package vaas
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -26,6 +28,7 @@ type Vaas interface {
 	ForUrl(uri string) (msg.VaasVerdict, error)
 	ForSha256(sha256 string) (msg.VaasVerdict, error)
 	ForFile(path string) (msg.VaasVerdict, error)
+	ForFileInMemory(file io.Reader) (msg.VaasVerdict, error)
 	ForSha256List(sha256List []string) ([]msg.VaasVerdict, error)
 	ForFileList(fileList []string) ([]msg.VaasVerdict, error)
 }
@@ -148,24 +151,65 @@ func (v *vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
 	return verdicts, nil
 }
 
-func (v *vaas) ForFile(file string) (msg.VaasVerdict, error) {
+func (v *vaas) ForFile(filePath string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	data, err := os.Open(file)
+	file, err := os.Open(filePath)
+	defer func() {
+		_ = file.Close()
+	}()
+
 	if err != nil {
 		return msg.VaasVerdict{
 			Verdict: msg.Verdict(msg.Error),
 		}, err
-
 	}
 
-	sha256, err := hash.CalculateSha256(data)
+	sha256, err := hash.CalculateSha256(file)
 	if err != nil {
 		return msg.VaasVerdict{
 			Verdict: msg.Verdict(msg.Error),
 		}, err
+	}
+
+	_, err = file.Seek(0, 0)
+	if err != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+		}, err
+	}
+
+	return v.forFileWithSha(file, sha256)
+}
+
+func (v *vaas) ForFileInMemory(data io.Reader) (msg.VaasVerdict, error) {
+	if v.sessionId == "" {
+		return msg.VaasVerdict{}, errors.New("invalid operation")
+	}
+
+	buf := new(bytes.Buffer)
+	_, err := io.Copy(buf, data)
+	if err != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+		}, err
+	}
+
+	sha256, err := hash.CalculateSha256(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Verdict(msg.Error),
+		}, err
+	}
+
+	return v.forFileWithSha(bytes.NewReader(buf.Bytes()), sha256)
+}
+
+func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, error) {
+	if v.sessionId == "" {
+		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
 	subscription := v.broadcastChannel.Subscribe()
@@ -255,24 +299,14 @@ func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 	}, nil
 }
 
-func (v *vaas) uploadFile(file *os.File, url string, token string) error {
+func (v *vaas) uploadFile(file io.Reader, url string, token string) error {
 	httpClient := &http.Client{}
-	if _, err := file.Seek(0, 0); err != nil {
-		return err
-	}
-
-	info, err := file.Stat()
-	if err != nil {
-		return err
-	}
-
 	req, err := http.NewRequest(http.MethodPut, url, file)
 	if err != nil {
 		return err
 	}
 
 	req.Header.Add("Authorization", token)
-	req.ContentLength = int64(info.Size())
 
 	httpResponse, err := httpClient.Do(req)
 	if err != nil {
