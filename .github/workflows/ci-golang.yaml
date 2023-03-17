@@ -46,4 +46,4 @@ jobs:
         working-directory: golang/vaas/
       - name: publish module
         if: startsWith(github.ref, 'refs/tags/go')
-        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/go}
+        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@v${GITHUB_REF#refs/tags/go}
