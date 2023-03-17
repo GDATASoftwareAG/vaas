@@ -45,5 +45,5 @@ jobs:
         run: go test ./pkg/authenticator ./pkg/broadcast ./pkg/vaas
         working-directory: golang/vaas/
       - name: publish module
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/go')
+        if: startsWith(github.ref, 'refs/tags/go')
         run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/go}
