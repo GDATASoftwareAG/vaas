@@ -1,11 +1,14 @@
 package vaas
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
@@ -143,7 +146,7 @@ func TestVaas_ForSha256(t *testing.T) {
 	}
 }
 
-func TestVaas_ForFile(t *testing.T) {
+func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 	const (
 		eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo"
 	)
@@ -210,6 +213,7 @@ func TestVaas_ForFile(t *testing.T) {
 			authenticated: true,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			const testFile string = "testfile"
@@ -224,8 +228,22 @@ func TestVaas_ForFile(t *testing.T) {
 				t.Fatalf("error while writing file: %v", err)
 			}
 
+			// test disk file
 			verdict, err := VaasClient.ForFile(testFile)
 			os.Remove(testFile)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error - %v", err)
+			}
+
+			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
+				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
+			}
+
+			// test in-memory file
+			buf := new(bytes.Buffer)
+			io.Copy(buf, strings.NewReader(tt.args.fileContent))
+
+			verdict, err = VaasClient.ForFileInMemory(buf)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
 			}
