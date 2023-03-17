@@ -354,9 +354,9 @@ func TestVaas_ForSha256List(t *testing.T) {
 	unknownIndex := Index(verdicts, unknownSha256)
 	cleanIndex := Index(verdicts, cleanSha256)
 
-	assert.Equal(t, verdicts[maliciousIndex].Verdict, messages.Verdict(messages.Malicious))
-	assert.Equal(t, verdicts[cleanIndex].Verdict, messages.Verdict(messages.Clean))
-	assert.Equal(t, verdicts[unknownIndex].Verdict, messages.Verdict(messages.Unknown))
+	assert.Equal(t, messages.Verdict(messages.Malicious), verdicts[maliciousIndex].Verdict)
+	assert.Equal(t, messages.Verdict(messages.Clean), verdicts[cleanIndex].Verdict)
+	assert.Equal(t, messages.Verdict(messages.Unknown), verdicts[unknownIndex].Verdict)
 }
 
 func TestVaas_ForFileList(t *testing.T) {
@@ -377,7 +377,7 @@ func TestVaas_ForFileList(t *testing.T) {
 	}
 
 	for _, verdict := range verdicts {
-		assert.Equal(t, verdict.Verdict, messages.Verdict(messages.Clean))
+		assert.Equal(t, messages.Verdict(messages.Clean), verdict.Verdict)
 	}
 
 	for _, file := range randomFiles {
