@@ -4,6 +4,7 @@
 [![vaas-java-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-java.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-java.yaml)
 [![vaas-python-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-python.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-python.yaml)
 [![vaas-php-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-php.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-php.yaml)
+[![vaas-golang-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml)
 
 # Verdict-as-a-Service
 
@@ -32,16 +33,16 @@ You need credentials to use the service in your application. If you are interest
 
 ## SDKs
 
-At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [Microsoft .NET](./dotnet/), [Python](./python/), [PHP](./php/) and [Ruby](./ruby/) are available.
+At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [Microsoft .NET](./dotnet/), [Python](./python/), [PHP](./php/), [Ruby](./ruby/) and [Golang](./golang/vaas/) are available.
 
-|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby|
-|---|---|---|---|---|---|---|---|
-|Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check SHA256 list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|
-|Check URL|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|
-|Custom Guids for tracability on user side|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#10060;|&#10060;|
+|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby|Golang
+|---|---|---|---|---|---|---|---|---|
+|Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+|Check SHA256 list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|&#9989;|
+|Check URL|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+|Check file|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+|Check file list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|&#9989;|
+|Custom Guids for tracability on user side|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#10060;|&#10060;|&#10060;|
 
 ### Documentation
 
@@ -54,7 +55,8 @@ Documentation for the SDKs is available in the corresponding SDK folder.
 * [Python SDK](./python/)
 * [.NET SDK](./dotnet/)
 * [Ruby SDK](./ruby/)
+* [Golang SDK](./golang/vaas/)
 
 ### Planned SDKs
 
-The following SDKs are planned but not yet available: *Swift* and *Perl*. If you need SDKs for other languages, please create an issue or contribute an SDK with a pull request.
+The following SDKs are planned but not yet available: *Swift*. If you need SDKs for other languages, please create an issue or contribute an SDK with a pull request.
