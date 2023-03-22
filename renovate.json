@@ -48,6 +48,12 @@
       "matchPaths": [
         ".github/workflows/**"
       ]
-    }
+    },
+    {
+      "groupName": "golang",
+      "matchPaths": [
+        "golang/vaas/**"
+      ]
+    },
   ]
 }
