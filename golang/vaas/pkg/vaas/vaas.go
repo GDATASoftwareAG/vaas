@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -23,7 +22,7 @@ import (
 const TIMEOUT = 180
 
 type Vaas interface {
-	Connect(token string) error
+	Connect(ctx context.Context, token string) error
 	Authenticate(token string) error
 	ForUrl(uri string) (msg.VaasVerdict, error)
 	ForSha256(sha256 string) (msg.VaasVerdict, error)
@@ -61,17 +60,18 @@ func (v *vaas) setBroadcastChannel(broadcastChannel broadcast.Channel[msg.Verdic
 	v.broadcastChannel = broadcastChannel
 }
 
-func (v *vaas) Connect(token string) error {
-	connection, _, err := websocket.DefaultDialer.Dial(v.vaasUrl, nil)
+func (v *vaas) Connect(ctx context.Context, token string) error {
+	connection, _, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
 	if err != nil {
 		return err
 	}
+	const pongWait = 60 * time.Second
+	connection.SetReadDeadline(time.Now().Add(pongWait))
+	connection.SetPongHandler(func(string) error { connection.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	v.websocketConnection = connection
-
 	if err := v.Authenticate(token); err != nil {
 		return errors.New("failed to authenticate: " + err.Error())
 	}
-	ctx := context.Background()
 	v.setBroadcastChannel(broadcast.New(ctx, v.responseChannel))
 	go v.sendRequests(ctx)
 	go v.readResponses(ctx)
@@ -336,14 +336,14 @@ func (v *vaas) waitForResponse(subscription <-chan msg.VerdictResponse, guid str
 	}
 }
 
-func (v *vaas) sendRequests(ctx context.Context) {
+func (v *vaas) sendRequests(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case request := <-v.requestChannel:
 			if err := v.websocketConnection.WriteJSON(request); err != nil {
-				log.Fatal(err)
+				return err
 			}
 		}
 	}
@@ -353,26 +353,14 @@ func (v *vaas) readResponses(ctx context.Context) {
 	responseChan := make(chan msg.VerdictResponse, 1)
 
 	go func() {
+		defer v.websocketConnection.Close()
 		for {
 			var verdictResponse msg.VerdictResponse
-			select {
-			case <-ctx.Done():
-				v.websocketConnection.Close()
+			if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
+				close(responseChan)
 				return
-			default:
-
-				if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
-					log.Fatal(err)
-					close(responseChan)
-				}
-
-				if !verdictResponse.IsValid() {
-					log.Fatal("invalid response")
-					close(responseChan)
-				}
-
-				responseChan <- verdictResponse
 			}
+			responseChan <- verdictResponse
 		}
 	}()
 
@@ -380,7 +368,7 @@ func (v *vaas) readResponses(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			v.websocketConnection.Close()
-			return
+			return 
 		case response := <-responseChan:
 			v.responseChannel <- response
 		}

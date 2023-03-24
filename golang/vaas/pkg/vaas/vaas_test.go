@@ -2,6 +2,7 @@ package vaas
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -38,8 +39,8 @@ func setUp() Vaas {
 		UseCache: false,
 	}
 	vaasClient := New(testingOptions, VAAS_URL)
-
-	err := vaasClient.Connect(accessToken)
+	ctx := context.Background()
+	err := vaasClient.Connect(ctx, accessToken)
 	if err != nil {
 		log.Fatal(err)
 	}
