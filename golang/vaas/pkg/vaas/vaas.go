@@ -5,16 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/hash"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 	"io"
 	"net/http"
 	"os"
 	"sync"
 	"time"
-
-	broadcast "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/broadcast"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/hash"
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 
 	"github.com/gorilla/websocket"
 )
@@ -35,12 +33,15 @@ type Vaas interface {
 type vaas struct {
 	sessionId           string
 	websocketConnection *websocket.Conn
-	broadcastChannel    broadcast.Channel[msg.VerdictResponse]
-	requestChannel      chan msg.VerdictRequest
-	responseChannel     chan msg.VerdictResponse
-	vaasUrl             string
-	options             options.VaasOptions
-	Ctx                 context.Context
+
+	openRequests      map[string]chan msg.VerdictResponse
+	openRequestsMutex sync.Mutex
+
+	requestChannel  chan msg.VerdictRequest
+	responseChannel chan msg.VerdictResponse
+	vaasUrl         string
+	options         options.VaasOptions
+	Ctx             context.Context
 }
 
 func New(options options.VaasOptions, vaasUrl string) Vaas {
@@ -56,10 +57,6 @@ func New(options options.VaasOptions, vaasUrl string) Vaas {
 	return vaas
 }
 
-func (v *vaas) setBroadcastChannel(broadcastChannel broadcast.Channel[msg.VerdictResponse]) {
-	v.broadcastChannel = broadcastChannel
-}
-
 func (v *vaas) Connect(ctx context.Context, token string) error {
 	connection, _, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
 	if err != nil {
@@ -69,12 +66,15 @@ func (v *vaas) Connect(ctx context.Context, token string) error {
 	connection.SetReadDeadline(time.Now().Add(pongWait))
 	connection.SetPongHandler(func(string) error { connection.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	v.websocketConnection = connection
+
 	if err := v.Authenticate(token); err != nil {
 		return errors.New("failed to authenticate: " + err.Error())
 	}
-	v.setBroadcastChannel(broadcast.New(ctx, v.responseChannel))
+
+	v.openRequests = make(map[string]chan msg.VerdictResponse, 0)
+
 	go v.sendRequests(ctx)
-	go v.readResponses(ctx)
+	go v.listenWebSocket()
 
 	return nil
 }
@@ -103,26 +103,37 @@ func (v *vaas) Authenticate(token string) error {
 	return nil
 }
 
+func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
+	v.openRequestsMutex.Lock()
+	resultChan := make(chan msg.VerdictResponse, 1)
+	v.openRequests[request.GetGuid()] = resultChan
+	v.openRequestsMutex.Unlock()
+	v.requestChannel <- request
+	return resultChan
+}
+
+func (v *vaas) closeRequest(request msg.VerdictRequest) {
+	v.openRequestsMutex.Lock()
+	close(v.openRequests[request.GetGuid()])
+	delete(v.openRequests, request.GetGuid())
+	v.openRequestsMutex.Unlock()
+}
+
 func (v *vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
-	subscription := v.broadcastChannel.Subscribe()
-	defer v.broadcastChannel.RemoveSubscription(subscription)
-	request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
-	v.requestChannel <- request
 
-	verdictResponse, err := v.waitForResponse(subscription, request.GetGuid())
-	if err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
-			Sha256:  sha256,
-		}, err
-	}
+	request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
+
+	responseChannel := v.openRequest(request)
+	defer v.closeRequest(request)
+
+	response := <-responseChannel
 
 	return msg.VaasVerdict{
-		Verdict: verdictResponse.Verdict,
-		Sha256:  verdictResponse.Sha256,
+		Verdict: response.Verdict,
+		Sha256:  response.Sha256,
 	}, nil
 }
 
@@ -212,37 +223,20 @@ func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, e
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	subscription := v.broadcastChannel.Subscribe()
-	defer v.broadcastChannel.RemoveSubscription(subscription)
-
 	request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
-	v.requestChannel <- request
+	responseChan := v.openRequest(request)
+	defer v.closeRequest(request)
 
-	response, err := v.waitForResponse(subscription, request.GetGuid())
-	if err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
-			Sha256:  sha256,
-		}, err
-	}
+	response := <-responseChan
 
 	if response.Verdict == msg.Verdict(msg.Unknown) {
 		if err := v.uploadFile(data, response.Url, response.UploadToken); err != nil {
 			return msg.VaasVerdict{
-				Verdict: msg.Verdict(msg.Unknown),
+				Verdict: msg.Verdict(msg.Error),
 				Sha256:  sha256,
 			}, err
-		} else {
-			uploadResponse, err := v.waitForResponse(subscription, request.GetGuid())
-			if err != nil {
-				return msg.VaasVerdict{
-					Verdict: msg.Verdict(msg.Error),
-					Sha256:  sha256,
-				}, err
-			} else {
-				response = uploadResponse
-			}
 		}
+		response = <-responseChan
 	}
 
 	return msg.VaasVerdict{
@@ -281,17 +275,13 @@ func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
-	subscription := v.broadcastChannel.Subscribe()
-	defer v.broadcastChannel.RemoveSubscription(subscription)
-	request := msg.NewVerdictRequestForUrl(v.sessionId, v.options, url)
-	v.requestChannel <- request
 
-	verdictResponse, responseErr := v.waitForResponse(subscription, request.GetGuid())
-	if responseErr != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
-		}, responseErr
-	}
+	request := msg.NewVerdictRequestForUrl(v.sessionId, v.options, url)
+
+	responseChan := v.openRequest(request)
+	defer v.closeRequest(request)
+
+	verdictResponse := <-responseChan
 
 	return msg.VaasVerdict{
 		Verdict: verdictResponse.Verdict,
@@ -300,7 +290,6 @@ func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 }
 
 func (v *vaas) uploadFile(file io.Reader, url string, token string) error {
-	httpClient := &http.Client{}
 	req, err := http.NewRequest(http.MethodPut, url, file)
 	if err != nil {
 		return err
@@ -308,69 +297,44 @@ func (v *vaas) uploadFile(file io.Reader, url string, token string) error {
 
 	req.Header.Add("Authorization", token)
 
-	httpResponse, err := httpClient.Do(req)
+	httpResponse, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
 
 	if httpResponse.StatusCode != 200 {
-		return errors.New("StatusCode:" + fmt.Sprintf("%x", httpResponse.StatusCode))
+		return errors.New("StatusCode:" + fmt.Sprintf("%d", httpResponse.StatusCode))
 	}
 
 	return nil
 }
 
-func (v *vaas) waitForResponse(subscription <-chan msg.VerdictResponse, guid string) (msg.VerdictResponse, error) {
-	var verdictResponse msg.VerdictResponse
-
-	for {
-		select {
-		case response := <-subscription:
-			if response.Guid == guid {
-				verdictResponse = response
-				return verdictResponse, nil
-			}
-		case <-time.After(TIMEOUT * time.Second):
-			return verdictResponse, errors.New("timeout while waiting for response")
-		}
-	}
-}
-
-func (v *vaas) sendRequests(ctx context.Context) error {
+func (v *vaas) sendRequests(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case request := <-v.requestChannel:
 			if err := v.websocketConnection.WriteJSON(request); err != nil {
-				return err
+				return
 			}
 		}
 	}
 }
 
-func (v *vaas) readResponses(ctx context.Context) {
+func (v *vaas) listenWebSocket() {
+	var verdictResponse msg.VerdictResponse
 	responseChan := make(chan msg.VerdictResponse, 1)
-
-	go func() {
-		defer v.websocketConnection.Close()
-		for {
-			var verdictResponse msg.VerdictResponse
-			if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
-				close(responseChan)
-				return
-			}
-			responseChan <- verdictResponse
-		}
-	}()
+	defer close(responseChan)
 
 	for {
-		select {
-		case <-ctx.Done():
-			v.websocketConnection.Close()
-			return 
-		case response := <-responseChan:
-			v.responseChannel <- response
+		if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				continue
+			}
+			return
 		}
+
+		v.openRequests[verdictResponse.Guid] <- verdictResponse
 	}
 }
