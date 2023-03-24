@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,8 +9,8 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
 
 	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
@@ -37,8 +38,8 @@ func main() {
 		UseShed:  true,
 		UseCache: false,
 	}, VAAS_URL)
-
-	if err := vaasClient.Connect(accessToken); err != nil {
+	ctx := context.Background()
+	if err := vaasClient.Connect(ctx, accessToken); err != nil {
 		log.Fatal("Something went wrong", err.Error())
 	}
 
