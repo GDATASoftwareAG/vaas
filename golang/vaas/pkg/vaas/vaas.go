@@ -9,6 +9,7 @@ import (
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -29,6 +30,7 @@ type Vaas interface {
 }
 
 type vaas struct {
+	logger              *log.Logger
 	sessionId           string
 	websocketConnection *websocket.Conn
 
@@ -43,6 +45,7 @@ type vaas struct {
 
 func New(options options.VaasOptions, vaasUrl string) Vaas {
 	return &vaas{
+		logger:          log.Default(),
 		options:         options,
 		vaasUrl:         vaasUrl,
 		requestChannel:  make(chan msg.VerdictRequest, 1),
@@ -269,6 +272,10 @@ func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, e
 }
 
 func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
+	if v.options.EnableLogs {
+		v.logger.Printf("Opening request for %s", request.GetGuid())
+	}
+
 	v.openRequestsMutex.Lock()
 	resultChan := make(chan msg.VerdictResponse, 1)
 	v.openRequests[request.GetGuid()] = resultChan
@@ -278,6 +285,10 @@ func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictRespons
 }
 
 func (v *vaas) closeRequest(request msg.VerdictRequest) {
+	if v.options.EnableLogs {
+		v.logger.Printf("Closing request for %s", request.GetGuid())
+	}
+
 	v.openRequestsMutex.Lock()
 	close(v.openRequests[request.GetGuid()])
 	delete(v.openRequests, request.GetGuid())
@@ -311,6 +322,9 @@ func (v *vaas) sendRequests(ctx context.Context) {
 			return
 		case request := <-v.requestChannel:
 			if err := v.websocketConnection.WriteJSON(request); err != nil {
+				if v.options.EnableLogs {
+					v.logger.Printf("Failed to send request %v", err)
+				}
 				return
 			}
 		}
@@ -325,7 +339,13 @@ func (v *vaas) listenWebSocket() {
 	for {
 		if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
 			if errors.Is(err, io.ErrUnexpectedEOF) {
+				if v.options.EnableLogs {
+					v.logger.Printf("Temporarily failed to read from websocket: %v", err)
+				}
 				continue
+			}
+			if v.options.EnableLogs {
+				v.logger.Printf("Permanently failed to read from websocket: %v", err)
 			}
 			return
 		}

@@ -1,8 +1,9 @@
 package options
 
 type VaasOptions struct {
-	UseShed  bool
-	UseCache bool
+	UseShed    bool
+	UseCache   bool
+	EnableLogs bool
 }
 
 func DefaultOptions() VaasOptions {
