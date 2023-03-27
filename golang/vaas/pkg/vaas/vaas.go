@@ -17,8 +17,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const TIMEOUT = 180
-
 type Vaas interface {
 	Connect(ctx context.Context, token string) error
 	Authenticate(token string) error
@@ -41,20 +39,15 @@ type vaas struct {
 	responseChannel chan msg.VerdictResponse
 	vaasUrl         string
 	options         options.VaasOptions
-	Ctx             context.Context
 }
 
 func New(options options.VaasOptions, vaasUrl string) Vaas {
-	rc := make(chan msg.VerdictResponse)
-
-	vaas := &vaas{
+	return &vaas{
 		options:         options,
 		vaasUrl:         vaasUrl,
 		requestChannel:  make(chan msg.VerdictRequest, 1),
-		responseChannel: rc,
+		responseChannel: make(chan msg.VerdictResponse),
 	}
-
-	return vaas
 }
 
 func (v *vaas) Connect(ctx context.Context, token string) error {
@@ -63,8 +56,10 @@ func (v *vaas) Connect(ctx context.Context, token string) error {
 		return err
 	}
 	const pongWait = 60 * time.Second
-	connection.SetReadDeadline(time.Now().Add(pongWait))
-	connection.SetPongHandler(func(string) error { connection.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	if err = connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		return err
+	}
+	connection.SetPongHandler(func(string) error { return connection.SetReadDeadline(time.Now().Add(pongWait)) })
 	v.websocketConnection = connection
 
 	if err := v.Authenticate(token); err != nil {
@@ -101,22 +96,6 @@ func (v *vaas) Authenticate(token string) error {
 	v.sessionId = authResponse.SessionId
 
 	return nil
-}
-
-func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
-	v.openRequestsMutex.Lock()
-	resultChan := make(chan msg.VerdictResponse, 1)
-	v.openRequests[request.GetGuid()] = resultChan
-	v.openRequestsMutex.Unlock()
-	v.requestChannel <- request
-	return resultChan
-}
-
-func (v *vaas) closeRequest(request msg.VerdictRequest) {
-	v.openRequestsMutex.Lock()
-	close(v.openRequests[request.GetGuid()])
-	delete(v.openRequests, request.GetGuid())
-	v.openRequestsMutex.Unlock()
 }
 
 func (v *vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
@@ -218,33 +197,6 @@ func (v *vaas) ForFileInMemory(data io.Reader) (msg.VaasVerdict, error) {
 	return v.forFileWithSha(bytes.NewReader(buf.Bytes()), sha256)
 }
 
-func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, error) {
-	if v.sessionId == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
-	responseChan := v.openRequest(request)
-	defer v.closeRequest(request)
-
-	response := <-responseChan
-
-	if response.Verdict == msg.Verdict(msg.Unknown) {
-		if err := v.uploadFile(data, response.Url, response.UploadToken); err != nil {
-			return msg.VaasVerdict{
-				Verdict: msg.Verdict(msg.Error),
-				Sha256:  sha256,
-			}, err
-		}
-		response = <-responseChan
-	}
-
-	return msg.VaasVerdict{
-		Verdict: response.Verdict,
-		Sha256:  response.Sha256,
-	}, nil
-}
-
 func (v *vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return []msg.VaasVerdict{}, errors.New("invalid operation")
@@ -287,6 +239,49 @@ func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 		Verdict: verdictResponse.Verdict,
 		Sha256:  verdictResponse.Sha256,
 	}, nil
+}
+
+func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, error) {
+	if v.sessionId == "" {
+		return msg.VaasVerdict{}, errors.New("invalid operation")
+	}
+
+	request := msg.NewVerdictRequest(v.sessionId, v.options, sha256)
+	responseChan := v.openRequest(request)
+	defer v.closeRequest(request)
+
+	response := <-responseChan
+
+	if response.Verdict == msg.Verdict(msg.Unknown) {
+		if err := v.uploadFile(data, response.Url, response.UploadToken); err != nil {
+			return msg.VaasVerdict{
+				Verdict: msg.Verdict(msg.Error),
+				Sha256:  sha256,
+			}, err
+		}
+		response = <-responseChan
+	}
+
+	return msg.VaasVerdict{
+		Verdict: response.Verdict,
+		Sha256:  response.Sha256,
+	}, nil
+}
+
+func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
+	v.openRequestsMutex.Lock()
+	resultChan := make(chan msg.VerdictResponse, 1)
+	v.openRequests[request.GetGuid()] = resultChan
+	v.openRequestsMutex.Unlock()
+	v.requestChannel <- request
+	return resultChan
+}
+
+func (v *vaas) closeRequest(request msg.VerdictRequest) {
+	v.openRequestsMutex.Lock()
+	close(v.openRequests[request.GetGuid()])
+	delete(v.openRequests, request.GetGuid())
+	v.openRequestsMutex.Unlock()
 }
 
 func (v *vaas) uploadFile(file io.Reader, url string, token string) error {
