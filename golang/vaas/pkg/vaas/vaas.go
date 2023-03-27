@@ -8,14 +8,12 @@ import (
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/hash"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
+	"github.com/gorilla/websocket"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"sync"
-	"time"
-
-	"github.com/gorilla/websocket"
 )
 
 type Vaas interface {
@@ -58,11 +56,7 @@ func (v *vaas) Connect(ctx context.Context, token string) error {
 	if err != nil {
 		return err
 	}
-	const pongWait = 60 * time.Second
-	if err = connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
-		return err
-	}
-	connection.SetPongHandler(func(string) error { return connection.SetReadDeadline(time.Now().Add(pongWait)) })
+	connection.SetPingHandler(nil)
 	v.websocketConnection = connection
 
 	if err := v.Authenticate(token); err != nil {
