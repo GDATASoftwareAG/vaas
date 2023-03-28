@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 
@@ -24,60 +25,66 @@ func main() {
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
-		log.Printf("failed to load environment - %v", err)
+		log.Printf("No .env file found, try environment variables...")
 	}
-	CLIENT_ID, CLIENT_SECRET, VAAS_URL, TOKEN_ENDPOINT := credentials.ReadCredentials()
-	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
-
-	var accessToken string
-	if err := authenticator.GetToken(&accessToken); err != nil {
-		log.Fatal(err)
-	}
+	clientID, clientSecret, vaasURL, tokenEndpoint := credentials.ReadCredentials()
+	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
 
 	vaasClient := vaas.New(options.VaasOptions{
-		UseShed:  true,
-		UseCache: false,
-	}, VAAS_URL)
-	ctx := context.Background()
-	if err := vaasClient.Connect(ctx, accessToken); err != nil {
+		UseShed:    true,
+		UseCache:   false,
+		EnableLogs: true,
+	}, vaasURL)
+	ctx, webSocketCancel := context.WithCancel(context.Background())
+
+	termChan, err := vaasClient.Connect(ctx, auth)
+	if err != nil {
 		log.Fatal("Something went wrong", err.Error())
 	}
 
+	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer analysisCancel()
+
 	if *sha256Check {
 		sha256List := flag.Args()
-		if err := checkSha256(sha256List, vaasClient); err != nil {
+		if err := checkSha256(analysisCtx, sha256List, vaasClient); err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	if *urlCheck {
 		urlList := flag.Args()
-		if err := checkUrl(urlList, vaasClient); err != nil {
+		if err := checkUrl(analysisCtx, urlList, vaasClient); err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	if *fileCheck {
 		fileList := flag.Args()
-		if err := checkFile(fileList, vaasClient); err != nil {
+		if err := checkFile(analysisCtx, fileList, vaasClient); err != nil {
 			log.Fatal(err)
 		}
 	}
+
+	webSocketCancel()
+	if err = <-termChan; err != nil {
+		log.Printf("Websocket shutdown with an error - %v", err)
+	}
 }
 
-func checkFile(fileList []string, vaasClient vaas.Vaas) error {
+func checkFile(ctx context.Context, fileList []string, vaasClient vaas.Vaas) error {
 	if len(fileList) == 0 {
 		log.Fatal("no file entered in arguments")
 
 	} else if len(fileList) == 1 {
-		result, err := vaasClient.ForFile(fileList[0])
+		result, err := vaasClient.ForFile(ctx, fileList[0])
 		if err != nil {
 			return err
 		}
 		fmt.Println(result.Verdict)
 
 	} else if len(fileList) > 1 {
-		results, err := vaasClient.ForFileList(fileList)
+		results, err := vaasClient.ForFileList(ctx, fileList)
 		if err != nil {
 			return err
 		}
@@ -89,19 +96,19 @@ func checkFile(fileList []string, vaasClient vaas.Vaas) error {
 	return nil
 }
 
-func checkSha256(sha256List []string, vaasClient vaas.Vaas) error {
+func checkSha256(ctx context.Context, sha256List []string, vaasClient vaas.Vaas) error {
 	if len(sha256List) == 0 {
 		log.Fatal("no sha256 entered in arguments")
 	}
 	if len(sha256List) == 1 {
-		result, err := vaasClient.ForSha256(sha256List[0])
+		result, err := vaasClient.ForSha256(ctx, sha256List[0])
 		if err != nil {
 			return err
 		}
 		fmt.Println(result.Verdict)
 
 	} else if len(sha256List) > 1 {
-		results, err := vaasClient.ForSha256List(sha256List)
+		results, err := vaasClient.ForSha256List(ctx, sha256List)
 		if err != nil {
 			return err
 		}
@@ -113,13 +120,13 @@ func checkSha256(sha256List []string, vaasClient vaas.Vaas) error {
 	return nil
 }
 
-func checkUrl(urlList []string, vaasClient vaas.Vaas) error {
+func checkUrl(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error {
 	if len(urlList) == 0 {
 		log.Fatal("no url entered in arguments")
 	}
 
 	if len(urlList) == 1 {
-		result, err := vaasClient.ForUrl(urlList[0])
+		result, err := vaasClient.ForUrl(ctx, urlList[0])
 		if err != nil {
 			return err
 		}
@@ -131,7 +138,7 @@ func checkUrl(urlList []string, vaasClient vaas.Vaas) error {
 			waitGroup.Add(1)
 			go func(url string) {
 				defer waitGroup.Done()
-				result, err := vaasClient.ForUrl(url)
+				result, err := vaasClient.ForUrl(ctx, url)
 				if err != nil {
 					fmt.Println(err)
 				} else {
@@ -139,7 +146,7 @@ func checkUrl(urlList []string, vaasClient vaas.Vaas) error {
 				}
 			}(url)
 		}
-		waitGroup.Wait()	
+		waitGroup.Wait()
 	}
 	return nil
 }
