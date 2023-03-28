@@ -12,19 +12,25 @@ import (
 	"github.com/gorilla/websocket"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"sync"
 )
 
+// Vaas provides various ForXXX-functions to send analysis requests to a VAAS server.
+// All kinds of request can be canceled by the context.
+// The Connect()-function has to be called before any other requests are made.
 type Vaas interface {
+	// Connect opens a websocket connection to the VAAS Server, which is kept open until the context.Context expires.
+	// The termChan indicates when a connection was closed. In the case of an unexpected close an error is written to the channel.
 	Connect(ctx context.Context, auth authenticator.ClientCredentialsGrantAuthenticator) (termChan <-chan error, err error)
-	ForUrl(uri string) (msg.VaasVerdict, error)
-	ForSha256(sha256 string) (msg.VaasVerdict, error)
-	ForFile(path string) (msg.VaasVerdict, error)
-	ForFileInMemory(file io.Reader) (msg.VaasVerdict, error)
-	ForSha256List(sha256List []string) ([]msg.VaasVerdict, error)
-	ForFileList(fileList []string) ([]msg.VaasVerdict, error)
+	ForUrl(ctx context.Context, uri string) (msg.VaasVerdict, error)
+	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
+	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
+	ForFileInMemory(ctx context.Context, file io.Reader) (msg.VaasVerdict, error)
+	ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error)
+	ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error)
 }
 
 type vaas struct {
@@ -60,12 +66,12 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.ClientCredentials
 	}
 
 	go v.sendRequests(ctx)
-	termChan = v.listenWebSocket()
+	termChan = v.listenWebSocket(ctx)
 
 	return termChan, nil
 }
 
-func (v *vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
+func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -75,7 +81,12 @@ func (v *vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
 	responseChannel := v.openRequest(request)
 	defer v.closeRequest(request)
 
-	response := <-responseChannel
+	var response msg.VerdictResponse
+	select {
+	case response = <-responseChannel:
+	case <-ctx.Done():
+		return msg.VaasVerdict{}, ctx.Err()
+	}
 
 	return msg.VaasVerdict{
 		Verdict: response.Verdict,
@@ -83,7 +94,7 @@ func (v *vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
 	}, nil
 }
 
-func (v *vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
+func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return []msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -95,7 +106,7 @@ func (v *vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
 		writerGroup.Add(1)
 		go func(sha256 string) {
 			defer writerGroup.Done()
-			verdict, err := v.ForSha256(sha256)
+			verdict, err := v.ForSha256(ctx, sha256)
 			if err != nil {
 				verdicts = append(verdicts, msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error()})
 				return
@@ -108,7 +119,7 @@ func (v *vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
 	return verdicts, nil
 }
 
-func (v *vaas) ForFile(filePath string) (msg.VaasVerdict, error) {
+func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -141,10 +152,10 @@ func (v *vaas) ForFile(filePath string) (msg.VaasVerdict, error) {
 		}, err
 	}
 
-	return v.forFileWithSha(file, sha256)
+	return v.forFileWithSha(ctx, file, sha256)
 }
 
-func (v *vaas) ForFileInMemory(data io.Reader) (msg.VaasVerdict, error) {
+func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -166,10 +177,10 @@ func (v *vaas) ForFileInMemory(data io.Reader) (msg.VaasVerdict, error) {
 		}, err
 	}
 
-	return v.forFileWithSha(bytes.NewReader(buf.Bytes()), sha256)
+	return v.forFileWithSha(ctx, bytes.NewReader(buf.Bytes()), sha256)
 }
 
-func (v *vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
+func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return nil, errors.New("invalid operation")
 	}
@@ -182,7 +193,7 @@ func (v *vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
 
 		go func(file string) {
 			defer waitGroup.Done()
-			verdict, err := v.ForFile(file)
+			verdict, err := v.ForFile(ctx, file)
 			if err != nil {
 				verdicts = append(verdicts, msg.VaasVerdict{Sha256: verdict.Sha256, Verdict: msg.Error, ErrMsg: err.Error()})
 			} else {
@@ -195,7 +206,7 @@ func (v *vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
 	return verdicts, nil
 }
 
-func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
+func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -205,11 +216,16 @@ func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 	responseChan := v.openRequest(request)
 	defer v.closeRequest(request)
 
-	verdictResponse := <-responseChan
+	var response msg.VerdictResponse
+	select {
+	case response = <-responseChan:
+	case <-ctx.Done():
+		return msg.VaasVerdict{}, ctx.Err()
+	}
 
 	return msg.VaasVerdict{
-		Verdict: verdictResponse.Verdict,
-		Sha256:  verdictResponse.Sha256,
+		Verdict: response.Verdict,
+		Sha256:  response.Sha256,
 	}, nil
 }
 
@@ -251,7 +267,7 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.ClientCreden
 	return nil
 }
 
-func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, error) {
+func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
@@ -260,7 +276,12 @@ func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, e
 	responseChan := v.openRequest(request)
 	defer v.closeRequest(request)
 
-	response := <-responseChan
+	var response msg.VerdictResponse
+	select {
+	case response = <-responseChan:
+	case <-ctx.Done():
+		return msg.VaasVerdict{}, ctx.Err()
+	}
 
 	if response.Verdict == msg.Unknown {
 		if err := v.uploadFile(data, response.Url, response.UploadToken); err != nil {
@@ -358,11 +379,19 @@ func (v *vaas) sendRequests(ctx context.Context) {
 	}
 }
 
-func (v *vaas) listenWebSocket() chan error {
-	termChan := make(chan error, 1)
-	defer close(termChan)
+func (v *vaas) listenWebSocket(ctx context.Context) chan error {
+	termChan := make(chan error, 2)
+	listenCtx, listenCancel := context.WithCancel(ctx)
 
 	go func() {
+		<-listenCtx.Done()
+		termChan <- v.websocketConnection.Close()
+		close(termChan)
+	}()
+
+	go func() {
+		defer listenCancel()
+
 		var verdictResponse msg.VerdictResponse
 		for {
 			err := v.websocketConnection.ReadJSON(&verdictResponse)
@@ -372,6 +401,7 @@ func (v *vaas) listenWebSocket() chan error {
 			}
 
 			var closeErr *websocket.CloseError
+			// If websocket was shutdown by the server
 			if errors.As(err, &closeErr) {
 				switch closeErr.Code {
 				case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
@@ -384,12 +414,21 @@ func (v *vaas) listenWebSocket() chan error {
 					return
 				}
 			}
+			// This error occurs when the context is canceled and we call close() on the websocket connection.
+			if errors.Is(err, net.ErrClosed) {
+				if v.options.EnableLogs {
+					v.logger.Printf("Websocket connection was closed")
+				}
+				return
+			}
+			// This error occurs if whe JSON response could not be parsed by the websocket.
 			if err == io.ErrUnexpectedEOF {
 				if v.options.EnableLogs {
 					v.logger.Printf("Temporarily failed to read from websocket: %v", err)
 				}
 				continue
 			}
+			// We don't know what happened here, help...
 			if v.options.EnableLogs {
 				v.logger.Printf("Permanently failed to read from websocket: %v", err)
 			}

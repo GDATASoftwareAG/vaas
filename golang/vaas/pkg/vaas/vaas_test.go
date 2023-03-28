@@ -151,7 +151,7 @@ func TestVaas_ForSha256(t *testing.T) {
 				VaasClient = New(tt.fields.testingOptions, "")
 			}
 
-			verdict, err := VaasClient.ForSha256(tt.args.sha256)
+			verdict, err := VaasClient.ForSha256(context.Background(), tt.args.sha256)
 
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
@@ -250,7 +250,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 			}
 
 			// test disk file
-			verdict, err := VaasClient.ForFile(testFile)
+			verdict, err := VaasClient.ForFile(context.Background(), testFile)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
 			}
@@ -261,9 +261,9 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 
 			// test in-memory file
 			buf := new(bytes.Buffer)
-			io.Copy(buf, strings.NewReader(tt.args.fileContent))
+			_, _ = io.Copy(buf, strings.NewReader(tt.args.fileContent))
 
-			verdict, err = VaasClient.ForFileInMemory(buf)
+			verdict, err = VaasClient.ForFileInMemory(context.Background(), buf)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
 			}
@@ -348,7 +348,7 @@ func TestVaas_ForUrl(t *testing.T) {
 				VaasClient = New(tt.fields.testingOptions, "")
 			}
 
-			verdict, err := VaasClient.ForUrl(tt.args.url)
+			verdict, err := VaasClient.ForUrl(context.Background(), tt.args.url)
 
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
@@ -370,7 +370,7 @@ func TestVaas_ForSha256List(t *testing.T) {
 	cleanSha256 := "698cda840a0b3d4639f0c5dbd5c629a847a27448a9a179cb6b7a648bc1186f23"
 	unknownSha256 := "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
 
-	verdicts, err := vaasClient.ForSha256List([]string{maliciousSha256, cleanSha256, unknownSha256})
+	verdicts, err := vaasClient.ForSha256List(context.Background(), []string{maliciousSha256, cleanSha256, unknownSha256})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -401,7 +401,7 @@ func TestVaas_ForFileList(t *testing.T) {
 		randomFiles = append(randomFiles, filename)
 	}
 
-	verdicts, err := vaasClient.ForFileList(randomFiles)
+	verdicts, err := vaasClient.ForFileList(context.Background(), randomFiles)
 	if err != nil {
 		log.Fatal(err)
 	}
