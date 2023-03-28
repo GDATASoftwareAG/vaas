@@ -3,7 +3,7 @@ package authenticator
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -12,7 +12,7 @@ import (
 )
 
 type ClientCredentialsGrantAuthenticator interface {
-	GetToken(accessToken *string) error
+	GetToken() (string, error)
 }
 
 type clientCredentialsGrantAuthenticator struct {
@@ -31,7 +31,7 @@ func New(clientId string, clientSecret string, tokenEndpoint string) ClientCrede
 	}
 }
 
-func (c clientCredentialsGrantAuthenticator) GetToken(accessToken *string) error {
+func (c clientCredentialsGrantAuthenticator) GetToken() (string, error) {
 	data := url.Values{}
 	data.Set("client_id", c.cliendId)
 	data.Set("client_secret", c.clientSecret)
@@ -39,24 +39,23 @@ func (c clientCredentialsGrantAuthenticator) GetToken(accessToken *string) error
 
 	request, err := http.NewRequest("POST", c.tokenEndpoint, bytes.NewReader([]byte(data.Encode())))
 	if err != nil {
-		return err
+		return "", err
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	response, err := c.httpClient.Do(request)
 	if err != nil {
-		return err
+		return "", err
+	}
+
+	if response.StatusCode != 200 {
+		return "", fmt.Errorf("http request failed: %s", response.Status)
 	}
 
 	var tokenResponse msg.TokenResponse
-	if err := json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
-		return err
+	if err = json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
+		return "", err
 	}
 
-	if tokenResponse.Accesstoken == "" {
-		return errors.New("accesstoken is null")
-	}
-
-	*accessToken = tokenResponse.Accesstoken
-	return nil
+	return tokenResponse.Accesstoken, nil
 }

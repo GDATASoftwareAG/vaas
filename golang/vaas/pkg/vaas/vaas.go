@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/hash"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
@@ -17,8 +18,7 @@ import (
 )
 
 type Vaas interface {
-	Connect(ctx context.Context, token string) error
-	Authenticate(token string) error
+	Connect(ctx context.Context, auth authenticator.ClientCredentialsGrantAuthenticator) (termChan <-chan error, err error)
 	ForUrl(uri string) (msg.VaasVerdict, error)
 	ForSha256(sha256 string) (msg.VaasVerdict, error)
 	ForFile(path string) (msg.VaasVerdict, error)
@@ -31,6 +31,7 @@ type vaas struct {
 	logger              *log.Logger
 	sessionId           string
 	websocketConnection *websocket.Conn
+	waitAuthenticated   sync.WaitGroup
 
 	openRequests      map[string]chan msg.VerdictResponse
 	openRequestsMutex sync.Mutex
@@ -42,57 +43,26 @@ type vaas struct {
 }
 
 func New(options options.VaasOptions, vaasUrl string) Vaas {
-	return &vaas{
+	client := &vaas{
 		logger:          log.Default(),
 		options:         options,
 		vaasUrl:         vaasUrl,
 		requestChannel:  make(chan msg.VerdictRequest, 1),
 		responseChannel: make(chan msg.VerdictResponse),
+		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
 	}
+	return client
 }
 
-func (v *vaas) Connect(ctx context.Context, token string) error {
-	connection, _, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
-	if err != nil {
-		return err
+func (v *vaas) Connect(ctx context.Context, auth authenticator.ClientCredentialsGrantAuthenticator) (termChan <-chan error, err error) {
+	if err = v.authenticate(ctx, auth); err != nil {
+		return nil, err
 	}
-	connection.SetPingHandler(nil)
-	v.websocketConnection = connection
-
-	if err := v.Authenticate(token); err != nil {
-		return errors.New("failed to authenticate: " + err.Error())
-	}
-
-	v.openRequests = make(map[string]chan msg.VerdictResponse, 0)
 
 	go v.sendRequests(ctx)
-	go v.listenWebSocket()
+	termChan = v.listenWebSocket()
 
-	return nil
-}
-
-func (v *vaas) Authenticate(token string) error {
-	if err := v.websocketConnection.WriteJSON(msg.AuthRequest{
-		Kind:  "AuthRequest",
-		Token: token,
-	}); err != nil {
-		return err
-	}
-
-	var authResponse msg.AuthResponse
-	if err := v.websocketConnection.ReadJSON(&authResponse); err != nil {
-		return err
-	}
-	if authResponse.Kind == "Error" {
-		return errors.New(authResponse.Text)
-	}
-	if !authResponse.Success {
-		return errors.New("failed to authenticate")
-	}
-
-	v.sessionId = authResponse.SessionId
-
-	return nil
+	return termChan, nil
 }
 
 func (v *vaas) ForSha256(sha256 string) (msg.VaasVerdict, error) {
@@ -127,7 +97,7 @@ func (v *vaas) ForSha256List(sha256List []string) ([]msg.VaasVerdict, error) {
 			defer writerGroup.Done()
 			verdict, err := v.ForSha256(sha256)
 			if err != nil {
-				verdicts = append(verdicts, msg.VaasVerdict{Sha256: sha256, Verdict: msg.Verdict(msg.Error)})
+				verdicts = append(verdicts, msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error()})
 				return
 			}
 			verdicts = append(verdicts, verdict)
@@ -150,21 +120,24 @@ func (v *vaas) ForFile(filePath string) (msg.VaasVerdict, error) {
 
 	if err != nil {
 		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
+			Verdict: msg.Error,
+			ErrMsg:  err.Error(),
 		}, err
 	}
 
 	sha256, err := hash.CalculateSha256(file)
 	if err != nil {
 		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
+			Verdict: msg.Error,
+			ErrMsg:  err.Error(),
 		}, err
 	}
 
 	_, err = file.Seek(0, 0)
 	if err != nil {
 		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
+			Verdict: msg.Error,
+			ErrMsg:  err.Error(),
 		}, err
 	}
 
@@ -180,14 +153,16 @@ func (v *vaas) ForFileInMemory(data io.Reader) (msg.VaasVerdict, error) {
 	_, err := io.Copy(buf, data)
 	if err != nil {
 		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
+			Verdict: msg.Error,
+			ErrMsg:  err.Error(),
 		}, err
 	}
 
 	sha256, err := hash.CalculateSha256(bytes.NewReader(buf.Bytes()))
 	if err != nil {
 		return msg.VaasVerdict{
-			Verdict: msg.Verdict(msg.Error),
+			Verdict: msg.Error,
+			ErrMsg:  err.Error(),
 		}, err
 	}
 
@@ -196,7 +171,7 @@ func (v *vaas) ForFileInMemory(data io.Reader) (msg.VaasVerdict, error) {
 
 func (v *vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
 	if v.sessionId == "" {
-		return []msg.VaasVerdict{}, errors.New("invalid operation")
+		return nil, errors.New("invalid operation")
 	}
 
 	var waitGroup sync.WaitGroup
@@ -209,7 +184,7 @@ func (v *vaas) ForFileList(fileList []string) ([]msg.VaasVerdict, error) {
 			defer waitGroup.Done()
 			verdict, err := v.ForFile(file)
 			if err != nil {
-				verdicts = append(verdicts, msg.VaasVerdict{Sha256: verdict.Sha256, Verdict: msg.Verdict(msg.Error)})
+				verdicts = append(verdicts, msg.VaasVerdict{Sha256: verdict.Sha256, Verdict: msg.Error, ErrMsg: err.Error()})
 			} else {
 				verdicts = append(verdicts, verdict)
 			}
@@ -238,6 +213,44 @@ func (v *vaas) ForUrl(url string) (msg.VaasVerdict, error) {
 	}, nil
 }
 
+func (v *vaas) authenticate(ctx context.Context, auth authenticator.ClientCredentialsGrantAuthenticator) error {
+	v.waitAuthenticated.Add(1)
+	defer v.waitAuthenticated.Done()
+
+	connection, _, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
+	if err != nil {
+		return err
+	}
+	connection.SetPingHandler(nil)
+	v.websocketConnection = connection
+
+	var token string
+	if token, err = auth.GetToken(); err != nil {
+		return err
+	}
+
+	if err = v.websocketConnection.WriteJSON(msg.AuthRequest{
+		Kind:  "AuthRequest",
+		Token: token,
+	}); err != nil {
+		return err
+	}
+
+	var authResponse msg.AuthResponse
+	if err = v.websocketConnection.ReadJSON(&authResponse); err != nil {
+		return err
+	}
+	if authResponse.Kind == "Error" {
+		return errors.New(authResponse.Text)
+	}
+	if !authResponse.Success {
+		return errors.New("failed to authenticate")
+	}
+
+	v.sessionId = authResponse.SessionId
+	return nil
+}
+
 func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionId == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
@@ -249,11 +262,12 @@ func (v *vaas) forFileWithSha(data io.Reader, sha256 string) (msg.VaasVerdict, e
 
 	response := <-responseChan
 
-	if response.Verdict == msg.Verdict(msg.Unknown) {
+	if response.Verdict == msg.Unknown {
 		if err := v.uploadFile(data, response.Url, response.UploadToken); err != nil {
 			return msg.VaasVerdict{
-				Verdict: msg.Verdict(msg.Error),
+				Verdict: msg.Error,
 				Sha256:  sha256,
+				ErrMsg:  err.Error(),
 			}, err
 		}
 		response = <-responseChan
@@ -269,6 +283,8 @@ func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictRespons
 	if v.options.EnableLogs {
 		v.logger.Printf("Opening request for %s", request.GetGuid())
 	}
+
+	v.waitAuthenticated.Wait()
 
 	v.openRequestsMutex.Lock()
 	resultChan := make(chan msg.VerdictResponse, 1)
@@ -295,15 +311,32 @@ func (v *vaas) uploadFile(file io.Reader, url string, token string) error {
 		return err
 	}
 
+	// VAAS requires a set Content-Length.
+	// Here can add support for various io.Reader, which are not supported by the http package.
+	if req.ContentLength == 0 {
+		switch t := file.(type) {
+		case *os.File:
+			var info os.FileInfo
+			if info, err = t.Stat(); err != nil {
+				return err
+			}
+			req.ContentLength = info.Size()
+		default:
+			return fmt.Errorf("unsupported reader (%T), can not determine content length", file)
+		}
+	}
+
 	req.Header.Add("Authorization", token)
 
 	httpResponse, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
+	defer httpResponse.Body.Close()
 
 	if httpResponse.StatusCode != 200 {
-		return errors.New("StatusCode:" + fmt.Sprintf("%d", httpResponse.StatusCode))
+		errMsg, _ := io.ReadAll(httpResponse.Body)
+		return fmt.Errorf("StatusCode: %d, Msg: %s", httpResponse.StatusCode, errMsg)
 	}
 
 	return nil
@@ -325,14 +358,33 @@ func (v *vaas) sendRequests(ctx context.Context) {
 	}
 }
 
-func (v *vaas) listenWebSocket() {
-	var verdictResponse msg.VerdictResponse
-	responseChan := make(chan msg.VerdictResponse, 1)
-	defer close(responseChan)
+func (v *vaas) listenWebSocket() chan error {
+	termChan := make(chan error, 1)
+	defer close(termChan)
 
-	for {
-		if err := v.websocketConnection.ReadJSON(&verdictResponse); err != nil {
-			if errors.Is(err, io.ErrUnexpectedEOF) {
+	go func() {
+		var verdictResponse msg.VerdictResponse
+		for {
+			err := v.websocketConnection.ReadJSON(&verdictResponse)
+			if err == nil {
+				v.openRequests[verdictResponse.Guid] <- verdictResponse
+				continue
+			}
+
+			var closeErr *websocket.CloseError
+			if errors.As(err, &closeErr) {
+				switch closeErr.Code {
+				case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
+					if v.options.EnableLogs {
+						v.logger.Printf("Websocket shutdown - %d: %s", closeErr.Code, closeErr.Text)
+					}
+					return
+				default:
+					termChan <- fmt.Errorf("unexpected shutdown of websocket - %w", closeErr)
+					return
+				}
+			}
+			if err == io.ErrUnexpectedEOF {
 				if v.options.EnableLogs {
 					v.logger.Printf("Temporarily failed to read from websocket: %v", err)
 				}
@@ -341,9 +393,10 @@ func (v *vaas) listenWebSocket() {
 			if v.options.EnableLogs {
 				v.logger.Printf("Permanently failed to read from websocket: %v", err)
 			}
+			termChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
 			return
 		}
+	}()
 
-		v.openRequests[verdictResponse.Guid] <- verdictResponse
-	}
+	return termChan
 }

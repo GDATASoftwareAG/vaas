@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"io"
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
@@ -21,31 +22,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setUp() Vaas {
-	if err := godotenv.Load(); err != nil {
+type testFixture struct {
+	cancel   context.CancelFunc
+	termChan <-chan error
+}
+
+func (tf *testFixture) setUp(t *testing.T) Vaas {
+	err := godotenv.Load()
+	if err != nil {
 		log.Printf("failed to load environment - %v", err)
 	}
 
-	CLIENT_ID, CLIENT_SECRET, VAAS_URL, TOKEN_ENDPOINT := credentials.ReadCredentials()
-	authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
-
-	var accessToken string
-	if err := authenticator.GetToken(&accessToken); err != nil {
-		log.Fatal(err)
-	}
+	clientId, clientSecret, vaasUrl, tokenEndpoint := credentials.ReadCredentials()
 
 	testingOptions := options.VaasOptions{
 		UseShed:  true,
 		UseCache: false,
 	}
-	vaasClient := New(testingOptions, VAAS_URL)
-	ctx := context.Background()
-	err := vaasClient.Connect(ctx, accessToken)
-	if err != nil {
-		log.Fatal(err)
+	vaasClient := New(testingOptions, vaasUrl)
+
+	var ctx context.Context
+	ctx, tf.cancel = context.WithCancel(context.Background())
+
+	auth := authenticator.New(clientId, clientSecret, tokenEndpoint)
+	if tf.termChan, err = vaasClient.Connect(ctx, auth); err != nil {
+		t.Fatalf("Failed to connect - %v", err)
 	}
 
 	return vaasClient
+}
+
+func (tf *testFixture) tearDown(t *testing.T) {
+	tf.cancel()
+	if err := <-tf.termChan; err != nil {
+		t.Errorf("Error during close of websocket - %v", err)
+	}
 }
 
 func TestVaas_ForSha256(t *testing.T) {
@@ -72,12 +83,13 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "not authenticated - error (invalid operation)",
 			args: args{
 				sha256:          cleanSha256,
-				expectedVerdict: messages.Verdict(messages.Clean),
+				expectedVerdict: messages.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseShed:    true,
+					UseCache:   false,
+					EnableLogs: true,
 				}},
 			wantErr:       true,
 			authenticated: false,
@@ -86,12 +98,13 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "With clean sha256 - got verdict clean",
 			args: args{
 				sha256:          cleanSha256,
-				expectedVerdict: messages.Verdict(messages.Clean),
+				expectedVerdict: messages.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseShed:    true,
+					UseCache:   false,
+					EnableLogs: true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -100,12 +113,13 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "With malicious sha256 - got verdict malicious",
 			args: args{
 				sha256:          maliciousSha256,
-				expectedVerdict: messages.Verdict(messages.Malicious),
+				expectedVerdict: messages.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseShed:    true,
+					UseCache:   false,
+					EnableLogs: true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -114,12 +128,13 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "With unknown sha256 - got verdict unknown",
 			args: args{
 				sha256:          unknownSha256,
-				expectedVerdict: messages.Verdict(messages.Unknown),
+				expectedVerdict: messages.Unknown,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseShed:    true,
+					UseCache:   false,
+					EnableLogs: true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -129,7 +144,9 @@ func TestVaas_ForSha256(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var VaasClient Vaas
 			if tt.authenticated {
-				VaasClient = setUp()
+				fixture := new(testFixture)
+				VaasClient = fixture.setUp(t)
+				defer fixture.tearDown(t)
 			} else {
 				VaasClient = New(tt.fields.testingOptions, "")
 			}
@@ -172,7 +189,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
 					return string(decodedEicarString)
 				}(),
-				expectedVerdict: messages.Verdict(messages.Malicious),
+				expectedVerdict: messages.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -189,7 +206,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
 					return string(decodedEicarString)
 				}(),
-				expectedVerdict: messages.Verdict(messages.Malicious),
+				expectedVerdict: messages.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -203,7 +220,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 			name: "With random file - got verdict clean",
 			args: args{
 				fileContent:     RandomString(200),
-				expectedVerdict: messages.Verdict(messages.Clean),
+				expectedVerdict: messages.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -217,13 +234,16 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			const testFile string = "testfile"
 			var VaasClient Vaas
 			if tt.authenticated {
-				VaasClient = setUp()
+				fixture := new(testFixture)
+				VaasClient = fixture.setUp(t)
+				defer fixture.tearDown(t)
 			} else {
 				VaasClient = New(tt.fields.testingOptions, "")
 			}
+
+			testFile := filepath.Join(t.TempDir(), "testfile")
 			err := os.WriteFile(testFile, []byte(tt.args.fileContent), 0644)
 			if err != nil {
 				t.Fatalf("error while writing file: %v", err)
@@ -231,7 +251,6 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 
 			// test disk file
 			verdict, err := VaasClient.ForFile(testFile)
-			os.Remove(testFile)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
 			}
@@ -279,7 +298,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			name: "not authenticated - error (invalid operation)",
 			args: args{
 				url:             cleanUrl,
-				expectedVerdict: messages.Verdict(messages.Clean),
+				expectedVerdict: messages.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -293,7 +312,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			name: "with clean url - got verdict clean",
 			args: args{
 				url:             cleanUrl,
-				expectedVerdict: messages.Verdict(messages.Clean),
+				expectedVerdict: messages.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -307,7 +326,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			name: "with eicar url - got verdict malicious",
 			args: args{
 				url:             eicarUrl,
-				expectedVerdict: messages.Verdict(messages.Malicious),
+				expectedVerdict: messages.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -322,7 +341,9 @@ func TestVaas_ForUrl(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var VaasClient Vaas
 			if tt.authenticated {
-				VaasClient = setUp()
+				fixture := new(testFixture)
+				VaasClient = fixture.setUp(t)
+				defer fixture.tearDown(t)
 			} else {
 				VaasClient = New(tt.fields.testingOptions, "")
 			}
@@ -341,7 +362,10 @@ func TestVaas_ForUrl(t *testing.T) {
 }
 
 func TestVaas_ForSha256List(t *testing.T) {
-	vaasClient := setUp()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUp(t)
+	defer fixture.tearDown(t)
+
 	maliciousSha256 := "00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
 	cleanSha256 := "698cda840a0b3d4639f0c5dbd5c629a847a27448a9a179cb6b7a648bc1186f23"
 	unknownSha256 := "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
@@ -355,16 +379,21 @@ func TestVaas_ForSha256List(t *testing.T) {
 	unknownIndex := Index(verdicts, unknownSha256)
 	cleanIndex := Index(verdicts, cleanSha256)
 
-	assert.Equal(t, messages.Verdict(messages.Malicious), verdicts[maliciousIndex].Verdict)
-	assert.Equal(t, messages.Verdict(messages.Clean), verdicts[cleanIndex].Verdict)
-	assert.Equal(t, messages.Verdict(messages.Unknown), verdicts[unknownIndex].Verdict)
+	assert.Equal(t, messages.Malicious, verdicts[maliciousIndex].Verdict)
+	assert.Equal(t, messages.Clean, verdicts[cleanIndex].Verdict)
+	assert.Equal(t, messages.Unknown, verdicts[unknownIndex].Verdict)
 }
 
 func TestVaas_ForFileList(t *testing.T) {
-	vaasClient := setUp()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUp(t)
+	defer fixture.tearDown(t)
+
+	tmpDir := t.TempDir()
+
 	var randomFiles []string
 	for i := 0; i < 3; i++ {
-		filename := "cleanFile" + fmt.Sprint(i)
+		filename := filepath.Join(tmpDir, fmt.Sprintf("cleanFile%d", i))
 		err := os.WriteFile(filename, []byte(RandomString(200)), 0644)
 		if err != nil {
 			t.Fatalf("error while writing clean file: %v", err)
@@ -378,11 +407,7 @@ func TestVaas_ForFileList(t *testing.T) {
 	}
 
 	for _, verdict := range verdicts {
-		assert.Equal(t, messages.Verdict(messages.Clean), verdict.Verdict)
-	}
-
-	for _, file := range randomFiles {
-		os.Remove(file)
+		assert.Equal(t, messages.Clean, verdict.Verdict, verdict.ErrMsg)
 	}
 }
 
