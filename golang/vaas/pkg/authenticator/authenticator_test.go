@@ -1,10 +1,10 @@
 package authenticator
 
 import (
-	"testing"
 	"log"
+	"testing"
 
-	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
 
 	"github.com/joho/godotenv"
 )
@@ -58,8 +58,7 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			authenticator := New(tt.args.clientId, tt.args.clientSecret, tt.args.tokenEndpoint)
-			var accessToken string
-			err := authenticator.GetToken(&accessToken)
+			accessToken, err := authenticator.GetToken()
 
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
