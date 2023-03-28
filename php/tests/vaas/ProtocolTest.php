@@ -4,6 +4,9 @@ namespace VaasTesting;
 
 require_once __DIR__ . "/vendor/autoload.php";
 
+use Monolog\Handler\StreamHandler;
+use Monolog\Formatter\JsonFormatter;
+use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use VaasSdk\Vaas;
@@ -29,7 +32,7 @@ final class ProtocolTest extends TestCase
             ->willReturn('{"kind": "AuthResponse", "success": false}');
         $vaasConnection = new VaasConnection("", $fakeWebsocket);
 
-        (new Vaas("url"))->Connect("invalid", null, $vaasConnection);
+        (new Vaas("url"))->Connect("invalid", $vaasConnection);
     }
 
     public function testConnectionGetsClosedAfterConnecting_ThrowsVaasConnectionClosedException(): void
@@ -45,8 +48,16 @@ final class ProtocolTest extends TestCase
             ->willReturn('{"kind": "AuthResponse", "success": true, "session_id": "id"}');
         $vaasConnection = new VaasConnection("", $fakeWebsocket);
 
-        $vaas = new Vaas("url");
-        $vaas->Connect("valid", null, $vaasConnection);
+        $monoLogger = new Logger("VaaS");
+
+        $streamHandler = new StreamHandler(
+            fopen('php://stdout', 'w')
+        );
+        $streamHandler->setFormatter(new JsonFormatter());
+        $monoLogger->pushHandler($streamHandler);
+
+        $vaas = new Vaas("url", $monoLogger);
+        $vaas->Connect("valid", $vaasConnection);
         $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
     }
 
