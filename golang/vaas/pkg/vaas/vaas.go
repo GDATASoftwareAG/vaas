@@ -99,22 +99,21 @@ func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.Va
 		return []msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	var writerGroup sync.WaitGroup
-	var verdicts []msg.VaasVerdict
+	var waitGroup sync.WaitGroup
+	verdicts := make([]msg.VaasVerdict, len(sha256List))
 
-	for _, sha256 := range sha256List {
-		writerGroup.Add(1)
-		go func(sha256 string) {
-			defer writerGroup.Done()
+	for i, sha256 := range sha256List {
+		waitGroup.Add(1)
+		go func(i int, sha256 string) {
+			defer waitGroup.Done()
 			verdict, err := v.ForSha256(ctx, sha256)
 			if err != nil {
-				verdicts = append(verdicts, msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error()})
-				return
+				verdict = msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error()}
 			}
-			verdicts = append(verdicts, verdict)
-		}(sha256)
+			verdicts[i] = verdict
+		}(i, sha256)
 	}
-	writerGroup.Wait()
+	waitGroup.Wait()
 
 	return verdicts, nil
 }
@@ -186,23 +185,21 @@ func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVe
 	}
 
 	var waitGroup sync.WaitGroup
-	var verdicts []msg.VaasVerdict
+	verdicts := make([]msg.VaasVerdict, len(fileList))
 
-	for _, file := range fileList {
+	for i, file := range fileList {
 		waitGroup.Add(1)
 
-		go func(file string) {
+		go func(i int, file string) {
 			defer waitGroup.Done()
 			verdict, err := v.ForFile(ctx, file)
 			if err != nil {
-				verdicts = append(verdicts, msg.VaasVerdict{Sha256: verdict.Sha256, Verdict: msg.Error, ErrMsg: err.Error()})
-			} else {
-				verdicts = append(verdicts, verdict)
+				verdict = msg.VaasVerdict{Verdict: msg.Error, ErrMsg: err.Error()}
 			}
-		}(file)
-
-		waitGroup.Wait()
+			verdicts[i] = verdict
+		}(i, file)
 	}
+	waitGroup.Wait()
 	return verdicts, nil
 }
 
