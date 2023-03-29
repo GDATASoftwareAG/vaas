@@ -39,6 +39,7 @@ class Vaas
         else
             $this->_logger = new NullLogger();
         $this->_logger->debug("Url: " . $vaasUrl);
+        $this->_vaasUrl = $vaasUrl;
     }
 
     /**
