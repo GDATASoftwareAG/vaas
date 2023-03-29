@@ -51,7 +51,7 @@ jobs:
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
           VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
           TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
-        run: ./vendor/bin/phpunit --colors --testdox --verbose --debug
+        run: ./vendor/bin/phpunit --colors --testdox
         working-directory: php/tests/vaas
 
       - name: install example requirements
