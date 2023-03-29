@@ -339,7 +339,6 @@ final class VaasTest extends TestCase
     private function getUuid(): string
     {
         $uuid = UuidV4::getFactory()->uuid4()->toString();
-        echo $_ENV["VAAS_URL"];
         echo "Generated UUID: $uuid \n";
         return $uuid;
     }
