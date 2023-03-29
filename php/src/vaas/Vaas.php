@@ -17,6 +17,7 @@ use VaasSdk\Message\VerdictRequest;
 use VaasSdk\Message\VerdictResponse;
 use VaasSdk\Message\VerdictRequestForUrl;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use VaasSdk\Message\VaasVerdict;
 
 class Vaas

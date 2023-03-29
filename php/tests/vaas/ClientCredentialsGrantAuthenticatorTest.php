@@ -37,6 +37,6 @@ final class ClientCredentialsGrantAuthenticatorTest extends TestCase
     {
         $this->expectException(VaasAuthenticationException::class);
         $authenticator = new ClientCredentialsGrantAuthenticator("invalid", "invalid", $_ENV["TOKEN_URL"]);
-        $token = $authenticator->getToken();
+        $authenticator->getToken();
     }
 }
