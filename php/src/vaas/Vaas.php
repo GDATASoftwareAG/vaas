@@ -36,7 +36,7 @@ class Vaas
         if ($logger != null)
             $this->_logger = $logger;
         else
-            $this->_logger = new VaasLogger();
+            $this->_logger = new NullLogger();
     }
 
     /**
