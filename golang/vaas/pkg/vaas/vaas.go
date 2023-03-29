@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VAAS server.
@@ -32,6 +33,19 @@ type Vaas interface {
 	ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error)
 	ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error)
 }
+
+// Confer example for constants, pong handler, and ping ticker
+// https://github.com/gorilla/websocket/blob/master/examples/chat/client.go
+const (
+	// Time allowed to write a message to the peer.
+	writeWait = 10 * time.Second
+
+	// Time allowed to read the next pong message from the peer.
+	pongWait = 30 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = (pongWait * 9) / 10
+)
 
 type vaas struct {
 	logger              *log.Logger
@@ -234,7 +248,13 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.ClientCreden
 	if err != nil {
 		return err
 	}
-	connection.SetPingHandler(nil)
+
+	connection.SetPongHandler(func(string) error {
+		_ = connection.SetReadDeadline(time.Now().Add(pingPeriod + pongWait))
+		_ = connection.SetWriteDeadline(time.Now().Add(pingPeriod + pongWait))
+		return nil
+	})
+
 	v.websocketConnection = connection
 
 	var token string
@@ -376,63 +396,111 @@ func (v *vaas) sendRequests(ctx context.Context) {
 	}
 }
 
+func (v *vaas) runPingTicker(ctx context.Context) {
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		if v.options.EnableLogs {
+			v.logger.Printf("Ping ticker stopped")
+		}
+		ticker.Stop()
+	}()
+
+	if v.options.EnableLogs {
+		v.logger.Printf("Starting ping ticker")
+	}
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := v.websocketConnection.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
+				if v.options.EnableLogs {
+					v.logger.Printf("Ping failed during SetWriteDeadline, error: %v", err)
+				}
+				return
+			}
+			if err := v.websocketConnection.WriteMessage(websocket.PingMessage, nil); err != nil {
+				if v.options.EnableLogs {
+					v.logger.Printf("Ping failed during WriteMessage, error: %v", err)
+				}
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
 func (v *vaas) listenWebSocket(ctx context.Context) chan error {
-	termChan := make(chan error, 2)
+	termChan := make(chan error, 1)
 	listenCtx, listenCancel := context.WithCancel(ctx)
 
 	go func() {
 		<-listenCtx.Done()
-		termChan <- v.websocketConnection.Close()
+		if err := v.websocketConnection.Close(); err != nil && v.options.EnableLogs {
+			v.logger.Printf("Failed to close web socket: %v", err)
+		}
 		close(termChan)
 	}()
+
+	go v.runPingTicker(ctx)
 
 	go func() {
 		defer listenCancel()
 
-		var verdictResponse msg.VerdictResponse
-		for {
-			err := v.websocketConnection.ReadJSON(&verdictResponse)
-			if err == nil {
-				v.openRequests[verdictResponse.Guid] <- verdictResponse
-				continue
-			}
-
-			var closeErr *websocket.CloseError
-			// If websocket was shutdown by the server
-			if errors.As(err, &closeErr) {
-				switch closeErr.Code {
-				case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
-					if v.options.EnableLogs {
-						v.logger.Printf("Websocket shutdown - %d: %s", closeErr.Code, closeErr.Text)
-					}
-					return
-				default:
-					termChan <- fmt.Errorf("unexpected shutdown of websocket - %w", closeErr)
-					return
-				}
-			}
-			// This error occurs when the context is canceled and we call close() on the websocket connection.
-			if errors.Is(err, net.ErrClosed) {
-				if v.options.EnableLogs {
-					v.logger.Printf("Websocket connection was closed")
-				}
-				return
-			}
-			// This error occurs if whe JSON response could not be parsed by the websocket.
-			if err == io.ErrUnexpectedEOF {
-				if v.options.EnableLogs {
-					v.logger.Printf("Temporarily failed to read from websocket: %v", err)
-				}
-				continue
-			}
-			// We don't know what happened here, help...
-			if v.options.EnableLogs {
-				v.logger.Printf("Permanently failed to read from websocket: %v", err)
-			}
-			termChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
-			return
-		}
+		v.readWebSocket(termChan)
 	}()
 
 	return termChan
+}
+
+func (v *vaas) readWebSocket(termChan chan<- error) {
+	var verdictResponse msg.VerdictResponse
+	for {
+		err := v.websocketConnection.ReadJSON(&verdictResponse)
+		if err == nil {
+			if requestChan, exists := v.openRequests[verdictResponse.Guid]; exists {
+				requestChan <- verdictResponse
+			} else {
+				if v.options.EnableLogs {
+					v.logger.Printf("Received response for missing map entry - sha256: %s, guid: %s", verdictResponse.Sha256, verdictResponse.Guid)
+				}
+			}
+			continue
+		}
+
+		var closeErr *websocket.CloseError
+		// If websocket was shutdown by the server
+		if errors.As(err, &closeErr) {
+			switch closeErr.Code {
+			case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
+				if v.options.EnableLogs {
+					v.logger.Printf("Websocket shutdown - %d: %s", closeErr.Code, closeErr.Text)
+				}
+				return
+			default:
+				termChan <- fmt.Errorf("unexpected shutdown of websocket - %w", closeErr)
+				return
+			}
+		}
+		// This error occurs when the context is canceled and we call close() on the websocket connection.
+		if errors.Is(err, net.ErrClosed) {
+			if v.options.EnableLogs {
+				v.logger.Printf("Websocket connection was closed")
+			}
+			return
+		}
+		// This error occurs if whe JSON response could not be parsed by the websocket.
+		if err == io.ErrUnexpectedEOF {
+			if v.options.EnableLogs {
+				v.logger.Printf("Temporarily failed to read from websocket: %v", err)
+			}
+			continue
+		}
+		// We don't know what happened here, help...
+		if v.options.EnableLogs {
+			v.logger.Printf("Permanently failed to read from websocket: %v", err)
+		}
+		termChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
+		return
+	}
 }
