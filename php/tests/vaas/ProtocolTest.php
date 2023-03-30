@@ -6,6 +6,7 @@ require_once __DIR__ . "/vendor/autoload.php";
 
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
+use Psr\Log\NullLogger;
 use VaasSdk\Vaas;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasConnectionClosedException;
@@ -29,7 +30,7 @@ final class ProtocolTest extends TestCase
             ->willReturn('{"kind": "AuthResponse", "success": false}');
         $vaasConnection = new VaasConnection("", $fakeWebsocket);
 
-        (new Vaas("url"))->Connect("invalid", null, $vaasConnection);
+        (new Vaas("url"))->Connect("invalid", $vaasConnection);
     }
 
     public function testConnectionGetsClosedAfterConnecting_ThrowsVaasConnectionClosedException(): void
@@ -45,8 +46,8 @@ final class ProtocolTest extends TestCase
             ->willReturn('{"kind": "AuthResponse", "success": true, "session_id": "id"}');
         $vaasConnection = new VaasConnection("", $fakeWebsocket);
 
-        $vaas = new Vaas("url");
-        $vaas->Connect("valid", null, $vaasConnection);
+        $vaas = new Vaas("url", new NullLogger());
+        $vaas->Connect("valid", $vaasConnection);
         $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
     }
 
