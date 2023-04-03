@@ -54,6 +54,6 @@
       "matchPaths": [
         "golang/vaas/**"
       ]
-    },
+    }
   ]
 }
