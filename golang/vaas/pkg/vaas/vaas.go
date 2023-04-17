@@ -458,7 +458,11 @@ func (v *vaas) readWebSocket(termChan chan<- error) {
 	for {
 		err := v.websocketConnection.ReadJSON(&verdictResponse)
 		if err == nil {
-			if requestChan, exists := v.openRequests[verdictResponse.Guid]; exists {
+			v.openRequestsMutex.Lock()
+			requestChan, exists := v.openRequests[verdictResponse.Guid]
+			v.openRequestsMutex.Unlock()
+
+			if exists {
 				requestChan <- verdictResponse
 			} else {
 				if v.options.EnableLogs {
