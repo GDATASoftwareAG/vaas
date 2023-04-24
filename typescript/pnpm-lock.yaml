@@ -20,8 +20,8 @@ dependencies:
     specifier: 5.0.0
     version: 5.0.0(ws@8.13.0)
   typescript-json-serializer:
-    specifier: 5.1.0
-    version: 5.1.0
+    specifier: 6.0.0
+    version: 6.0.0
   uuid:
     specifier: 9.0.0
     version: 9.0.0
@@ -812,8 +812,8 @@ packages:
     engines: {node: '>=4'}
     dev: true
 
-  /typescript-json-serializer@5.1.0:
-    resolution: {integrity: sha512-0q50ZQV5G+yKNJSZLRwTMAXXS8nx4LvDaNGp82FmLE3lXTKRcSaU+0+A8Ic0lKkqKLhj08OYwBGG6pVuCJImUw==}
+  /typescript-json-serializer@6.0.0:
+    resolution: {integrity: sha512-1iWNgiO5iw7JZmCIytPtQX90UT4tO9b7IaEohYm9h17Ikx1FJi95BPIyhH0pKH8ctTjD6cdU/Gf6Y6ppNRGnrg==}
     dependencies:
       reflect-metadata: 0.1.13
       tslib: 2.4.1
