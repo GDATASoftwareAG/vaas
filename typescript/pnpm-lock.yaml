@@ -40,8 +40,8 @@ devDependencies:
     specifier: 10.0.1
     version: 10.0.1
   '@types/node':
-    specifier: 18.15.11
-    version: 18.15.11
+    specifier: 20.1.0
+    version: 20.1.0
   '@types/random-bytes':
     specifier: 1.0.1
     version: 1.0.1
@@ -65,7 +65,7 @@ devDependencies:
     version: 1.0.0
   ts-node:
     specifier: 10.9.1
-    version: 10.9.1(@types/node@18.15.11)(typescript@5.0.3)
+    version: 10.9.1(@types/node@20.1.0)(typescript@5.0.3)
   typescript:
     specifier: 5.0.3
     version: 5.0.3
@@ -125,13 +125,13 @@ packages:
     resolution: {integrity: sha512-/fvYntiO1GeICvqbQ3doGDIP97vWmvFt83GKguJ6prmQM2iXZfFcq6YE8KteFyRtX2/h5Hf91BYvPodJKFYv5Q==}
     dev: true
 
-  /@types/node@18.15.11:
-    resolution: {integrity: sha512-E5Kwq2n4SbMzQOn6wnmBjuK9ouqlURrcZDVfbo9ftDDTFt3nk7ZKK4GMOzoYgnpQJKcxwQw+lGaBvvlMo0qN/Q==}
+  /@types/node@20.1.0:
+    resolution: {integrity: sha512-O+z53uwx64xY7D6roOi4+jApDGFg0qn6WHcxe5QeqjMaTezBO/mxdfFXIVAVVyNWKx84OmPB3L8kbVYOTeN34A==}
 
   /@types/random-bytes@1.0.1:
     resolution: {integrity: sha512-P7fvSNQkysUoV1i1jbpAUR9TgkArYMTpSd4N12Hi/cbULDh+0KqhbTO1iW651ye3AKYadKyP66jgSSWRHIk1Tg==}
     dependencies:
-      '@types/node': 18.15.11
+      '@types/node': 20.1.0
     dev: true
 
   /@types/uuid@9.0.1:
@@ -141,7 +141,7 @@ packages:
   /@types/ws@8.5.4:
     resolution: {integrity: sha512-zdQDHKUgcX/zBc4GrwsE/7dVdAD8JR4EuiAXiiUhhfyIJXXb2+PrGshFyeXWQPMmmZ2XxgaqclgpIC7eTXc1mg==}
     dependencies:
-      '@types/node': 18.15.11
+      '@types/node': 20.1.0
     dev: false
 
   /@ungap/url-search-params@0.2.2:
@@ -772,7 +772,7 @@ packages:
       is-number: 7.0.0
     dev: true
 
-  /ts-node@10.9.1(@types/node@18.15.11)(typescript@5.0.3):
+  /ts-node@10.9.1(@types/node@20.1.0)(typescript@5.0.3):
     resolution: {integrity: sha512-NtVysVPkxxrwFGUUxGYhfux8k78pQB3JqYBXlLRZgdGUqTO5wU/UyHop5p70iEbGhB7q5KmiZiU0Y3KlJrScEw==}
     hasBin: true
     peerDependencies:
@@ -791,7 +791,7 @@ packages:
       '@tsconfig/node12': 1.0.11
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.3
-      '@types/node': 18.15.11
+      '@types/node': 20.1.0
       acorn: 8.8.1
       acorn-walk: 8.2.0
       arg: 4.1.3
