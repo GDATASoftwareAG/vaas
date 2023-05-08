@@ -313,11 +313,12 @@ export class Vaas {
         headers: { Authorization: verdictResponse.upload_token! },
         maxBodyLength: Infinity,
       });
+      if (this.debug) console.debug("uploadURL", verdictResponse.url);
       await instance
         .put("/", fileBuffer)
         .then((response) => resolve(response))
         .catch((error) => {
-          if (error instanceof axios.AxiosError && error.response) {
+          if (/*error instanceof axios.AxiosError &&*/ error.response) {
             reject(
               new Error(
                 `Upload failed with ${error.response.status} - Error ${error.response.data.message}`
