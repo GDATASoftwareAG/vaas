@@ -48,8 +48,8 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
-          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
-          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+          VAAS_URL: "wss://gateway.staging.vaas.gdatasecurity.de"
+          TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         run: cargo test
         working-directory: rust
 
