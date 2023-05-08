@@ -54,7 +54,7 @@ jobs:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
           VAAS_URL: "wss://gateway.staging.vaas.gdatasecurity.de"
-          TOKEN_URL: "https://account-staging.gdata.de/realms/vaas/protocol/openid-connect/token"
+          TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         uses: gradle/gradle-build-action@v2
         with:
           arguments: test
