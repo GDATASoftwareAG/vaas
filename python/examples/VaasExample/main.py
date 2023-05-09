@@ -8,7 +8,7 @@ async def main():
     authenticator = ClientCredentialsGrantAuthenticator(
         os.getenv("CLIENT_ID"),
         os.getenv("CLIENT_SECRET"),
-        "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
     )
     async with Vaas() as vaas:
         await vaas.connect(await authenticator.get_token())

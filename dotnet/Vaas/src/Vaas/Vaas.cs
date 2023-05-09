@@ -24,19 +24,19 @@ public class Vaas : IDisposable
     private WebsocketClient AuthenticatedClient => GetAuthenticatedWebSocket();
 
     private readonly HttpClient _httpClient = new();
-        
+
     private string? SessionId { get; set; }
     private bool AuthenticatedErrorOccured { get; set; }
 
     private readonly TaskCompletionSource _authenticatedSource = new();
     private Task Authenticated => _authenticatedSource.Task;
 
-    public Uri Url { get; set; } = new("wss://gateway-vaas.gdatasecurity.de");
+    public Uri Url { get; set; } = new("wss://gateway.production.vaas.gdatasecurity.de");
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
 
     private readonly VaasOptions _options;
-    
+
     public Vaas(VaasOptions? options = null)
     {
         _options = options ?? VaasOptions.Defaults;
@@ -52,7 +52,7 @@ public class Vaas : IDisposable
         {
             throw new WebsocketException("Could not start client");
         }
-            
+
         await Authenticate(token);
     }
 
@@ -103,7 +103,7 @@ public class Vaas : IDisposable
             throw new VaasAuthenticationException();
         }
     }
-    
+
     public async Task<VaasVerdict> ForUrlAsync(Uri uri)
     {
         var verdictResponse = await ForUrlRequestAsync(new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
@@ -123,7 +123,7 @@ public class Vaas : IDisposable
         });
         return new VaasVerdict(verdictResponse);
     }
-        
+
     public async Task<VaasVerdict> ForFileAsync(string path)
     {
         var sha256 = Sha256CheckSum(path);
@@ -135,7 +135,7 @@ public class Vaas : IDisposable
             });
         if (!verdictResponse.IsValid)
             throw new JsonException("VerdictResponse is not valid");
-        if (verdictResponse.Verdict != Verdict.Unknown) 
+        if (verdictResponse.Verdict != Verdict.Unknown)
             return new VaasVerdict(verdictResponse);
         if (string.IsNullOrWhiteSpace(verdictResponse.Url) ||
             string.IsNullOrWhiteSpace(verdictResponse.UploadToken))
@@ -154,7 +154,7 @@ public class Vaas : IDisposable
         await using var fileStream = File.OpenRead(path);
         using var streamContent = new StreamContent(fileStream);
         using var request = new HttpRequestMessage(HttpMethod.Put, url);
-            
+
         request.Headers.Authorization = new AuthenticationHeaderValue(token);
         request.Content = streamContent;
         var httpResponse = await _httpClient.SendAsync(request);
@@ -171,7 +171,7 @@ public class Vaas : IDisposable
     {
         return (await Task.WhenAll(fileList.Select(ForFileAsync))).ToList();
     }
-    
+
     private async Task<VerdictResponse> ForRequestAsync(VerdictRequest verdictRequest)
     {
         var jsonString = JsonSerializer.Serialize(verdictRequest);
@@ -179,7 +179,7 @@ public class Vaas : IDisposable
 
         return await WaitForResponseAsync(verdictRequest.Guid);
     }
-    
+
     private async Task<VerdictResponse> ForUrlRequestAsync(VerdictRequestForUrl verdictRequestForUrl)
     {
         var jsonString = JsonSerializer.Serialize(verdictRequestForUrl);
@@ -187,13 +187,13 @@ public class Vaas : IDisposable
 
         return await WaitForResponseAsync(verdictRequestForUrl.Guid);
     }
-        
+
     private Task<VerdictResponse> WaitForResponseAsync(string guid)
     {
         var tcs = _verdictResponses.GetOrAdd(guid, _ => new TaskCompletionSource<VerdictResponse>());
         return tcs.Task;
     }
-        
+
     public static string Sha256CheckSum(string filePath)
     {
         using var sha256 = SHA256.Create();
@@ -216,7 +216,7 @@ public class Vaas : IDisposable
     protected virtual void Dispose(bool disposing)
     {
         if (!disposing) return;
-        
+
         AuthenticatedClient?.Dispose();
         _httpClient.Dispose();
     }

@@ -20,7 +20,7 @@ import {
 import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
 
-const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+const VAAS_URL = "wss://gateway.production.vaas.gdatasecurity.de";
 const defaultSerializer = new JsonSerializer();
 
 export { VAAS_URL };

@@ -14,7 +14,7 @@ require_relative 'vaas_errors'
 module VAAS
   class VaasMain
 
-    def initialize(url = "wss://gateway-vaas.gdatasecurity.de", timeout = 600)
+    def initialize(url = "wss://gateway.production.vaas.gdatasecurity.de", timeout = 600)
       @url = url
       @timeout = timeout
       @requests = {}

@@ -40,8 +40,8 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
-          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+          VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+          TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
         uses: gradle/gradle-build-action@v2
         with:
           arguments: test

@@ -10,10 +10,10 @@ include_once("./vendor/autoload.php");
 $authenticator = new ClientCredentialsGrantAuthenticator(
     getenv("CLIENT_ID"),
     getenv("CLIENT_SECRET"),
-    "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+    "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 );
 $vaas = new Vaas(
-    "wss://gateway-vaas.gdatasecurity.de"
+    "wss://gateway.production.vaas.gdatasecurity.de"
 );
 $vaas->Connect($authenticator->getToken());
 $scanPath = getenv("SCAN_PATH");

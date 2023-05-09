@@ -20,10 +20,10 @@ static async Task<Vaas.Vaas> AuthenticateWithCredentials()
     DotNetEnv.Env.NoClobber().TraversePath().Load();
     var url = DotNetEnv.Env.GetString(
         "VAAS_URL",
-        "wss://gateway-vaas.gdatasecurity.de");
+        "wss://gateway.production.vaas.gdatasecurity.de");
     var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
         "TOKEN_URL",
-        "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"));
+        "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
     var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
     var vaas = new Vaas.Vaas(new VaasOptions() { UseCache = false });
