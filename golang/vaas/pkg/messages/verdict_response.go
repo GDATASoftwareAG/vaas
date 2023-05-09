@@ -1,7 +1,5 @@
 package messages
 
-import ()
-
 type VerdictResponse struct {
 	Kind        string  `json:"kind"`
 	Sha256      string  `json:"sha256"`
