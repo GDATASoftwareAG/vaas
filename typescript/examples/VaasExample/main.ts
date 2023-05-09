@@ -20,7 +20,7 @@ async function main() {
   const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
   const SCAN_PATH = getFromEnvironment("SCAN_PATH");
   const TOKEN_URL =
-    "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
+    "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token";
 
   const authenticator = new ClientCredentialsGrantAuthenticator(
     CLIENT_ID,

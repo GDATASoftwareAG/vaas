@@ -10,7 +10,7 @@ def main
   authenticator = VAAS::ClientCredentialsGrantAuthenticator.new(
     CLIENT_ID,
     CLIENT_SECRET,
-    "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+    "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
   )
 
   # create a vaas object and get a token to authenticate

@@ -3,7 +3,8 @@ using Vaas;
 namespace VaasExample;
 
 
-public static class Program{
+public static class Program
+{
     public static async Task Main(string[] args)
     {
         if (args.Contains("UrlScan"))
@@ -12,12 +13,14 @@ public static class Program{
             await FileScan();
     }
 
-    private static async Task FileScan(){
+    private static async Task FileScan()
+    {
         var vaas = new Vaas.Vaas();
+        vaas.Url = new Uri("wss://gateway.production.vaas.gdatasecurity.de");
         var authenticator = new ClientCredentialsGrantAuthenticator(
             Environment.GetEnvironmentVariable("CLIENT_ID") ?? string.Empty,
             Environment.GetEnvironmentVariable("CLIENT_SECRET") ?? string.Empty,
-            new Uri("https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token")
+            new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
         );
         await vaas.Connect(await authenticator.GetToken());
 
@@ -27,12 +30,14 @@ public static class Program{
         Console.WriteLine($"{verdict.Sha256} is detected as {verdict.Verdict}");
     }
 
-    private static async Task UrlScan(){
+    private static async Task UrlScan()
+    {
         var vaas = new Vaas.Vaas();
+        vaas.Url = new Uri("wss://gateway.production.vaas.gdatasecurity.de");
         var authenticator = new ClientCredentialsGrantAuthenticator(
             Environment.GetEnvironmentVariable("CLIENT_ID") ?? string.Empty,
             Environment.GetEnvironmentVariable("CLIENT_SECRET") ?? string.Empty,
-            new Uri("https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token")
+            new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
         );
         await vaas.Connect(await authenticator.GetToken());
 
