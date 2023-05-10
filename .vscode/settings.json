@@ -5,5 +5,6 @@
         "--debug",
         "--testdox"
     ],
-    "php.debug.ideKey": "docker"
+    "php.debug.ideKey": "docker",
+    "java.compile.nullAnalysis.mode": "automatic"
 }
