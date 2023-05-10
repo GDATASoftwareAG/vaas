@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Setup .NET Core SDK ${{ matrix.dotnet-version }}
-        uses: actions/setup-dotnet@v2
+        uses: actions/setup-dotnet@v3
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
 
@@ -55,8 +55,8 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway-vaas.gdatasecurity.de"
-          TOKEN_URL: "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+          VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+          TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
         run: dotnet test --no-restore --verbosity normal
         working-directory: dotnet/Vaas
 
@@ -65,8 +65,8 @@ jobs:
         env:
           CLIENT_ID: ${{ secrets.CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
-          VAAS_URL: "wss://staging-gateway-vaas.gdatasecurity.de"
-          TOKEN_URL: "https://staging-keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+          VAAS_URL: "wss://gateway.staging.vaas.gdatasecurity.de"
+          TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         run: dotnet test --no-restore --verbosity normal
         working-directory: dotnet/Vaas
 

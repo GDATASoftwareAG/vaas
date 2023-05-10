@@ -248,7 +248,7 @@ async fn from_file_single_malicious_file() {
     std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
 
     let vaas = get_vaas().await;
-    let ct = CancellationToken::from_seconds(10);
+    let ct = CancellationToken::from_seconds(30);
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
@@ -280,7 +280,6 @@ async fn from_file_single_clean_file() {
 }
 
 #[tokio::test]
-//#[ignore = "Skip this test for now, as the test takes multiple minutes."]
 async fn from_file_single_unknown_file() {
     let unknown: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
@@ -304,7 +303,6 @@ async fn from_file_single_unknown_file() {
 }
 
 #[tokio::test]
-//#[ignore = "Skip this test for now, as it the takes multiple minutes."]
 async fn from_files_unknown_files() {
     let unknown1: String = rand::thread_rng()
         .sample_iter(&Alphanumeric)
@@ -456,9 +454,9 @@ async fn from_url_single_malicious_url() {
     let ct = CancellationToken::from_seconds(10);
     let url = Url::parse("https://secure.eicar.org/eicar.com").unwrap();
 
-    let verdict = vaas.for_url(&url, &ct).await;
+    let verdict = vaas.for_url(&url, &ct).await.unwrap();
 
-    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(Verdict::Malicious, verdict.verdict);
 }
 
 #[tokio::test]
@@ -467,7 +465,23 @@ async fn from_url_single_clean_url() {
     let ct = CancellationToken::from_seconds(10);
     let url = Url::parse("https://www.gdatasoftware.com/oem/verdict-as-a-service").unwrap();
 
-    let verdict = vaas.for_url(&url, &ct).await;
+    let verdict = vaas.for_url(&url, &ct).await.unwrap();
 
-    assert_eq!(Verdict::Clean, verdict.as_ref().unwrap().verdict);
+    assert_eq!(Verdict::Clean, verdict.verdict);
+}
+
+#[tokio::test]
+async fn from_url_multiple_url() {
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+    let url1 = Url::parse("https://secure.eicar.org/eicar.com").unwrap();
+    let url2 = Url::parse("https://secure.eicar.org/eicar.com").unwrap();
+    let url3 = Url::parse("https://www.gdatasoftware.com/oem/verdict-as-a-service").unwrap();
+    let urls = vec![url1, url2, url3];
+
+    let verdict = vaas.for_url_list(&urls, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict[0].as_ref().unwrap().verdict);
+    assert_eq!(Verdict::Malicious, verdict[1].as_ref().unwrap().verdict);
+    assert_eq!(Verdict::Clean, verdict[2].as_ref().unwrap().verdict);
 }

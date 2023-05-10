@@ -27,7 +27,7 @@ const DISCORD_TOKEN = getFromEnvironment("DISCORD_TOKEN")
 const CLIENT_ID = getFromEnvironment("CLIENT_ID");
 const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
 const TOKEN_URL =
-  "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token";
+  "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token";
 
 
 client.on("messageCreate", (msg) => {

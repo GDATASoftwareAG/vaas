@@ -8,10 +8,11 @@ async def main():
     authenticator = ClientCredentialsGrantAuthenticator(
         os.getenv("CLIENT_ID"),
         os.getenv("CLIENT_SECRET"),
-        "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"
+        "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
     )
-    async with Vaas() as vaas:
-        await vaas.connect(await authenticator.get_token())
+    async with Vaas(url="wss://gateway.production.vaas.gdatasecurity.de") as vaas:
+        token = await authenticator.get_token()
+        await vaas.connect(token)
         path = os.getenv("SCAN_PATH")
         verdict = await vaas.for_file(path)
         print(f"{verdict['Sha256']} is detected as {verdict['Verdict']}")

@@ -54,10 +54,10 @@ token = authenticator.get_token
 Verdict Request for SHA256:
 ```ruby
 Async do
-  Async { vaas.connect(token) }.wait
+  vaas.connect(token)
   sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-  verdict = vaas.for_sha256(sha256)
-ensure
+  verdict = vaas.for_sha256(sha256) # starts a task
+  puts verdict.wait.verdict # await task
   vaas.close
 end
 ```
@@ -65,10 +65,10 @@ end
 Verdict Request for a file:
 ```ruby
 Async do
-  Async { vaas.connect(token) }.wait
+  vaas.connect(token)
   path = "/path/to/file"
-  verdict = vaas.for_file(path)
-ensure
+  verdict = vaas.for_file(path) # starts a task
+  puts verdict.wait.verdict # await task
   vaas.close
 end
 ```
@@ -76,10 +76,10 @@ end
 Verdict Request for a URL:
 ```ruby
 Async do
-  Async { vaas.connect(token) }.wait
+  vaas.connect(token)
   url = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
-  verdict = vaas.for_url(url)
-ensure
+  verdict = vaas.for_url(url) # starts a task
+  puts verdict.wait.verdict # await task
   vaas.close
 end
 ```

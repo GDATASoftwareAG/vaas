@@ -13,10 +13,10 @@ public class UrlScan {
         var clientSecret = System.getenv("CLIENT_SECRET");
 
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret,
-                "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token");
+                "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
         var config = new VaasConfig(
-                new URI("https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"),
-                new URI("wss://gateway-vaas.gdatasecurity.de"));
+                new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"),
+                new URI("wss://gateway.production.vaas.gdatasecurity.de"));
         var vaas = new Vaas(config, authenticator);
         vaas.connect();
 

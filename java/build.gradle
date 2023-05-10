@@ -19,20 +19,20 @@ java {
 }
 
 dependencies {
-    implementation 'org.testng:testng:7.6.1'
-    implementation 'org.projectlombok:lombok:1.18.24'
-    implementation 'com.google.code.gson:gson:2.10'
+    implementation 'org.testng:testng:7.7.1'
+    implementation 'org.projectlombok:lombok:1.18.26'
+    implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'org.java-websocket:Java-WebSocket:1.5.3'
-    implementation 'io.github.cdimascio:dotenv-java:2.2.4'
-    implementation 'org.jetbrains:annotations:23.0.0'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.1'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.1'
+    implementation 'org.jetbrains:annotations:24.0.1'
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.9.3'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.9.3'
 
-    compileOnly 'org.projectlombok:lombok:1.18.24'
-    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+    compileOnly 'org.projectlombok:lombok:1.18.26'
+    annotationProcessor 'org.projectlombok:lombok:1.18.26'
 
-    testCompileOnly 'org.projectlombok:lombok:1.18.24'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.24'
+    testCompileOnly 'org.projectlombok:lombok:1.18.26'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.26'
 }
 
 test {

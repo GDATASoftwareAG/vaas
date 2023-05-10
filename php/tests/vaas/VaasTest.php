@@ -260,7 +260,7 @@ final class VaasTest extends TestCase
 
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $verdict = $vaas->ForFile(stream_get_meta_data($tmp)['uri'], false, $uuid);
+        $verdict = $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true, $uuid);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
         $this->assertEquals($uuid, $verdict->Guid);

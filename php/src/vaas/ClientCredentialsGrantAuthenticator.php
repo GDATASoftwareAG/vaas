@@ -15,7 +15,7 @@ class ClientCredentialsGrantAuthenticator
 
     public function __construct(
         string $clientId, string $clientSecret,
-        string $tokenEndpoint = "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token")
+        string $tokenEndpoint = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
     {
         $this->_clientId = $clientId;
         $this->_clientSecret = $clientSecret;
