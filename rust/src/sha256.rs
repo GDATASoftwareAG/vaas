@@ -12,7 +12,7 @@ use std::{convert::TryFrom, fmt, ops::Deref};
 /// use std::convert::TryFrom;
 /// use vaas::Sha256;
 ///
-/// let sha256 = Sha256::try_from("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")?;
+/// let sha256 = Sha256::try_from("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")?;
 /// # Ok(()) }
 /// ```
 

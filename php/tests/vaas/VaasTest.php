@@ -135,7 +135,7 @@ final class VaasTest extends TestCase
     public function testForSha256CleanSha256_GetsCleanResponse(): void
     {
         $uuid = $this->getUuid();
-        $cleanSha256 = "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
+        $cleanSha256 = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
 
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
@@ -165,7 +165,7 @@ final class VaasTest extends TestCase
         $uuid1 = $this->getUuid();
         $uuid2 = $this->getUuid();
         $uuid3 = $this->getUuid();
-        $cleanHash1 = "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
+        $cleanHash1 = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
         $cleanHash2 = "1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391";
         $cleanHash3 = "4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783";
 
