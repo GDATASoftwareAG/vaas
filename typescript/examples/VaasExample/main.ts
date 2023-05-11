@@ -28,9 +28,9 @@ async function main() {
     TOKEN_URL
   );
 
-  const vaas = new Vaas({url:"wss://gateway.production.vaas.gdatasecurity.de"});
+  const vaas = new Vaas();
   const token = await authenticator.getToken()
-  await vaas.connect(token);
+  await vaas.connect(token, "wss://gateway.production.vaas.gdatasecurity.de");
 
   const f = await fs.open(SCAN_PATH, "r");
 
