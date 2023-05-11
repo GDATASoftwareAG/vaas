@@ -310,7 +310,10 @@ export class Vaas {
         baseURL: verdictResponse.url,
         // the maximum allowed time for the request
         timeout: 10 * 60 * 1000,
-        headers: { Authorization: verdictResponse.upload_token! },
+        headers: {
+          Authorization: verdictResponse.upload_token!,
+          "Content-Type": "application/octet-stream"
+        },
         maxBodyLength: Infinity,
       });
       await instance
