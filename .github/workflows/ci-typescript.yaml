@@ -71,20 +71,20 @@ jobs:
         run: pnpm install
         working-directory: typescript/examples/VaasExample
 
-      #- name: run examples scan file
-      #  env:
-      #    CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      #    CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      #    SCAN_PATH: "main.ts"
-      #  run: npx ts-node main.ts
-      #  working-directory: typescript/examples/VaasExample
+      - name: run examples scan file
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          SCAN_PATH: "main.ts"
+        run: npx ts-node main.ts
+        working-directory: typescript/examples/VaasExample
 
-      #- name: run examples scan url
-      #  env:
-      #    CLIENT_ID: ${{ secrets.CLIENT_ID }}
-      #    CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      #  run: npx ts-node url_scan.ts
-      #  working-directory: typescript/examples/VaasExample
+      - name: run examples scan url
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        run: npx ts-node url_scan.ts
+        working-directory: typescript/examples/VaasExample
 
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/ts')
