@@ -20,15 +20,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public class Vaas {
-    private final Duration defaultTimeout = Duration.ofMinutes(10);
-
     @Getter
     @NonNull
     private final VaasConfig config;
@@ -63,61 +61,61 @@ public class Vaas {
         }
     }
 
-    public CompletableFuture<VerdictResponse> forUrlAsync(URL url) throws Exception {
+    public CompletableFuture<VerdictResponse> forUrlAsync(URL url, HashMap<String, String> verdictRequestAttributes)
+            throws Exception {
         EnsureClientIsCreatedAndAuthenticated();
         var request = new VerdictRequestForUrl(url, this.client.getSessionId());
-        return this.forUrlRequest(request);
+        return this.forUrlRequestAsync(request);
     }
 
     public VaasVerdict forUrl(URL url) throws Exception {
-        return this.forUrl(url, defaultTimeout);
+        return this.forUrl(url, null);
     }
 
-    public VaasVerdict forUrl(URL url, Duration timeout)
+    public VaasVerdict forUrl(URL url, HashMap<String, String> verdictRequestAttributes)
             throws Exception {
-        var verdictResponse = this.forUrlAsync(url).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        var verdictResponse = this.forUrlAsync(url, verdictRequestAttributes).get(
+                this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
     public VaasVerdict forSha256(Sha256 sha256) throws Exception {
-        return this.forSha256(sha256, defaultTimeout);
+        return this.forSha256(sha256, null);
     }
 
-    public VaasVerdict forSha256(Sha256 sha256, Duration timeout)
+    public VaasVerdict forSha256(Sha256 sha256, HashMap<String, String> verdictRequestAttributes)
             throws Exception {
-        var verdictResponse = this.forSha256Async(sha256).get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+        var verdictResponse = this.forSha256Async(sha256, verdictRequestAttributes).get(
+                this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
-    public VaasVerdict forSha256(Sha256 sha256, long timeout, TimeUnit unit)
+    private CompletableFuture<VerdictResponse> forSha256Async(Sha256 sha256,
+            HashMap<String, String> verdictRequestAttributes)
             throws Exception {
-        var verdictResponse = this.forSha256Async(sha256).get(timeout, unit);
-        return new VaasVerdict(verdictResponse);
-    }
-
-    public CompletableFuture<VerdictResponse> forSha256Async(Sha256 sha256) throws Exception {
         EnsureClientIsCreatedAndAuthenticated();
-        var request = new VerdictRequest(sha256, this.client.getSessionId());
+        var request = new VerdictRequest(sha256, this.client.getSessionId(), verdictRequestAttributes);
         return this.forRequest(request);
     }
 
     public VaasVerdict forFile(Path file) throws Exception {
-        return forFile(file, defaultTimeout);
+        return forFile(file, null);
     }
 
-    public VaasVerdict forFile(Path file, Duration timeout) throws Exception {
-        return forFile(file, timeout.toNanos(), TimeUnit.NANOSECONDS);
-    }
-
-    public VaasVerdict forFile(Path file, long timeout, TimeUnit unit) throws Exception {
-        var verdictResponse = forFileAsync(file).get(timeout, unit);
+    public VaasVerdict forFile(Path file, HashMap<String, String> verdictRequestAttributes) throws Exception {
+        var verdictResponse = this.forFileAsync(file, verdictRequestAttributes).get(
+                this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
-    private CompletableFuture<VerdictResponse> forFileAsync(Path file) throws Exception {
+    private CompletableFuture<VerdictResponse> forFileAsync(Path file, HashMap<String, String> verdictRequestAttributes)
+            throws Exception {
         EnsureClientIsCreatedAndAuthenticated();
         var sha256 = new Sha256(file);
-        var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId());
+        var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId(), verdictRequestAttributes);
 
         var verdictResponseFuture = this.forRequest(verdictRequest)
                 .thenCompose(verdictResponse -> {
@@ -173,7 +171,8 @@ public class Vaas {
         return verdictResponse;
     }
 
-    private CompletableFuture<VerdictResponse> forUrlRequest(VerdictRequestForUrl verdictRequestForUrl) throws Exception {
+    private CompletableFuture<VerdictResponse> forUrlRequestAsync(VerdictRequestForUrl verdictRequestForUrl)
+            throws Exception {
         var verdictResponse = this.client.waitForVerdict(verdictRequestForUrl.getGuid());
 
         verdictRequestForUrl.setSessionId(this.client.getSessionId());

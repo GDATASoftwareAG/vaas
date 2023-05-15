@@ -55,7 +55,7 @@ async fn from_sha256_list_multiple_hashes() {
         Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
             .unwrap();
     let sha256_clean =
-        Sha256::try_from("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")
+        Sha256::try_from("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")
             .unwrap();
     let sha256_unknown =
         Sha256::try_from("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fbbb")
@@ -75,7 +75,7 @@ async fn from_sha256_list_multiple_hashes() {
     );
     assert_eq!(Verdict::Clean, results[1].as_ref().unwrap().verdict);
     assert_eq!(
-        "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23".to_lowercase(),
+        "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C".to_lowercase(),
         results[1].as_ref().unwrap().sha256.deref()
     );
     assert!(matches!(
@@ -178,7 +178,7 @@ async fn from_sha256_multiple_clean_hash() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
     let sha256_1 =
-        Sha256::try_from("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")
+        Sha256::try_from("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")
             .unwrap();
     let sha256_2 =
         Sha256::try_from("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391")
@@ -192,7 +192,7 @@ async fn from_sha256_multiple_clean_hash() {
 
     assert_eq!(Verdict::Clean, verdict_1.as_ref().unwrap().verdict);
     assert_eq!(
-        "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23".to_lowercase(),
+        "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C".to_lowercase(),
         verdict_1.unwrap().sha256.deref()
     );
     assert_eq!(Verdict::Clean, verdict_2.as_ref().unwrap().verdict);
@@ -343,7 +343,7 @@ async fn from_sha256_multiple_clean_hash_on_separate_thread() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
     let sha256_1 =
-        Sha256::try_from("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")
+        Sha256::try_from("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")
             .unwrap();
     let sha256_2 =
         Sha256::try_from("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391")
@@ -371,7 +371,7 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_fixed_jobs() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
     let sha256_1 =
-        Sha256::try_from("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")
+        Sha256::try_from("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")
             .unwrap();
     let sha256_2 =
         Sha256::try_from("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391")
@@ -395,7 +395,7 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
     let sha256_1 =
-        Sha256::try_from("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")
+        Sha256::try_from("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")
             .unwrap();
     let sha256_2 =
         Sha256::try_from("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391")

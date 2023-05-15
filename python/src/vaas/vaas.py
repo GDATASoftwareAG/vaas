@@ -93,7 +93,7 @@ class Vaas:
         self,
         tracing=VaasTracing(),
         options=VaasOptions(),
-        url="wss://gateway-vaas.gdatasecurity.de",
+        url="wss://gateway.production.vaas.gdatasecurity.de",
     ):
         self.tracing = tracing
         self.loop_result = None

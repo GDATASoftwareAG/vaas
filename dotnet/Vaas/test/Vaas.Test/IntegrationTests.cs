@@ -14,25 +14,25 @@ public class IntegrationTests
         DotNetEnv.Env.TraversePath().Load();
         var url = DotNetEnv.Env.GetString(
             "VAAS_URL",
-            "wss://gateway-vaas.gdatasecurity.de");
+            "wss://gateway.production.vaas.gdatasecurity.de");
         var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
             "TOKEN_URL",
-            "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"));
+            "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
         const string clientId = "foobar";
         const string clientSecret = "foobar2";
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenEndpoint);
-        
+
         var vaas = new Vaas();
         await Assert.ThrowsAsync<VaasAuthenticationException>(async () => await vaas.Connect(await authenticator.GetToken()));
     }
-    
+
     [Fact]
     public async void FromSha256VaasInvalidStateException()
     {
         var vaas = new Vaas();
         await Assert.ThrowsAsync<VaasInvalidStateException>(() => vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
     }
-    
+
     [Fact]
     public async void FromSha256ThrowsVaasConnectionClosedException()
     {
@@ -40,7 +40,7 @@ public class IntegrationTests
         vaas.Dispose();
         await Assert.ThrowsAsync<VaasConnectionClosedException>(() => vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
     }
-    
+
     [Fact]
     public async void FromSha256SingleMaliciousHash()
     {
@@ -54,23 +54,23 @@ public class IntegrationTests
     public async void FromSha256SingleCleanHash()
     {
         var vaas = await AuthenticateWithCredentials();
-        var verdict = await vaas.ForSha256Async("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        var verdict = await vaas.ForSha256Async("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         Assert.Equal(Verdict.Clean, verdict.Verdict);
-        Assert.Equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23", verdict.Sha256, true);
+        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
     }
 
     [Fact(Skip = "Remove Skip to test keepalive")]
     public async void FromSha256_WorksAfter40s()
     {
         var vaas = await AuthenticateWithCredentials();
-        const string guid = "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
+        const string guid = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
         var verdict = await vaas.ForSha256Async(guid);
         Assert.Equal(Verdict.Clean, verdict.Verdict);
-        Assert.Equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23", verdict.Sha256, true);
+        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
         await Task.Delay(40000);
         verdict = await vaas.ForSha256Async(guid);
         Assert.Equal(Verdict.Clean, verdict.Verdict);
-        Assert.Equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23", verdict.Sha256, true);
+        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class IntegrationTests
         var myList = new List<string>
         {
             "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
-            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23",
+            "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
             "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
         };
         var vaas = await AuthenticateWithCredentials();
@@ -96,7 +96,7 @@ public class IntegrationTests
         Assert.Equal(Verdict.Malicious, verdictList[0].Verdict);
         Assert.Equal("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", verdictList[0].Sha256, true);
         Assert.Equal(Verdict.Clean, verdictList[1].Verdict);
-        Assert.Equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23", verdictList[1].Sha256, true);
+        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdictList[1].Sha256, true);
         Assert.Equal(Verdict.Unknown, verdictList[2].Verdict);
         Assert.Equal("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9", verdictList[2].Sha256, true);
     }
@@ -127,7 +127,7 @@ public class IntegrationTests
         rnd.NextBytes(b);
         await File.WriteAllBytesAsync("test3.txt", b);
         var vaas = await AuthenticateWithCredentials();
-        var resultList = await vaas.ForFileListAsync(new List<string> {"test1.txt", "test2.txt", "test3.txt"});
+        var resultList = await vaas.ForFileListAsync(new List<string> { "test1.txt", "test2.txt", "test3.txt" });
         Assert.Equal(Verdict.Clean, resultList[0].Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("test1.txt"), resultList[0].Sha256);
         Assert.Equal(Verdict.Clean, resultList[1].Verdict);
@@ -144,7 +144,7 @@ public class IntegrationTests
         Assert.Equal(Verdict.Pup, actual.Verdict);
         Assert.Equal("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", actual.Sha256, true);
     }
-    
+
     [Theory]
     [InlineData("https://random-data-api.com/api/v2/beers", Verdict.Clean)]
     [InlineData("https://secure.eicar.org/eicar.com", Verdict.Malicious)]
@@ -154,21 +154,21 @@ public class IntegrationTests
         var actual = await vaas.ForUrlAsync(new Uri(url));
         Assert.Equal(verdict, actual.Verdict);
     }
-    
+
 
     private static async Task<Vaas> AuthenticateWithCredentials()
     {
         DotNetEnv.Env.TraversePath().Load();
         var url = new Uri(DotNetEnv.Env.GetString(
             "VAAS_URL",
-            "wss://gateway-vaas.gdatasecurity.de"));
+            "wss://gateway.production.vaas.gdatasecurity.de"));
         var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
             "TOKEN_URL",
-            "https://keycloak-vaas.gdatasecurity.de/realms/vaas/protocol/openid-connect/token"));
+            "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
         var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
         var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenEndpoint);
-        
+
         var vaas = new Vaas();
         vaas.Url = url;
         await vaas.Connect(await authenticator.GetToken());

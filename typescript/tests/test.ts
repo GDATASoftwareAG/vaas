@@ -51,7 +51,7 @@ async function createVaas() {
     return vaas;
 }
 
-const defaultTimeout: number = 30_000;
+const defaultTimeout: number = 130_000;
 
 const eicarSha256 =
     "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
@@ -90,10 +90,10 @@ describe("Test verdict requests", function () {
     it('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
         const vaas = await createVaas();
         const verdict = await vaas.forSha256(
-            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"
+            "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
         );
         expect(verdict.verdict).to.equal("Clean");
-        expect(verdict.sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        expect(verdict.sha256.toUpperCase()).to.equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
     });
 
     it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
@@ -128,12 +128,12 @@ describe("Test verdict requests", function () {
         const vaas = await createVaas();
         const verdicts = await vaas.forSha256List([
             "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23",
+            "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
         ]);
         expect(verdicts[0].verdict).to.equal("Malicious");
         expect(verdicts[0].sha256).to.equal("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         expect(verdicts[1].verdict).to.equal("Clean");
-        expect(verdicts[1].sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        expect(verdicts[1].sha256.toUpperCase()).to.equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
     });
 
     it("if a list unknown files is uploaded, they are detected as clean", async () => {
@@ -164,21 +164,21 @@ describe("Test verdict requests", function () {
     it("if we request the same guid twice, both calls return a result", async () => {
         const vaas = await createVaas();
         const sha256 =
-            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
+            "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
         const request1 = vaas.forSha256(sha256);
         const request2 = vaas.forSha256(sha256);
         const verdict1 = await request1;
         const verdict2 = await request2;
         expect(verdict1.verdict).to.equal("Clean");
-        expect(verdict1.sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        expect(verdict1.sha256.toUpperCase()).to.equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         expect(verdict2.verdict).to.equal("Clean");
-        expect(verdict2.sha256.toUpperCase()).to.equal("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        expect(verdict2.sha256.toUpperCase()).to.equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
     });
 
     xit("keeps connection alive", async () => {
         const vaas = await createVaas();
         const sha256 =
-            "698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23";
+            "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
         let verdict = await vaas.forSha256(sha256);
         expect(verdict.verdict).to.equal("Clean");
         await delay(40000);

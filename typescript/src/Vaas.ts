@@ -20,7 +20,7 @@ import {
 import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
 
-const VAAS_URL = "wss://gateway-vaas.gdatasecurity.de";
+const VAAS_URL = "wss://gateway.production.vaas.gdatasecurity.de";
 const defaultSerializer = new JsonSerializer();
 
 export { VAAS_URL };
@@ -310,7 +310,10 @@ export class Vaas {
         baseURL: verdictResponse.url,
         // the maximum allowed time for the request
         timeout: 10 * 60 * 1000,
-        headers: { Authorization: verdictResponse.upload_token! },
+        headers: {
+          Authorization: verdictResponse.upload_token!,
+          "Content-Type": "application/octet-stream"
+        },
         maxBodyLength: Infinity,
       });
       await instance

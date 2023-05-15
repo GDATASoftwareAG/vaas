@@ -116,7 +116,7 @@ public class RealApiIntegrationTests {
     @Test
     public void fromSha256MultipleCleanHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var sha256_1 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        var sha256_1 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         var sha256_2 = new Sha256("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391");
         var sha256_3 = new Sha256("4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783");
 
@@ -129,7 +129,7 @@ public class RealApiIntegrationTests {
         assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
         assertEquals(Verdict.CLEAN, verdict_3.getVerdict());
 
-        assertTrue("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23"
+        assertTrue("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
                 .equalsIgnoreCase(verdict_1.getSha256()));
         assertTrue("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391"
                 .equalsIgnoreCase(verdict_2.getSha256()));
@@ -245,7 +245,7 @@ public class RealApiIntegrationTests {
     @Disabled("Enable to test keep-alive")
     public void fromSha256_WorksAfter40s() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var sha256 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         var verdict = vaas.forSha256(sha256);
         assert (verdict != null);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
@@ -259,7 +259,7 @@ public class RealApiIntegrationTests {
     public void fromSha256_ThrowsConnectionClosed() throws Exception {
         var vaas = this.getVaasWithCredentials();
         vaas.disconnect();
-        var sha256 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         assertThrows(VaasConnectionClosedException.class, () -> {
             vaas.forSha256(sha256);
         });
@@ -278,7 +278,7 @@ public class RealApiIntegrationTests {
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
-        var sha256 = new Sha256("698CDA840A0B3D4639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23");
+        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         assertThrows(VaasInvalidStateException.class, () -> {
             vaas.forSha256(sha256);
         });

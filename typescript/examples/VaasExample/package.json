@@ -11,7 +11,7 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "gdata-vaas": "4.2.2",
+        "gdata-vaas": "5.0.1",
         "ts-node": "^10.9.1",
         "@types/node": "20.1.0",
         "typescript": "5.0.4"
