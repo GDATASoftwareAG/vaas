@@ -20,7 +20,7 @@ public class IntegrationTests
             "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
         const string clientId = "foobar";
         const string clientSecret = "foobar2";
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenEndpoint);
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId , clientSecret, tokenEndpoint);
 
         var vaas = new Vaas();
         await Assert.ThrowsAsync<VaasAuthenticationException>(async () => await vaas.Connect(await authenticator.GetToken()));
