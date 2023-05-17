@@ -27,14 +27,14 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("No .env file found, try environment variables...")
 	}
-	clientID, clientSecret, vaasURL, tokenEndpoint := credentials.ReadCredentials()
-	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
+	clientID, clientSecret, _, _ := credentials.ReadCredentials()
+	auth := authenticator.NewWithDefaultTokenEndpoint(clientID, clientSecret)
 
-	vaasClient := vaas.New(options.VaasOptions{
+	vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{
 		UseShed:    true,
 		UseCache:   false,
 		EnableLogs: true,
-	}, vaasURL)
+	})
 	ctx, webSocketCancel := context.WithCancel(context.Background())
 
 	termChan, err := vaasClient.Connect(ctx, auth)
