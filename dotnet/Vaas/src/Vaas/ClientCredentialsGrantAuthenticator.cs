@@ -20,7 +20,7 @@ public class ClientCredentialsGrantAuthenticator
         _clientSecret = clientSecret;
         _tokenEndpoint = tokenEndpoint;
     }
-    
+
     public async Task<string> GetToken()
     {
         var response = await _httpClient.PostAsync(_tokenEndpoint, new FormUrlEncodedContent(
