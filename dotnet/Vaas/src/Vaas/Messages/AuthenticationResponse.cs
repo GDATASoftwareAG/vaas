@@ -5,16 +5,16 @@ namespace Vaas.Messages;
 
 public class AuthenticationResponse
 {
-    [JsonPropertyName("kind")] 
+    [JsonPropertyName("kind")]
     public string Kind = "AuthResponse";
-        
-    [JsonPropertyName("success")] 
+
+    [JsonPropertyName("success")]
     public bool Success { get; init; }
 
-    [JsonPropertyName("session_id")] 
+    [JsonPropertyName("session_id")]
     public string? SessionId { get; init; }
 
-    [JsonPropertyName("text")] 
+    [JsonPropertyName("text")]
     public string? Text { get; init; }
 
     [MemberNotNullWhen(true, nameof(SessionId), nameof(Text))]

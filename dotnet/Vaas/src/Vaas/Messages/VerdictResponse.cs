@@ -5,22 +5,22 @@ namespace Vaas.Messages;
 
 public class VerdictResponse
 {
-    [JsonPropertyName("kind")] 
+    [JsonPropertyName("kind")]
     public string Kind { get; init; } = "VerdictResponse";
 
     [JsonPropertyName("sha256")]
     public string? Sha256 { get; init; }
 
-    [JsonPropertyName("guid")] 
+    [JsonPropertyName("guid")]
     public string? Guid { get; init; }
 
-    [JsonPropertyName("verdict")] 
+    [JsonPropertyName("verdict")]
     public Verdict Verdict { get; init; }
-        
-    [JsonPropertyName("url")] 
-    public string? Url { get; init; } 
-        
-    [JsonPropertyName("upload_token")] 
+
+    [JsonPropertyName("url")]
+    public string? Url { get; init; }
+
+    [JsonPropertyName("upload_token")]
     public string? UploadToken { get; init; }
 
     [MemberNotNullWhen(true, nameof(Sha256), nameof(Guid))]
