@@ -2,7 +2,7 @@
 
     This document describes the VaaS Websocket Protocol. All SDKs have to implement this protocol to be able to use the VaaS Websocket API.
 
-    Protocol version: 0.1.0
+    Protocol version: 0.2.0
 
 ## Protocol Internals   
 
