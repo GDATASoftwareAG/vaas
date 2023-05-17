@@ -74,6 +74,18 @@ func New(options options.VaasOptions, vaasUrl string) Vaas {
 	return client
 }
 
+func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
+	client := &vaas{
+		logger:          log.Default(),
+		options:         options,
+		vaasUrl:         "wss://gateway.production.vaas.gdatasecurity.de",
+		requestChannel:  make(chan msg.VerdictRequest, 1),
+		responseChannel: make(chan msg.VerdictResponse),
+		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+	}
+	return client
+}
+
 func (v *vaas) Connect(ctx context.Context, auth authenticator.ClientCredentialsGrantAuthenticator) (termChan <-chan error, err error) {
 	if err = v.authenticate(ctx, auth); err != nil {
 		return nil, err
