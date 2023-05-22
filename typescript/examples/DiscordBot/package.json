@@ -12,7 +12,7 @@
   "dependencies": {
     "@types/axios": "^0.14.0",
     "discord.js": "^14.6.0",
-    "gdata-vaas": "^4.0.0"
+    "gdata-vaas": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
