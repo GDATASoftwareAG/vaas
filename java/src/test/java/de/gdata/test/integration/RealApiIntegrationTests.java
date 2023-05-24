@@ -17,7 +17,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -189,9 +188,11 @@ public class RealApiIntegrationTests {
         var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
-        var verdict = vaas.forFile(tmpFile, new  HashMap<VerdictRequestAttributes, String>(){{
-            put(VerdictRequestAttributes.TENANT_ID, "JavaSDK");
-        }});
+        var verdict = vaas.forFile(tmpFile, new VerdictRequestAttributes() {
+            {
+                setTenantId("JavaSDK");
+            }
+        });
         vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
