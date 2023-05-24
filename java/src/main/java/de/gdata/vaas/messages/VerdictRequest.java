@@ -25,7 +25,7 @@ public class VerdictRequest extends MessageType {
     @Getter
     @Setter
     @SerializedName("verdict_request_attributes")
-    HashMap<String, String> verdictRequestAttributes;
+    HashMap<VerdictRequestAttributes, String> verdictRequestAttributes;
 
     public VerdictRequest(Sha256 sha256, String sessionId) {
         super(Kind.VerdictRequest);
@@ -34,7 +34,7 @@ public class VerdictRequest extends MessageType {
         this.sha256 = sha256.getValue();
     }
 
-    public VerdictRequest(Sha256 sha256, String sessionId, HashMap<String, String> verdictRequestAttributes) {
+    public VerdictRequest(Sha256 sha256, String sessionId, HashMap<VerdictRequestAttributes, String> verdictRequestAttributes) {
         this(sha256, sessionId);
         this.verdictRequestAttributes = verdictRequestAttributes;
     }
