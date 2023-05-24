@@ -28,6 +28,13 @@ public class ClientCredentialsGrantAuthenticator implements IClientCredentialsGr
     @NonNull
     private URI tokenEndpoint;
 
+    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret)
+            throws URISyntaxException {
+        this.tokenEndpoint = new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+    }
+
     public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, String tokenEndpoint)
             throws URISyntaxException {
         this.tokenEndpoint = new URI(tokenEndpoint);

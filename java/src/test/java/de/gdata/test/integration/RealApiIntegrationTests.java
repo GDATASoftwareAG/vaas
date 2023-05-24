@@ -17,7 +17,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -62,7 +61,7 @@ public class RealApiIntegrationTests {
         var clientSecret = "A wizard is never late, Frodo Baggins. He arrives precisely when he means to!";
         var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
-        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var client = new Vaas(config, authenticator);
         assertThrows(Exception.class, () -> client.connect());
@@ -83,7 +82,7 @@ public class RealApiIntegrationTests {
                 .load();
         var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
-        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new MockAuthenticator();
 
         var client = new Vaas(config, authenticator);
@@ -189,9 +188,11 @@ public class RealApiIntegrationTests {
         var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
-        var verdict = vaas.forFile(tmpFile, new  HashMap<VerdictRequestAttributes, String>(){{
-            put(VerdictRequestAttributes.TENANT_ID, "JavaSDK");
-        }});
+        var verdict = vaas.forFile(tmpFile, new VerdictRequestAttributes() {
+            {
+                setTenantId("JavaSDK");
+            }
+        });
         vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
@@ -295,7 +296,7 @@ public class RealApiIntegrationTests {
         var vaasUrl = dotenv.get("VAAS_URL");
 
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var config = new VaasConfig(new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         assertThrows(VaasInvalidStateException.class, () -> {
@@ -361,7 +362,7 @@ public class RealApiIntegrationTests {
         var vaasUrl = dotenv.get("VAAS_URL");
 
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var config = new VaasConfig(new URI(tokenUrl), new URI(vaasUrl));
+        var config = new VaasConfig(new URI(vaasUrl));
         var client = new Vaas(config, authenticator);
         client.connect();
         return client;
