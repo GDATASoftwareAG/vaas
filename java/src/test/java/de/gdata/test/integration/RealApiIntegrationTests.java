@@ -5,6 +5,7 @@ import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.messages.VerdictRequestAttributes;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
@@ -16,6 +17,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -176,7 +178,25 @@ public class RealApiIntegrationTests {
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
         assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
+    }
 
+    @Test
+    public void fromFileSingleMaliciousFileWithVerdictRequestAttributes()
+            throws Exception {
+        var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
+        Files.writeString(tmpFile, eicar);
+        var vaas = this.getVaasWithCredentials();
+
+        var sha256 = new Sha256(tmpFile);
+        var verdict = vaas.forFile(tmpFile, new  HashMap<VerdictRequestAttributes, String>(){{
+            put(VerdictRequestAttributes.TENANT_ID, "JavaSDK");
+        }});
+        vaas.disconnect();
+
+        Files.deleteIfExists(tmpFile);
+        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
     }
 
     @Test
@@ -194,7 +214,6 @@ public class RealApiIntegrationTests {
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
         assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
-
     }
 
     @Test
