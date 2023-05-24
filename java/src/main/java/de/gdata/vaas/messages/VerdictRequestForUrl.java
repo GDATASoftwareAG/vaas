@@ -24,6 +24,7 @@ public class VerdictRequestForUrl extends MessageType {
     String guid;
     @Getter
     @Setter
+    @SerializedName("verdict_request_attributes")
     VerdictRequestAttributes verdictRequestAttributes;
 
     public VerdictRequestForUrl(URL url, String sessionId) throws MalformedURLException {

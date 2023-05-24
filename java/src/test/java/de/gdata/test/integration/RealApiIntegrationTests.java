@@ -5,6 +5,7 @@ import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.messages.VerdictRequest;
 import de.gdata.vaas.messages.VerdictRequestAttributes;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.jetbrains.annotations.NotNull;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.testng.AssertJUnit.assertEquals;
@@ -336,6 +338,18 @@ public class RealApiIntegrationTests {
         assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
         assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
         assertEquals(Verdict.CLEAN, verdict_3.getVerdict());
+    }
+
+    @Test
+    public void serializationTest() {
+        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
+        var verdictRequestAttributes = new VerdictRequestAttributes();
+        verdictRequestAttributes.setTenantId("Test");
+        var verdictRequest = new VerdictRequest(sha256, "myid", verdictRequestAttributes);
+        var json1 = verdictRequest.toJson();
+        var json2 = verdictRequestAttributes.toJson();
+        assertNotNull(json1, "");
+        assertNotNull(json2, "");
     }
 
     private @NotNull String getRandomString(int size) {

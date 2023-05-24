@@ -1,6 +1,7 @@
 # Ignore for Rust
 target/
 Cargo.lock
+launch.json
 
 .DS_Store
 node_modules
