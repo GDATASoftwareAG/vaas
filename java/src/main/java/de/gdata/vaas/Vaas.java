@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.NonNull;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -21,6 +22,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -34,18 +36,20 @@ public class Vaas {
     @Getter
     @NonNull
     private final IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator;
-
+    private final HttpClient httpClient = HttpClient.newBuilder().build();
     private WebSocketClient client;
-
-    private HttpClient httpClient = HttpClient.newBuilder().build();
 
     public Vaas(VaasConfig config, IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
         this.config = config;
         this.clientCredentialsGrantAuthenticator = clientCredentialsGrantAuthenticator;
     }
 
-    public void connect() throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException,
-            ExecutionException, TimeoutException {
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> void throwAsUnchecked(Exception exception) throws E {
+        throw (E) exception;
+    }
+
+    public void connect() throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException, TimeoutException {
         this.client = new WebSocketClient(this.getConfig(), clientCredentialsGrantAuthenticator.getToken());
         this.client.connectBlocking();
         try {
@@ -62,8 +66,7 @@ public class Vaas {
     }
 
     private CompletableFuture<VerdictResponse> forUrlAsync(URL url,
-            VerdictRequestAttributes verdictRequestAttributes)
-            throws Exception {
+                                                           VerdictRequestAttributes verdictRequestAttributes) throws VaasInvalidStateException, VaasConnectionClosedException, MalformedURLException {
         EnsureClientIsCreatedAndAuthenticated();
         var request = new VerdictRequestForUrl(url, this.client.getSessionId(), verdictRequestAttributes);
         return this.forUrlRequestAsync(request);
@@ -73,8 +76,7 @@ public class Vaas {
         return this.forUrl(url, null);
     }
 
-    public VaasVerdict forUrl(URL url, VerdictRequestAttributes verdictRequestAttributes)
-            throws Exception {
+    public VaasVerdict forUrl(URL url, VerdictRequestAttributes verdictRequestAttributes) throws MalformedURLException, VaasInvalidStateException, VaasConnectionClosedException, ExecutionException, InterruptedException, TimeoutException {
         var verdictResponse = this.forUrlAsync(url, verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
@@ -86,7 +88,7 @@ public class Vaas {
     }
 
     public VaasVerdict forSha256(Sha256 sha256, VerdictRequestAttributes verdictRequestAttributes)
-            throws Exception {
+            throws ExecutionException, InterruptedException, TimeoutException, VaasInvalidStateException, VaasConnectionClosedException {
         var verdictResponse = this.forSha256Async(sha256, verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
@@ -94,19 +96,19 @@ public class Vaas {
     }
 
     private CompletableFuture<VerdictResponse> forSha256Async(Sha256 sha256,
-            VerdictRequestAttributes verdictRequestAttributes)
-            throws Exception {
+                                                              VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException {
         EnsureClientIsCreatedAndAuthenticated();
         var request = new VerdictRequest(sha256, this.client.getSessionId(), verdictRequestAttributes);
         return this.forRequest(request);
     }
 
-    public VaasVerdict forFile(Path file) throws Exception {
+    public VaasVerdict forFile(Path file) throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException, ExecutionException, InterruptedException, TimeoutException {
         return forFile(file, null);
     }
 
     public VaasVerdict forFile(Path file, VerdictRequestAttributes verdictRequestAttributes)
-            throws Exception {
+            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException, ExecutionException, InterruptedException, TimeoutException {
         var verdictResponse = this.forFileAsync(file, verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
@@ -114,13 +116,13 @@ public class Vaas {
     }
 
     private CompletableFuture<VerdictResponse> forFileAsync(Path file,
-            VerdictRequestAttributes verdictRequestAttributes)
-            throws Exception {
+                                                            VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException, NoSuchAlgorithmException, IOException {
         EnsureClientIsCreatedAndAuthenticated();
         var sha256 = new Sha256(file);
         var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId(), verdictRequestAttributes);
 
-        var verdictResponseFuture = this.forRequest(verdictRequest)
+        return this.forRequest(verdictRequest)
                 .thenCompose(verdictResponse -> {
                     var verdict = verdictResponse.getVerdict();
                     if (verdict != Verdict.UNKNOWN) {
@@ -136,11 +138,10 @@ public class Vaas {
                         return null;
                     }
                 });
-        return verdictResponseFuture;
     }
 
     private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)
-            throws IOException, URISyntaxException, InterruptedException {
+            throws IOException, URISyntaxException {
         var bytes = Files.readAllBytes(file);
         var request = HttpRequest
                 .newBuilder(new URI(url))
@@ -160,12 +161,7 @@ public class Vaas {
         });
     }
 
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> void throwAsUnchecked(Exception exception) throws E {
-        throw (E) exception;
-    }
-
-    private CompletableFuture<VerdictResponse> forRequest(VerdictRequest verdictRequest) throws Exception {
+    private CompletableFuture<VerdictResponse> forRequest(VerdictRequest verdictRequest) {
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());
@@ -174,8 +170,7 @@ public class Vaas {
         return verdictResponse;
     }
 
-    private CompletableFuture<VerdictResponse> forUrlRequestAsync(VerdictRequestForUrl verdictRequestForUrl)
-            throws Exception {
+    private CompletableFuture<VerdictResponse> forUrlRequestAsync(VerdictRequestForUrl verdictRequestForUrl) {
         var verdictResponse = this.client.waitForVerdict(verdictRequestForUrl.getGuid());
 
         verdictRequestForUrl.setSessionId(this.client.getSessionId());

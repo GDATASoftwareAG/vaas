@@ -45,8 +45,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         }
     }
 
-    public WebSocketClient(VaasConfig config, String token)
-            throws URISyntaxException, IOException, InterruptedException {
+    public WebSocketClient(VaasConfig config, String token) {
         super(config.getUrl());
         this.token = token;
     }
@@ -71,7 +70,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     }
 
     private void waitForAuthentication()
-            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException {
+            throws InterruptedException, ExecutionException, TimeoutException {
         this.authenticated.get(AuthenticationTimeoutInS, TimeUnit.SECONDS);
     }
 
