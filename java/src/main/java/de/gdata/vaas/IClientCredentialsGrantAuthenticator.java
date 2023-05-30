@@ -4,5 +4,13 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 
 public interface IClientCredentialsGrantAuthenticator {
-    public String getToken() throws URISyntaxException, IOException, InterruptedException;
+    /**
+     * Get access token from identity provider
+     * 
+     * @throws IOException          if an I/O error occurs when sending the HTTP
+     *                              request
+     * @throws InterruptedException if the operation is interrupted
+     * @return the access token
+     */
+    public String getToken() throws IOException, InterruptedException;
 }

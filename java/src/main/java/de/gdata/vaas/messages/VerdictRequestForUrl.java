@@ -27,15 +27,14 @@ public class VerdictRequestForUrl extends MessageType {
     @SerializedName("verdict_request_attributes")
     VerdictRequestAttributes verdictRequestAttributes;
 
-    public VerdictRequestForUrl(URL url, String sessionId) throws MalformedURLException {
+    public VerdictRequestForUrl(URL url, String sessionId) {
         super(Kind.VerdictRequestForUrl);
         this.sessionId = sessionId;
         this.guid = UUID.randomUUID().toString();
         this.url = url.toString();
     }
 
-    public VerdictRequestForUrl(URL url, String sessionId, VerdictRequestAttributes verdictRequestAttributes)
-            throws MalformedURLException {
+    public VerdictRequestForUrl(URL url, String sessionId, VerdictRequestAttributes verdictRequestAttributes) {
         this(url, sessionId);
         this.verdictRequestAttributes = verdictRequestAttributes;
     }

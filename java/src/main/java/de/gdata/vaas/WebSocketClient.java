@@ -10,8 +10,6 @@ import lombok.NonNull;
 import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.*;
 
