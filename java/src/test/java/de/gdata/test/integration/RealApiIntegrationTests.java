@@ -74,7 +74,7 @@ public class RealApiIntegrationTests {
         class MockAuthenticator implements IClientCredentialsGrantAuthenticator {
 
             @Override
-            public String getToken() throws URISyntaxException, IOException, InterruptedException {
+            public String getToken() throws IOException, InterruptedException {
                 return "arbitrary_wrong_token";
             }
         }

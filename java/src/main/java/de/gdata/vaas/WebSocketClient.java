@@ -10,8 +10,6 @@ import lombok.NonNull;
 import org.java_websocket.enums.ReadyState;
 import org.java_websocket.handshake.ServerHandshake;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.*;
 
@@ -45,8 +43,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         }
     }
 
-    public WebSocketClient(VaasConfig config, String token)
-            throws URISyntaxException, IOException, InterruptedException {
+    public WebSocketClient(VaasConfig config, String token) {
         super(config.getUrl());
         this.token = token;
     }
@@ -71,7 +68,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     }
 
     private void waitForAuthentication()
-            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException {
+            throws InterruptedException, ExecutionException, TimeoutException {
         this.authenticated.get(AuthenticationTimeoutInS, TimeUnit.SECONDS);
     }
 
