@@ -33,13 +33,13 @@ func main() {
 	vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{
 		UseShed:    true,
 		UseCache:   false,
-		EnableLogs: true,
+		EnableLogs: false,
 	})
 	ctx, webSocketCancel := context.WithCancel(context.Background())
 
 	termChan, err := vaasClient.Connect(ctx, auth)
 	if err != nil {
-		log.Fatal("Something went wrong", err.Error())
+		log.Fatalf("failed to connect to VaaS %s", err.Error())
 	}
 
 	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)

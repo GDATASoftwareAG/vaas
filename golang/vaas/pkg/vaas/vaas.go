@@ -256,11 +256,14 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.ClientCreden
 	v.waitAuthenticated.Add(1)
 	defer v.waitAuthenticated.Done()
 
-	connection, _, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
+	connection, resp, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
+	if err == websocket.ErrBadHandshake {
+		return fmt.Errorf("handshake failed with status {%d}", resp.StatusCode)
+   	}
 	if err != nil {
 		return err
 	}
-
+	
 	connection.SetPongHandler(func(string) error {
 		_ = connection.SetReadDeadline(time.Now().Add(pingPeriod + pongWait))
 		_ = connection.SetWriteDeadline(time.Now().Add(pingPeriod + pongWait))
