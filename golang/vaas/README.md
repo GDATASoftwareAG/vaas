@@ -1,3 +1,6 @@
+[![vaas-golang-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml)
+[![Vulnerability Check](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml)
+
 # Go VaaS Client
 
 This is a Golang package that provides a client for the G DATA VaaS API.
