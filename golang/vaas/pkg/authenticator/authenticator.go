@@ -16,10 +16,10 @@ type ClientCredentialsGrantAuthenticator interface {
 }
 
 type clientCredentialsGrantAuthenticator struct {
+	httpClient    *http.Client
 	cliendId      string
 	clientSecret  string
 	tokenEndpoint string
-	httpClient    *http.Client
 }
 
 func New(clientId string, clientSecret string, tokenEndpoint string) ClientCredentialsGrantAuthenticator {

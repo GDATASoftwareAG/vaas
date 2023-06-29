@@ -49,17 +49,15 @@ const (
 
 type vaas struct {
 	logger              *log.Logger
-	sessionId           string
 	websocketConnection *websocket.Conn
+	openRequests        map[string]chan msg.VerdictResponse
+	requestChannel      chan msg.VerdictRequest
+	responseChannel     chan msg.VerdictResponse
+	sessionId           string
+	vaasUrl             string
 	waitAuthenticated   sync.WaitGroup
-
-	openRequests      map[string]chan msg.VerdictResponse
-	openRequestsMutex sync.Mutex
-
-	requestChannel  chan msg.VerdictRequest
-	responseChannel chan msg.VerdictResponse
-	vaasUrl         string
-	options         options.VaasOptions
+	openRequestsMutex   sync.Mutex
+	options             options.VaasOptions
 }
 
 func New(options options.VaasOptions, vaasUrl string) Vaas {

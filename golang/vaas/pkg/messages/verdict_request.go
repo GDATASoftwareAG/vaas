@@ -10,9 +10,9 @@ type verdictRequest struct {
 	Sha256                   string                   `json:"sha256"`
 	Guid                     string                   `json:"guid"`
 	SessionID                string                   `json:"session_id"`
+	VerdictRequestAttributes VerdictRequestAttributes `json:"verdict_request_attributes"`
 	UseCache                 bool                     `json:"use_cache"`
 	UseShed                  bool                     `json:"use_shed"`
-	VerdictRequestAttributes VerdictRequestAttributes `json:"verdict_request_attributes"`
 }
 
 func (r verdictRequest) GetGuid() string {
