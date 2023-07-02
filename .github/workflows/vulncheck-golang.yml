@@ -10,5 +10,5 @@ jobs:
       - id: govulncheck
         uses: golang/govulncheck-action@v0.2.0
         with:
-           go-version-input: 1.20.4
+           go-version-input: 1.20.5
            go-package: golang/vaas/...
