@@ -15,4 +15,5 @@ jobs:
         shell: bash
       - name: Run govulncheck
         run: govulncheck ./..
+        working-directory: golang/vaas
         shell: bash
