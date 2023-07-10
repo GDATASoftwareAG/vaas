@@ -28,6 +28,13 @@ public class ClientCredentialsGrantAuthenticator implements IClientCredentialsGr
     @NonNull
     private URI tokenEndpoint;
 
+    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret)
+            throws URISyntaxException {
+        this.tokenEndpoint = new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+    }
+
     public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, String tokenEndpoint)
             throws URISyntaxException {
         this.tokenEndpoint = new URI(tokenEndpoint);
@@ -39,7 +46,7 @@ public class ClientCredentialsGrantAuthenticator implements IClientCredentialsGr
         return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
     }
 
-    public String getToken() throws URISyntaxException, IOException, InterruptedException {
+    public String getToken() throws IOException, InterruptedException {
         Map<String, String> requestParams = new HashMap<>();
         requestParams.put("client_id", this.clientId);
         requestParams.put("grant_type", "client_credentials");

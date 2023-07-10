@@ -16,11 +16,6 @@ public class VaasConfig {
 
     @Getter
     @Setter
-    @NonNull
-    private URI tokenEndpoint;
-
-    @Getter
-    @Setter
     private int PullDelayMs;
 
     @Getter
@@ -29,18 +24,16 @@ public class VaasConfig {
 
     public VaasConfig() throws URISyntaxException {
         this(
-                new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"),
                 new URI("wss://gateway.production.vaas.gdatasecurity.de"));
     }
 
-    public VaasConfig(URI tokenEndpoint, URI url) {
-        this.tokenEndpoint = tokenEndpoint;
+    public VaasConfig(URI url) {
         this.url = url;
         this.PullDelayMs = 100;
     }
 
-    public VaasConfig(URI tokenEndpoint, URI url, Duration timeout) {
-        this(tokenEndpoint, url);
+    public VaasConfig(URI url, Duration timeout) {
+        this.url = url;
         this.defaultTimeout = timeout;
     }
 }

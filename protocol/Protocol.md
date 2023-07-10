@@ -2,7 +2,7 @@
 
     This document describes the VaaS Websocket Protocol. All SDKs have to implement this protocol to be able to use the VaaS Websocket API.
 
-    Protocol version: 0.1.0
+    Protocol version: 0.2.0
 
 ## Protocol Internals   
 
@@ -59,7 +59,7 @@ The client is responsible for opening the websocket connection and sending the a
 {
     "kind": "AuthRequest", // Unique identifier of the message kind
     "token": "...", // Authentication token
-    "session_id": "...", // Optional: session identifier on reconnect
+    "session_id": "..." // Optional: session identifier on reconnect
 }
 ```
 
@@ -71,7 +71,7 @@ The server responds with an authentication response or with an access denied mes
     "kind": "AuthResponse", // Unique identifier of the message kind
     "success": true, // True, if the authentication was successful
     "session_id": "...", // Session identifier
-    "text": "...", // Message for successful authentication
+    "text": "..." // Message for successful authentication
 }
 ```
 
@@ -81,7 +81,7 @@ The server responds with an authentication response or with an access denied mes
     "kind": "AuthResponse", // Unique identifier of the message kind
     "success": false, // False, if the authentication was unsuccessful
     "session_id": "...", // Session identifier
-    "text": "...", // Error message for the unsuccessful authentication
+    "text": "..." // Error message for the unsuccessful authentication
 } 
 ```
 
@@ -89,6 +89,8 @@ After a successful authentication, the client sends as many request for hash or 
 
 The *ping* message has to be a *ping* control frame, not a *text* message. The responded *pong* message is a *pong* control frame, not a *text* message as well.
 
+
+Additionally it is also possible to include *VerdictRequestAttributes*, saved as key-value pair. These are only used for custom and discussed in advance use-cases. This can be used in any *VerdictRequest*-Format.
 ```javascript
 // Analysis request
 {
@@ -96,6 +98,9 @@ The *ping* message has to be a *ping* control frame, not a *text* message. The r
     "sha256": "...", // SHA256 hash of the file to be analyzed
     "guid": "...", // Unique identifier of the request
     "session_id": "...", // Session identifier
+    "verdict_request_attributes": {
+        "key": "value" //Additional key value pairs
+    }
 }
 ```
 
@@ -108,6 +113,8 @@ In case for an analysis from a URL, a different kind has to be set. Also, instea
     "url": "...", // URL for a located file to be analyzed
     "guid": "...", // Unique identifier of the request
     "session_id": "...", // Session identifier
+    "verdict_request_attributes": {
+        "key": "value" //Additional key value pairs
 }
 ```
 
@@ -121,7 +128,7 @@ For each request, the server sends a corresponding response. The response contai
     "guid": "...", // Unique identifier of the request
     "verdict": "Clean", // Verdict of the analysis (Unknown, Clean, Malicious, Pub)
     "url": "...", // Optional: Upload URL for the file in the case of an "Unknown" verdict
-    "upload_token": "...", // Optional: Upload token for the file in the case of an "Unknown" verdict
+    "upload_token": "..." // Optional: Upload token for the file in the case of an "Unknown" verdict
 }
 ```
 
@@ -145,6 +152,6 @@ At any stage in the protocol, an error can be returned by the server. The error 
 {
     "kind": "Error", // Unique identifier of the message kind
     "type": "...", // Unique identifier of the error
-    "text": "...", // Error message
+    "text": "..." // Error message
 }
 ```

@@ -13,7 +13,7 @@ public class VerdictRequestTest
         var json = JsonSerializer.Serialize(new VerdictRequest("", ""));
         Snapshot.Match(json, matchOptions => matchOptions.IgnoreField("guid"));
     }
-    
+
     [Fact]
     public void Serialize_WithOptions()
     {

@@ -49,17 +49,15 @@ const (
 
 type vaas struct {
 	logger              *log.Logger
-	sessionId           string
 	websocketConnection *websocket.Conn
+	openRequests        map[string]chan msg.VerdictResponse
+	requestChannel      chan msg.VerdictRequest
+	responseChannel     chan msg.VerdictResponse
+	sessionId           string
+	vaasUrl             string
 	waitAuthenticated   sync.WaitGroup
-
-	openRequests      map[string]chan msg.VerdictResponse
-	openRequestsMutex sync.Mutex
-
-	requestChannel  chan msg.VerdictRequest
-	responseChannel chan msg.VerdictResponse
-	vaasUrl         string
-	options         options.VaasOptions
+	openRequestsMutex   sync.Mutex
+	options             options.VaasOptions
 }
 
 func New(options options.VaasOptions, vaasUrl string) Vaas {
@@ -67,6 +65,18 @@ func New(options options.VaasOptions, vaasUrl string) Vaas {
 		logger:          log.Default(),
 		options:         options,
 		vaasUrl:         vaasUrl,
+		requestChannel:  make(chan msg.VerdictRequest, 1),
+		responseChannel: make(chan msg.VerdictResponse),
+		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+	}
+	return client
+}
+
+func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
+	client := &vaas{
+		logger:          log.Default(),
+		options:         options,
+		vaasUrl:         "wss://gateway.production.vaas.gdatasecurity.de",
 		requestChannel:  make(chan msg.VerdictRequest, 1),
 		responseChannel: make(chan msg.VerdictResponse),
 		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
@@ -244,7 +254,10 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.ClientCreden
 	v.waitAuthenticated.Add(1)
 	defer v.waitAuthenticated.Done()
 
-	connection, _, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
+	connection, resp, err := websocket.DefaultDialer.DialContext(ctx, v.vaasUrl, nil)
+	if err == websocket.ErrBadHandshake {
+		return fmt.Errorf("handshake failed with status {%d}", resp.StatusCode)
+	}
 	if err != nil {
 		return err
 	}

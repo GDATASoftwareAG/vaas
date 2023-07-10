@@ -5,6 +5,7 @@ import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
+import de.gdata.vaas.messages.VerdictRequestAttributes;
 import de.gdata.vaas.messages.VerdictRequestForUrl;
 import de.gdata.vaas.messages.VerdictResponse;
 import de.gdata.vaas.messages.VaasVerdict;
@@ -20,7 +21,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -34,18 +35,31 @@ public class Vaas {
     @Getter
     @NonNull
     private final IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator;
-
+    private final HttpClient httpClient = HttpClient.newBuilder().build();
     private WebSocketClient client;
-
-    private HttpClient httpClient = HttpClient.newBuilder().build();
 
     public Vaas(VaasConfig config, IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
         this.config = config;
         this.clientCredentialsGrantAuthenticator = clientCredentialsGrantAuthenticator;
     }
 
-    public void connect() throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException,
-            ExecutionException, TimeoutException {
+    @SuppressWarnings("unchecked")
+    private static <E extends Throwable> void throwAsUnchecked(Exception exception) throws E {
+        throw (E) exception;
+    }
+
+    /**
+     * Connect and authenticate with the VaaS Backend
+     * 
+     * @throws IOException                 if an I/O error occurs when getting the
+     *                                     token from the identity provide
+     * @throws InterruptedException        if the operation is interrupted
+     * @throws VaasAuthenticationException if the token returned by the identity
+     *                                     provider is invalid
+     * @throws TimeoutException            if the authentication in the VaaS backend
+     *                                     takes too long
+     */
+    public void connect() throws IOException, InterruptedException, VaasAuthenticationException, TimeoutException {
         this.client = new WebSocketClient(this.getConfig(), clientCredentialsGrantAuthenticator.getToken());
         this.client.connectBlocking();
         try {
@@ -55,37 +69,100 @@ public class Vaas {
         }
     }
 
+    /**
+     * Disconnect from the Vaas backend
+     *
+     * @throws InterruptedException if the operation is interrupted
+     */
     public void disconnect() throws InterruptedException {
         if (this.client != null) {
             this.client.closeBlocking();
         }
     }
 
-    public CompletableFuture<VerdictResponse> forUrlAsync(URL url, HashMap<String, String> verdictRequestAttributes)
-            throws Exception {
+    private CompletableFuture<VerdictResponse> forUrlAsync(URL url,
+            VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException {
         EnsureClientIsCreatedAndAuthenticated();
-        var request = new VerdictRequestForUrl(url, this.client.getSessionId());
+        var request = new VerdictRequestForUrl(url, this.client.getSessionId(), verdictRequestAttributes);
         return this.forUrlRequestAsync(request);
     }
 
-    public VaasVerdict forUrl(URL url) throws Exception {
+    /**
+     * Request verdict for url
+     * 
+     * @param url the URL to analyze
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException     - if the connection is in an invalid
+     *                                       state
+     * @throws VaasConnectionClosedException - if the connection to the Vaas backend
+     *                                       is closed
+     * @throws ExecutionException            - if the request fails
+     * @throws InterruptedException          - if the operation is interrupted
+     * @throws TimeoutException              - if the request times out
+     */
+    public VaasVerdict forUrl(URL url) throws VaasInvalidStateException, VaasConnectionClosedException,
+            ExecutionException, InterruptedException, TimeoutException {
         return this.forUrl(url, null);
     }
 
-    public VaasVerdict forUrl(URL url, HashMap<String, String> verdictRequestAttributes)
-            throws Exception {
+    /**
+     * Request verdict for url
+     * 
+     * @param url                      the URL to analyze
+     * @param verdictRequestAttributes - additional attributes for the request
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException     - if the connection is in an invalid
+     *                                       state
+     * @throws VaasConnectionClosedException - if the connection to the Vaas backend
+     *                                       is closed
+     * @throws ExecutionException            - if the request fails
+     * @throws InterruptedException          - if the operation is interrupted
+     * @throws TimeoutException              - if the request times out
+     */
+    public VaasVerdict forUrl(URL url, VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException, ExecutionException,
+            InterruptedException, TimeoutException {
         var verdictResponse = this.forUrlAsync(url, verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
-    public VaasVerdict forSha256(Sha256 sha256) throws Exception {
+    /**
+     * Request verdict for Sha256
+     * 
+     * @return the Vaas verdict
+     * @throws ExecutionException            - if the request fails
+     * @throws InterruptedException          - if the operation is interrupted
+     * @throws TimeoutException              - if the request times out
+     * @throws VaasInvalidStateException     - if the connection is in an invalid
+     *                                       state
+     * @throws VaasConnectionClosedException - if the connection to the Vaas backend
+     *                                       is closed
+     */
+    public VaasVerdict forSha256(Sha256 sha256) throws ExecutionException, InterruptedException, TimeoutException,
+            VaasInvalidStateException, VaasConnectionClosedException {
         return this.forSha256(sha256, null);
     }
 
-    public VaasVerdict forSha256(Sha256 sha256, HashMap<String, String> verdictRequestAttributes)
-            throws Exception {
+    /**
+     * Request verdict for Sha256
+     * 
+     * @param sha256                   the sha256 to analyze
+     * @param verdictRequestAttributes additional attributes for the request
+     * @return the Vaas verdict
+     * @throws ExecutionException            - if the request fails
+     * @throws InterruptedException          - if the operation is interrupted
+     * @throws TimeoutException              - if the request times out
+     * @throws VaasInvalidStateException     - if the connection is in an invalid
+     *                                       state
+     * @throws VaasConnectionClosedException - if the connection to the Vaas backend
+     *                                       is closed
+     */
+    public VaasVerdict forSha256(Sha256 sha256, VerdictRequestAttributes verdictRequestAttributes)
+            throws ExecutionException, InterruptedException, TimeoutException, VaasInvalidStateException,
+            VaasConnectionClosedException {
         var verdictResponse = this.forSha256Async(sha256, verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
@@ -93,31 +170,70 @@ public class Vaas {
     }
 
     private CompletableFuture<VerdictResponse> forSha256Async(Sha256 sha256,
-            HashMap<String, String> verdictRequestAttributes)
-            throws Exception {
+            VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException {
         EnsureClientIsCreatedAndAuthenticated();
         var request = new VerdictRequest(sha256, this.client.getSessionId(), verdictRequestAttributes);
         return this.forRequest(request);
     }
 
-    public VaasVerdict forFile(Path file) throws Exception {
+    /**
+     * Request verdict for File
+     * 
+     * @param file the file to analyze
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException     - if the connection is in an invalid
+     *                                       state
+     * @throws VaasConnectionClosedException - if the connection to the Vaas backend
+     *                                       is closed
+     * @throws IOException                   - if the file can not be read
+     * @throws NoSuchAlgorithmException      - if a particular cryptographic
+     *                                       algorithm is requested but is not
+     *                                       available in the environment
+     * @throws ExecutionException            - if the request fails
+     * @throws InterruptedException          - if the operation is interrupted
+     * @throws TimeoutException              - if the request times out
+     */
+    public VaasVerdict forFile(Path file) throws VaasInvalidStateException, VaasConnectionClosedException, IOException,
+            NoSuchAlgorithmException, ExecutionException, InterruptedException, TimeoutException {
         return forFile(file, null);
     }
 
-    public VaasVerdict forFile(Path file, HashMap<String, String> verdictRequestAttributes) throws Exception {
+    /**
+     * Request verdict for File
+     * 
+     * @param file                     the file to analyze
+     * @param verdictRequestAttributes additional attributes for the request *
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException     - if the connection is in an invalid
+     *                                       state
+     * @throws VaasConnectionClosedException - if the connection to the Vaas backend
+     *                                       is closed
+     * @throws IOException                   - if the file can not be read
+     * @throws NoSuchAlgorithmException      - if a particular cryptographic
+     *                                       algorithm is requested but is not
+     *                                       available in the environment
+     * @throws ExecutionException            - if the request fails
+     * @throws InterruptedException          - if the operation is interrupted
+     * @throws TimeoutException              - if the request times out
+     */
+    public VaasVerdict forFile(Path file, VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            ExecutionException, InterruptedException, TimeoutException {
         var verdictResponse = this.forFileAsync(file, verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
-    private CompletableFuture<VerdictResponse> forFileAsync(Path file, HashMap<String, String> verdictRequestAttributes)
-            throws Exception {
+    private CompletableFuture<VerdictResponse> forFileAsync(Path file,
+            VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException, NoSuchAlgorithmException, IOException {
         EnsureClientIsCreatedAndAuthenticated();
         var sha256 = new Sha256(file);
         var verdictRequest = new VerdictRequest(sha256, this.client.getSessionId(), verdictRequestAttributes);
 
-        var verdictResponseFuture = this.forRequest(verdictRequest)
+        return this.forRequest(verdictRequest)
                 .thenCompose(verdictResponse -> {
                     var verdict = verdictResponse.getVerdict();
                     if (verdict != Verdict.UNKNOWN) {
@@ -133,11 +249,10 @@ public class Vaas {
                         return null;
                     }
                 });
-        return verdictResponseFuture;
     }
 
     private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)
-            throws IOException, URISyntaxException, InterruptedException {
+            throws IOException, URISyntaxException {
         var bytes = Files.readAllBytes(file);
         var request = HttpRequest
                 .newBuilder(new URI(url))
@@ -157,12 +272,7 @@ public class Vaas {
         });
     }
 
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> void throwAsUnchecked(Exception exception) throws E {
-        throw (E) exception;
-    }
-
-    private CompletableFuture<VerdictResponse> forRequest(VerdictRequest verdictRequest) throws Exception {
+    private CompletableFuture<VerdictResponse> forRequest(VerdictRequest verdictRequest) {
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());
@@ -171,8 +281,7 @@ public class Vaas {
         return verdictResponse;
     }
 
-    private CompletableFuture<VerdictResponse> forUrlRequestAsync(VerdictRequestForUrl verdictRequestForUrl)
-            throws Exception {
+    private CompletableFuture<VerdictResponse> forUrlRequestAsync(VerdictRequestForUrl verdictRequestForUrl) {
         var verdictResponse = this.client.waitForVerdict(verdictRequestForUrl.getGuid());
 
         verdictRequestForUrl.setSessionId(this.client.getSessionId());

@@ -73,9 +73,9 @@ func TestVaas_ForSha256(t *testing.T) {
 		expectedVerdict messages.Verdict
 	}
 	tests := []struct {
+		args          args
 		name          string
 		fields        fields
-		args          args
 		wantErr       bool
 		authenticated bool
 	}{
@@ -176,9 +176,9 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 		expectedVerdict messages.Verdict
 	}
 	tests := []struct {
+		args          args
 		name          string
 		fields        fields
-		args          args
 		wantErr       bool
 		authenticated bool
 	}{
@@ -288,9 +288,9 @@ func TestVaas_ForUrl(t *testing.T) {
 		expectedVerdict messages.Verdict
 	}
 	tests := []struct {
+		args          args
 		name          string
 		fields        fields
-		args          args
 		wantErr       bool
 		authenticated bool
 	}{

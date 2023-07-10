@@ -6,9 +6,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
 
-import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.UUID;
 
 public class VerdictRequestForUrl extends MessageType {
@@ -25,17 +23,17 @@ public class VerdictRequestForUrl extends MessageType {
     String guid;
     @Getter
     @Setter
-    HashMap<String, String> verdictRequestAttributes;
+    @SerializedName("verdict_request_attributes")
+    VerdictRequestAttributes verdictRequestAttributes;
 
-    public VerdictRequestForUrl(URL url, String sessionId) throws MalformedURLException {
+    public VerdictRequestForUrl(URL url, String sessionId) {
         super(Kind.VerdictRequestForUrl);
         this.sessionId = sessionId;
         this.guid = UUID.randomUUID().toString();
         this.url = url.toString();
     }
 
-    public VerdictRequestForUrl(URL url, String sessionId, HashMap<String, String> verdictRequestAttributes)
-            throws MalformedURLException {
+    public VerdictRequestForUrl(URL url, String sessionId, VerdictRequestAttributes verdictRequestAttributes) {
         this(url, sessionId);
         this.verdictRequestAttributes = verdictRequestAttributes;
     }

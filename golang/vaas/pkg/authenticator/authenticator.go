@@ -16,10 +16,10 @@ type ClientCredentialsGrantAuthenticator interface {
 }
 
 type clientCredentialsGrantAuthenticator struct {
+	httpClient    *http.Client
 	cliendId      string
 	clientSecret  string
 	tokenEndpoint string
-	httpClient    *http.Client
 }
 
 func New(clientId string, clientSecret string, tokenEndpoint string) ClientCredentialsGrantAuthenticator {
@@ -27,6 +27,15 @@ func New(clientId string, clientSecret string, tokenEndpoint string) ClientCrede
 		cliendId:      clientId,
 		clientSecret:  clientSecret,
 		tokenEndpoint: tokenEndpoint,
+		httpClient:    &http.Client{Timeout: 120 * time.Second},
+	}
+}
+
+func NewWithDefaultTokenEndpoint(clientId string, clientSecret string) ClientCredentialsGrantAuthenticator {
+	return &clientCredentialsGrantAuthenticator{
+		cliendId:      clientId,
+		clientSecret:  clientSecret,
+		tokenEndpoint: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token",
 		httpClient:    &http.Client{Timeout: 120 * time.Second},
 	}
 }

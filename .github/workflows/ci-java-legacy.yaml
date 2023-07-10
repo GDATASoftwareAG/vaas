@@ -1,11 +1,11 @@
-name: vaas-java-ci
+name: vaas-java-legacy-ci
 on:
   push:
     branches:
       - main
     paths:
       - "java/**"
-      - ".github/workflows/ci-java.yaml"
+      - ".github/workflows/ci-java-legacy.yaml"
     tags:
       - "*"
   pull_request:
@@ -13,11 +13,11 @@ on:
       - main
     paths:
       - "java/**"
-      - ".github/workflows/ci-java.yaml"
+      - ".github/workflows/ci-java-legacy.yaml"
 
 jobs:
-  build-java:
-    name: Build & Test Java SDK
+  build-java-legacy:
+    name: Build & Test Java 11 SDK
     runs-on: ubuntu-20.04
 
     steps:
@@ -27,7 +27,7 @@ jobs:
       - name: install Java
         uses: actions/setup-java@v3
         with:
-          java-version: "17"
+          java-version: "11"
           distribution: "adopt"
 
       - name: setup Gradle
@@ -61,40 +61,46 @@ jobs:
           gradle-version: "8.1"
           build-root-directory: java
 
-      - name: run examples for file
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: fileScan
-          gradle-version: "8.1"
-          build-root-directory: java/examples/VaasExample
+      #- name: run examples for file
+      #  env:
+      #    CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      #    CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      #    SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
+      #  uses: gradle/gradle-build-action@v2
+      #  with:
+      #    arguments: fileScan
+      #    gradle-version: "8.1"
+      #    build-root-directory: java/examples/VaasExample
 
-      - name: run examples for url
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: urlScan
-          gradle-version: "8.1"
-          build-root-directory: java/examples/VaasExample
+      #- name: run examples for url
+      #  env:
+      #    CLIENT_ID: ${{ secrets.CLIENT_ID }}
+      #    CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      #  uses: gradle/gradle-build-action@v2
+      #  with:
+      #    arguments: urlScan
+      #    gradle-version: "8.1"
+      #    build-root-directory: java/examples/VaasExample
 
       - name: extract version
-        if: startsWith(github.ref, 'refs/tags/java')
+        if: startsWith(github.ref, 'refs/tags/legacy-java')
         run: |
-          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/java}" >> $GITHUB_ENV
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/legacy-java}" >> $GITHUB_ENV
           echo $RELEASE_VERSION
 
       - name: set version
-        if: startsWith(github.ref, 'refs/tags/java')
+        if: startsWith(github.ref, 'refs/tags/legacy-java')
         run: |
           sed -i "s/version = '0\.0\.0'/version = '$RELEASE_VERSION'/g" ./java/build.gradle
+      
+      - name: set legacy name
+        if: startsWith(github.ref, 'refs/tags/legacy-java')
+        run: |
+          echo "rootProject.name = 'vaas-legacy'" > ./java/settings.gradle
+
 
       - name: publish Maven package
-        if: startsWith(github.ref, 'refs/tags/java')
+        if: startsWith(github.ref, 'refs/tags/legacy-java')
         env:
           ORG_GRADLE_PROJECT_username: ${{ secrets.ORG_GRADLE_PROJECT_USERNAME }}
           ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
@@ -107,7 +113,7 @@ jobs:
           build-root-directory: java
 
       - name: push to Maven Central
-        if: startsWith(github.ref, 'refs/tags/java')
+        if: startsWith(github.ref, 'refs/tags/legacy-java')
         env:
           ORG_GRADLE_PROJECT_username: ${{ secrets.ORG_GRADLE_PROJECT_USERNAME }}
           ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
