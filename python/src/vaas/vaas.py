@@ -105,6 +105,7 @@ class Vaas:
         self.url = url
 
     def get_authenticated_websocket(self):
+        """Get authenticated websocket"""        
         if self.websocket is None:
             raise VaasInvalidStateError("connect() was not called")
         if not self.websocket.open:
@@ -155,16 +156,16 @@ class Vaas:
     async def __aexit__(self, exc_type, exc, traceback):
         await self.close()
 
-    async def for_sha256(self, sha256, verdict_request_attributes=None):
+    async def for_sha256(self, sha256, verdict_request_attributes=None, guid=None):
         """Returns the verdict for a SHA256 checksum"""
-        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes)
+        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes, guid)
         return {
             "Sha256": verdict_response.get("sha256"),
             "Guid": verdict_response.get("guid"),
             "Verdict": verdict_response.get("verdict"),
         }
 
-    async def __for_sha256(self, sha256, verdict_request_attributes=None):
+    async def __for_sha256(self, sha256, verdict_request_attributes=None, guid=None):
         if verdict_request_attributes is not None and not isinstance(
             verdict_request_attributes, dict
         ):
@@ -172,7 +173,7 @@ class Vaas:
 
         websocket = self.get_authenticated_websocket()
         start = time.time()
-        guid = str(uuid.uuid4())
+        guid = guid or str(uuid.uuid4())
         verdict_request = {
             "kind": "VerdictRequest",
             "sha256": sha256,
@@ -212,7 +213,7 @@ class Vaas:
         except Exception as error:
             raise VaasConnectionClosedError(error) from error
 
-    async def for_buffer(self, buffer, verdict_request_attributes=None):
+    async def for_buffer(self, buffer, verdict_request_attributes=None, guid=None):
         """Returns the verdict for a buffer"""
 
         loop = asyncio.get_running_loop()
@@ -220,7 +221,7 @@ class Vaas:
             None, lambda: hashlib.sha256(buffer).hexdigest()
         )
 
-        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes)
+        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes, guid)
         verdict = verdict_response.get("verdict")
 
         if verdict == "Unknown":
@@ -249,13 +250,13 @@ class Vaas:
         self.tracing.trace_upload_request(time.time() - start, buffer_len)
         return verdict_response
 
-    async def for_file(self, path, verdict_request_attributes=None):
+    async def for_file(self, path, verdict_request_attributes=None, guid=None):
         """Returns the verdict for a file"""
 
         loop = asyncio.get_running_loop()
         sha256 = await loop.run_in_executor(None, lambda: hash_file(path))
 
-        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes)
+        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes, guid)
         verdict = verdict_response.get("verdict")
 
         if verdict == "Unknown":
@@ -290,7 +291,7 @@ class Vaas:
             self.tracing.trace_upload_timeout(content_length)
             raise VaasTimeoutError() from ex
 
-    async def for_url(self, url, verdict_request_attributes=None):
+    async def for_url(self, url, verdict_request_attributes=None, guid=None):
         """Returns the verdict for a file from an url"""
         if verdict_request_attributes is not None and not isinstance(
             verdict_request_attributes, dict
@@ -299,7 +300,7 @@ class Vaas:
 
         websocket = self.get_authenticated_websocket()
         start = time.time()
-        guid = str(uuid.uuid4())
+        guid = guid or str(uuid.uuid4())
         verdict_request_for_url = {
             "kind": "VerdictRequestForUrl",
             "url": url,
