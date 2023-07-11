@@ -1,3 +1,4 @@
+// Package authenticator provides an authentication client for G DATA CyberDefense's VaaS.
 package authenticator
 
 import (
@@ -17,23 +18,25 @@ type ClientCredentialsGrantAuthenticator interface {
 
 type clientCredentialsGrantAuthenticator struct {
 	httpClient    *http.Client
-	cliendId      string
+	clientID      string
 	clientSecret  string
 	tokenEndpoint string
 }
 
+// New creates a new Instance of the clientCredentialsGrantAuthenticator.
 func New(clientId string, clientSecret string, tokenEndpoint string) ClientCredentialsGrantAuthenticator {
 	return &clientCredentialsGrantAuthenticator{
-		cliendId:      clientId,
+		clientID:      clientId,
 		clientSecret:  clientSecret,
 		tokenEndpoint: tokenEndpoint,
 		httpClient:    &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
+// New creates a new Instance of the clientCredentialsGrantAuthenticator with a default token endpoint.
 func NewWithDefaultTokenEndpoint(clientId string, clientSecret string) ClientCredentialsGrantAuthenticator {
 	return &clientCredentialsGrantAuthenticator{
-		cliendId:      clientId,
+		clientID:      clientId,
 		clientSecret:  clientSecret,
 		tokenEndpoint: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token",
 		httpClient:    &http.Client{Timeout: 120 * time.Second},
@@ -42,7 +45,7 @@ func NewWithDefaultTokenEndpoint(clientId string, clientSecret string) ClientCre
 
 func (c clientCredentialsGrantAuthenticator) GetToken() (string, error) {
 	data := url.Values{}
-	data.Set("client_id", c.cliendId)
+	data.Set("client_id", c.clientID)
 	data.Set("client_secret", c.clientSecret)
 	data.Set("grant_type", "client_credentials")
 
