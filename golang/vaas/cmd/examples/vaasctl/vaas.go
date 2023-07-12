@@ -54,7 +54,7 @@ func main() {
 
 	if *urlCheck {
 		urlList := flag.Args()
-		if err := checkUrl(analysisCtx, urlList, vaasClient); err != nil {
+		if err := checkURL(analysisCtx, urlList, vaasClient); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -120,7 +120,7 @@ func checkSha256(ctx context.Context, sha256List []string, vaasClient vaas.Vaas)
 	return nil
 }
 
-func checkUrl(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error {
+func checkURL(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error {
 	if len(urlList) == 0 {
 		log.Fatal("no url entered in arguments")
 	}
