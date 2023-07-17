@@ -56,8 +56,8 @@ public class Vaas {
      * Connect and authenticate with the VaaS Backend
      * 
      * @throws IOException                 if an I/O error occurs when getting the
-     *                                     token from the identity provide
-     * @throws InterruptedException        if the operation is interrupted
+     *                                     token from the identity provider
+     * @throws InterruptedException        if the operation is interrupted by Thread.interrupt()
      * @throws VaasAuthenticationException if the token returned by the identity
      *                                     provider is invalid
      * @throws TimeoutException            if the connection or authentication to the VaaS backend
@@ -84,7 +84,7 @@ public class Vaas {
     /**
      * Disconnect from the Vaas backend
      *
-     * @throws InterruptedException if the operation is interrupted
+     * @throws InterruptedException if the operation is interrupted by Thread.interrupt()
      */
     public void disconnect() throws InterruptedException {
         if (this.client != null) {
@@ -108,7 +108,7 @@ public class Vaas {
      * @throws VaasConnectionClosedException - if the connection to the Vaas backend
      *                                       is closed
      * @throws ExecutionException            - if the request fails
-     * @throws InterruptedException          - if the operation is interrupted
+     * @throws InterruptedException          - if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException              - if the request times out
      */
     public VaasVerdict forUrl(URL url) throws VaasInvalidStateException, VaasConnectionClosedException,
@@ -128,7 +128,7 @@ public class Vaas {
      * @throws VaasConnectionClosedException - if the connection to the Vaas backend
      *                                       is closed
      * @throws ExecutionException            - if the request fails
-     * @throws InterruptedException          - if the operation is interrupted
+     * @throws InterruptedException          - if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException              - if the request times out
      */
     public VaasVerdict forUrl(URL url, VerdictRequestAttributes verdictRequestAttributes)
@@ -146,7 +146,7 @@ public class Vaas {
      * 
      * @return the Vaas verdict
      * @throws ExecutionException            - if the request fails
-     * @throws InterruptedException          - if the operation is interrupted
+     * @throws InterruptedException          - if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException              - if the request times out
      * @throws VaasInvalidStateException     - if the connection is in an invalid
      *                                       state
@@ -166,7 +166,7 @@ public class Vaas {
      * @param verdictRequestAttributes additional attributes for the request
      * @return the Vaas verdict
      * @throws ExecutionException            - if the request fails
-     * @throws InterruptedException          - if the operation is interrupted
+     * @throws InterruptedException          - if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException              - if the request times out
      * @throws VaasInvalidStateException     - if the connection is in an invalid
      *                                       state
@@ -203,7 +203,7 @@ public class Vaas {
      *                                       algorithm is requested but is not
      *                                       available in the environment
      * @throws ExecutionException            - if the request fails
-     * @throws InterruptedException          - if the operation is interrupted
+     * @throws InterruptedException          - if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException              - if the request times out
      */
     public VaasVerdict forFile(Path file) throws VaasInvalidStateException, VaasConnectionClosedException, IOException,
@@ -227,7 +227,7 @@ public class Vaas {
      *                                       algorithm is requested but is not
      *                                       available in the environment
      * @throws ExecutionException            - if the request fails
-     * @throws InterruptedException          - if the operation is interrupted
+     * @throws InterruptedException          - if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException              - if the request times out
      */
     public VaasVerdict forFile(Path file, VerdictRequestAttributes verdictRequestAttributes)
