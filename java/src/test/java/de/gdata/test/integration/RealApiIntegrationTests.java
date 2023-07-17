@@ -18,6 +18,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -324,15 +326,43 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("Used for manual testing")
+    public void fromUrlInALoop() throws Exception {
+        var url_1 = new URL("https://www.gdata.de/robots.txt");
+
+        while (true) {
+            try {
+                var vaas = this.getVaasWithCredentials();
+                while (true) {
+                    var verdict_1 = vaas.forUrl(url_1);
+                    assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
+                    System.out.println(verdict_1.getVerdict());
+
+                    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss:SSS");
+                    LocalDateTime now = LocalDateTime.now();
+                    System.out.println(dtf.format(now));
+                }
+
+            } catch (ExecutionException e) {
+                System.out.println(e);
+            }
+
+        }
+    }
+
+    @Test
     public void fromUrlMultipleCleanUrls() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var url_1 = new URL("https://random-data-api.com/api/v2/beers");
-        var url_2 = new URL("https://random-data-api.com/api/v2/banks");
-        var url_3 = new URL("https://random-data-api.com/api/v2/blood_types");
+        var url_1 = new URL("https://www.gdata.de/robots.txt");
+        var url_2 = new URL("https://www.gdata.de/robots.txt");
+        var url_3 = new URL("https://www.gdata.de/robots.txt");
 
-        var verdict_1 = vaas.forUrl(url_1);
-        var verdict_2 = vaas.forUrl(url_2);
-        var verdict_3 = vaas.forUrl(url_3);
+        var verdictRequestAttributes = new VerdictRequestAttributes();
+        verdictRequestAttributes.setTenantId("GiveMeThatHashes");
+
+        var verdict_1 = vaas.forUrl(url_1, verdictRequestAttributes);
+        var verdict_2 = vaas.forUrl(url_2, verdictRequestAttributes);
+        var verdict_3 = vaas.forUrl(url_3, verdictRequestAttributes);
         vaas.disconnect();
 
         assertEquals(Verdict.CLEAN, verdict_1.getVerdict());

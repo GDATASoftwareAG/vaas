@@ -25,6 +25,10 @@ public class VerdictRequestForUrl extends MessageType {
     @Setter
     @SerializedName("verdict_request_attributes")
     VerdictRequestAttributes verdictRequestAttributes;
+    @Getter
+    @Setter
+    @SerializedName("use_cache")
+    boolean useCache = true;
 
     public VerdictRequestForUrl(URL url, String sessionId) {
         super(Kind.VerdictRequestForUrl);
