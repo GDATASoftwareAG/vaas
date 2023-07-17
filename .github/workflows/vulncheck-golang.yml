@@ -8,7 +8,7 @@ on:
       - "golang/vaas/**"
       - ".github/workflows/vulncheck-golang.yml"
     tags:
-      - "*"
+      - "go*"
 
 jobs:
   vulncheck:
