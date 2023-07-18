@@ -7,7 +7,7 @@ on:
       - "java/**"
       - ".github/workflows/ci-java.yaml"
     tags:
-      - "*"
+      - "java*"
   pull_request:
     branches:
       - main

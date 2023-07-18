@@ -7,7 +7,7 @@ on:
       - "php/**"
       - ".github/workflows/ci-php.yaml"
     tags:
-      - "*"
+      - "php*"
   pull_request:
     branches:
       - main
