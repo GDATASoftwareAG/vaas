@@ -8,16 +8,18 @@ import de.gdata.vaas.messages.*;
 import lombok.Getter;
 import lombok.NonNull;
 import org.java_websocket.enums.ReadyState;
+import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 
 public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
-    private final int AuthenticationTimeoutInS = 10;
-
-    private ConcurrentHashMap<String, CompletableFuture<VerdictResponse>> verdictResponses = new ConcurrentHashMap<String, CompletableFuture<VerdictResponse>>();
+    private final Map<String, CompletableFuture<VerdictResponse>> verdictResponses = new HashMap<>();
 
     @Getter
     private Error errorResponses = null;
@@ -26,7 +28,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     @NonNull
     private String token;
 
-    private CompletableFuture<Void> authenticated = new CompletableFuture<Void>();
+    private final CompletableFuture<Void> authenticated = new CompletableFuture<Void>();
 
     @Getter
     private String sessionId = null;
@@ -37,9 +39,12 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         try {
             while (true) {
                 Thread.sleep(20000);
-                this.sendPing();
+                try {
+                    this.sendPing();
+                } catch (WebsocketNotConnectedException ignored) {
+                }
             }
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
     }
 
@@ -57,32 +62,37 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         }
     }
 
-    public void Authenticate()
-            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException {
+    public void Authenticate(long timeout, TimeUnit timeUnit)
+            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException, WebsocketNotConnectedException {
         var authRequest = new AuthRequest(this.getToken());
         this.send(authRequest.toJson());
-        waitForAuthentication();
+        waitForAuthentication(timeout, timeUnit);
         if (this.sessionId == null) {
             throw new VaasAuthenticationException();
         }
     }
 
-    private void waitForAuthentication()
+    private void waitForAuthentication(long timeout, TimeUnit timeUnit)
             throws InterruptedException, ExecutionException, TimeoutException {
-        this.authenticated.get(AuthenticationTimeoutInS, TimeUnit.SECONDS);
+        this.authenticated.get(timeout, timeUnit);
     }
 
     public CompletableFuture<VerdictResponse> waitForVerdict(String requestId) {
         var future = new CompletableFuture<VerdictResponse>();
-        var previousValue = verdictResponses.putIfAbsent(requestId, future);
-        if (previousValue != null) {
-            return CompletableFuture.failedFuture(new Exception("requestId already exists"));
+        synchronized (verdictResponses) {
+            var previousValue = verdictResponses.putIfAbsent(requestId, future);
+            if (previousValue != null) {
+                return CompletableFuture.failedFuture(new Exception("requestId already exists"));
+            }
         }
         return future;
     }
 
     private void completeVerdict(String requestId, VerdictResponse response) {
-        var verdictResponse = verdictResponses.remove(requestId);
+        CompletableFuture<VerdictResponse> verdictResponse;
+        synchronized (verdictResponses) {
+            verdictResponse = verdictResponses.remove(requestId);
+        }
         if (verdictResponse == null) {
             // Error: Server sent guid we are not waiting for, ignore it
             return;
@@ -92,16 +102,26 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshakeData) {
-        pingThread = new Thread(() -> pingThread());
+        pingThread = new Thread(this::pingThread);
         this.pingThread.start();
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        this.pingThread.interrupt();
-        try {
-            this.pingThread.join();
-        } catch (InterruptedException e) {
+        synchronized (verdictResponses) {
+            var responses = new ArrayList<>(verdictResponses.values());
+            verdictResponses.clear();
+            for (CompletableFuture<VerdictResponse> response : responses) {
+                response.completeExceptionally(new VaasConnectionClosedException());
+            }
+        }
+
+        if (this.pingThread != null) {
+            this.pingThread.interrupt();
+            try {
+                this.pingThread.join();
+            } catch (InterruptedException ignored) {
+            }
         }
     }
 
@@ -135,7 +155,6 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     @Override
     public void onError(Exception ex) {
-        System.out.println(ex);
         throw new RuntimeException(ex);
     }
 }
