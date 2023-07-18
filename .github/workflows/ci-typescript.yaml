@@ -7,7 +7,7 @@ on:
       - "typescript/**"
       - ".github/workflows/ci-typescript.yaml"
     tags:
-      - "*"
+      - "ts*"
   pull_request:
     branches:
       - main
