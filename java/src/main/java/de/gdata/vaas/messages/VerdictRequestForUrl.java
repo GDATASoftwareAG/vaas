@@ -1,10 +1,12 @@
 package de.gdata.vaas.messages;
 
 import com.google.gson.Gson;
+import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.URL;
 import java.util.UUID;
@@ -25,18 +27,38 @@ public class VerdictRequestForUrl extends MessageType {
     @Setter
     @SerializedName("verdict_request_attributes")
     VerdictRequestAttributes verdictRequestAttributes;
+    @Getter
+    @Nullable
+    @SerializedName("use_shed")
+    transient boolean UseShed;
+    @Getter
+    @Nullable
+    @SerializedName("use_cache")
+    transient boolean UseCache;
 
-    public VerdictRequestForUrl(URL url, String sessionId) {
+    public VerdictRequestForUrl(URL url, String sessionId, UUID guid) {
         super(Kind.VerdictRequestForUrl);
         this.sessionId = sessionId;
-        this.guid = UUID.randomUUID().toString();
+        this.guid = guid.toString();
         this.url = url.toString();
     }
 
-    public VerdictRequestForUrl(URL url, String sessionId, VerdictRequestAttributes verdictRequestAttributes) {
-        this(url, sessionId);
+    public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes) {
+        this(url, sessionId, guid);
         this.verdictRequestAttributes = verdictRequestAttributes;
     }
+
+    public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VaasOptions options) {
+        this(url, sessionId, guid);
+        this.UseCache = options.UseCache;
+        this.UseShed = options.UseShed;
+    }
+
+    public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes, VaasOptions options) {
+        this(url, sessionId, guid);
+        this.verdictRequestAttributes = verdictRequestAttributes;
+    }
+
 
     public String toJson() {
         return new Gson().toJson(this);
