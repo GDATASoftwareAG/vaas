@@ -4,7 +4,7 @@ namespace Vaas.Messages;
 
 public class AuthenticationRequest
 {
-    [JsonPropertyName("kind")] public string Kind = "AuthRequest";
+    [JsonPropertyName("kind")] public string Kind => "AuthRequest";
 
     [JsonPropertyName("token")] public string Token { get; }
 
