@@ -290,11 +290,13 @@ async fn upload_file(
     auth_token: &str,
 ) -> VResult<reqwest::Response> {
     let body = tokio::fs::read(&file).await?;
+    let body_len = body.len();
     let client = reqwest::Client::new();
     let response = client
         .put(upload_url.deref())
         .body(body)
         .header("Authorization", auth_token)
+        .header("Content-Length", body_len)
         .send()
         .await?;
     Ok(response)
