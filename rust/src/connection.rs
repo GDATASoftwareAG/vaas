@@ -259,7 +259,10 @@ impl Connection {
                 match Self::parse_frame(frame) {
                     Ok(MessageType::VerdictResponse(vr)) => {
                         result_channel.send(Ok(vr))?;
-                    }
+                    },
+                    Ok(MessageType::Close) => {
+                        result_channel.send(Err(Error::ConnectionClosed))?;
+                    },
                     Err(e) => {
                         result_channel.send(Err(e))?;
                     }

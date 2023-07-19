@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"io"
 	"log"
 	"math/rand"
@@ -14,12 +13,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
-
-	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/assert"
 )
 
 type testFixture struct {
@@ -28,26 +28,28 @@ type testFixture struct {
 }
 
 func (tf *testFixture) setUp(t *testing.T) Vaas {
-	err := godotenv.Load()
-	if err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load environment - %v", err)
 	}
 
-	clientId, clientSecret, vaasUrl, tokenEndpoint := credentials.ReadCredentials()
+	clientID, clientSecret, vaasURL, tokenEndpoint := credentials.ReadCredentials()
 
 	testingOptions := options.VaasOptions{
 		UseShed:  true,
 		UseCache: false,
 	}
-	vaasClient := New(testingOptions, vaasUrl)
+	vaasClient := New(testingOptions, vaasURL)
 
 	var ctx context.Context
 	ctx, tf.cancel = context.WithCancel(context.Background())
 
-	auth := authenticator.New(clientId, clientSecret, tokenEndpoint)
-	if tf.termChan, err = vaasClient.Connect(ctx, auth); err != nil {
+	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
+
+	termChan, err := vaasClient.Connect(ctx, auth)
+	if err != nil {
 		t.Fatalf("Failed to connect - %v", err)
 	}
+	tf.termChan = termChan
 
 	return vaasClient
 }
@@ -142,13 +144,11 @@ func TestVaas_ForSha256(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var VaasClient Vaas
+			VaasClient := New(tt.fields.testingOptions, "")
 			if tt.authenticated {
 				fixture := new(testFixture)
 				VaasClient = fixture.setUp(t)
 				defer fixture.tearDown(t)
-			} else {
-				VaasClient = New(tt.fields.testingOptions, "")
 			}
 
 			verdict, err := VaasClient.ForSha256(context.Background(), tt.args.sha256)
@@ -234,18 +234,15 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var VaasClient Vaas
+			VaasClient := New(tt.fields.testingOptions, "")
 			if tt.authenticated {
 				fixture := new(testFixture)
 				VaasClient = fixture.setUp(t)
 				defer fixture.tearDown(t)
-			} else {
-				VaasClient = New(tt.fields.testingOptions, "")
 			}
 
 			testFile := filepath.Join(t.TempDir(), "testfile")
-			err := os.WriteFile(testFile, []byte(tt.args.fileContent), 0644)
-			if err != nil {
+			if err := os.WriteFile(testFile, []byte(tt.args.fileContent), 0644); err != nil {
 				t.Fatalf("error while writing file: %v", err)
 			}
 
@@ -277,8 +274,8 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 
 func TestVaas_ForUrl(t *testing.T) {
 	const (
-		cleanUrl string = "https://random-data-api.com/api/v2/beers"
-		eicarUrl string = "https://secure.eicar.org/eicar.com"
+		cleanURL string = "https://random-data-api.com/api/v2/beers"
+		eicarURL string = "https://secure.eicar.org/eicar.com"
 	)
 	type fields struct {
 		testingOptions options.VaasOptions
@@ -297,7 +294,7 @@ func TestVaas_ForUrl(t *testing.T) {
 		{
 			name: "not authenticated - error (invalid operation)",
 			args: args{
-				url:             cleanUrl,
+				url:             cleanURL,
 				expectedVerdict: messages.Clean,
 			},
 			fields: fields{
@@ -311,7 +308,7 @@ func TestVaas_ForUrl(t *testing.T) {
 		{
 			name: "with clean url - got verdict clean",
 			args: args{
-				url:             cleanUrl,
+				url:             cleanURL,
 				expectedVerdict: messages.Clean,
 			},
 			fields: fields{
@@ -325,7 +322,7 @@ func TestVaas_ForUrl(t *testing.T) {
 		{
 			name: "with eicar url - got verdict malicious",
 			args: args{
-				url:             eicarUrl,
+				url:             eicarURL,
 				expectedVerdict: messages.Malicious,
 			},
 			fields: fields{
@@ -339,13 +336,11 @@ func TestVaas_ForUrl(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var VaasClient Vaas
+			VaasClient := New(tt.fields.testingOptions, "")
 			if tt.authenticated {
 				fixture := new(testFixture)
 				VaasClient = fixture.setUp(t)
 				defer fixture.tearDown(t)
-			} else {
-				VaasClient = New(tt.fields.testingOptions, "")
 			}
 
 			verdict, err := VaasClient.ForUrl(context.Background(), tt.args.url)
@@ -394,8 +389,7 @@ func TestVaas_ForFileList(t *testing.T) {
 	var randomFiles []string
 	for i := 0; i < 3; i++ {
 		filename := filepath.Join(tmpDir, fmt.Sprintf("cleanFile%d", i))
-		err := os.WriteFile(filename, []byte(RandomString(200)), 0644)
-		if err != nil {
+		if err := os.WriteFile(filename, []byte(RandomString(200)), 0644); err != nil {
 			t.Fatalf("error while writing clean file: %v", err)
 		}
 		randomFiles = append(randomFiles, filename)

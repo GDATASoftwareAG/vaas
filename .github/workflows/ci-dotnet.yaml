@@ -7,7 +7,7 @@ on:
       - "dotnet/**"
       - ".github/workflows/ci-dotnet.yaml"
     tags:
-      - "*"
+      - "cs*"
   pull_request:
     branches:
       - main

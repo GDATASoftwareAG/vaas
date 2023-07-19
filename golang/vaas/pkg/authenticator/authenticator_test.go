@@ -12,7 +12,7 @@ import (
 func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 	type fields struct{}
 	type args struct {
-		clientId      string
+		clientID      string
 		clientSecret  string
 		tokenEndpoint string
 	}
@@ -29,9 +29,9 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 					log.Printf("failed to load environment - %v", err)
 				}
 
-				clientId, clientSecret, _, tokenEndpoint := credentials.ReadCredentials()
+				clientID, clientSecret, _, tokenEndpoint := credentials.ReadCredentials()
 				return args{
-					clientId:      clientId,
+					clientID:      clientID,
 					clientSecret:  clientSecret,
 					tokenEndpoint: tokenEndpoint,
 				}
@@ -46,7 +46,7 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 				}
 				_, _, _, tokenEndpoint := credentials.ReadCredentials()
 				return args{
-					clientId:      "foo",
+					clientID:      "foo",
 					clientSecret:  "bar",
 					tokenEndpoint: tokenEndpoint,
 				}
@@ -57,7 +57,7 @@ func TestClientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			authenticator := New(tt.args.clientId, tt.args.clientSecret, tt.args.tokenEndpoint)
+			authenticator := New(tt.args.clientID, tt.args.clientSecret, tt.args.tokenEndpoint)
 			accessToken, err := authenticator.GetToken()
 
 			if (err != nil) != tt.wantErr {

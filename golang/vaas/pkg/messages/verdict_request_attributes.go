@@ -1,5 +1,5 @@
 package messages
 
 type VerdictRequestAttributes struct {
-	TenantId string `json:"tenantId"`
+	TenantID string `json:"tenantId"`
 }

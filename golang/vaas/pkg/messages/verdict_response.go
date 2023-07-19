@@ -3,9 +3,9 @@ package messages
 type VerdictResponse struct {
 	Kind        string  `json:"kind"`
 	Sha256      string  `json:"sha256"`
-	Guid        string  `json:"guid"`
+	GUID        string  `json:"guid"`
 	Verdict     Verdict `json:"verdict"`
-	Url         string  `json:"url"`
+	URL         string  `json:"url"`
 	UploadToken string  `json:"upload_token"`
 }
 

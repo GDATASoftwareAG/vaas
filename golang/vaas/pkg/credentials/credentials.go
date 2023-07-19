@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func ReadCredentials() (CLIENT_ID string, CLIENT_SECRET string, VAAS_URL string, TOKEN_URL string) {
+func ReadCredentials() (client_id string, client_secret string, vaas_url string, token_url string) {
 	ci, exists := os.LookupEnv("CLIENT_ID")
 	if !exists {
 		log.Fatal("no Client ID set")

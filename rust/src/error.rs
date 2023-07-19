@@ -73,6 +73,9 @@ pub enum Error {
     /// If no session id is send, but the response has the success flag that, this error is used.
     #[error("No session id in authentication response set")]
     NoSessionIdInAuthResp,
+    /// Connection was closed, reconnect is necessary
+    #[error("Connection was closed")]
+    ConnectionClosed
 }
 
 impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>> for Error {

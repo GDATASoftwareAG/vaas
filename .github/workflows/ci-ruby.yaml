@@ -7,7 +7,7 @@ on:
       - "ruby/**"
       - ".github/workflows/ci-ruby.yaml"
     tags:
-      - "*"
+      - "rb*"
   pull_request:
     branches:
       - main
