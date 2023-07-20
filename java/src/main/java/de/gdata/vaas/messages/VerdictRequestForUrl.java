@@ -1,7 +1,6 @@
 package de.gdata.vaas.messages;
 
 import com.google.gson.Gson;
-import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 import lombok.NonNull;
@@ -28,13 +27,11 @@ public class VerdictRequestForUrl extends MessageType {
     @SerializedName("verdict_request_attributes")
     VerdictRequestAttributes verdictRequestAttributes;
     @Getter
-    @Nullable
     @SerializedName("use_shed")
     transient boolean UseShed;
     @Getter
-    @Nullable
     @SerializedName("use_cache")
-    transient boolean UseCache;
+    boolean UseCache;
 
     public VerdictRequestForUrl(URL url, String sessionId, UUID guid) {
         super(Kind.VerdictRequestForUrl);

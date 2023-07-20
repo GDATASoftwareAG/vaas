@@ -2,7 +2,6 @@ package de.gdata.vaas;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.TemporalUnit;
 import java.util.concurrent.TimeUnit;
 
 public class SimpleTimer {
