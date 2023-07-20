@@ -9,8 +9,8 @@ public class VaasOptions {
 
     @Getter
     @Setter
-    @SerializedName("use_shed")
-    boolean UseShed;
+    @SerializedName("use_hash_lookup")
+    boolean UseHashLookup;
 
     @Getter
     @Setter
@@ -19,6 +19,6 @@ public class VaasOptions {
 
     public VaasOptions() {
         this.UseCache = false;
-        this.UseShed = true;
+        this.UseHashLookup = true;
     }
 }

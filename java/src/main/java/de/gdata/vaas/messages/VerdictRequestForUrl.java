@@ -27,8 +27,8 @@ public class VerdictRequestForUrl extends MessageType {
     @SerializedName("verdict_request_attributes")
     VerdictRequestAttributes verdictRequestAttributes;
     @Getter
-    @SerializedName("use_shed")
-    transient boolean UseShed;
+    @SerializedName("use_hash_lookup")
+    transient boolean UseHashLookup;
     @Getter
     @SerializedName("use_cache")
     boolean UseCache;
@@ -48,7 +48,7 @@ public class VerdictRequestForUrl extends MessageType {
     public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VaasOptions options) {
         this(url, sessionId, guid);
         this.UseCache = options.UseCache;
-        this.UseShed = options.UseShed;
+        this.UseHashLookup = options.UseHashLookup;
     }
 
     public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes, VaasOptions options) {

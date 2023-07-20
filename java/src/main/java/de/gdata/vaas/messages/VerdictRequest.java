@@ -29,13 +29,13 @@ public class VerdictRequest extends MessageType {
     @Getter
     @Setter
     @Nullable
-    @SerializedName("use_shed")
-    transient boolean UseShed;
+    @SerializedName("use_hash_lookup")
+    boolean UseHashLookup;
     @Getter
     @Setter
     @Nullable
     @SerializedName("use_cache")
-    transient boolean UseCache;
+    boolean UseCache;
 
     public VerdictRequest(Sha256 sha256, String sessionId) {
         super(Kind.VerdictRequest);
@@ -59,7 +59,7 @@ public class VerdictRequest extends MessageType {
     public VerdictRequest(Sha256 sha256, String sessionId, VaasOptions options) {
         this(sha256, sessionId);
         this.UseCache = options.UseCache;
-        this.UseShed = options.UseShed;
+        this.UseHashLookup = options.UseHashLookup;
     }
 
     public VerdictRequest(Sha256 sha256, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes) {
@@ -70,7 +70,7 @@ public class VerdictRequest extends MessageType {
     public VerdictRequest(Sha256 sha256, String sessionId, UUID guid, VaasOptions options) {
         this(sha256, sessionId, guid);
         this.UseCache = options.UseCache;
-        this.UseShed = options.UseShed;
+        this.UseHashLookup = options.UseHashLookup;
     }   
 
     public VerdictRequest(Sha256 sha256, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes, VaasOptions options) {

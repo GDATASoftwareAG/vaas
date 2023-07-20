@@ -93,8 +93,7 @@ public class Vaas {
     /**
      * Disconnect from the Vaas backend
      *
-     * @throws InterruptedException  if the operation is interrupted by
-     *                               Thread.interrupt()
+     * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      */
     public void disconnect() throws InterruptedException {
         if (this.client != null) {
