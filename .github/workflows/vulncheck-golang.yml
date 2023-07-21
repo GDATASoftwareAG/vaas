@@ -9,7 +9,7 @@ on:
       - ".github/workflows/vulncheck-golang.yml"
     tags:
       - "go*"
-  workflow_dispatch:      
+  workflow_dispatch:
 
 jobs:
   vulncheck:
@@ -25,7 +25,14 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
         shell: bash
       - name: Run govulncheck
-        
+
         run: govulncheck ./...
         working-directory: golang/vaas/
         shell: bash
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
