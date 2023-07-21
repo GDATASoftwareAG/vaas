@@ -13,4 +13,6 @@ export class VerdictRequest extends Message {
   @JsonProperty() public sha256: string;
   @JsonProperty() public guid: string;
   @JsonProperty() public session_id: string;
+  @JsonProperty() public use_shed: boolean | undefined;
+  @JsonProperty() public use_cache: boolean | undefined;
 }

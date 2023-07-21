@@ -46,6 +46,8 @@ lib/
 bin/
 obj/
 
+*.log
+
 # Python
 __pycache__/
 _trial_temp*/

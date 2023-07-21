@@ -19,6 +19,7 @@ import {
 } from "./VaasErrors";
 import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
+import { VaasOptions } from "./messages/vaas_options";
 
 const VAAS_URL = "wss://gateway.production.vaas.gdatasecurity.de";
 const defaultSerializer = new JsonSerializer();
@@ -49,6 +50,7 @@ export type VaasConnection = {
 
 export class Vaas {
   verdictPromises: Map<string, VerdictPromise>;
+  options: VaasOptions | null;
 
   connection: VaasConnection | null = null;
   closeEvent?: WebSocket.CloseEvent;
@@ -59,8 +61,9 @@ export class Vaas {
   defaultTimeoutFileReq: number = 600_000;
   debug = false;
 
-  constructor(private webSocketFactory = (url: string) => new WebSocket(url)) {
+  constructor(private webSocketFactory = (url: string) => new WebSocket(url), options: VaasOptions | null) {
     this.verdictPromises = new Map<string, VerdictPromise>();
+    this.options = options;
   }
 
   public static toHexString(byteArray: Uint8Array) {
