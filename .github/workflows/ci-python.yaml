@@ -14,6 +14,7 @@ on:
     paths:
       - "python/**"
       - ".github/workflows/ci-python.yaml"
+  workflow_dispatch:      
 
 jobs:
   build-python:

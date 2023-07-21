@@ -14,6 +14,7 @@ on:
     paths:
       - "rust/**"
       - ".github/workflows/ci-rust.yaml"
+  workflow_dispatch:      
 
 jobs:
   build-rust:

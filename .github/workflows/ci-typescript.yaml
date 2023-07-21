@@ -14,6 +14,7 @@ on:
     paths:
       - "typescript/**"
       - ".github/workflows/ci-typescript.yaml"
+  workflow_dispatch:      
 
 jobs:
   build-typescript:
