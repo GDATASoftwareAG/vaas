@@ -14,6 +14,7 @@ on:
     paths:
       - "java/**"
       - ".github/workflows/ci-java-legacy.yaml"
+  workflow_dispatch:      
 
 jobs:
   build-java-legacy:

@@ -9,6 +9,7 @@ on:
       - ".github/workflows/vulncheck-golang.yml"
     tags:
       - "go*"
+  workflow_dispatch:      
 
 jobs:
   vulncheck:

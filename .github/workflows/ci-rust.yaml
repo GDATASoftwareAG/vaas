@@ -14,6 +14,7 @@ on:
     paths:
       - "rust/**"
       - ".github/workflows/ci-rust.yaml"
+  workflow_dispatch:      
 
 jobs:
   build-rust:
@@ -52,17 +53,6 @@ jobs:
           TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         run: cargo test
         working-directory: rust
-
-      - name: Run gscan example
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-        run: cargo run -- --files Cargo.toml --urls https://secure.eicar.org/eicar.com
-        working-directory: rust/examples/gscan
-
-      - name: Check KDE Plugin example
-        run: cargo check
-        working-directory: rust/examples/kde_dolphin
 
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/rs')

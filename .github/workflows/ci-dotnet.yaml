@@ -14,7 +14,8 @@ on:
     paths:
       - "dotnet/**"
       - ".github/workflows/ci-dotnet.yaml"
-
+  workflow_dispatch:
+    
 jobs:
   build-dotnet:
     name: Build & Test C# SDK
