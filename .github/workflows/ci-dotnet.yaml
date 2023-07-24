@@ -15,7 +15,7 @@ on:
       - "dotnet/**"
       - ".github/workflows/ci-dotnet.yaml"
   workflow_dispatch:
-    
+
 jobs:
   build-dotnet:
     name: Build & Test C# SDK
@@ -98,3 +98,10 @@ jobs:
           NUGET_FEED: https://api.nuget.org/v3/index.json
         run: dotnet nuget push src/Vaas/bin/Release/*.nupkg --skip-duplicate  --source $NUGET_FEED --api-key $NUGET_KEY
         working-directory: dotnet/Vaas
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"

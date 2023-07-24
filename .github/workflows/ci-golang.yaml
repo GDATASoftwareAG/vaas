@@ -15,7 +15,7 @@ on:
       - "golang/vaas/**"
       - ".github/workflows/ci-golang.yaml"
   workflow_dispatch:
-  
+
 jobs:
   build-golang:
     runs-on: ubuntu-latest
@@ -35,7 +35,7 @@ jobs:
           VAAS_URL: "wss://gateway.staging.vaas.gdatasecurity.de"
           TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         run: go test ./...
-        working-directory: golang/vaas/    
+        working-directory: golang/vaas/
       - name: run tests
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/go')
         env:
@@ -48,3 +48,10 @@ jobs:
       - name: publish module
         if: startsWith(github.ref, 'refs/tags/go')
         run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@go${GITHUB_REF#refs/tags/go}
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
