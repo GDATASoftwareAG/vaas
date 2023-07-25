@@ -7,7 +7,7 @@ import (
 
 type verdictRequestForURL struct {
 	Kind                     Kind                     `json:"kind" default:"VerdictRequestForUrl"`
-	URL                      string                   `json:"URL"`
+	URL                      string                   `json:"url"`
 	GUID                     string                   `json:"guid"`
 	SessionID                string                   `json:"session_id"`
 	VerdictRequestAttributes VerdictRequestAttributes `json:"verdict_request_attributes"`

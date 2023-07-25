@@ -14,6 +14,7 @@ on:
     paths:
       - "java/**"
       - ".github/workflows/ci-java.yaml"
+  workflow_dispatch:
 
 jobs:
   build-java:
@@ -116,3 +117,10 @@ jobs:
           arguments: closeAndReleaseRepository
           gradle-version: "8.1"
           build-root-directory: java
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
