@@ -1,5 +1,6 @@
 [![vaas-golang-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml)
 [![Vulnerability Check](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/GDATASoftwareAG/vaas/golang/vaas)](https://goreportcard.com/report/github.com/GDATASoftwareAG/vaas/golang/vaas)
 
 # Go VaaS Client
 
