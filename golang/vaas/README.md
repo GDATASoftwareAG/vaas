@@ -10,7 +10,7 @@ _Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning
 
 ## What does the SDK do?
 
-It gives you as a developer a functions to talk to G DATA VaaS. It wraps away the complexity of the API into 5 basic functions.
+It gives you as a developer functions to talk to G DATA VaaS. It wraps away the complexity of the API into 5 basic functions.
 
 ### Connect(token string) error
 
