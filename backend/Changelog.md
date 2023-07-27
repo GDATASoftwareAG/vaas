@@ -1,4 +1,4 @@
-# Verdict-as-a-service Gateway Changelog
+# Verdict-as-a-Service Gateway Changelog
 
 All notable changes to this project will be documented in this file.
 
