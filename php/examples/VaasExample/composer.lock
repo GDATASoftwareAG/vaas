@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b6322709ea66c831bb886d11cace0b4a",
+    "content-hash": "f698e3bbf02dfb655631bd88b1bb7d2b",
     "packages": [
         {
             "name": "brick/math",
@@ -63,20 +63,20 @@
         },
         {
             "name": "gdata/vaas",
-            "version": "3.0.0",
+            "version": "4.0.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/GDATASoftwareAG/vaas-php.git",
-                "reference": "767e1a701ad267febd1119a0f5d27c99e311ddef"
+                "reference": "74a7e3de5763e2bd1dac863e549f5bc7d3f86b3e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/GDATASoftwareAG/vaas-php/zipball/767e1a701ad267febd1119a0f5d27c99e311ddef",
-                "reference": "767e1a701ad267febd1119a0f5d27c99e311ddef",
+                "url": "https://api.github.com/repos/GDATASoftwareAG/vaas-php/zipball/74a7e3de5763e2bd1dac863e549f5bc7d3f86b3e",
+                "reference": "74a7e3de5763e2bd1dac863e549f5bc7d3f86b3e",
                 "shasum": ""
             },
             "require": {
-                "guzzlehttp/guzzle": "^7.5",
+                "guzzlehttp/guzzle": "^7",
                 "netresearch/jsonmapper": "^4.1",
                 "psr/log": "^1.1 || ^2.0 || ^3.0",
                 "ramsey/uuid": "^4.6",
@@ -102,9 +102,9 @@
             ],
             "support": {
                 "issues": "https://github.com/GDATASoftwareAG/vaas-php/issues",
-                "source": "https://github.com/GDATASoftwareAG/vaas-php/tree/v3.0.0"
+                "source": "https://github.com/GDATASoftwareAG/vaas-php/tree/v4.0.2"
             },
-            "time": "2023-03-30T09:48:00+00:00"
+            "time": "2023-06-26T07:23:50+00:00"
         },
         {
             "name": "guzzlehttp/guzzle",
@@ -1025,16 +1025,16 @@
         },
         {
             "name": "symfony/deprecation-contracts",
-            "version": "v3.2.1",
+            "version": "v3.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/deprecation-contracts.git",
-                "reference": "e2d1534420bd723d0ef5aec58a22c5fe60ce6f5e"
+                "reference": "7c3aff79d10325257a001fcf92d991f24fc967cf"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/e2d1534420bd723d0ef5aec58a22c5fe60ce6f5e",
-                "reference": "e2d1534420bd723d0ef5aec58a22c5fe60ce6f5e",
+                "url": "https://api.github.com/repos/symfony/deprecation-contracts/zipball/7c3aff79d10325257a001fcf92d991f24fc967cf",
+                "reference": "7c3aff79d10325257a001fcf92d991f24fc967cf",
                 "shasum": ""
             },
             "require": {
@@ -1043,7 +1043,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-main": "3.3-dev"
+                    "dev-main": "3.4-dev"
                 },
                 "thanks": {
                     "name": "symfony/contracts",
@@ -1072,7 +1072,7 @@
             "description": "A generic function and convention to trigger deprecation notices",
             "homepage": "https://symfony.com",
             "support": {
-                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.2.1"
+                "source": "https://github.com/symfony/deprecation-contracts/tree/v3.3.0"
             },
             "funding": [
                 {
@@ -1088,7 +1088,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2023-03-01T10:25:55+00:00"
+            "time": "2023-05-23T14:45:45+00:00"
         },
         {
             "name": "textalk/websocket",
