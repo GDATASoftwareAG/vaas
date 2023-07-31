@@ -20,7 +20,9 @@ jobs:
   build-php:
     name: Build & Test PHP SDK
     runs-on: ubuntu-20.04
-
+    strategy:
+      matrix:
+        version: ["7.3", "7.4", "8.0", "8.1", "8.2"]
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -28,7 +30,7 @@ jobs:
       - name: setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.1"
+          php-version: ${{ matrix.version }}
 
       - name: install php dependencies
         uses: php-actions/composer@v6
