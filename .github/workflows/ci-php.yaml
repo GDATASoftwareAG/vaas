@@ -36,6 +36,7 @@ jobs:
         uses: php-actions/composer@v6
         with:
           working_dir: php/tests/vaas
+          php_version: ${{ matrix.version }}
 
       - name: output
         run: cat ./vendor/composer/platform_check.php
