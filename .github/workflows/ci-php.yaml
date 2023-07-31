@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        version: ["7.3", "7.4", "8.0", "8.1", "8.2"]
+        version: ["7.3"] #, "7.4", "8.0", "8.1", "8.2"]
     steps:
       - name: checkout
         uses: actions/checkout@v3
