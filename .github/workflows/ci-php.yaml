@@ -83,6 +83,10 @@ jobs:
         run: php GetVerdictByHash.php
         working-directory: php/examples/VaasExample
 
+  deploy:
+    name: Build & Test PHP SDK
+    runs-on: ubuntu-20.04
+    steps:
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/php')
         run: |
