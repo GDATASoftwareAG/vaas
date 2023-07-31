@@ -1,7 +1,6 @@
 lockfileVersion: '6.0'
 
 settings:
-  excludeLinksFromLockfile: false
 
 dependencies:
   '@types/uuid':
