@@ -1,5 +1,14 @@
 {
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../src/vaas",
+            "options": {
+                "symlink": false
+            }
+        }
+    ],
     "require": {
-        "gdata/vaas": "4.0.2"
+        "gdata/vaas": "@dev"
     }
 }
