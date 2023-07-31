@@ -6,11 +6,15 @@ on:
     workflows: ["vaas-php-ci"]
     types:
       - completed
+
 jobs:
   deploy:
     name: deploy new php version
     runs-on: ubuntu-20.04
     steps:
+      - name: debug output
+        run: echo ${{github.ref}}
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/php')
         run: |
