@@ -14,8 +14,8 @@
     "homepage": "https://github.com/GDATASoftwareAG/vaas",
     "require": {
         "php": "^7.3 || ^8",
-        "ramsey/uuid": "^4.6",
-        "textalk/websocket": "^1.6",
+        "ramsey/uuid": "^4.7 || ^4.2",
+        "textalk/websocket": "^1.6 || ^1.5",
         "netresearch/jsonmapper": "^4.1",
         "guzzlehttp/guzzle": "^7",
         "psr/log": "^1.1 || ^2.0 || ^3.0"
