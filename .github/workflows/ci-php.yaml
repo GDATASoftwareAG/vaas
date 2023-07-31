@@ -37,6 +37,10 @@ jobs:
         with:
           working_dir: php/tests/vaas
 
+      - name: output
+        run: cat ./vendor/composer/platform_check.php
+        working-directory: php/tests/vaas
+
       - name: run tests
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')
         env:
