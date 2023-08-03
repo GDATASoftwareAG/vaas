@@ -1,5 +1,5 @@
 authlib==1.2.1
-websockets~=10.4
+websockets~=11.0
 python-dotenv==1.0.0
 httpx[http2]==0.24.1
 build==0.10.0
