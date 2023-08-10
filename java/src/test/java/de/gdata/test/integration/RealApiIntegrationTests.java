@@ -2,6 +2,7 @@ package de.gdata.test.integration;
 
 import de.gdata.vaas.*;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasClientException;
 import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
 import de.gdata.vaas.messages.Verdict;
@@ -68,7 +69,7 @@ public class RealApiIntegrationTests {
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var client = new Vaas(config, authenticator);
-        assertThrows(Exception.class, () -> client.connect());
+        assertThrows(Exception.class, client::connect);
     }
 
     @Test
@@ -91,7 +92,7 @@ public class RealApiIntegrationTests {
 
         var client = new Vaas(config, authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> client.connect());
+        assertThrows(VaasAuthenticationException.class, client::connect);
     }
 
     @Test
@@ -326,6 +327,29 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    public void forUrl_WithInvalidUrl_ThrowsVaasClientException() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var url_1 = new URL("https://");
+        var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
+        assertEquals("Call failed. An invalid request URI was provided. Either the request URI must be an absolute URI or BaseAddress must be set: GET https:", e.getMessage());
+    }
+
+    @Test
+    public void forUrl_WithUrlNull_ThrowsNullPointerException() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        @SuppressWarnings("DataFlowIssue") var e = assertThrows(NullPointerException.class, () -> vaas.forUrl(null));
+        assertEquals("url is marked non-null but is null", e.getMessage());
+    }
+
+    @Test
+    public void forUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var url_1 = new URL("https://gdata.de/nocontenthere");
+        var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
+        assertEquals("Call failed with status code 404 (Not Found): GET https://gdata.de/nocontenthere", e.getMessage());
+    }
+
+    @Test
     @Disabled("Used for manual testing")
     public void fromUrlInALoop() throws Exception {
         var url_1 = new URL("https://www.gdata.de/robots.txt");
@@ -380,6 +404,13 @@ public class RealApiIntegrationTests {
         var json2 = verdictRequestAttributes.toJson();
         assertNotNull(json1, "");
         assertNotNull(json2, "");
+    }
+
+    @Test
+    public void forSha256_WithSha256Null_ThrowsNullPointerException() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        @SuppressWarnings("DataFlowIssue") var e = assertThrows(NullPointerException.class, () -> vaas.forSha256(null));
+        assertEquals("sha256 is marked non-null but is null", e.getMessage());
     }
 
     private @NotNull String getRandomString(int size) {

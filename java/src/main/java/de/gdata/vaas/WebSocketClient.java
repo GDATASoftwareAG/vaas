@@ -1,8 +1,6 @@
 package de.gdata.vaas;
 
-import de.gdata.vaas.exceptions.VaasAuthenticationException;
-import de.gdata.vaas.exceptions.VaasConnectionClosedException;
-import de.gdata.vaas.exceptions.VaasInvalidStateException;
+import de.gdata.vaas.exceptions.*;
 import de.gdata.vaas.messages.Error;
 import de.gdata.vaas.messages.*;
 import lombok.Getter;
@@ -15,6 +13,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.*;
 
 public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
@@ -100,6 +99,25 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         verdictResponse.complete(response);
     }
 
+    private void completeRequestResponseExceptionally(String requestId, Error error) {
+        CompletableFuture<VerdictResponse> verdictResponse;
+        synchronized (verdictResponses) {
+            verdictResponse = verdictResponses.remove(requestId);
+        }
+        if (verdictResponse == null) {
+            // Error: Server sent guid we are not waiting for, ignore it
+            return;
+        }
+        var problemDetails = error.getProblemDetails();
+        var detail = problemDetails != null ? problemDetails.getDetail() : null;
+        if (error.getType().equals("ClientError")) {
+            verdictResponse.completeExceptionally(new VaasClientException(detail));
+        }
+        else {
+            verdictResponse.completeExceptionally(new VaasServerException(detail));
+        }
+    }
+
     @Override
     public void onOpen(ServerHandshake handshakeData) {
         pingThread = new Thread(this::pingThread);
@@ -130,22 +148,31 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
         var msg = MessageType.fromJson(message);
 
-        if (msg.getKind() == Kind.AuthResponse) {
-            var authResp = AuthResponse.fromJson(message);
-            if (authResp.isSuccess()) {
-                this.sessionId = authResp.getSessionId();
-                this.authenticated.complete(null);
-            } else {
-                this.authenticated.completeExceptionally(new VaasAuthenticationException());
+        switch (msg.getKind()) {
+            case AuthResponse -> {
+                var authResp = AuthResponse.fromJson(message);
+                if (authResp.isSuccess()) {
+                    this.sessionId = authResp.getSessionId();
+                    this.authenticated.complete(null);
+                } else {
+                    this.authenticated.completeExceptionally(new VaasAuthenticationException());
+                }
             }
-        } else if (msg.getKind() == Kind.VerdictResponse) {
-            var verdictResp = VerdictResponse.fromJson(message);
-            completeVerdict(verdictResp.getGuid(), verdictResp);
-        } else if (msg.getKind() == Kind.Error) {
-            var error = Error.fromJson(message);
-            this.errorResponses = error;
-        } else {
-            throw new IllegalArgumentException("Unknown message type");
+            case VerdictResponse -> {
+                var verdictResp = VerdictResponse.fromJson(message);
+                completeVerdict(verdictResp.getGuid(), verdictResp);
+            }
+            case Error -> {
+                var error = Error.fromJson(message);
+                this.errorResponses = error;
+                var requestId = error.getRequestId();
+                if (requestId != null) {
+                    completeRequestResponseExceptionally(requestId, error);
+                }
+            }
+            default -> {
+                // Unknown message type
+            }
         }
     }
 
