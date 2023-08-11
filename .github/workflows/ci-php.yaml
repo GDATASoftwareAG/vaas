@@ -20,7 +20,9 @@ jobs:
   build-php:
     name: Build & Test PHP SDK
     runs-on: ubuntu-20.04
-
+    strategy:
+      matrix:
+        version: ["7.4", "8.0", "8.1", "8.2"]
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -28,12 +30,13 @@ jobs:
       - name: setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.1"
+          php-version: ${{ matrix.version }}
 
       - name: install php dependencies
         uses: php-actions/composer@v6
         with:
           working_dir: php/tests/vaas
+          php_version: ${{ matrix.version }}
 
       - name: run tests
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')
@@ -81,11 +84,30 @@ jobs:
         run: php GetVerdictByHash.php
         working-directory: php/examples/VaasExample
 
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
+
+  deploy:
+    needs: build-php
+    name: deploy new php version
+    runs-on: ubuntu-20.04
+    steps:
+      - name: debug output
+        run: echo ${{github.ref}}
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/php')
         run: |
           echo "RELEASE_VERSION=${GITHUB_REF#refs/*/php}" >> $GITHUB_ENV
           echo $RELEASE_VERSION
+
+      - name: checkout
+        if: startsWith(github.ref, 'refs/tags/php')
+        uses: actions/checkout@v3
 
       - name: publish on site repo
         if: startsWith(github.ref, 'refs/tags/php')

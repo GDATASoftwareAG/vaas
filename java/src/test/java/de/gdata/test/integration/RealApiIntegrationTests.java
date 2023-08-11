@@ -84,7 +84,6 @@ public class RealApiIntegrationTests {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
-        var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new MockAuthenticator();

@@ -11,7 +11,7 @@ from asyncio import Future
 import ssl
 from urllib.parse import urlparse
 import aiofiles
-from jwt import JWT
+from jwt import PyJWT
 import httpx
 import websockets.client
 from .vaas_errors import (
@@ -105,7 +105,7 @@ class Vaas:
         self.url = url
 
     def get_authenticated_websocket(self):
-        """Get authenticated websocket"""        
+        """Get authenticated websocket"""
         if self.websocket is None:
             raise VaasInvalidStateError("connect() was not called")
         if not self.websocket.open:
@@ -158,7 +158,9 @@ class Vaas:
 
     async def for_sha256(self, sha256, verdict_request_attributes=None, guid=None):
         """Returns the verdict for a SHA256 checksum"""
-        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes, guid)
+        verdict_response = await self.__for_sha256(
+            sha256, verdict_request_attributes, guid
+        )
         return {
             "Sha256": verdict_response.get("sha256"),
             "Guid": verdict_response.get("guid"),
@@ -221,7 +223,9 @@ class Vaas:
             None, lambda: hashlib.sha256(buffer).hexdigest()
         )
 
-        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes, guid)
+        verdict_response = await self.__for_sha256(
+            sha256, verdict_request_attributes, guid
+        )
         verdict = verdict_response.get("verdict")
 
         if verdict == "Unknown":
@@ -256,7 +260,9 @@ class Vaas:
         loop = asyncio.get_running_loop()
         sha256 = await loop.run_in_executor(None, lambda: hash_file(path))
 
-        verdict_response = await self.__for_sha256(sha256, verdict_request_attributes, guid)
+        verdict_response = await self.__for_sha256(
+            sha256, verdict_request_attributes, guid
+        )
         verdict = verdict_response.get("verdict")
 
         if verdict == "Unknown":
@@ -273,8 +279,8 @@ class Vaas:
         }
 
     async def __upload(self, token, upload_uri, buffer_or_file, content_length):
-        jwt = JWT()
-        decoded_token = jwt.decode(token, do_verify=False)
+        jwt = PyJWT()
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
         trace_id = decoded_token.get("traceId")
         try:
             await self.httpx_client.put(
