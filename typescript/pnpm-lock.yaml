@@ -58,7 +58,7 @@ devDependencies:
     specifier: 10.2.0
     version: 10.2.0
   prettier:
-    specifier: ^3.0.1
+    specifier: ^3.0.0
     version: 3.0.1
   random-bytes:
     specifier: 1.0.0
@@ -906,3 +906,5 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
     dev: true
+
+settings: null
