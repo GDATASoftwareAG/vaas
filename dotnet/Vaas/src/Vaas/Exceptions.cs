@@ -22,3 +22,17 @@ public class VaasConnectionClosedException : Exception
     {
     }
 }
+
+public class VaasClientException : Exception 
+{
+    public VaasClientException(string? message) : base(message)
+    {
+    }
+}
+
+public class VaasServerException : Exception
+{
+    public VaasServerException(string? message) : base(message)
+    {
+    }
+}
