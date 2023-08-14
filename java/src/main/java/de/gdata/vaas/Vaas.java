@@ -186,6 +186,8 @@ public class Vaas {
      *                                       state
      * @throws VaasConnectionClosedException - if the connection to the Vaas backend
      *                                       is closed
+     * @throws VaasClientException           - if the request is malformed or cannot be completed
+     * @throws VaasServerException           - if the server encountered an internal error
      */
     public VaasVerdict forSha256(Sha256 sha256, VerdictRequestAttributes verdictRequestAttributes)
             throws InterruptedException, TimeoutException, VaasInvalidStateException,
