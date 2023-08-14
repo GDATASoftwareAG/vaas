@@ -149,7 +149,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         var msg = MessageType.fromJson(message);
 
         switch (msg.getKind()) {
-            case AuthResponse -> {
+            case AuthResponse:
                 var authResp = AuthResponse.fromJson(message);
                 if (authResp.isSuccess()) {
                     this.sessionId = authResp.getSessionId();
@@ -157,22 +157,21 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
                 } else {
                     this.authenticated.completeExceptionally(new VaasAuthenticationException());
                 }
-            }
-            case VerdictResponse -> {
+                break;
+            case VerdictResponse:
                 var verdictResp = VerdictResponse.fromJson(message);
                 completeVerdict(verdictResp.getGuid(), verdictResp);
-            }
-            case Error -> {
+                break;
+            case Error:
                 var error = Error.fromJson(message);
                 this.errorResponses = error;
                 var requestId = error.getRequestId();
                 if (requestId != null) {
                     completeRequestResponseExceptionally(requestId, error);
                 }
-            }
-            default -> {
-                // Unknown message type
-            }
+                break;
+            default:
+                break;
         }
     }
 

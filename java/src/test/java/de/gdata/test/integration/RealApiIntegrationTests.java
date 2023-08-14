@@ -346,7 +346,7 @@ public class RealApiIntegrationTests {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://gdata.de/nocontenthere");
         var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
-        assertEquals("Call failed with status code 404 (Not Found): GET https://gdata.de/nocontenthere", e.getMessage());
+        assertEquals("Call failed with status code 404 (Not Found): GET https://www.gdata.de/nocontenthere", e.getMessage());
     }
 
     @Test
