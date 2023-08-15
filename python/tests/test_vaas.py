@@ -18,8 +18,8 @@ load_dotenv()
 
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-TOKEN_URL = os.getenv("TOKEN_URL")
-VAAS_URL = os.getenv("VAAS_URL")
+TOKEN_URL = os.getenv("TOKEN_URL", "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
+VAAS_URL = os.getenv("VAAS_URL", "wss://gateway.production.vaas.gdatasecurity.de")
 SSL_VERIFICATION = os.getenv("SSL_VERIFICATION", "True").lower() in ["true", "1"]
 
 EICAR_BASE64 = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo="

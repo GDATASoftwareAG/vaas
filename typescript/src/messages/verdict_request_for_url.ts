@@ -9,12 +9,12 @@ export class VerdictRequestForUrl extends Message {
     this.session_id = session_id;
     this.guid = guid;
     this.use_cache = use_cache;
-    this.use_shed = use_shed;
+    this.use_hash_lookup = use_shed;
   }
 
   @JsonProperty() public url: string;
   @JsonProperty() public guid: string;
   @JsonProperty() public session_id: string;
-  @JsonProperty() public use_shed: boolean | undefined;
+  @JsonProperty() public use_hash_lookup: boolean | undefined;
   @JsonProperty() public use_cache: boolean | undefined;  
 }

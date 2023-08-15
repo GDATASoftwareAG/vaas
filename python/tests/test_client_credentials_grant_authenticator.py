@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from src.vaas import ClientCredentialsGrantAuthenticator, VaasAuthenticationError
 
 load_dotenv()
-TOKEN_URL = os.getenv("TOKEN_URL")
+TOKEN_URL = os.getenv("TOKEN_URL", "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
 
 
 class ClientCredentialsGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
