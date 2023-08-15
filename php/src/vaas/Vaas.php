@@ -5,12 +5,16 @@ namespace VaasSdk;
 use Exception;
 use GuzzleHttp\Client as HttpClient;
 use JsonMapper;
+use JsonMapper_Exception;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
+use VaasSdk\Exceptions\VaasClientException;
 use VaasSdk\Exceptions\VaasInvalidStateException;
+use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\Message\AuthRequest;
 use VaasSdk\Message\AuthResponse;
+use VaasSdk\Message\Error;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Message\Kind;
 use VaasSdk\Message\VerdictRequest;
@@ -188,6 +192,9 @@ class Vaas
                         }
                         return $authResponse;
                     }
+                    if ($resultObject->kind == Kind::ERROR) {
+                        $this->_handleWebSocketErrorResponse($resultObject);
+                    }
                 }
             } catch (VaasAuthenticationException $e) {
                 throw $e;
@@ -231,6 +238,10 @@ class Vaas
                     if ($this->_logger != null)
                         $this->_logger->debug("Result", json_decode($result, true));
                     $resultObject = json_decode($result);
+                    if ($resultObject->kind == Kind::ERROR) {
+                        $this->_handleWebSocketErrorResponse($resultObject);
+                        continue;
+                    }
                     if (!isset($resultObject->guid) || !isset($resultObject->kind)) {
                         continue;
                     }
@@ -251,6 +262,33 @@ class Vaas
             }
             sleep(1);
         }
+    }
+
+    /**
+     * @throws VaasServerException
+     * @throws VaasClientException
+     */
+    private function _handleWebSocketErrorResponse(Error $resultObject): void
+    {
+        try {
+            $errorResponse = (new JsonMapper())->map(
+                $resultObject,
+                new Error()
+            );
+        } catch (JsonMapper_Exception $e) {
+            // Received error type is not deserializable to Error
+            throw new VaasServerException($e->getMessage());
+        }
+        if ($errorResponse->getRequestId() == null) {
+            return;
+        }
+        $problemDetails = $errorResponse->getProblemDetails();
+        $details = $problemDetails != null ? $problemDetails->getDetail() : null;
+        $errorType = $errorResponse->getType();
+        if ($errorType == "ClientError"){
+            throw new VaasClientException($details);
+        }
+        throw new VaasServerException($details);
     }
 
     /**
