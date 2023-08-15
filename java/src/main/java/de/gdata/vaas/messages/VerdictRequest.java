@@ -71,7 +71,7 @@ public class VerdictRequest extends MessageType {
         this(sha256, sessionId, guid);
         this.UseCache = options.UseCache;
         this.UseHashLookup = options.UseHashLookup;
-    }   
+    }
 
     public VerdictRequest(Sha256 sha256, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes, VaasOptions options) {
         this(sha256, sessionId, guid, options);

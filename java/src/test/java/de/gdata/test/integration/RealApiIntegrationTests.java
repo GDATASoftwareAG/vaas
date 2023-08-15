@@ -5,6 +5,7 @@ import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
 import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
+import de.gdata.vaas.messages.VaasOptions;
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
 import de.gdata.vaas.messages.VerdictRequestAttributes;
@@ -85,6 +86,7 @@ public class RealApiIntegrationTests {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
+        var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new MockAuthenticator();
