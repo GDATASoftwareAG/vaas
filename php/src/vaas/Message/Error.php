@@ -10,7 +10,7 @@ class Error
 
     public string $text;
 
-    public ProblemDetails $problemDetails;
+    public ProblemDetails $problem_details;
 
     public Kind $kind;
 
@@ -35,7 +35,7 @@ class Error
      */
     public function getProblemDetails(): ProblemDetails
     {
-        return $this->problemDetails;
+        return $this->problem_details;
     }
 
     /**

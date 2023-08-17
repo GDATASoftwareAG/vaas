@@ -12,7 +12,7 @@ use Exception;
  */
 class VaasClientException extends Exception
 {
-    public function __construct(string $message)
+    public function __construct(?string $message)
     {
         if ($message == null) {
             parent::__construct("Client Error");
