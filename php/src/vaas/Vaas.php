@@ -2,15 +2,20 @@
 
 namespace VaasSdk;
 
-use Exception;
 use GuzzleHttp\Client as HttpClient;
+use InvalidArgumentException;
 use JsonMapper;
+use JsonMapper_Exception;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
+use VaasSdk\Exceptions\VaasClientException;
+use VaasSdk\Exceptions\VaasConnectionClosedException;
 use VaasSdk\Exceptions\VaasInvalidStateException;
+use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\Message\AuthRequest;
 use VaasSdk\Message\AuthResponse;
+use VaasSdk\Message\Error;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Message\Kind;
 use VaasSdk\Message\VerdictRequest;
@@ -89,16 +94,20 @@ class Vaas
      * Gets verdict by url
      *
      * @param string $url url to get the verdict for
-     * @param string $uuid       unique identifier
-     * 
-     * @throws Exceptions\TimeoutException
-     * 
+     * @param string|null $uuid unique identifier
+     *
      * @return VaasVerdict the verdict
+     *
+     * @throws TimeoutException
+     * @throws InvalidArgumentException
      */
     public function ForUrl(string $url, string $uuid = null): VaasVerdict
     {
-        if ($this->_logger != null)
-            $this->_logger->debug("ForUrl", ["URL:" => $url]);
+        if ($this->_logger != null) $this->_logger->debug("ForUrl", ["URL:" => $url]);
+
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            throw new \InvalidArgumentException("Url is not valid");
+        }
 
         return new VaasVerdict($this->_verdictResponseForUrl($url, $uuid));
     }
@@ -146,9 +155,14 @@ class Vaas
     }
 
     /**
-     * @throws TimeoutException
-     * 
      * @return AuthResponse
+     * @throws VaasConnectionClosedException
+     * @throws JsonMapper_Exception
+     * @throws TimeoutException
+     * @throws VaasAuthenticationException
+     * @throws VaasClientException
+     * @throws VaasInvalidStateException
+     * @throws VaasServerException
      */
     private function _waitForAuthResponse(): AuthResponse
     {
@@ -162,47 +176,57 @@ class Vaas
             if ((time() - $start_time) > $this->_waitTimeoutInSeconds) {
                 throw new TimeoutException();
             }
+
+            $result = null;
             try {
-                $result = null;
-                try {
-                    $result = $websocket->receive();
-                } catch (\WebSocket\TimeoutException $e) {
-                    $this->_logger->debug("Read timeout, send ping");
-                    $websocket->ping();
-                }
+                $result = $websocket->receive();
+            } catch (\WebSocket\TimeoutException $e) {
+                $this->_logger->debug("Read timeout, send ping");
+                $websocket->ping();
+            }
 
-                if ($result != null) {
-                    if ($this->_logger != null)
-                        $this->_logger->debug("Result", json_decode($result, true));
-
-                    $resultObject = json_decode($result);
-                    if ($resultObject->kind == Kind::AUTH_RESPONSE) {
-                        $authResponse = (new JsonMapper())->map(
-                            $resultObject,
-                            new AuthResponse()
-                        );
-                        if ($this->_logger != null)
-                            $this->_logger->debug($result);
-                        if ($authResponse->success === false) {
-                            throw new VaasAuthenticationException($result);
-                        }
-                        return $authResponse;
-                    }
-                }
-            } catch (VaasAuthenticationException $e) {
-                throw $e;
-            } catch (Exception $e) {
+            if ($result != null) {
                 if ($this->_logger != null)
-                    $this->_logger->warning("Error", ["Error" => $e]);
+                    $this->_logger->debug("Result", json_decode($result, true));
+
+                $resultObject = json_decode($result);
+                if ($resultObject->kind == Kind::AUTH_RESPONSE) {
+                    $authResponse = (new JsonMapper())->map(
+                        $resultObject,
+                        new AuthResponse()
+                    );
+                    if ($this->_logger != null)
+                        $this->_logger->debug($result);
+                    if ($authResponse->success === false) {
+                        throw new VaasAuthenticationException($result);
+                    }
+                    return $authResponse;
+                }
+                if ($resultObject->kind == Kind::ERROR) {
+                    try {
+                        $errorResponse = (new JsonMapper())->map(
+                            $resultObject,
+                            new Error()
+                        );
+                    } catch (JsonMapper_Exception $e) {
+                        // Received error type is not deserializable to Error
+                        throw new VaasServerException($e->getMessage());
+                    }
+                    $this->_handleWebSocketErrorResponse($errorResponse);
+                }
             }
             sleep(1);
         }
     }
 
     /**
-     * @throws TimeoutException
-     * 
+     * @param string $guid
      * @return VerdictResponse
+     * @throws JsonMapper_Exception
+     * @throws TimeoutException
+     * @throws VaasClientException
+     * @throws VaasInvalidStateException
+     * @throws VaasServerException
      */
     private function _waitForVerdict(string $guid): VerdictResponse
     {
@@ -218,39 +242,63 @@ class Vaas
             if ((time() - $start_time) > $this->_waitTimeoutInSeconds) {
                 throw new TimeoutException();
             }
+            $result = null;
             try {
-                $result = null;
-                try {
-                    $result = $websocket->receive();
-                } catch (\WebSocket\TimeoutException $e) {
-                    if ($this->_logger != null)
-                        $this->_logger->debug("Read timeout, send ping");
-                    $websocket->ping();
-                }
-                if ($result != null) {
-                    if ($this->_logger != null)
-                        $this->_logger->debug("Result", json_decode($result, true));
-                    $resultObject = json_decode($result);
-                    if (!isset($resultObject->guid) || !isset($resultObject->kind)) {
-                        continue;
-                    }
-                    if ($resultObject->kind != Kind::VERDICT_RESPONSE) {
-                        continue;
-                    }
-                    if ($resultObject->guid == $guid) {
-                        $result = (new JsonMapper())->map(
-                            $resultObject,
-                            new VerdictResponse()
-                        );
-                        return $result;
-                    }
-                }
-            } catch (Exception $e) {
+                $result = $websocket->receive();
+            } catch (\WebSocket\TimeoutException $e) {
                 if ($this->_logger != null)
-                    $this->_logger->warning("Error", ["Error" => $e]);
+                    $this->_logger->debug("Read timeout, send ping");
+                $websocket->ping();
+            }
+            if ($result != null) {
+                if ($this->_logger != null)
+                    $this->_logger->debug("Result", json_decode($result, true));
+                $resultObject = json_decode($result);
+                if ($resultObject->kind == Kind::ERROR) {
+                    try {
+                        $errorResponse = (new JsonMapper())->map(
+                            $resultObject,
+                            new Error()
+                        );
+                    } catch (JsonMapper_Exception $e) {
+                        // Received error type is not deserializable to Error
+                        throw new VaasServerException($e->getMessage());
+                    }
+                    $this->_handleWebSocketErrorResponse($errorResponse);
+                }
+                if (!isset($resultObject->guid) || !isset($resultObject->kind)) {
+                    continue;
+                }
+                if ($resultObject->kind != Kind::VERDICT_RESPONSE) {
+                    continue;
+                }
+                if ($resultObject->guid == $guid) {
+                    return (new JsonMapper())->map(
+                        $resultObject,
+                        new VerdictResponse()
+                    );
+                }
             }
             sleep(1);
         }
+    }
+
+    /**
+     * @throws VaasServerException
+     * @throws VaasClientException
+     */
+    private function _handleWebSocketErrorResponse(Error $errorResponse): void
+    {
+        if (isset($errorResponse->problem_details->detail)) {
+            $details = $errorResponse->problem_details->getDetail();
+        } else {
+            $details = null;
+        }
+        $errorType = $errorResponse->getType();
+        if ($errorType == "ClientError"){
+            throw new VaasClientException($details);
+        }
+        throw new VaasServerException($details);
     }
 
     /**

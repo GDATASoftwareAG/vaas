@@ -7,7 +7,9 @@ require_once __DIR__ . "/vendor/autoload.php";
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use VaasSdk\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
+use VaasSdk\Exceptions\VaasClientException;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Monolog\Formatter\JsonFormatter;
@@ -341,5 +343,49 @@ final class VaasTest extends TestCase
         $uuid = UuidV4::getFactory()->uuid4()->toString();
         echo "Generated UUID: $uuid \n";
         return $uuid;
+    }
+
+    /**
+     * @throws VaasAuthenticationException
+     * @throws TimeoutException
+     */
+    public function testForUrl_WithInvalidUrl_ThrowsVaasClientException() {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("Url is not valid");
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
+        $invalidUrl = "https://";
+        $verdict = $vaas->ForUrl($invalidUrl);
+        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
+    }
+
+    /**
+     * @throws VaasAuthenticationException
+     * @throws TimeoutException
+     */
+    public function testForUrl_WithNull_ThrowsVaasClientException() {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $this->expectException(\TypeError::class);
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
+        $invalidUrl = null;
+        $verdict = $vaas->ForUrl($invalidUrl);
+        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
+    }
+
+    /**
+     * @throws VaasAuthenticationException
+     * @throws TimeoutException
+     */
+    public function testForUrl_WithStatus4xx_ThrowsVaasClientException() {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $this->expectException(VaasClientException::class);
+        $this->expectExceptionMessage("Call failed with status code 404 (Not Found): GET https://www.gdata.de/nocontentthere");
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
+        $invalidUrl = "https://www.gdata.de/nocontentthere";
+        $verdict = $vaas->ForUrl($invalidUrl);
+        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
     }
 }
