@@ -381,10 +381,10 @@ final class VaasTest extends TestCase
     public function testForUrl_WithStatus4xx_ThrowsVaasClientException() {
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->expectException(VaasClientException::class);
-        $this->expectExceptionMessage("Call failed with status code 404 (Not Found): GET https://www.gdata.de/nocontentthere");
+        $this->expectExceptionMessage("Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere");
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
 
-        $invalidUrl = "https://www.gdata.de/nocontentthere";
+        $invalidUrl = "https://upload.production.vaas.gdatasecurity.de/nocontenthere";
         $verdict = $vaas->ForUrl($invalidUrl);
         $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
     }

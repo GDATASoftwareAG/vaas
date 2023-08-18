@@ -345,15 +345,15 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var url_1 = new URL("https://gdata.de/nocontenthere");
+        var url_1 = new URL("https://upload.production.vaas.gdatasecurity.de/nocontenthere");
         var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
-        assertEquals("Call failed with status code 404 (Not Found): GET https://gdata.de/nocontenthere", e.getMessage());
+        assertEquals("Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere", e.getMessage());
     }
 
     @Test
     @Disabled("Used for manual testing")
     public void fromUrlInALoop() throws Exception {
-        var url_1 = new URL("https://www.gdata.de/robots.txt");
+        var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");
 
         while (true) {
             try {
@@ -378,9 +378,9 @@ public class RealApiIntegrationTests {
     @Test
     public void fromUrlMultipleCleanUrls() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var url_1 = new URL("https://www.gdata.de/robots.txt");
-        var url_2 = new URL("https://www.gdata.de/robots.txt");
-        var url_3 = new URL("https://www.gdata.de/robots.txt");
+        var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");
+        var url_2 = new URL("https://github.com/GDATASoftwareAG/vaas");
+        var url_3 = new URL("https://github.com/GDATASoftwareAG/vaas");
 
         var verdictRequestAttributes = new VerdictRequestAttributes();
         verdictRequestAttributes.setTenantId("GiveMeThatHashes");

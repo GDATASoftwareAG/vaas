@@ -13,11 +13,18 @@ public class Main {
         var clientId = System.getenv("CLIENT_ID");
         var clientSecret = System.getenv("CLIENT_SECRET");
         var scanPath = System.getenv("SCAN_PATH");
+        var tokenUrl = System.getenv("TOKEN_URL");
+        if (tokenUrl == null) {
+            tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token";
+        }
+        var vaasUrl = System.getenv("VAAS_URL");
+        if (vaasUrl == null) {
+            vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de";
+        } 
 
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret,
-                "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var config = new VaasConfig(
-                new URI("wss://gateway.production.vaas.gdatasecurity.de"));
+                new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         vaas.connect();
 

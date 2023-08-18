@@ -15,6 +15,20 @@ on:
       - "typescript/**"
       - ".github/workflows/ci-typescript.yaml"
   workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: "Test environment"
+        options:
+          - production
+          - staging
+        default: "production"
+
+env:
+  CLIENT_ID: ${{ secrets.CLIENT_ID }}
+  CLIENT_SECRET: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/ts')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
+  VAAS_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/ts')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
+  TOKEN_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/ts')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
 
 jobs:
   build-typescript:
@@ -49,22 +63,6 @@ jobs:
         working-directory: typescript
 
       - name: run tests
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/ts')
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
-          TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
-        run: pnpm run test
-        working-directory: typescript
-
-      - name: run tests staging
-        if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/ts')
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway.staging.vaas.gdatasecurity.de"
-          TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         run: pnpm run test
         working-directory: typescript
 
@@ -74,16 +72,11 @@ jobs:
 
       - name: run examples scan file
         env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           SCAN_PATH: "main.ts"
         run: npx ts-node main.ts
         working-directory: typescript/examples/VaasExample
 
       - name: run examples scan url
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: npx ts-node url_scan.ts
         working-directory: typescript/examples/VaasExample
 
