@@ -60,6 +60,7 @@ public class Vaas : IDisposable
     {
         if (msg.MessageType != WebSocketMessageType.Text) return;
         var message = JsonSerializer.Deserialize<Message>(msg.Text);
+        TaskCompletionSource<VerdictResponse>? tcs;
         switch (message?.Kind)
         {
             case "AuthResponse":
@@ -81,16 +82,33 @@ public class Vaas : IDisposable
                 {
                     return;
                 }
-                if (!_verdictResponses.TryRemove(verdictResponse.Guid, out var tcs))
+                if (!_verdictResponses.TryRemove(verdictResponse.Guid, out tcs))
                 {
                     // Error: Server sent guid we are not waiting for, ignore it
                     return;
                 }
                 tcs.SetResult(verdictResponse);
                 break;
+            
+            case "Error":
+                var webSocketErrorResponse = JsonSerializer.Deserialize<WebSocketErrorMessage>(msg.Text);
+                var requestId = webSocketErrorResponse?.RequestId;
+                if (requestId == null || !_verdictResponses.TryRemove(requestId, out tcs))
+                {
+                    return;
+                }
+                var problemDetails = webSocketErrorResponse?.ProblemDetails;
+                tcs.SetException(ProblemDetailsToException(problemDetails));
+                break;
         }
     }
 
+    private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) => problemDetails?.Type switch
+    {
+        "VaasClientException" => new VaasClientException(problemDetails.Detail),
+        _=> new VaasServerException(problemDetails?.Detail)
+    };
+    
     private async Task Authenticate(string token)
     {
         var authenticationRequest = new AuthenticationRequest(token);
@@ -109,7 +127,7 @@ public class Vaas : IDisposable
         var verdictResponse = await ForUrlRequestAsync(new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
         {
             UseCache = _options.UseCache,
-            UseShed = _options.UseShed,
+            UseShed = _options.UseHashLookup,
             VerdictRequestAttributes = verdictRequestAttributes
         });
         return new VaasVerdict(verdictResponse);
@@ -120,7 +138,7 @@ public class Vaas : IDisposable
         var verdictResponse = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new VaasInvalidStateException())
         {
             UseCache = _options.UseCache,
-            UseShed = _options.UseShed,
+            UseShed = _options.UseHashLookup,
             VerdictRequestAttributes = verdictRequestAttributes
         });
         return new VaasVerdict(verdictResponse);
@@ -133,7 +151,7 @@ public class Vaas : IDisposable
             new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
             {
                 UseCache = _options.UseCache,
-                UseShed = _options.UseShed,
+                UseShed = _options.UseHashLookup,
                 VerdictRequestAttributes = verdictRequestAttributes
             });
         if (!verdictResponse.IsValid)
@@ -162,7 +180,21 @@ public class Vaas : IDisposable
         request.Content = streamContent;
         var httpResponse = await _httpClient.SendAsync(request);
 
-        httpResponse.EnsureSuccessStatusCode();
+        if (!httpResponse.IsSuccessStatusCode)
+        {
+            var body = await httpResponse.Content.ReadAsStringAsync();
+            try
+            {
+                var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(body);
+                throw ProblemDetailsToException(problemDetails);
+            }
+            catch (Exception)
+            {
+                throw new VaasServerException("Server did not return ProblemDetails");
+            }
+        }
+
+
     }
 
     public async Task<List<VaasVerdict>> ForSha256ListAsync(IEnumerable<string> sha256List)
@@ -220,7 +252,7 @@ public class Vaas : IDisposable
     {
         if (!disposing) return;
 
-        AuthenticatedClient?.Dispose();
+        AuthenticatedClient.Dispose();
         _httpClient.Dispose();
     }
 
@@ -230,7 +262,7 @@ public class Vaas : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public WebsocketClient GetAuthenticatedWebSocket()
+    private WebsocketClient GetAuthenticatedWebSocket()
     {
         if (_client == null)
             throw new VaasInvalidStateException();
