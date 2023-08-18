@@ -15,6 +15,20 @@ on:
       - "php/**"
       - ".github/workflows/ci-php.yaml"
   workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: "Test environment"
+        options:
+          - production
+          - staging
+        default: "production"
+
+env:
+  CLIENT_ID: ${{ secrets.CLIENT_ID }}
+  CLIENT_SECRET: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
+  VAAS_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
+  TOKEN_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
 
 jobs:
   build-php:
@@ -39,22 +53,6 @@ jobs:
           php_version: ${{ matrix.version }}
 
       - name: run tests
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
-          TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
-        run: ./vendor/bin/phpunit --colors --testdox
-        working-directory: php/tests/vaas
-
-      - name: run tests staging
-        if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/php')
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway.staging.vaas.gdatasecurity.de"
-          TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         run: ./vendor/bin/phpunit --colors --testdox
         working-directory: php/tests/vaas
 
@@ -64,23 +62,15 @@ jobs:
 
       - name: run example (scan file)
         env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
           SCAN_PATH: "GetVerdictByFile.php"
         run: php GetVerdictByFile.php
         working-directory: php/examples/VaasExample
 
       - name: run example (scan url)
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: php GetVerdictByUrl.php
         working-directory: php/examples/VaasExample
 
       - name: run example (scan hash)
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         run: php GetVerdictByHash.php
         working-directory: php/examples/VaasExample
 

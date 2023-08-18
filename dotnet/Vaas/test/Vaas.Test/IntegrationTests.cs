@@ -159,8 +159,8 @@ public class IntegrationTests
     public async Task ForUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException()
     {
         var vaas = await AuthenticateWithCredentials();
-        var e = await Assert.ThrowsAsync<VaasClientException>(() => vaas.ForUrlAsync(new Uri("https://www.gdata.de/nocontenthere")));
-        Assert.Equal("Call failed with status code 404 (Not Found): GET https://www.gdata.de/nocontenthere", e.Message);
+        var e = await Assert.ThrowsAsync<VaasClientException>(() => vaas.ForUrlAsync(new Uri("https://upload.production.vaas.gdatasecurity.de/nocontenthere")));
+        Assert.Equal("Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere", e.Message);
     }
 
     private static async Task<Vaas> AuthenticateWithCredentials()

@@ -15,6 +15,20 @@ on:
       - "ruby/**"
       - ".github/workflows/ci-ruby.yaml"
   workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: "Test environment"
+        options:
+          - production
+          - staging
+        default: "production"
+
+env:
+  CLIENT_ID: ${{ secrets.CLIENT_ID }}
+  CLIENT_SECRET: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/rb')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
+  VAAS_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/rb')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
+  TOKEN_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/rb')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
 
 jobs:
   build-ruby:
@@ -56,38 +70,18 @@ jobs:
         working-directory: ruby
 
       - name: Test
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/rb')
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
-          TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
-        run: ruby vaas_test.rb
-        working-directory: ruby/test
-
-      - name: Test staging
-        if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/rb')
-        env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.STAGING_CLIENT_SECRET }}
-          VAAS_URL: "wss://gateway.staging.vaas.gdatasecurity.de"
-          TOKEN_URL: "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
         run: ruby vaas_test.rb
         working-directory: ruby/test
 
       - name: Run simple example
         env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          URL: "https://www.gdata.de/"
+          URL: "https://github.com/GDATASoftwareAG/vaas"
         run: ruby simple_example.rb
         working-directory: ruby/examples
 
       - name: Run example with reconnect
         env:
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-          URL: "https://www.gdata.de/"
+          URL: "https://github.com/GDATASoftwareAG/vaas"
         run: ruby example_with_reconnect.rb
         working-directory: ruby/examples
 

@@ -15,12 +15,14 @@ public static class Program
 
     private static async Task FileScan()
     {
-        var vaas = new Vaas.Vaas();
-        vaas.Url = new Uri("wss://gateway.production.vaas.gdatasecurity.de");
+        var vaas = new Vaas.Vaas()
+        {
+            Url = new Uri(Environment.GetEnvironmentVariable("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de"),
+        };
         var authenticator = new ClientCredentialsGrantAuthenticator(
             Environment.GetEnvironmentVariable("CLIENT_ID") ?? string.Empty,
             Environment.GetEnvironmentVariable("CLIENT_SECRET") ?? string.Empty,
-            new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
+            new Uri(Environment.GetEnvironmentVariable("TOKEN_URL") ?? "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
         );
         await vaas.Connect(await authenticator.GetToken());
 
@@ -32,12 +34,14 @@ public static class Program
 
     private static async Task UrlScan()
     {
-        var vaas = new Vaas.Vaas();
-        vaas.Url = new Uri("wss://gateway.production.vaas.gdatasecurity.de");
+        var vaas = new Vaas.Vaas()
+        {
+            Url = new Uri(Environment.GetEnvironmentVariable("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de"),
+        };
         var authenticator = new ClientCredentialsGrantAuthenticator(
             Environment.GetEnvironmentVariable("CLIENT_ID") ?? string.Empty,
             Environment.GetEnvironmentVariable("CLIENT_SECRET") ?? string.Empty,
-            new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
+            new Uri(Environment.GetEnvironmentVariable("TOKEN_URL") ?? "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
         );
         await vaas.Connect(await authenticator.GetToken());
 
