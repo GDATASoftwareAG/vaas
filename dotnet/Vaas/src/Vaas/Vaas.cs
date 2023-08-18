@@ -126,8 +126,8 @@ public class Vaas : IDisposable
     {
         var verdictResponse = await ForUrlRequestAsync(new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
         {
-            UseCache = VaasOptions.UseCache,
-            UseShed = VaasOptions.UseHashLookup,
+            UseCache = _options.UseCache,
+            UseShed = _options.UseHashLookup,
             VerdictRequestAttributes = verdictRequestAttributes
         });
         return new VaasVerdict(verdictResponse);
@@ -137,8 +137,8 @@ public class Vaas : IDisposable
     {
         var verdictResponse = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new VaasInvalidStateException())
         {
-            UseCache = VaasOptions.UseCache,
-            UseShed = VaasOptions.UseHashLookup,
+            UseCache = _options.UseCache,
+            UseShed = _options.UseHashLookup,
             VerdictRequestAttributes = verdictRequestAttributes
         });
         return new VaasVerdict(verdictResponse);
@@ -150,8 +150,8 @@ public class Vaas : IDisposable
         var verdictResponse = await ForRequestAsync(
             new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
             {
-                UseCache = VaasOptions.UseCache,
-                UseShed = VaasOptions.UseHashLookup,
+                UseCache = _options.UseCache,
+                UseShed = _options.UseHashLookup,
                 VerdictRequestAttributes = verdictRequestAttributes
             });
         if (!verdictResponse.IsValid)
@@ -252,7 +252,7 @@ public class Vaas : IDisposable
     {
         if (!disposing) return;
 
-        AuthenticatedClient?.Dispose();
+        AuthenticatedClient.Dispose();
         _httpClient.Dispose();
     }
 
