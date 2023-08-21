@@ -33,7 +33,7 @@ func New(clientId string, clientSecret string, tokenEndpoint string) ClientCrede
 	}
 }
 
-// New creates a new Instance of the clientCredentialsGrantAuthenticator with a default token endpoint.
+// NewWithDefaultTokenEndpoint creates a new Instance of the clientCredentialsGrantAuthenticator with a default token endpoint.
 func NewWithDefaultTokenEndpoint(clientId string, clientSecret string) ClientCredentialsGrantAuthenticator {
 	return &clientCredentialsGrantAuthenticator{
 		clientID:      clientId,
