@@ -17,7 +17,7 @@ import websockets.client
 from .vaas_errors import (
     VaasInvalidStateError,
     VaasConnectionClosedError,
-    VaasTimeoutError,
+    VaasTimeoutError, VaasClientError, VaasServerError,
 )
 
 TIMEOUT = 60
@@ -85,6 +85,12 @@ def get_ssl_context(url, verify):
         return ssl.create_default_context()
     return ssl._create_unverified_context()  # pylint: disable=W0212
 
+def problem_details_to_error(problem_details):
+    type = problem_details.get("type")
+    details = problem_details.get("details")
+    if type == "VaasClientException":
+        return VaasClientError(details)
+    return VaasServerError(details)
 
 class Vaas:
     """Verdict-as-a-Service client"""
@@ -205,11 +211,20 @@ class Vaas:
         try:
             async for message in websocket:
                 vaas_message = json.loads(message)
-                if vaas_message.get("kind") == "VerdictResponse":
-                    guid = vaas_message.get("guid")
+                message_kind = vaas_message.get("kind")
+                guid = vaas_message.get("guid")
+                if message_kind == "VerdictResponse":
                     future = self.results.get(guid)
                     if future is not None:
                         future.set_result(vaas_message)
+                if message_kind == "Error":
+                    problem_details = vaas_message.get("problem_details")
+                    if guid is None or problem_details is None :
+                        # Error: Server sent guid we are not waiting for, or problem details are null, ignore it
+                        continue
+                    future = self.results.get(guid)
+                    if future is not None:
+                        future.set_exception(problem_details_to_error(problem_details))
         except Exception as error:
             raise VaasConnectionClosedError(error) from error
 
