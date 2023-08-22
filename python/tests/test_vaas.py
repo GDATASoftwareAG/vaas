@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from src.vaas import Vaas, VaasTracing, VaasOptions, ClientCredentialsGrantAuthenticator
 from src.vaas import get_ssl_context
 from src.vaas.vaas import hash_file
-from src.vaas.vaas_errors import VaasConnectionClosedError, VaasInvalidStateError
+from src.vaas.vaas_errors import VaasConnectionClosedError, VaasInvalidStateError, VaasClientError
 
 load_dotenv()
 
@@ -195,6 +195,12 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
+    async def test_for_url__with_url_with_status_code_4xx__raises_VaasClientError(self):
+        options = get_disabled_options()
+        async with await create_and_connect(options=options) as vaas:
+            with self.assertRaises(VaasClientError, msg="Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere") as error:
+                await vaas.for_url("https://upload.production.vaas.gdatasecurity.de/nocontenthere")
+            self.assertEqual(str(error.msg), "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere")
 
     async def test_for_buffer_traces(self):
         tracing = VaasTracing()
