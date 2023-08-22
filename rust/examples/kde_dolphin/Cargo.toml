@@ -11,7 +11,7 @@ publish = false
 [dependencies]
 slint = "1.1"
 vaas = { path = "../.."}
-tokio = { version = "1.31", features = ["rt", "macros", "rt-multi-thread"] }
+tokio = { version = "1.32", features = ["rt", "macros", "rt-multi-thread"] }
 structopt = "0.3"
 
 [build-dependencies]
