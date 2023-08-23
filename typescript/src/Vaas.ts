@@ -61,9 +61,9 @@ export class Vaas {
   defaultTimeoutFileReq: number = 600_000;
   debug = false;
 
-  constructor(private webSocketFactory = (url: string) => new WebSocket(url), options: VaasOptions | null) {
+  constructor(private webSocketFactory = (url: string) => new WebSocket(url), options?: VaasOptions) {
     this.verdictPromises = new Map<string, VerdictPromise>();
-    this.options = options;
+    this.options = options || null;
   }
 
   public static toHexString(byteArray: Uint8Array) {
@@ -187,7 +187,7 @@ export class Vaas {
           : Vaas.toHexString(sha256.hash(sample));
       const verdictReq = JSON.stringify(
         defaultSerializer.serialize(
-          new VerdictRequest(hash, guid, this.connection!.sessionId as string)
+          new VerdictRequest(hash, guid, this.connection!.sessionId as string, this.options?.use_cache, this.options?.use_hash_lookup)
         )
       );
       ws.send(verdictReq);
@@ -212,7 +212,7 @@ export class Vaas {
     
       const verdictReq = JSON.stringify(
         defaultSerializer.serialize(
-          new VerdictRequestForUrl(url, guid, this.connection!.sessionId as string)
+          new VerdictRequestForUrl(url, guid, this.connection!.sessionId as string, this.options?.use_cache, this.options?.use_hash_lookup)
         )
       );
       ws.send(verdictReq);
