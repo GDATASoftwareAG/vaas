@@ -114,7 +114,6 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws ExecutionException  if the request fails
      * @throws InterruptedException  if the operation is interrupted
      * @throws TimeoutException  if the request times out
      */
@@ -132,7 +131,6 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws ExecutionException  if the request fails
      * @throws InterruptedException  if the operation is interrupted
      * @throws TimeoutException  if the request times out
      */
@@ -150,7 +148,6 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws ExecutionException  if the request fails
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
