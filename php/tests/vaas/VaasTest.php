@@ -10,6 +10,7 @@ use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
+use VaasSdk\ResourceOwnerPasswordAuthenticator;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Monolog\Formatter\JsonFormatter;
@@ -46,6 +47,12 @@ final class VaasTest extends TestCase
         if (getenv("TOKEN_URL") !== false) {
             $_ENV["TOKEN_URL"] = getenv("TOKEN_URL");
         }
+        if (getenv("USER_NAME") !== false) {
+            $_ENV["USER_NAME"] = getenv("USER_NAME");
+        }
+        if (getenv("PASSWORD") !== false) {
+            $_ENV["PASSWORD"] = getenv("PASSWORD");
+        }
     }
 
     private function _getDebugLogger(): LoggerInterface
@@ -76,6 +83,29 @@ final class VaasTest extends TestCase
             $_ENV['CLIENT_SECRET'],
             $_ENV["TOKEN_URL"]
         );
+    }
+
+    private function getResourceOwnerPasswordAuthenticator(): ResourceOwnerPasswordAuthenticator
+    {
+        return new ResourceOwnerPasswordAuthenticator(
+            $_ENV['CLIENT_ID'],
+            $_ENV['USER_NAME'],
+            $_ENV["PASSWORD"],
+            $_ENV["TOKEN_ENDPOINT"]
+        );
+    }
+
+    public function testForSha256MaliciousSha256_WithResourceOwnerPasswordAuthenticator_GetsMaliciousResponse(): void
+    {
+        $uuid = $this->getUuid();
+
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getResourceOwnerPasswordAuthenticator()->getToken());
+        $verdict = $vaas->ForSha256(self::MALICIOUS_HASH, $uuid);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
+        $this->assertEquals($uuid, $verdict->Guid);
+        $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
     }
 
     public function testForConnectingWithInvalidToken_ThrowsVaasAccessDeniedException()
