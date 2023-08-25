@@ -29,6 +29,8 @@ env:
   CLIENT_SECRET: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
   VAAS_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
   TOKEN_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
+  RO_USERNAME: ${{ secrets.CLIENT_ID }}
+  RO_PASSWORD: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && secrets.RO_PASSWORD || secrets.STAGING_RO_PASSWORD }}
 
 jobs:
   build-php:
