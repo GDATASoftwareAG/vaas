@@ -18,7 +18,8 @@
         "textalk/websocket": "^1.6 || ^1.5",
         "netresearch/jsonmapper": "^4.1",
         "guzzlehttp/guzzle": "^7",
-        "psr/log": "^1.1 || ^2.0 || ^3.0"
+        "psr/log": "^1.1 || ^2.0 || ^3.0",
+        "league/oauth2-client": "^2.4.0"
     },
     "autoload": {
         "psr-4": {
