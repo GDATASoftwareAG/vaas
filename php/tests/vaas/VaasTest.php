@@ -47,11 +47,11 @@ final class VaasTest extends TestCase
         if (getenv("TOKEN_URL") !== false) {
             $_ENV["TOKEN_URL"] = getenv("TOKEN_URL");
         }
-        if (getenv("USER_NAME") !== false) {
-            $_ENV["USER_NAME"] = getenv("USER_NAME");
+        if (getenv("RO_USERNAME") !== false) {
+            $_ENV["RO_USERNAME"] = getenv("RO_USERNAME");
         }
-        if (getenv("PASSWORD") !== false) {
-            $_ENV["PASSWORD"] = getenv("PASSWORD");
+        if (getenv("RO_PASSWORD") !== false) {
+            $_ENV["RO_PASSWORD"] = getenv("RO_PASSWORD");
         }
     }
 
@@ -89,9 +89,9 @@ final class VaasTest extends TestCase
     {
         return new ResourceOwnerPasswordAuthenticator(
             $_ENV['CLIENT_ID'],
-            $_ENV['USER_NAME'],
-            $_ENV["PASSWORD"],
-            $_ENV["TOKEN_ENDPOINT"]
+            $_ENV['RO_USERNAME'],
+            $_ENV["RO_PASSWORD"],
+            $_ENV["TOKEN_URL"]
         );
     }
 
