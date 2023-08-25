@@ -16,6 +16,8 @@ public class IntegrationTests
         "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     private static string ClientId => DotNetEnv.Env.GetString("CLIENT_ID");
     private static string ClientSecret => DotNetEnv.Env.GetString("CLIENT_SECRET");
+    private static string UserName => DotNetEnv.Env.GetString("USER_NAME");
+    private static string Password => DotNetEnv.Env.GetString("PASSWORD");
     
     public IntegrationTests()
     {
@@ -196,5 +198,17 @@ public class IntegrationTests
         var result = await vaas.ForFileAsync("empty.txt");
         Assert.Equal(Verdict.Clean, result.Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("empty.txt"), result.Sha256);
+    }
+
+    [Fact]
+    public async Task Connect_WithResourceOwnerPasswordGrantAuthenticator()
+    {
+        var authenticator = new ResourceOwnerPasswordGrantAuthenticator(ClientId, UserName, Password, TokenUrl);
+
+        var vaas = new Vaas()
+        {
+            Url = VaasUrl
+        };
+        await vaas.Connect(await authenticator.GetToken());
     }
 }
