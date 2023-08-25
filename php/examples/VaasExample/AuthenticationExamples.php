@@ -11,9 +11,9 @@ use VaasSdk\Vaas;
 
 // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
 $authenticator = new ResourceOwnerPasswordAuthenticator(
-    getenv("CLIENT_ID"),
-    getenv("USER_NAME"),
-    getenv("PASSWORD"),
+    getenv("VAAS_CLIENT_ID"),
+    getenv("VAAS_USER_NAME"),
+    getenv("VAAS_PASSWORD"),
     getenv("TOKEN_URL")
 );
 // If you got a client id with a link you may use self registration and create a new username and password for the

@@ -31,7 +31,7 @@ env:
   TOKEN_URL: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/java')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
-  VAAS_PASSWORD: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/php')) && secrets.VAAS_PASSWORD || secrets.STAGING_VAAS_PASSWORD }}
+  VAAS_PASSWORD: ${{ (inputs.environment == 'production' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/java')) && secrets.VAAS_PASSWORD || secrets.STAGING_VAAS_PASSWORD }}
 
 jobs:
   build-java-legacy:
