@@ -12,6 +12,7 @@ __all__ = [
     "VaasConnectionClosedError",
     "VaasOptions",
     "ClientCredentialsGrantAuthenticator",
+    "ResourceOwnerPasswordAuthenticator",
     "get_ssl_context",
 ]
 
@@ -25,3 +26,4 @@ from .vaas_errors import (
     VaasConnectionClosedError,
 )
 from .client_credentials_grant_authenticator import ClientCredentialsGrantAuthenticator
+from .resource_owner_password_authenticator import ResourceOwnerPasswordAuthenticator
