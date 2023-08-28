@@ -10,7 +10,7 @@ use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
-use VaasSdk\ResourceOwnerPasswordAuthenticator;
+use VaasSdk\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Monolog\Formatter\JsonFormatter;
@@ -88,9 +88,9 @@ final class VaasTest extends TestCase
         );
     }
 
-    private function getResourceOwnerPasswordAuthenticator(): ResourceOwnerPasswordAuthenticator
+    private function getResourceOwnerPasswordAuthenticator(): ResourceOwnerPasswordGrantAuthenticator
     {
-        return new ResourceOwnerPasswordAuthenticator(
+        return new ResourceOwnerPasswordGrantAuthenticator(
             $_ENV['VAAS_CLIENT_ID'],
             $_ENV['VAAS_USER_NAME'],
             $_ENV["VAAS_PASSWORD"],

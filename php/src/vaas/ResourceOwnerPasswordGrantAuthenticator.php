@@ -6,7 +6,7 @@ use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 
-class ResourceOwnerPasswordAuthenticator {
+class ResourceOwnerPasswordGrantAuthenticator {
     private string $clientId;
     private string $userName;
     private string $password;

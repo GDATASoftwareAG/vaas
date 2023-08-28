@@ -6,25 +6,31 @@ use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
-use VaasSdk\ResourceOwnerPasswordAuthenticator;
+use VaasSdk\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Vaas;
 
+$USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR = false;
+
 // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
-$authenticator = new ResourceOwnerPasswordAuthenticator(
-    getenv("VAAS_CLIENT_ID"),
-    getenv("VAAS_USER_NAME"),
-    getenv("VAAS_PASSWORD"),
-    getenv("TOKEN_URL")
-);
+if ($USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR){
+    $authenticator = new ResourceOwnerPasswordGrantAuthenticator(
+        getenv("VAAS_CLIENT_ID"),
+        getenv("VAAS_USER_NAME"),
+        getenv("VAAS_PASSWORD"),
+        getenv("TOKEN_URL")
+    );
+}
 // If you got a client id with a link you may use self registration and create a new username and password for the
 // ResourceOwnerPasswordAuthenticator by yourself like the example above.
 
 // If you got a client id and client secret from us, you can use the ClientCredentialsGrantAuthenticator like this
-$authenticator = new ClientCredentialsGrantAuthenticator(
-    getenv("CLIENT_ID"),
-    getenv("CLIENT_SECRET"),
-    getenv("TOKEN_URL")
-);
+else{
+    $authenticator = new ClientCredentialsGrantAuthenticator(
+        getenv("CLIENT_ID"),
+        getenv("CLIENT_SECRET"),
+        getenv("TOKEN_URL")
+    );
+}
 
 $vaas = new Vaas(
     getenv("VAAS_URL")
