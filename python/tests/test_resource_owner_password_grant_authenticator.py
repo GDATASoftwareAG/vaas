@@ -1,16 +1,16 @@
 import unittest
 import os
 from dotenv import load_dotenv
-from src.vaas import ResourceOwnerPasswordAuthenticator, VaasAuthenticationError, Vaas
+from src.vaas import ResourceOwnerPasswordGrantAuthenticator, VaasAuthenticationError, Vaas
 
 load_dotenv()
 TOKEN_URL = os.getenv("TOKEN_URL")
 
 
-class ResourceOwnerPasswordAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
+class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_raises_error_if_credentials_are_invalid(self):
-        authenticator = ResourceOwnerPasswordAuthenticator(
+        authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
@@ -19,7 +19,7 @@ class ResourceOwnerPasswordAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
             await authenticator.get_token()
 
     async def test_raises_error_if_token_url_is_invalid(self):
-        authenticator = ResourceOwnerPasswordAuthenticator(
+        authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
@@ -28,7 +28,7 @@ class ResourceOwnerPasswordAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
             await authenticator.get_token()
 
     async def test_raises_error_if_token_url_is_wrong(self):
-        authenticator = ResourceOwnerPasswordAuthenticator(
+        authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
@@ -37,7 +37,7 @@ class ResourceOwnerPasswordAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
             await authenticator.get_token()
 
     async def test_raises_error_if_token_url_is_doesnotexist(self):
-        authenticator = ResourceOwnerPasswordAuthenticator(
+        authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
@@ -45,7 +45,7 @@ class ResourceOwnerPasswordAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(VaasAuthenticationError):
             await authenticator.get_token()
 
-    async def test_for_url_with_ropa_returns_malicious(self):
+    async def test_for_url_with_resource_owner_password_grant_returns_malicious(self):
         token_url = os.getenv("TOKEN_URL")
         vaas_url = os.getenv("VAAS_URL")
         client_id = os.getenv("VAAS_CLIENT_ID")
@@ -57,7 +57,7 @@ class ResourceOwnerPasswordAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
         if vaas_url is None:
             vaas_url = "wss://gateway.production.vaas.gdatasecurity.de"
 
-        authenticator = ResourceOwnerPasswordAuthenticator(
+        authenticator = ResourceOwnerPasswordGrantAuthenticator(
             client_id=client_id,
             user_name=username,
             password=password,

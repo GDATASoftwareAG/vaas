@@ -1,7 +1,8 @@
 import asyncio
 import os
-from vaas import Vaas, ClientCredentialsGrantAuthenticator, ResourceOwnerPasswordAuthenticator
+from vaas import Vaas, ClientCredentialsGrantAuthenticator, ResourceOwnerPasswordGrantAuthenticator
 
+USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR = True
 
 async def main():
     token_url = os.getenv("TOKEN_URL")
@@ -13,21 +14,23 @@ async def main():
         vaas_url = "wss://gateway.production.vaas.gdatasecurity.de"
 
     # If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
-    authenticator = ResourceOwnerPasswordAuthenticator(
-        os.getenv("VAAS_CLIENT_ID"),
-        os.getenv("VAAS_USER_NAME"),
-        os.getenv("VAAS_PASSWORD"),
-        token_endpoint=token_url
-    )
+    if USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR:
+        authenticator = ResourceOwnerPasswordGrantAuthenticator(
+            os.getenv("VAAS_CLIENT_ID"),
+            os.getenv("VAAS_USER_NAME"),
+            os.getenv("VAAS_PASSWORD"),
+            token_endpoint=token_url
+        )
     # If you got a client id with a link you may use self registration and create a new username and password for the
     # ResourceOwnerPasswordAuthenticator by yourself like the example above.
 
     # If you got a client id and client secret from us, you can use the ClientCredentialsGrantAuthenticator like this
-    authenticator = ClientCredentialsGrantAuthenticator(
-        os.getenv("CLIENT_ID"),
-        os.getenv("CLIENT_SECRET"),
-        token_endpoint=token_url
-    )
+    else:
+        authenticator = ClientCredentialsGrantAuthenticator(
+            os.getenv("CLIENT_ID"),
+            os.getenv("CLIENT_SECRET"),
+            token_endpoint=token_url
+        )
 
     async with Vaas(url=vaas_url) as vaas:
         await vaas.connect(await authenticator.get_token())
