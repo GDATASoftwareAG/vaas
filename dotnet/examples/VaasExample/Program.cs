@@ -1,3 +1,5 @@
+using Vaas;
+
 namespace VaasExample;
 
 public static class Program
