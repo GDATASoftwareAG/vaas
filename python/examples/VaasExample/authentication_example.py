@@ -2,7 +2,7 @@ import asyncio
 import os
 from vaas import Vaas, ClientCredentialsGrantAuthenticator, ResourceOwnerPasswordGrantAuthenticator
 
-USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR = True
+USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR = False
 
 async def main():
     token_url = os.getenv("TOKEN_URL")
