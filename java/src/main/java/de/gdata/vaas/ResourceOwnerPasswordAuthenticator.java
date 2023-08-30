@@ -19,27 +19,29 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
+public class ResourceOwnerPasswordAuthenticator implements IAuthenticator {
 
     @Getter
-    private String clientId, clientSecret;
+    private String clientId, username, password;
 
     @Getter
     @NonNull
     private URI tokenEndpoint;
 
-    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret)
+    public ResourceOwnerPasswordAuthenticator(String clientId, String username, String password)
             throws URISyntaxException {
         this.tokenEndpoint = new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
         this.clientId = clientId;
-        this.clientSecret = clientSecret;
+        this.username = username;
+        this.password = password;
     }
 
-    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, String tokenEndpoint)
+    public ResourceOwnerPasswordAuthenticator(String clientId, String username, String password, String tokenEndpoint)
             throws URISyntaxException {
         this.tokenEndpoint = new URI(tokenEndpoint);
         this.clientId = clientId;
-        this.clientSecret = clientSecret;
+        this.username = username;
+        this.password = password;
     }
 
     private String encodeValue(String value) throws UnsupportedEncodingException {
@@ -49,8 +51,9 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
     public String getToken() throws IOException, InterruptedException {
         Map<String, String> requestParams = new HashMap<>();
         requestParams.put("client_id", this.clientId);
-        requestParams.put("grant_type", "client_credentials");
-        requestParams.put("client_secret", this.clientSecret);
+        requestParams.put("grant_type", "password");
+        requestParams.put("username", this.username);
+        requestParams.put("password", this.password);
         String UriWithParameters = requestParams.keySet().stream()
                 .map(key -> {
                     try {

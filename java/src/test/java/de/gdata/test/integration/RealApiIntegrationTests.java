@@ -32,6 +32,35 @@ import static org.testng.AssertJUnit.assertEquals;
 
 public class RealApiIntegrationTests {
     @Test
+    public void clientCredentialsGrantAuthenticatorGetToken() throws Exception {
+        var dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        var clientId = dotenv.get("CLIENT_ID");
+        var clientSecret = dotenv.get("CLIENT_SECRET");
+        var tokenUrl = dotenv.get("TOKEN_URL");
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var token = authenticator.getToken();
+
+        assertNotNull(token);
+    }
+
+    @Test
+    public void resourceOwnerPasswordAuthenticatorGetToken() throws Exception {
+        var dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
+        var clientId = dotenv.get("VAAS_CLIENT_ID");
+        var username = dotenv.get("VAAS_USER_NAME");
+        var password = dotenv.get("VAAS_PASSWORD");
+        var tokenUrl = dotenv.get("TOKEN_URL");
+        var authenticator = new ResourceOwnerPasswordAuthenticator(clientId, username, password, tokenUrl);
+        var token = authenticator.getToken();
+
+        assertNotNull(token);
+    }
+
+    @Test
     public void fromSha256SingleMaliciousHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
@@ -75,7 +104,7 @@ public class RealApiIntegrationTests {
 
     @Test
     public void wrongTokenUsedToAuthenticateWebsocket() throws URISyntaxException {
-        class MockAuthenticator implements IClientCredentialsGrantAuthenticator {
+        class MockAuthenticator implements IAuthenticator {
 
             @Override
             public String getToken() throws IOException, InterruptedException {

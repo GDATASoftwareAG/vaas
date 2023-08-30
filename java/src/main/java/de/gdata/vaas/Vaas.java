@@ -36,20 +36,20 @@ public class Vaas {
 
     @Getter
     @NonNull
-    private final IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator;
+    private final IAuthenticator authenticator;
     private final HttpClient httpClient = HttpClient.newBuilder().build();
     private WebSocketClient client;
 
-    public Vaas(@NonNull VaasConfig config, @NonNull IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator) {
+    public Vaas(@NonNull VaasConfig config, @NonNull IAuthenticator authenticator) {
         this.config = config;
-        this.clientCredentialsGrantAuthenticator = clientCredentialsGrantAuthenticator;
+        this.authenticator = authenticator;
         this.options = new VaasOptions();
     }
 
-    public Vaas(VaasConfig config, IClientCredentialsGrantAuthenticator clientCredentialsGrantAuthenticator,
+    public Vaas(VaasConfig config, IAuthenticator authenticator,
                 VaasOptions options) {
         this.config = config;
-        this.clientCredentialsGrantAuthenticator = clientCredentialsGrantAuthenticator;
+        this.authenticator = authenticator;
         this.options = options;
     }
 
@@ -63,7 +63,7 @@ public class Vaas {
      */
     public void connect() throws IOException, InterruptedException, VaasAuthenticationException, TimeoutException {
         var timer = new SimpleTimer(connectionTimeoutInMs, TimeUnit.MILLISECONDS);
-        var clientToken = clientCredentialsGrantAuthenticator.getToken();
+        var clientToken = authenticator.getToken();
         while (true) {
             this.client = new WebSocketClient(this.getConfig(), clientToken);
             if (this.client.connectBlocking(timer.getRemainingMs(), TimeUnit.MILLISECONDS)) {
