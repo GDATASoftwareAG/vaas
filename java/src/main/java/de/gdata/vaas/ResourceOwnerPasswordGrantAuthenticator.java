@@ -1,7 +1,5 @@
 package de.gdata.vaas;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
 import lombok.NonNull;
@@ -19,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ResourceOwnerPasswordAuthenticator implements IAuthenticator {
+public class ResourceOwnerPasswordGrantAuthenticator implements IAuthenticator {
 
     @Getter
     private String clientId, username, password;
@@ -28,20 +26,19 @@ public class ResourceOwnerPasswordAuthenticator implements IAuthenticator {
     @NonNull
     private URI tokenEndpoint;
 
-    public ResourceOwnerPasswordAuthenticator(String clientId, String username, String password)
+    private static HttpClient httpClient = HttpClient.newHttpClient();
+
+    public ResourceOwnerPasswordGrantAuthenticator(String clientId, String username, String password, URI tokenEndpoint)
             throws URISyntaxException {
-        this.tokenEndpoint = new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
+        this.tokenEndpoint = tokenEndpoint;
         this.clientId = clientId;
         this.username = username;
         this.password = password;
     }
 
-    public ResourceOwnerPasswordAuthenticator(String clientId, String username, String password, String tokenEndpoint)
+    public ResourceOwnerPasswordGrantAuthenticator(String clientId, String username, String password)
             throws URISyntaxException {
-        this.tokenEndpoint = new URI(tokenEndpoint);
-        this.clientId = clientId;
-        this.username = username;
-        this.password = password;
+        this(clientId, username, password, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     }
 
     private String encodeValue(String value) throws UnsupportedEncodingException {
@@ -54,7 +51,7 @@ public class ResourceOwnerPasswordAuthenticator implements IAuthenticator {
         requestParams.put("grant_type", "password");
         requestParams.put("username", this.username);
         requestParams.put("password", this.password);
-        String UriWithParameters = requestParams.keySet().stream()
+        var uriWithParameters = requestParams.keySet().stream()
                 .map(key -> {
                     try {
                         return key + "=" + encodeValue(requestParams.get(key));
@@ -66,20 +63,18 @@ public class ResourceOwnerPasswordAuthenticator implements IAuthenticator {
         var request = HttpRequest
                 .newBuilder(tokenEndpoint)
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(UriWithParameters))
+                .POST(HttpRequest.BodyPublishers.ofString(uriWithParameters))
                 .build();
 
-        var response = HttpClient
-                .newBuilder()
-                .build()
+        var response = httpClient
                 .send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
             throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: "
                     + response.body());
         }
-        JsonObject bodyJsonObject = JsonParser.parseString(response.body()).getAsJsonObject();
-        JsonElement tokenJsonElement = bodyJsonObject.get("access_token");
+        var bodyJsonObject = JsonParser.parseString(response.body()).getAsJsonObject();
+        var tokenJsonElement = bodyJsonObject.get("access_token");
         return tokenJsonElement.getAsString();
     }
 }

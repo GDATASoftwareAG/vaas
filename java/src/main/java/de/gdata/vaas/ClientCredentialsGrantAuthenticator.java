@@ -1,7 +1,5 @@
 package de.gdata.vaas;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.Getter;
 import lombok.NonNull;
@@ -28,18 +26,19 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
     @NonNull
     private URI tokenEndpoint;
 
-    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret)
+    private static HttpClient httpClient = HttpClient.newHttpClient();
+
+
+    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, URI tokenEndpoint)
             throws URISyntaxException {
-        this.tokenEndpoint = new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
+        this.tokenEndpoint = tokenEndpoint;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
     }
 
-    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, String tokenEndpoint)
+    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret)
             throws URISyntaxException {
-        this.tokenEndpoint = new URI(tokenEndpoint);
-        this.clientId = clientId;
-        this.clientSecret = clientSecret;
+        this(clientId, clientSecret, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     }
 
     private String encodeValue(String value) throws UnsupportedEncodingException {
@@ -51,7 +50,7 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
         requestParams.put("client_id", this.clientId);
         requestParams.put("grant_type", "client_credentials");
         requestParams.put("client_secret", this.clientSecret);
-        String UriWithParameters = requestParams.keySet().stream()
+        var uriWithParameters = requestParams.keySet().stream()
                 .map(key -> {
                     try {
                         return key + "=" + encodeValue(requestParams.get(key));
@@ -63,20 +62,18 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
         var request = HttpRequest
                 .newBuilder(tokenEndpoint)
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .POST(HttpRequest.BodyPublishers.ofString(UriWithParameters))
+                .POST(HttpRequest.BodyPublishers.ofString(uriWithParameters))
                 .build();
 
-        var response = HttpClient
-                .newBuilder()
-                .build()
+        var response = httpClient
                 .send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
             throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: "
                     + response.body());
         }
-        JsonObject bodyJsonObject = JsonParser.parseString(response.body()).getAsJsonObject();
-        JsonElement tokenJsonElement = bodyJsonObject.get("access_token");
+        var bodyJsonObject = JsonParser.parseString(response.body()).getAsJsonObject();
+        var tokenJsonElement = bodyJsonObject.get("access_token");
         return tokenJsonElement.getAsString();
     }
 }
