@@ -12,7 +12,7 @@ type verdictRequest struct {
 	SessionID                string                   `json:"session_id"`
 	VerdictRequestAttributes VerdictRequestAttributes `json:"verdict_request_attributes"`
 	UseCache                 bool                     `json:"use_cache"`
-	UseShed                  bool                     `json:"use_shed"`
+	UseHashLookup            bool                     `json:"use_shed"`
 }
 
 func (r verdictRequest) GetGUID() string {
@@ -21,12 +21,12 @@ func (r verdictRequest) GetGUID() string {
 
 func NewVerdictRequest(sessionID string, options options.VaasOptions, sha256 string) VerdictRequest {
 	return verdictRequest{
-		Kind:      VerdictRequestKind,
-		Sha256:    sha256,
-		SessionID: sessionID,
-		GUID:      uuid.New().String(),
-		UseCache:  options.UseCache,
-		UseShed:   options.UseShed,
+		Kind:          VerdictRequestKind,
+		Sha256:        sha256,
+		SessionID:     sessionID,
+		GUID:          uuid.New().String(),
+		UseCache:      options.UseCache,
+		UseHashLookup: options.UseHashLookup,
 	}
 }
 
@@ -37,7 +37,7 @@ func NewVerdictRequestWithAttributes(sessionID string, options options.VaasOptio
 		SessionID:                sessionID,
 		GUID:                     uuid.New().String(),
 		UseCache:                 options.UseCache,
-		UseShed:                  options.UseShed,
+		UseHashLookup:            options.UseHashLookup,
 		VerdictRequestAttributes: attributes,
 	}
 }

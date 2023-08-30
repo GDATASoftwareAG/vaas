@@ -35,8 +35,8 @@ func (tf *testFixture) setUp(t *testing.T) Vaas {
 	clientID, clientSecret, vaasURL, tokenEndpoint := credentials.ReadCredentials()
 
 	testingOptions := options.VaasOptions{
-		UseShed:  true,
-		UseCache: false,
+		UseHashLookup: true,
+		UseCache:      false,
 	}
 	vaasClient := New(testingOptions, vaasURL)
 
@@ -89,9 +89,9 @@ func TestVaas_ForSha256(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:    true,
-					UseCache:   false,
-					EnableLogs: true,
+					UseHashLookup: true,
+					UseCache:      false,
+					EnableLogs:    true,
 				}},
 			wantErr:       true,
 			authenticated: false,
@@ -104,9 +104,9 @@ func TestVaas_ForSha256(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:    true,
-					UseCache:   false,
-					EnableLogs: true,
+					UseHashLookup: true,
+					UseCache:      false,
+					EnableLogs:    true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -119,9 +119,9 @@ func TestVaas_ForSha256(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:    true,
-					UseCache:   false,
-					EnableLogs: true,
+					UseHashLookup: true,
+					UseCache:      false,
+					EnableLogs:    true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -134,9 +134,9 @@ func TestVaas_ForSha256(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:    true,
-					UseCache:   false,
-					EnableLogs: true,
+					UseHashLookup: true,
+					UseCache:      false,
+					EnableLogs:    true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -193,8 +193,8 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseHashLookup: true,
+					UseCache:      false,
 				}},
 			wantErr:       true,
 			authenticated: false,
@@ -210,8 +210,8 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseHashLookup: true,
+					UseCache:      false,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -224,8 +224,8 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseHashLookup: true,
+					UseCache:      false,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -299,8 +299,8 @@ func TestVaas_ForUrl(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseHashLookup: true,
+					UseCache:      false,
 				}},
 			wantErr:       true,
 			authenticated: false,
@@ -313,8 +313,8 @@ func TestVaas_ForUrl(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseHashLookup: true,
+					UseCache:      false,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -327,8 +327,8 @@ func TestVaas_ForUrl(t *testing.T) {
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
-					UseShed:  true,
-					UseCache: false,
+					UseHashLookup: true,
+					UseCache:      false,
 				}},
 			wantErr:       false,
 			authenticated: true,

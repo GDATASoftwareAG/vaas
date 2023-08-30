@@ -10,7 +10,7 @@ class Error
 
     public string $text;
 
-    public ProblemDetails $problem_details;
+    public ?ProblemDetails $problem_details;
 
     public Kind $kind;
 

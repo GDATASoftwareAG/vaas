@@ -8,29 +8,41 @@ namespace Vaas.Test;
 
 public class IntegrationTests
 {
+    private static Uri VaasUrl => new Uri(DotNetEnv.Env.GetString(
+        "VAAS_URL",
+        "wss://gateway.production.vaas.gdatasecurity.de"));
+    private static Uri TokenUrl => new Uri(DotNetEnv.Env.GetString(
+        "TOKEN_URL",
+        "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
+    private static string ClientId => DotNetEnv.Env.GetString("CLIENT_ID");
+    private static string ClientSecret => DotNetEnv.Env.GetString("CLIENT_SECRET");
+    private static string ClientIdForResourceOwnerPasswordGrant => DotNetEnv.Env.GetString("VAAS_CLIENT_ID");
+    private static string UserName => DotNetEnv.Env.GetString("VAAS_USER_NAME");
+    private static string Password => DotNetEnv.Env.GetString("VAAS_PASSWORD");
+    
+    public IntegrationTests()
+    {
+        DotNetEnv.Env.TraversePath().Load();
+    }
+
     [Fact]
     public async void ConnectWithWrongCredentialsThrowsVaasAuthenticationException()
     {
-        DotNetEnv.Env.TraversePath().Load();
-        var url = DotNetEnv.Env.GetString(
-            "VAAS_URL",
-            "wss://gateway.production.vaas.gdatasecurity.de");
-        var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
-            "TOKEN_URL",
-            "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
         const string clientId = "foobar";
         const string clientSecret = "foobar2";
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenEndpoint);
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, TokenUrl);
 
-        var vaas = new Vaas();
-        await Assert.ThrowsAsync<VaasAuthenticationException>(async () => await vaas.Connect(await authenticator.GetToken()));
+        var vaas = new Vaas() { Url = VaasUrl };
+        await Assert.ThrowsAsync<VaasAuthenticationException>(async () =>
+            await vaas.Connect(await authenticator.GetToken()));
     }
 
     [Fact]
     public async void FromSha256VaasInvalidStateException()
     {
         var vaas = new Vaas();
-        await Assert.ThrowsAsync<VaasInvalidStateException>(() => vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
+        await Assert.ThrowsAsync<VaasInvalidStateException>(() =>
+            vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
     }
 
     [Fact]
@@ -38,7 +50,8 @@ public class IntegrationTests
     {
         var vaas = await AuthenticateWithCredentials();
         vaas.Dispose();
-        await Assert.ThrowsAsync<VaasConnectionClosedException>(() => vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
+        await Assert.ThrowsAsync<VaasConnectionClosedException>(() =>
+            vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
     }
 
     [Fact]
@@ -159,25 +172,21 @@ public class IntegrationTests
     public async Task ForUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException()
     {
         var vaas = await AuthenticateWithCredentials();
-        var e = await Assert.ThrowsAsync<VaasClientException>(() => vaas.ForUrlAsync(new Uri("https://upload.production.vaas.gdatasecurity.de/nocontenthere")));
-        Assert.Equal("Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere", e.Message);
+        var e = await Assert.ThrowsAsync<VaasClientException>(() =>
+            vaas.ForUrlAsync(new Uri("https://upload.production.vaas.gdatasecurity.de/nocontenthere")));
+        Assert.Equal(
+            "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere",
+            e.Message);
     }
 
-    private static async Task<Vaas> AuthenticateWithCredentials()
+    private async Task<Vaas> AuthenticateWithCredentials()
     {
-        DotNetEnv.Env.TraversePath().Load();
-        var url = new Uri(DotNetEnv.Env.GetString(
-            "VAAS_URL",
-            "wss://gateway.production.vaas.gdatasecurity.de"));
-        var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
-            "TOKEN_URL",
-            "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
-        var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
-        var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenEndpoint);
+        var authenticator = new ClientCredentialsGrantAuthenticator(ClientId, ClientSecret, TokenUrl);
 
-        var vaas = new Vaas();
-        vaas.Url = url;
+        var vaas = new Vaas()
+        {
+            Url = VaasUrl
+        };
         await vaas.Connect(await authenticator.GetToken());
         return vaas;
     }
@@ -190,5 +199,17 @@ public class IntegrationTests
         var result = await vaas.ForFileAsync("empty.txt");
         Assert.Equal(Verdict.Clean, result.Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("empty.txt"), result.Sha256);
+    }
+
+    [Fact]
+    public async Task Connect_WithResourceOwnerPasswordGrantAuthenticator()
+    {
+        var authenticator = new ResourceOwnerPasswordGrantAuthenticator(ClientIdForResourceOwnerPasswordGrant, UserName, Password, TokenUrl);
+
+        var vaas = new Vaas()
+        {
+            Url = VaasUrl
+        };
+        await vaas.Connect(await authenticator.GetToken());
     }
 }

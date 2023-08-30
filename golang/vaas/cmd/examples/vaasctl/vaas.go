@@ -31,9 +31,9 @@ func main() {
 	auth := authenticator.NewWithDefaultTokenEndpoint(clientID, clientSecret)
 
 	vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{
-		UseShed:    true,
-		UseCache:   false,
-		EnableLogs: false,
+		UseHashLookup: true,
+		UseCache:      false,
+		EnableLogs:    false,
 	})
 	ctx, webSocketCancel := context.WithCancel(context.Background())
 
