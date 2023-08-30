@@ -271,7 +271,6 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    @Disabled("Currently broken for unknown reason")
     public void fromFileEmptyFile()
             throws Exception {
         byte[] clean = {};
