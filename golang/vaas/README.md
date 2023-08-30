@@ -61,7 +61,7 @@ if err := authenticator.GetToken(&accessToken); err != nil {
 }
 
 vaasClient := vaas.New(options.VaasOptions{
-  UseShed:  true,
+  UseHashLookup:  true,
   UseCache: false,
 }, VAAS_URL)
 
