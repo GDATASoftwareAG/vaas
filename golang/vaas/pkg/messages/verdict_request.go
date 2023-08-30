@@ -1,3 +1,4 @@
+// Package messages provides structures for handling communication messages between the client and the VaaS server.
 package messages
 
 import (
@@ -5,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// verdictRequest represents a generic verdict request.
 type verdictRequest struct {
 	Kind                     Kind                     `json:"kind" default:"VerdictRequest"`
 	Sha256                   string                   `json:"sha256"`
@@ -15,10 +17,12 @@ type verdictRequest struct {
 	UseHashLookup            bool                     `json:"use_shed"`
 }
 
+// GetGUID returns the GUID of the verdictRequest.
 func (r verdictRequest) GetGUID() string {
 	return r.GUID
 }
 
+// NewVerdictRequest creates a new verdictRequest instance.
 func NewVerdictRequest(sessionID string, options options.VaasOptions, sha256 string) VerdictRequest {
 	return verdictRequest{
 		Kind:          VerdictRequestKind,
@@ -30,6 +34,7 @@ func NewVerdictRequest(sessionID string, options options.VaasOptions, sha256 str
 	}
 }
 
+// NewVerdictRequestWithAttributes creates a new verdictRequest instance with attributes.
 func NewVerdictRequestWithAttributes(sessionID string, options options.VaasOptions, sha256 string, attributes VerdictRequestAttributes) VerdictRequest {
 	return verdictRequest{
 		Kind:                     VerdictRequestKind,

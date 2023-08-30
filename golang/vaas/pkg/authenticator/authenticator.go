@@ -12,10 +12,12 @@ import (
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 )
 
+// ClientCredentialsGrantAuthenticator represents the interface for obtaining an authentication token using client credentials.
 type ClientCredentialsGrantAuthenticator interface {
 	GetToken() (string, error)
 }
 
+// clientCredentialsGrantAuthenticator is an implementation of the ClientCredentialsGrantAuthenticator interface.
 type clientCredentialsGrantAuthenticator struct {
 	httpClient    *http.Client
 	clientID      string
@@ -23,26 +25,52 @@ type clientCredentialsGrantAuthenticator struct {
 	tokenEndpoint string
 }
 
-// New creates a new Instance of the clientCredentialsGrantAuthenticator.
-func New(clientId string, clientSecret string, tokenEndpoint string) ClientCredentialsGrantAuthenticator {
+// New creates a new instance of the clientCredentialsGrantAuthenticator.
+// It requires the client ID, client secret, and token endpoint URL as arguments.
+// Example usage:
+//
+//	clientID := "your-client-id"
+//	clientSecret := "your-client-secret"
+//	tokenEndpoint := "https://example.com/token-endpoint"
+//
+//	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
+//	token, err := auth.GetToken()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+func New(clientID string, clientSecret string, tokenEndpoint string) ClientCredentialsGrantAuthenticator {
 	return &clientCredentialsGrantAuthenticator{
-		clientID:      clientId,
+		clientID:      clientID,
 		clientSecret:  clientSecret,
 		tokenEndpoint: tokenEndpoint,
 		httpClient:    &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
-// NewWithDefaultTokenEndpoint creates a new Instance of the clientCredentialsGrantAuthenticator with a default token endpoint.
-func NewWithDefaultTokenEndpoint(clientId string, clientSecret string) ClientCredentialsGrantAuthenticator {
+// NewWithDefaultTokenEndpoint creates a new instance of the clientCredentialsGrantAuthenticator with a default token endpoint.
+// It requires the client ID and client secret as arguments.
+// Example usage:
+//
+//	clientID := "your-client-id"
+//	clientSecret := "your-client-secret"
+//	tokenEndpoint := "https://example.com/token-endpoint"
+//
+//	auth := authenticator.NewWithDefaultTokenEndpoint(clientID, clientSecret)
+//	token, err := auth.GetToken()
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+func NewWithDefaultTokenEndpoint(clientID string, clientSecret string) ClientCredentialsGrantAuthenticator {
 	return &clientCredentialsGrantAuthenticator{
-		clientID:      clientId,
+		clientID:      clientID,
 		clientSecret:  clientSecret,
 		tokenEndpoint: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token",
 		httpClient:    &http.Client{Timeout: 120 * time.Second},
 	}
 }
 
+// GetToken obtains an authentication token using the client credentials grant.
+// It returns the obtained token and any error encountered during the process.
 func (c clientCredentialsGrantAuthenticator) GetToken() (string, error) {
 	data := url.Values{}
 	data.Set("client_id", c.clientID)

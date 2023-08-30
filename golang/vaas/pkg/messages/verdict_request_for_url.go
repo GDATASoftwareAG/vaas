@@ -1,3 +1,4 @@
+// Package messages provides structures for handling communication messages between the client and the VaaS server.
 package messages
 
 import (
@@ -5,6 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// VerdictRequestForURL is a specific implementation of VerdictRequest used for URL analysis requests.
 type verdictRequestForURL struct {
 	Kind                     Kind                     `json:"kind" default:"VerdictRequestForUrl"`
 	URL                      string                   `json:"url"`
@@ -15,26 +17,29 @@ type verdictRequestForURL struct {
 	UseHashLookup            bool                     `json:"use_shed"`
 }
 
+// GetGUID returns the GUID of the verdictRequestForURL.
 func (r verdictRequestForURL) GetGUID() string {
 	return r.GUID
 }
 
-func NewVerdictRequestForURL(sessionId string, options options.VaasOptions, URL string) VerdictRequest {
+// NewVerdictRequestForURL creates a new verdictRequestForURL instance.
+func NewVerdictRequestForURL(sessionID string, options options.VaasOptions, URL string) VerdictRequest {
 	return verdictRequestForURL{
 		Kind:          VerdictRequestForURLKind,
 		URL:           URL,
-		SessionID:     sessionId,
+		SessionID:     sessionID,
 		GUID:          uuid.New().String(),
 		UseCache:      options.UseCache,
 		UseHashLookup: options.UseHashLookup,
 	}
 }
 
-func NewVerdictRequestForUrlWithAttributes(sessionId string, options options.VaasOptions, URL string, attributes VerdictRequestAttributes) VerdictRequest {
+// NewVerdictRequestForURLWithAttributes creates a new verdictRequestForURL instance with attributes.
+func NewVerdictRequestForURLWithAttributes(sessionID string, options options.VaasOptions, URL string, attributes VerdictRequestAttributes) VerdictRequest {
 	return verdictRequestForURL{
 		Kind:                     VerdictRequestForURLKind,
 		URL:                      URL,
-		SessionID:                sessionId,
+		SessionID:                sessionID,
 		GUID:                     uuid.New().String(),
 		UseCache:                 options.UseCache,
 		UseHashLookup:            options.UseHashLookup,

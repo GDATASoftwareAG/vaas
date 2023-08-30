@@ -1,3 +1,4 @@
+// Package credentials provides utility functions for reading client credentials and endpoints from environment variables.
 package credentials
 
 import (
@@ -5,6 +6,8 @@ import (
 	"os"
 )
 
+// ReadCredentials reads client credentials and endpoint URLs from environment variables.
+// It returns the client ID, client secret, VaaS endpoint URL, and token endpoint URL.
 func ReadCredentials() (client_id string, client_secret string, vaas_url string, token_url string) {
 	ci, exists := os.LookupEnv("CLIENT_ID")
 	if !exists {

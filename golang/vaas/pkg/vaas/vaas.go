@@ -1,5 +1,5 @@
 // Package vaas provides a client for interacting with G DATA CyberDefense's VaaS Service
-// for Sending analysis requests to the Vaas server for various types of data, such as URLs, SHA256 hashes, and files.
+// for sending analysis requests to the Vaas server for various types of data, such as URLs, SHA256 hashes, and files.
 package vaas
 
 import (
@@ -23,12 +23,10 @@ import (
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
-// All kinds of request can be canceled by the context.
-// The Connect()-function has to be called before any other requests are made.
+// All kinds of requests can be canceled by the context.
+// The Connect() function has to be called before any other requests are made.
 // Please refer to the individual function comments for more details on their usage and behavior.
 type Vaas interface {
-	// Connect opens a websocket connection to the VAAS Server, which is kept open until the context.Context expires.
-	// The termChan indicates when a connection was closed. In the case of an unexpected close an error is written to the channel.
 	Connect(ctx context.Context, auth authenticator.ClientCredentialsGrantAuthenticator) (termChan <-chan error, err error)
 	ForUrl(ctx context.Context, uri string) (msg.VaasVerdict, error)
 	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
@@ -51,6 +49,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
+// vaas provides the implementation of the Vaas interface.
 type vaas struct {
 	logger              *log.Logger
 	websocketConnection *websocket.Conn
@@ -65,7 +64,7 @@ type vaas struct {
 }
 
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
-// Endpoint (vaasURL) has to be specified.
+// The vaasURL parameter specifies the endpoint for the VaaS service.
 func New(options options.VaasOptions, vaasURL string) Vaas {
 	client := &vaas{
 		logger:          log.Default(),
@@ -78,7 +77,8 @@ func New(options options.VaasOptions, vaasURL string) Vaas {
 	return client
 }
 
-// NewWithDefaultEndpoint creates a new instance of the Vaas struct with a default endpoint, which represents a client for interacting with a Vaas service.
+// NewWithDefaultEndpoint creates a new instance of the Vaas struct with a default endpoint.
+// It represents a client for interacting with a Vaas service.
 func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 	client := &vaas{
 		logger:          log.Default(),
@@ -91,6 +91,18 @@ func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 	return client
 }
 
+// Connect opens a websocket connection to the VAAS Server, which is kept open until the context.Context expires.
+// The termChan indicates when a connection was closed. In the case of an unexpected close, an error is written to the channel.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	auth := authenticator.NewClientCredentialsGrantAuthenticator("client_id", "client_secret")
+//	termChan, err := vaasClient.Connect(ctx, auth)
+//	if err != nil {
+//	    log.Fatalf("Failed to connect to VaaS: %v", err)
+//	}
 func (v *vaas) Connect(ctx context.Context, auth authenticator.ClientCredentialsGrantAuthenticator) (termChan <-chan error, err error) {
 	if err = v.authenticate(ctx, auth); err != nil {
 		return nil, err
@@ -102,6 +114,20 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.ClientCredentials
 	return termChan, nil
 }
 
+// ForSha256 sends an analysis request for a file identified by its SHA256 hash to the Vaas server and returns the verdict.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	sha256 := "..."
+//	verdict, err := vaasClient.ForSha256(ctx, sha256)
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdict: %v", err)
+//	}
+//	fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
@@ -125,6 +151,22 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 	}, nil
 }
 
+// ForSha256List sends analysis requests for a list of SHA256 hashes to the Vaas server and returns the verdicts.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	sha256List := []string{"sha256_hash_1", "sha256_hash_2"}
+//	verdicts, err := vaasClient.ForSha256List(ctx, sha256List)
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdicts: %v", err)
+//	}
+//	for _, verdict := range verdicts {
+//	    fmt.Printf("SHA256: %s\n", verdict.Sha256)
+//	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	}
 func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error) {
 	if v.sessionID == "" {
 		return []msg.VaasVerdict{}, errors.New("invalid operation")
@@ -149,6 +191,20 @@ func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.Va
 	return verdicts, nil
 }
 
+// ForFile sends an analysis request for a file at the given filePath to the Vaas server and returns the verdict.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	filePath := "path/to/file.txt"
+//	verdict, err := vaasClient.ForFile(ctx, filePath)
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdict: %v", err)
+//	}
+//	fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
@@ -184,6 +240,20 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	return v.forFileWithSha(ctx, file, sha256)
 }
 
+// ForFileInMemory sends an analysis request for file data provided as an io.Reader to the Vaas server and returns the verdict.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	fileData := bytes.NewReader([]byte("file contents"))
+//	verdict, err := vaasClient.ForFileInMemory(ctx, fileData)
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdict: %v", err)
+//	}
+//	fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")
@@ -208,6 +278,22 @@ func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVer
 	return v.forFileWithSha(ctx, bytes.NewReader(buf.Bytes()), sha256)
 }
 
+// ForFileList sends analysis requests for a list of file paths to the Vaas server and returns the verdicts.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options,  "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	fileList := []string{"path/to/file1.txt", "path/to/file2.txt"}
+//	verdicts, err := vaasClient.ForFileList(ctx, fileList)
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdicts: %v", err)
+//	}
+//	for _, verdict := range verdicts {
+//	    fmt.Printf("File: %s\n", verdict.Sha256)
+//	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	}
 func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error) {
 	if v.sessionID == "" {
 		return nil, errors.New("invalid operation")
@@ -232,6 +318,19 @@ func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVe
 	return verdicts, nil
 }
 
+// ForUrl sends an analysis request for a file URL to the Vaas server and returns the verdict.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	verdict, err := vaasClient.ForUrl(ctx, "https://example.com/examplefile")
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdict: %v", err)
+//	}
+//	fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
 		return msg.VaasVerdict{}, errors.New("invalid operation")

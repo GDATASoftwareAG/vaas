@@ -1,42 +1,43 @@
 [![vaas-golang-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml)
 [![Vulnerability Check](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/GDATASoftwareAG/vaas/golang/vaas/.svg)](https://pkg.go.dev/github.com/GDATASoftwareAG/vaas/golang/vaas/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/GDATASoftwareAG/vaas/golang/vaas)](https://goreportcard.com/report/github.com/GDATASoftwareAG/vaas/golang/vaas)
 
 # Go VaaS Client
 
 This is a Golang package that provides a client for the G DATA VaaS API.
 
-_Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware.
+_Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration into your application. With a few lines of code, you can start scanning files for malware.
 
 ## What does the SDK do?
 
-It gives you as a developer functions to talk to G DATA VaaS. It wraps away the complexity of the API into 5 basic functions.
+It gives you as a developer functions to talk to G DATA VaaS. It wraps away the complexity of the API into basic functions.
 
 ### Connect(token string) error
 
-Connects to the G DATA VaaS API using the given authentication token. token is the authentication token provided by G DATA. If authentication fails, an error will be returned.
+Connects to the G DATA VaaS API using the given authentication token. `token` is the authentication token provided by G DATA. If authentication fails, an error will be returned.
 
 ### Authenticate(token string) error
 
-Sends an authentication request to the G DATA VaaS API using the given authentication token. If authentication is successful, the session ID will be stored in the vaas object.
+Sends an authentication request to the G DATA VaaS API using the given authentication token. If authentication is successful, the session ID will be stored in the `vaas` object.
 
 ### ForSha256(sha256 string) (messages.VaasVerdict, error)
 
-Retrieves the verdict for the given SHA256 hash from the G DATA VaaS API. sha256 is the SHA256 hash of the file. If the request fails, an error will be returned. Otherwise, a messages.VaasVerdict object containing the verdict will be returned.
+Retrieves the verdict for the given SHA256 hash from the G DATA VaaS API. `sha256` is the SHA256 hash of the file. If the request fails, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
 
 ### ForFile(file string) (messages.VaasVerdict, error)
 
-Retrieves the verdict for the given file from the G DATA VaaS API. file is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a messages.VaasVerdict object containing the verdict will be returned.
+Retrieves the verdict for the given file from the G DATA VaaS API. `file` is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
 
 ### ForUrl(url string) (messages.VaasVerdict, error)
 
-Retrieves the verdict for the given url from the G DATA VaaS API. url is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a messages.VaasVerdict object containing the verdict will be returned.
+Retrieves the verdict for the given file URL from the G DATA VaaS API. `url` is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
 
 ## How to use
 
 ### Installation
 
-```go
+```sh
 go get -u github.com/GDATASoftwareAG/vaas/golang/vaas
 ```
 
@@ -51,7 +52,7 @@ import (
 
 ### Request a verdict
 
-Authentication & Initializing:
+Authentication & Initialization:
 ```go
 authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
 
@@ -96,6 +97,10 @@ if err != nil {
 }
 fmt.Println(result.Verdict)
 ```
+
+
+For more details, please refer to the package [documentation](https://pkg.go.dev/github.com/GDATASoftwareAG/vaas/golang/vaas/).
+
 ## <a name="interested"></a>I'm interested in VaaS
 
 You need credentials to use the service in your application. If you are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
