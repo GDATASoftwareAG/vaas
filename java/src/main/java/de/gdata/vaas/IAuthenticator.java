@@ -2,7 +2,7 @@ package de.gdata.vaas;
 
 import java.io.IOException;
 
-public interface IClientCredentialsGrantAuthenticator {
+public interface IAuthenticator {
     /**
      * Get access token from identity provider
      * 
