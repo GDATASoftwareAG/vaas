@@ -271,7 +271,6 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    @Disabled("Disabled due to unknown behavior in action")
     public void fromFileEmptyFile()
             throws Exception {
         byte[] clean = {};

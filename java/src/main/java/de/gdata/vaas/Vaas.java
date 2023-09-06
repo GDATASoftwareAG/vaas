@@ -375,11 +375,10 @@ public class Vaas {
 
     private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)
             throws IOException, URISyntaxException {
-        var bytes = Files.readAllBytes(file);
         var request = HttpRequest
                 .newBuilder(new URI(url))
                 .header("Authorization", authToken)
-                .PUT(HttpRequest.BodyPublishers.ofByteArray(bytes))
+                .PUT(HttpRequest.BodyPublishers.ofFile(file))
                 .build();
 
         var futureResponse = this.httpClient
