@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.20230919]
+
+### Added
+
+- Verdicts for URLs are cached for 1h. If an URL is cached the response is returned immediately.
+  The file does not have to be downloaded again.
+
+### Changed
+
+-
+
+### Fixed
+
+- forFile verdicts are cached
+
 
 ## [1.1.0]
 
