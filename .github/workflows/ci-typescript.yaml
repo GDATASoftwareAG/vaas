@@ -26,12 +26,12 @@ on:
 
 env:
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
-  CLIENT_SECRET: ${{ (inputs.environment == 'production' || startsWith(github.ref, 'refs/tags/ts')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
-  VAAS_URL: ${{ (inputs.environment == 'production' || startsWith(github.ref, 'refs/tags/ts')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
-  TOKEN_URL: ${{ (inputs.environment == 'production' || startsWith(github.ref, 'refs/tags/ts')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
+  CLIENT_SECRET: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/ts')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
+  VAAS_URL: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/ts')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
+  TOKEN_URL: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/ts')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
-  VAAS_PASSWORD: ${{ (inputs.environment == 'production' || startsWith(github.ref, 'refs/tags/ts')) && secrets.VAAS_PASSWORD || secrets.STAGING_VAAS_PASSWORD }}
+  VAAS_PASSWORD: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/ts')) && secrets.VAAS_PASSWORD || secrets.STAGING_VAAS_PASSWORD }}
 
 jobs:
   build-typescript:
