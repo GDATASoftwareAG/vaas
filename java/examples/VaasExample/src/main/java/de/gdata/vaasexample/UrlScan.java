@@ -21,7 +21,7 @@ public class UrlScan {
             vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de";
         } 
 
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, new URI(tokenUrl));
         var config = new VaasConfig(new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         vaas.connect();

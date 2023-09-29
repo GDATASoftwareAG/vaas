@@ -37,9 +37,12 @@ public static class Program
         {
             Url = VaasUrl,
         };
-        // If you got username + password
-        var authenticator = new ResourceOwnerPasswordGrantAuthenticator(ClientIdForResourceOwnerPasswordGrant, UserName, Password, TokenUrl);
-        // else if you got client id and client secret
+        // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
+        var authenticator = new ResourceOwnerPasswordGrantAuthenticator("vaas-customer", UserName, Password, TokenUrl);
+        // You may use self registration and create a new username and password for the
+        // ResourceOwnerPasswordAuthenticator by yourself like the example above on https://vaas.gdata.de/login
+
+        // Else if you got a client id and client secret from us, you can use the ClientCredentialsGrantAuthenticator like this
         // var authenticator = new ClientCredentialsGrantAuthenticator(
         //     ClientId,
         //     ClientSecret,

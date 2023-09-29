@@ -14,14 +14,14 @@ $USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR = false;
 // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
 if ($USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR){
     $authenticator = new ResourceOwnerPasswordGrantAuthenticator(
-        getenv("VAAS_CLIENT_ID"),
+        "vaas-customer",
         getenv("VAAS_USER_NAME"),
         getenv("VAAS_PASSWORD"),
         getenv("TOKEN_URL")
     );
 }
-// If you got a client id with a link you may use self registration and create a new username and password for the
-// ResourceOwnerPasswordAuthenticator by yourself like the example above.
+// You may use self registration and create a new username and password for the
+// ResourceOwnerPasswordAuthenticator by yourself like the example above on https://vaas.gdata.de/login
 
 // If you got a client id and client secret from us, you can use the ClientCredentialsGrantAuthenticator like this
 else{

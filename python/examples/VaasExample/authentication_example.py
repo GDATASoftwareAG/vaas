@@ -16,15 +16,15 @@ async def main():
     # If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
     if USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR:
         authenticator = ResourceOwnerPasswordGrantAuthenticator(
-            os.getenv("VAAS_CLIENT_ID"),
+            "vaas-customer",
             os.getenv("VAAS_USER_NAME"),
             os.getenv("VAAS_PASSWORD"),
             token_endpoint=token_url
         )
-    # If you got a client id with a link you may use self registration and create a new username and password for the
-    # ResourceOwnerPasswordAuthenticator by yourself like the example above.
+    # You may use self registration and create a new username and password for the
+    # ResourceOwnerPasswordAuthenticator by yourself like the example above on https://vaas.gdata.de/login
 
-    # If you got a client id and client secret from us, you can use the ClientCredentialsGrantAuthenticator like this
+    # Else if you got a client id and client secret from us, you can use the ClientCredentialsGrantAuthenticator like this
     else:
         authenticator = ClientCredentialsGrantAuthenticator(
             os.getenv("CLIENT_ID"),
