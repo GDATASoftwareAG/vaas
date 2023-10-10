@@ -23,3 +23,8 @@ task urlScan(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'de.gdata.vaasexample.UrlScan'
 }
+
+task authentication(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.Authentication'
+}

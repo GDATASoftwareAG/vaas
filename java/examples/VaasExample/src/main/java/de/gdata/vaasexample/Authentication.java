@@ -1,12 +1,8 @@
 package de.gdata.vaasexample;
 
-import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
-import de.gdata.vaas.ResourceOwnerPasswordGrantAuthenticator;
-import de.gdata.vaas.Vaas;
-import de.gdata.vaas.VaasConfig;
+import de.gdata.vaas.*;
 import de.gdata.vaas.messages.VerdictRequestAttributes;
 import java.net.URI;
-import java.nio.file.Path;
 
 
 public class Authentication {
@@ -15,7 +11,6 @@ public class Authentication {
         var clientSecret = System.getenv("CLIENT_SECRET");
         var userName = System.getenv("VAAS_USER_NAME");
         var password = System.getenv("VAAS_PASSWORD");
-        var scanPath = System.getenv("SCAN_PATH");
         var tokenUrl = System.getenv("TOKEN_URL");
         if (tokenUrl == null) { tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"; }
         var vaasUrl = System.getenv("VAAS_URL");
@@ -42,10 +37,9 @@ public class Authentication {
         var vaas = new Vaas(config, authenticator);
         vaas.connect();
 
-        var file = Path.of(scanPath);
         var verdictRequestAttributes = new VerdictRequestAttributes();
         verdictRequestAttributes.setTenantId("fileTenant");
-        var verdict = vaas.forFile(file, verdictRequestAttributes);
+        var verdict = vaas.forSha256(new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"), verdictRequestAttributes);
         vaas.disconnect();
         System.out.printf("File %s was detected as %s", verdict.getSha256(), verdict.getVerdict());
     }

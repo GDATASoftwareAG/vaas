@@ -76,11 +76,17 @@ jobs:
       - name: run examples scan file
         env:
           SCAN_PATH: "main.ts"
-        run: npx ts-node main.ts
+        run: pnpm start:filescan
+        working-directory: typescript/examples/VaasExample
+
+      - name: run examples authentication
+        env:
+          SCAN_PATH: "authentication.ts"
+        run: pnpm start:authentication
         working-directory: typescript/examples/VaasExample
 
       - name: run examples scan url
-        run: npx ts-node url_scan.ts
+        run: pnpm start:urlscan
         working-directory: typescript/examples/VaasExample
 
       - name: extract version

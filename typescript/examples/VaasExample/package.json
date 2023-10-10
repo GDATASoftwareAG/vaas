@@ -5,13 +5,14 @@
     "scripts": {
         "start:filescan": "npx ts-node main.ts",
         "start:urlscan": "npx ts-node url_scan.ts",
+        "start:authentication": "npx ts-node authentication.ts",
         "build": "tsc",
         "watch": "tsc -w"
     },
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "gdata-vaas": "5.3.0",
+        "gdata-vaas": "6.0.0",
         "ts-node": "^10.9.1",
         "@types/node": "20.4.8",
         "typescript": "5.1.6"

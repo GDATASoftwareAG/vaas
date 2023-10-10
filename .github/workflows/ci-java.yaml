@@ -76,6 +76,13 @@ jobs:
           gradle-version: "8.1"
           build-root-directory: java/examples/VaasExample
 
+      - name: run authentication examples
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: authentication
+          gradle-version: "8.1"
+          build-root-directory: java/examples/VaasExample
+
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/java')
         run: |
