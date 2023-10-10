@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
 
-	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 )
 
@@ -25,9 +25,17 @@ func main() {
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
-		log.Printf("No .env file found, try environment variables...")
+		log.Printf("failed to load environment - %v", err)
 	}
-	clientID, clientSecret, _, _ := credentials.ReadCredentials()
+	clientID, exists := os.LookupEnv("CLIENT_ID")
+	if !exists {
+		log.Fatal("no Client ID set")
+	}
+	clientSecret, exists := os.LookupEnv("CLIENT_SECRET")
+	if !exists {
+		log.Fatal("no Client Secret set")
+	}
+
 	auth := authenticator.NewWithDefaultTokenEndpoint(clientID, clientSecret)
 
 	vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{

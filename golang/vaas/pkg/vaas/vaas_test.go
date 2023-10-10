@@ -16,9 +16,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/internal/messages"
+
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
-	credentials "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/credentials"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 )
 
@@ -32,7 +32,22 @@ func (tf *testFixture) setUp(t *testing.T) Vaas {
 		log.Printf("failed to load environment - %v", err)
 	}
 
-	clientID, clientSecret, vaasURL, tokenEndpoint := credentials.ReadCredentials()
+	clientID, exists := os.LookupEnv("CLIENT_ID")
+	if !exists {
+		log.Fatal("no Client ID set")
+	}
+	clientSecret, exists := os.LookupEnv("CLIENT_SECRET")
+	if !exists {
+		log.Fatal("no Client Secret set")
+	}
+	vaasURL, exists := os.LookupEnv("VAAS_URL")
+	if !exists {
+		log.Fatal("no vaas endpoint configured")
+	}
+	tokenEndpoint, exists := os.LookupEnv("TOKEN_URL")
+	if !exists {
+		log.Fatal("no token endpoint configured")
+	}
 
 	testingOptions := options.VaasOptions{
 		UseHashLookup: true,
@@ -72,7 +87,7 @@ func TestVaas_ForSha256(t *testing.T) {
 	}
 	type args struct {
 		sha256          string
-		expectedVerdict messages.Verdict
+		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
 		args          args
@@ -85,7 +100,7 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "not authenticated - error (invalid operation)",
 			args: args{
 				sha256:          cleanSha256,
-				expectedVerdict: messages.Clean,
+				expectedVerdict: msg.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -100,7 +115,7 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "With clean sha256 - got verdict clean",
 			args: args{
 				sha256:          cleanSha256,
-				expectedVerdict: messages.Clean,
+				expectedVerdict: msg.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -115,7 +130,7 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "With malicious sha256 - got verdict malicious",
 			args: args{
 				sha256:          maliciousSha256,
-				expectedVerdict: messages.Malicious,
+				expectedVerdict: msg.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -130,7 +145,7 @@ func TestVaas_ForSha256(t *testing.T) {
 			name: "With unknown sha256 - got verdict unknown",
 			args: args{
 				sha256:          unknownSha256,
-				expectedVerdict: messages.Unknown,
+				expectedVerdict: msg.Unknown,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -173,7 +188,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 	}
 	type args struct {
 		fileContent     string
-		expectedVerdict messages.Verdict
+		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
 		args          args
@@ -189,7 +204,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
 					return string(decodedEicarString)
 				}(),
-				expectedVerdict: messages.Malicious,
+				expectedVerdict: msg.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -206,7 +221,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
 					return string(decodedEicarString)
 				}(),
-				expectedVerdict: messages.Malicious,
+				expectedVerdict: msg.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -220,7 +235,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 			name: "With random file - got verdict clean",
 			args: args{
 				fileContent:     RandomString(200),
-				expectedVerdict: messages.Clean,
+				expectedVerdict: msg.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -282,7 +297,7 @@ func TestVaas_ForUrl(t *testing.T) {
 	}
 	type args struct {
 		url             string
-		expectedVerdict messages.Verdict
+		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
 		args          args
@@ -295,7 +310,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			name: "not authenticated - error (invalid operation)",
 			args: args{
 				url:             cleanURL,
-				expectedVerdict: messages.Clean,
+				expectedVerdict: msg.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -309,7 +324,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			name: "with clean url - got verdict clean",
 			args: args{
 				url:             cleanURL,
-				expectedVerdict: messages.Clean,
+				expectedVerdict: msg.Clean,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -323,7 +338,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			name: "with eicar url - got verdict malicious",
 			args: args{
 				url:             eicarURL,
-				expectedVerdict: messages.Malicious,
+				expectedVerdict: msg.Malicious,
 			},
 			fields: fields{
 				testingOptions: options.VaasOptions{
@@ -374,9 +389,9 @@ func TestVaas_ForSha256List(t *testing.T) {
 	unknownIndex := Index(verdicts, unknownSha256)
 	cleanIndex := Index(verdicts, cleanSha256)
 
-	assert.Equal(t, messages.Malicious, verdicts[maliciousIndex].Verdict)
-	assert.Equal(t, messages.Clean, verdicts[cleanIndex].Verdict)
-	assert.Equal(t, messages.Unknown, verdicts[unknownIndex].Verdict)
+	assert.Equal(t, msg.Malicious, verdicts[maliciousIndex].Verdict)
+	assert.Equal(t, msg.Clean, verdicts[cleanIndex].Verdict)
+	assert.Equal(t, msg.Unknown, verdicts[unknownIndex].Verdict)
 }
 
 func TestVaas_ForFileList(t *testing.T) {
@@ -401,7 +416,7 @@ func TestVaas_ForFileList(t *testing.T) {
 	}
 
 	for _, verdict := range verdicts {
-		assert.Equal(t, messages.Clean, verdict.Verdict, verdict.ErrMsg)
+		assert.Equal(t, msg.Clean, verdict.Verdict, verdict.ErrMsg)
 	}
 }
 
@@ -415,7 +430,7 @@ func RandomString(n int) string {
 	return string(s)
 }
 
-func Index(s []messages.VaasVerdict, str string) int {
+func Index(s []msg.VaasVerdict, str string) int {
 	for i, v := range s {
 		if v.Sha256 == str {
 			return i

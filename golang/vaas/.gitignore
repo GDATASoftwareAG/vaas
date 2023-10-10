@@ -1,2 +1,3 @@
 .golangci.yml
 check.sh
+/examples/vaasctl/
