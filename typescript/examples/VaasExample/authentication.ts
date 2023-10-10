@@ -42,7 +42,7 @@ async function main() {
   //   CLIENT_SECRET,
   //   TOKEN_URL
   // );
-
+  
   const vaas = new Vaas();
   const token = await authenticator.getToken()
   await vaas.connect(token, VAAS_URL);
