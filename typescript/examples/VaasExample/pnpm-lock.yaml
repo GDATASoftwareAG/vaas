@@ -9,8 +9,8 @@ dependencies:
     specifier: 20.4.8
     version: 20.4.8
   gdata-vaas:
-    specifier: 5.3.0
-    version: 5.3.0
+    specifier: 6.0.0
+    version: 6.0.0
   ts-node:
     specifier: ^10.9.1
     version: 10.9.1(@types/node@20.4.8)(typescript@5.1.6)
@@ -160,8 +160,8 @@ packages:
       mime-types: 2.1.35
     dev: false
 
-  /gdata-vaas@5.3.0:
-    resolution: {integrity: sha512-kxE/2F0OBHlyf8Q91GAOhdklS8mToaJEoNA159b7Y962D+FDF0Q0WFltqI9E5OApnuaXT5ivb67JKPs65KsmRQ==}
+  /gdata-vaas@6.0.0:
+    resolution: {integrity: sha512-ATliRm+Xe2bxK3NIIcrZyiWAxXCiWbOQl5+o5yiFEZ+s79EGIbpfo8zpGvjPDfFrj2C16yu0fkSWHyXYwaAGAQ==}
     dependencies:
       '@types/uuid': 9.0.2
       '@types/ws': 8.5.5
