@@ -11,7 +11,6 @@ import {
     VaasConnectionClosedError,
     VaasInvalidStateError,
 } from "../src/VaasErrors";
-import {AuthenticationResponse} from "../src/messages/authentication_response";
 import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
 import ResourceOwnerPasswordGrantAuthenticator from "../src/ResourceOwnerPasswordGrantAuthenticator";
 
