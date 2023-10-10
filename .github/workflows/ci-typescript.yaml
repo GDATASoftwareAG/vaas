@@ -36,7 +36,7 @@ env:
 jobs:
   build-typescript:
     name: Build & Test TypeScript SDK
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: checkout
@@ -46,13 +46,13 @@ jobs:
         name: install pnpm
         id: pnpm-install
         with:
-          version: 7
+          version: 8
           run_install: false
 
       - uses: actions/setup-node@v3
         name: setup node
         with:
-          node-version: 18
+          node-version: 20
           registry-url: "https://registry.npmjs.org"
           cache: "pnpm"
           cache-dependency-path: "typescript/pnpm-lock.yaml"

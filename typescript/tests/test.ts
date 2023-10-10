@@ -13,6 +13,7 @@ import {
 } from "../src/VaasErrors";
 import {AuthenticationResponse} from "../src/messages/authentication_response";
 import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
+import ResourceOwnerPasswordGrantAuthenticator from "../src/ResourceOwnerPasswordGrantAuthenticator";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -37,11 +38,28 @@ const CLIENT_ID = getFromEnvironment("CLIENT_ID");
 const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
 const VAAS_URL = getFromEnvironment("VAAS_URL");
 const TOKEN_URL = getFromEnvironment("TOKEN_URL");
+const VAAS_USER_NAME = getFromEnvironment("VAAS_USER_NAME");
+const VAAS_PASSWORD = getFromEnvironment("VAAS_PASSWORD");
+const VAAS_CLIENT_ID = getFromEnvironment("VAAS_CLIENT_ID");
 
-async function createVaas() {
+async function createVaasWithClientCredentialsGrantAuthenticator() {
     let authenticator = new ClientCredentialsGrantAuthenticator(
         CLIENT_ID,
         CLIENT_SECRET,
+        TOKEN_URL
+    );
+    let vaas = new Vaas();
+    let token = await authenticator.getToken()
+    await vaas.connect(token, VAAS_URL)
+    vaas.debug = true;
+    return vaas;
+}
+
+async function createVaasWithResourceOwnerPasswordGrantAuthenticator() {
+    let authenticator = new ResourceOwnerPasswordGrantAuthenticator(
+        VAAS_CLIENT_ID,
+        VAAS_USER_NAME,
+        VAAS_PASSWORD,
         TOKEN_URL
     );
     let vaas = new Vaas();
@@ -69,12 +87,24 @@ describe("Test authentication", function () {
     });
 });
 
+describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", function () {
+    this.timeout(defaultTimeout);
+
+    it("if a request times out, an error is expected", async () => {
+        const vaas = await createVaasWithResourceOwnerPasswordGrantAuthenticator();
+        const verdict = await vaas.forSha256(
+            "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
+        );
+        expect(verdict.verdict).to.equal("Clean");
+    });
+});
+
 describe("Test cancellation through timeout", function () {
     this.timeout(defaultTimeout);
 
     it("if a request times out, an error is expected", async () => {
         const randomFileContent = randomBytes.sync(50);
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         // 1ms timeout
         const promise = vaas.forFile(
             randomFileContent,
@@ -88,7 +118,7 @@ describe("Test verdict requests", function () {
     this.timeout(defaultTimeout);
 
     it('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forSha256(
             "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
         );
@@ -97,7 +127,7 @@ describe("Test verdict requests", function () {
     });
 
     it('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forSha256(
             "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
         );
@@ -109,7 +139,7 @@ describe("Test verdict requests", function () {
         const eicarString =
             "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
         const eicarByteArray = new TextEncoder().encode(eicarString);
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forFile(eicarByteArray);
         expect(verdict.verdict).to.equal("Malicious");
         expect(verdict.sha256).to.equal("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
@@ -118,14 +148,14 @@ describe("Test verdict requests", function () {
     it("test if unknown file is uploaded and detected as clean", async () => {
         const randomFileContent = await randomBytes.sync(50);
         var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forFile(randomFileContent);
         expect(verdict.verdict).to.equal("Clean");
         expect(verdict.sha256).to.equal(fileSha256);
     });
 
     it("if a list of SHA256 is uploaded, they are detected", async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdicts = await vaas.forSha256List([
             "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
             "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
@@ -141,7 +171,7 @@ describe("Test verdict requests", function () {
         const randomFileContent2 = await randomBytes.sync(50);
         var file1Sha256 = Vaas.toHexString(sha256.hash(randomFileContent1));
         var file2Sha256 = Vaas.toHexString(sha256.hash(randomFileContent2));
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forFileList([
             randomFileContent1,
             randomFileContent2,
@@ -155,14 +185,14 @@ describe("Test verdict requests", function () {
     it("if an empty file is uploaded, it is detected as clean", async () => {
         const emptyFile = new Uint8Array();
         var fileSha256 = Vaas.toHexString(sha256.hash(emptyFile));
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forFile(emptyFile);
         expect(verdict.verdict).to.equal("Clean");
         expect(verdict.sha256).to.equal(fileSha256);
     });
 
     it("if we request the same guid twice, both calls return a result", async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const sha256 =
             "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
         const request1 = vaas.forSha256(sha256);
@@ -176,7 +206,7 @@ describe("Test verdict requests", function () {
     });
 
     xit("keeps connection alive", async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const sha256 =
             "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
         let verdict = await vaas.forSha256(sha256);
@@ -188,7 +218,7 @@ describe("Test verdict requests", function () {
     }).timeout(45000);
 
     it("returns Pup for AMTSO pup sample", async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const sha256 =
             "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
         let verdict = await vaas.forSha256(sha256);
@@ -197,13 +227,13 @@ describe("Test verdict requests", function () {
     });
 
     it('if a clean url is submitted, a verdict "clean" is expected', async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forUrl(new URL("https://www.gdatasoftware.com/oem/verdict-as-a-service"));
         expect(verdict.verdict).to.equal("Clean");
     });
     
     it('if EICAR url is submitted, a verdict "clean" is expected', async () => {
-        const vaas = await createVaas();
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forUrl(new URL("https://secure.eicar.org/eicar.com"));
         expect(verdict.verdict).to.equal("Malicious");
     });
@@ -266,7 +296,7 @@ describe("Vaas", async () => {
             });
 
             it("throws if connection was closed", async () => {
-                const vaas = await createVaas();
+                const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
                 vaas.close();
                 await expect((vaas as any)[method](...params)).to.be.rejectedWith(
                     VaasConnectionClosedError,

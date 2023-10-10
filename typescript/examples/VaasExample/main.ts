@@ -19,8 +19,8 @@ async function main() {
   const CLIENT_ID = getFromEnvironment("CLIENT_ID");
   const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
   const SCAN_PATH = getFromEnvironment("SCAN_PATH");
-  const TOKEN_URL =
-    "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token";
+  const TOKEN_URL = getFromEnvironment("TOKEN_URL");
+  const VAAS_URL = getFromEnvironment("VAAS_URL");
 
   const authenticator = new ClientCredentialsGrantAuthenticator(
     CLIENT_ID,
@@ -30,7 +30,7 @@ async function main() {
 
   const vaas = new Vaas();
   const token = await authenticator.getToken()
-  await vaas.connect(token, "wss://gateway.production.vaas.gdatasecurity.de");
+  await vaas.connect(token, VAAS_URL);
 
   const f = await fs.open(SCAN_PATH, "r");
 
