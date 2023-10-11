@@ -13,6 +13,7 @@ Gem::Specification.new do |s|
   s.license     = "MIT"
   s.require_paths = ["lib"]
   s.metadata = { "documentation_uri" => "https://github.com/GDATASoftwareAG/vaas/blob/main/ruby/README.md" }
+  s.required_ruby_version = '3.1.1'
 
   s.add_dependency 'async', '~> 2.3.1'
   s.add_dependency 'async-http', '~> 0.59.4'
