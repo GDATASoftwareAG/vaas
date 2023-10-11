@@ -7,7 +7,7 @@ module VAAS
 
     attr_accessor :client_id, :client_secret, :token_endpoint, :token
 
-    def initialize(client_id, client_secret, token_endpoint)
+    def initialize(client_id, client_secret, token_endpoint = 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token')
       @client_id = client_id
       @client_secret = client_secret
       @token_endpoint = token_endpoint
