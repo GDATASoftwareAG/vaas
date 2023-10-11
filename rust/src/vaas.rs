@@ -1,10 +1,12 @@
 //! The `Vaas` module provides all needed functions to check a hash or file for malicious content.
 
+use crate::authenticator::Authenticator;
 use crate::builder::Builder;
 use crate::connection::Connection;
 use crate::error::{Error, VResult};
 use crate::message::{AuthRequest, AuthResponse, OpenIdConnectTokenResponse};
 use crate::options::Options;
+use crate::resource_owner_password_grant_authenticator::ResourceOwnerPasswordGrantAuthenticator;
 use reqwest::{StatusCode, Url};
 use websockets::{Frame, WebSocket, WebSocketReadHalf, WebSocketWriteHalf};
 
@@ -50,6 +52,39 @@ impl Vaas {
         )
         .unwrap();
         Vaas::get_token_from_url(client_id, client_secret, default_auth_url).await
+    }
+
+    /// Get an ID token from the default identity provider. Use this if you have a
+    /// user name and password as credentials.
+    pub async fn get_token_with_user_name_and_password(
+        client_id: &str,
+        user_name: &str,
+        password: &str,
+    ) -> VResult<String> {
+        let default_auth_url = Url::parse(
+            "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token",
+        )
+        .unwrap();
+        Self::get_token_with_user_name_and_password_from_url(
+            client_id,
+            user_name,
+            password,
+            &default_auth_url,
+        )
+        .await
+    }
+
+    /// Get an ID token from an identity provider. Use this if you have a
+    /// user name and password as credentials.
+    pub async fn get_token_with_user_name_and_password_from_url(
+        client_id: &str,
+        user_name: &str,
+        password: &str,
+        token_url: &Url,
+    ) -> VResult<String> {
+        let authenticator =
+            ResourceOwnerPasswordGrantAuthenticator::new(client_id, user_name, password, token_url);
+        authenticator.get_token().await
     }
 
     /// Create a new [Builder] instance to configure the `Vaas` instance.

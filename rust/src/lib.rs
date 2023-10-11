@@ -28,7 +28,7 @@
 //!     //Authenticate and create VaaS instance
 //!     let token = Vaas::get_token("client_id", "client_secret").await?;
 //!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
-//! 
+//!
 //!     // Create the SHA256 we want to check.
 //!     let sha256 = Sha256::try_from("698CDA840A0B344639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")?;
 //!
@@ -50,11 +50,11 @@
 //! async fn main() -> VResult<()> {
 //!     // Cancel the request after 10 seconds if no response is received.
 //!     let ct = CancellationToken::from_seconds(10);
-//! 
+//!
 //!     //Authenticate and create VaaS instance
 //!     let token = Vaas::get_token("client_id", "client_secret").await?;
 //!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
-//! 
+//!
 //!     // Create file we want to check.
 //!     let file = std::path::PathBuf::from("myfile");
 //!
@@ -116,12 +116,14 @@
 //! }
 #![warn(missing_docs)]
 
+mod authenticator;
 pub mod builder;
 pub mod cancellation;
 pub mod connection;
 pub mod error;
 pub mod message;
 mod options;
+mod resource_owner_password_grant_authenticator;
 pub mod sha256;
 pub mod vaas;
 pub mod vaas_verdict;

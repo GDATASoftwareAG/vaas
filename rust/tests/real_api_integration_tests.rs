@@ -30,6 +30,38 @@ async fn get_vaas() -> Connection {
 }
 
 #[tokio::test]
+async fn connect_with_resource_owner_password_grant() {
+    let token_url: Url = dotenv::var("TOKEN_URL")
+        .expect("No TOKEN_URL environment variable set to be used in the integration tests")
+        .parse()
+        .expect("Failed to parse TOKEN_URL environment variable");
+    let client_id = dotenv::var("VAAS_CLIENT_ID")
+        .expect("No CLIENT_ID environment variable set to be used in the integration tests");
+    let user_name = dotenv::var("VAAS_USER_NAME")
+        .expect("No VAAS_USER_NAME environment variable set to be used in the integration tests");
+    let password = dotenv::var("VAAS_PASSWORD")
+        .expect("No VAAS_PASSWORD environment variable set to be used in the integration tests");
+    let vaas_url = dotenv::var("VAAS_URL")
+        .expect("No VAAS_URL environment variable set to be used in the integration tests");
+    let token = Vaas::get_token_with_user_name_and_password_from_url(
+        client_id.as_str(),
+        user_name.as_str(),
+        password.as_str(),
+        &token_url,
+    )
+    .await
+    .unwrap();
+    let connection = Vaas::builder(token)
+        .url(Url::parse(&vaas_url).unwrap())
+        .build()
+        .unwrap()
+        .connect()
+        .await;
+
+    assert!(connection.is_ok())
+}
+
+#[tokio::test]
 async fn from_sha256_wrong_credentials() {
     let token_url: Url = dotenv::var("TOKEN_URL")
         .expect("No TOKEN_URL environment variable set to be used in the integration tests")

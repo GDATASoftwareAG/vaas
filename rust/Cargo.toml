@@ -22,6 +22,7 @@ tokio = { version = "1.32", features = ["sync", "fs"] }
 sha2 = "0.10.8"
 futures = "0.3"
 rand = "0.8"
+async-trait = "0.1.73"
 
 [dev-dependencies]
 dotenv = "0.15"
