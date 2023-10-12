@@ -27,6 +27,8 @@ module VAAS
       ensure
         client&.close
       end
+
+      raise VaasAuthenticationError if token.nil?
       token
     end
   end
