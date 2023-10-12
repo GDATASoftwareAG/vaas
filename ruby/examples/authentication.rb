@@ -1,11 +1,11 @@
 require 'vaas/client_credentials_grant_authenticator'
 require 'vaas/resource_owner_password_grant_authenticator'
-require 'async'
 require 'vaas/vaas_main'
+require 'async'
 
 
 def main
-    client_id = ENV.fetch("CLIENT_ID") || "vaas-customer"
+    client_id = ENV.fetch("CLIENT_ID")
     client_secret = ENV.fetch("CLIENT_SECRET")
     user_name = ENV.fetch("VAAS_USER_NAME")
     password = ENV.fetch("VAAS_PASSWORD")
