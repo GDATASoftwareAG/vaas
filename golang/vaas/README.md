@@ -131,26 +131,26 @@ result, err := vaasClient.ForFile(analysisCtx, "path-to-your-file")
 if err != nil {
       log.Fatal(err)
 }
-fmt.Println(result.Verdict)
+fmt.Printf("Verdict: %s\n", result.Verdict)
 ```
 
 Verdict Request for file data provided as an io.Reader:
 ```go
 fileData := bytes.NewReader([]byte("file contents"))
-verdict, err := vaasClient.ForFileInMemory(analysisCtx, fileData)
+result, err := vaasClient.ForFileInMemory(analysisCtx, fileData)
 if err != nil {
     log.Fatalf("Failed to get verdict: %v", err)
 }
-fmt.Printf("Verdict: %s\n", verdict.Verdict)
+fmt.Printf("Verdict: %s\n", result.Verdict)
 ```
 
 Verdict Request for a file URL:
 ```go
-verdict, err := vaasClient.ForUrl(ctx, "https://example.com/examplefile")
+result, err := vaasClient.ForUrl(ctx, "https://example.com/examplefile")
 if err != nil {
     log.Fatalf("Failed to get verdict: %v", err)
 }
-fmt.Printf("Verdict: %s\n", verdict.Verdict)
+fmt.Printf("Verdict: %s\n", result.Verdict)
 ```
 
 
