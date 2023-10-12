@@ -84,6 +84,8 @@ This method is used when you have a `username` and `password`. Here's how to use
 ```go
 authenticator := authenticator.NewWithResourceOwnerPassword("client_id", "username", "password", "token_endpoint")
 ```
+If you do not have a specific Client ID, please use `"vaas-customer"` as the client_id.
+
 ### Request a verdict
 
 Authentication & Initialization:
