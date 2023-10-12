@@ -1,5 +1,7 @@
 require 'vaas/client_credentials_grant_authenticator'
 require 'vaas/resource_owner_password_grant_authenticator'
+require 'async'
+require 'vaas/vaas_main'
 
 
 def main
