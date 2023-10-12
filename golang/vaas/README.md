@@ -119,7 +119,7 @@ Verdict Request for SHA256:
 // Request a verdict for a specific SHA256 hash (replace "sha256-hash" with the actual SHA256 hash)
 result, err := vaasClient.ForFile(analysisCtx, "sha256-hash")
 if err != nil {
-      log.Fatal(err)
+    log.Fatalf("Failed to get verdict: %v", err)
 }
 fmt.Println(result.Verdict)
 ```
@@ -129,7 +129,7 @@ Verdict Request for a file:
 // Request a verdict for a specific file (replace "path-to-your-file" with the actual file path)
 result, err := vaasClient.ForFile(analysisCtx, "path-to-your-file")
 if err != nil {
-      log.Fatal(err)
+    log.Fatalf("Failed to get verdict: %v", err)
 }
 fmt.Printf("Verdict: %s\n", result.Verdict)
 ```
@@ -146,7 +146,7 @@ fmt.Printf("Verdict: %s\n", result.Verdict)
 
 Verdict Request for a file URL:
 ```go
-result, err := vaasClient.ForUrl(ctx, "https://example.com/examplefile")
+result, err := vaasClient.ForUrl(analysisCtx, "https://example.com/examplefile")
 if err != nil {
     log.Fatalf("Failed to get verdict: %v", err)
 }
