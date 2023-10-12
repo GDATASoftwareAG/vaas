@@ -88,6 +88,12 @@ jobs:
         run: ruby example_with_reconnect.rb
         working-directory: ruby/examples
 
+      - name: Run authentication example
+        env:
+          URL: "https://github.com/GDATASoftwareAG/vaas"
+        run: ruby authentication.rb
+        working-directory: ruby/examples
+
       - name: Push to rubygems.org
         if: startsWith(github.ref, 'refs/tags/rb')
         env:
