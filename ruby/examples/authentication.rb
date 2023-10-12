@@ -9,7 +9,7 @@ def main
     password = ENV.fetch("VAAS_PASSWORD")
     token_url = ENV.fetch("TOKEN_URL") || "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
     vaas_url = ENV.fetch("VAAS_URL") || "wss://gateway.production.vaas.gdatasecurity.de"
-    test_url = ENV.fetch("TEST_URL")
+    test_url = "https://gdata.de"
 
     #If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
     authenticator = VAAS::ResourceOwnerPasswordGrantAuthenticator.new(
