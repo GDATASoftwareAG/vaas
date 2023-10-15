@@ -17,12 +17,12 @@ serde_json = "1.0"
 thiserror = "1.0"
 uuid = { version = "1.4.1", features = ["serde", "v4"] }
 reqwest = "0.11"
-regex = "1.9"
-tokio = { version = "1.32", features = ["sync", "fs"] }
+regex = "1.10"
+tokio = { version = "1.33", features = ["sync", "fs"] }
 sha2 = "0.10.8"
 futures = "0.3"
 rand = "0.8"
 
 [dev-dependencies]
 dotenv = "0.15"
-tokio = { version = "1.32", features = ["rt", "macros", "rt-multi-thread"] }
+tokio = { version = "1.33", features = ["rt", "macros", "rt-multi-thread"] }
