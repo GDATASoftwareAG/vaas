@@ -7,7 +7,7 @@ using Vaas.Messages;
 
 namespace Vaas;
 
-public class ResourceOwnerPasswordGrantAuthenticator
+public class ResourceOwnerPasswordGrantAuthenticator : IAuthenticator
 {
     private readonly string _clientId;
     private readonly string _userName;
