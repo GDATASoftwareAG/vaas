@@ -7,7 +7,7 @@ using Vaas.Messages;
 
 namespace Vaas;
 
-public class ClientCredentialsGrantAuthenticator
+public class ClientCredentialsGrantAuthenticator : IAuthenticator
 {
     private readonly string _clientId;
     private readonly string _clientSecret;

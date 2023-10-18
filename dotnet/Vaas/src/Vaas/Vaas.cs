@@ -16,7 +16,15 @@ using Websocket.Client.Exceptions;
 
 namespace Vaas;
 
-public class Vaas : IDisposable
+public interface IVaas
+{
+    Task Connect(string token);
+    Task<VaasVerdict> ForUrlAsync(Uri uri, Dictionary<string, string>? verdictRequestAttributes = null);
+    Task<VaasVerdict> ForSha256Async(string sha256, Dictionary<string, string>? verdictRequestAttributes = null);
+    Task<VaasVerdict> ForFileAsync(string path, Dictionary<string, string>? verdictRequestAttributes = null);
+}
+
+public class Vaas : IDisposable, IVaas
 {
     private const int AuthenticationTimeoutInMs = 1000;
 
