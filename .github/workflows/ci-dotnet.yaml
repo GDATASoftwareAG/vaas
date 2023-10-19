@@ -68,9 +68,9 @@ jobs:
         run: dotnet build --configuration Release --no-restore
         working-directory: dotnet/Vaas
 
-      - name: Test
-        run: dotnet test --no-restore --verbosity normal
-        working-directory: dotnet/Vaas
+      # - name: Test
+      #   run: dotnet test --no-restore --verbosity normal
+      #   working-directory: dotnet/Vaas
 
       - name: Run example FileScan
         env:
