@@ -15,6 +15,7 @@ public class VerdictResponse
     public string? Guid { get; init; }
 
     [JsonPropertyName("verdict")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public Verdict Verdict { get; init; }
 
     [JsonPropertyName("url")]
