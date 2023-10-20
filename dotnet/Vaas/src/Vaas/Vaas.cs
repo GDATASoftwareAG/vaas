@@ -30,7 +30,12 @@ public interface IVaas
     Task Connect(string token);
     Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null);
+    
+    /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
+    /// <exception cref="VaasServerException">The server encountered an internal error.</exception>
+    /// <exception cref="T:System.Threading.Tasks.TaskCanceledException">The request failed due to timeout.</exception>
     Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken, ForSha256Options? options = null);
+    
     Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null);
 }
@@ -161,14 +166,59 @@ public class Vaas : IDisposable, IVaas
         var scheme = url.Scheme == "wss" ? "https" : "http";
         //TODO: Replace hash in url path with sha256
         url = new Uri($"{scheme}://{authority}/verdicts/hash/{sha256}");
-        
-        var response = await _httpClient.GetAsync(url, cancellationToken);
-        //TODO: Error handling 
-        //TODO: Timeout
-        var verdictResponse = JsonSerializer.Deserialize<VerdictResponse>(await response.Content.ReadAsStringAsync(cancellationToken)) ?? throw new InvalidOperationException();
+
+        var responseMessage = await GetAsync(url, cancellationToken);
+
+        EnsureSuccess(responseMessage);
+
+        var verdictResponse = await DeserializeResponse<VerdictResponse>(responseMessage, cancellationToken);
         return new VaasVerdict(verdictResponse);
     }
 
+    private Task<HttpResponseMessage> GetAsync(Uri url, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (InvalidOperationException e)
+        {
+            throw new VaasClientException("TODO", e);
+        }
+        catch (HttpRequestException e)
+        {
+            // TODO: Parse ProblemDetails once implemented in server
+            throw new VaasServerException("TODO", e);
+        }
+    } 
+    
+    private static void EnsureSuccess(HttpResponseMessage responseMessage)
+    {
+        // TODO: Parse ProblemDetails once implemented in server
+        var status = (int)responseMessage.StatusCode;
+        switch (status)
+        {
+            case >= 400 and < 500:
+                throw new VaasClientException("TODO");
+            case >= 500 and < 600:
+                throw new VaasServerException("TODO");
+        }
+    }
+
+    private static async Task<T> DeserializeResponse<T>(HttpResponseMessage responseMessage, CancellationToken cancellationToken)
+    {
+        var contentStream = await responseMessage.Content.ReadAsStreamAsync(cancellationToken);
+        try
+        {
+            return JsonSerializer.Deserialize<T>(contentStream) ?? throw
+                new VaasServerException("Server returned 'null'");
+        }
+        catch (JsonException e)
+        {
+            throw new VaasServerException("TODO", e);
+        }
+    }
+    
     public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken, Dictionary<string, string>? verdictRequestAttributes = null)
     {
         var sha256 = Sha256CheckSum(path);
