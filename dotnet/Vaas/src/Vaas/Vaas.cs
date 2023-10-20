@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -56,8 +57,12 @@ public class Vaas : IDisposable, IVaas
     public Vaas(VaasOptions? options = null)
     {
         _options = options ?? VaasOptions.Defaults;
+        _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
     }
 
+    private const string ProductName = "VaaS C# SDK";
+    private static string ProductVersion => Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
+    
     public async Task Connect(string token)
     {
         _client = new WebsocketClient(_options.Url, WebsocketClientFactory);
