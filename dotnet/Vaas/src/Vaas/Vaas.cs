@@ -12,6 +12,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Diagnostics;
 using Vaas.Messages;
 using Websocket.Client;
 using Websocket.Client.Exceptions;
@@ -47,7 +48,7 @@ public class Vaas : IDisposable, IVaas
     private WebsocketClient? _client;
     private WebsocketClient AuthenticatedClient => GetAuthenticatedWebSocket();
 
-    private readonly HttpClient _httpClient = new();
+    private readonly HttpClient _httpClient;
 
     private string? SessionId { get; set; }
     private bool AuthenticatedErrorOccured { get; set; }
@@ -59,13 +60,15 @@ public class Vaas : IDisposable, IVaas
 
     private readonly VaasOptions _options;
 
-    public Vaas(VaasOptions? options = null)
+    public Vaas(HttpClient httpClient, VaasOptions? options = null)
     {
+        Guard.IsNotNullOrWhiteSpace(options?.Url.Host ?? VaasOptions.Defaults.Url.Host);
+        _httpClient = httpClient;
         _options = options ?? VaasOptions.Defaults;
         _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
     }
 
-    private const string ProductName = "VaaS C# SDK";
+    private const string ProductName = "VaaS_C#_SDK";
     private static string ProductVersion => Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
     
     public async Task Connect(string token)
@@ -164,8 +167,7 @@ public class Vaas : IDisposable, IVaas
         var url = _options.Url;
         var authority = _options.Url.Authority.Replace("gateway", "upload");
         var scheme = url.Scheme == "wss" ? "https" : "http";
-        //TODO: Replace hash in url path with sha256
-        url = new Uri($"{scheme}://{authority}/verdicts/hash/{sha256}");
+        url = new Uri($"{scheme}://{authority}/verdicts/sha256/{sha256}");
 
         var responseMessage = await GetAsync(url, cancellationToken);
 
@@ -181,14 +183,10 @@ public class Vaas : IDisposable, IVaas
         {
             return _httpClient.GetAsync(url, cancellationToken);
         }
-        catch (InvalidOperationException e)
-        {
-            throw new VaasClientException("TODO", e);
-        }
         catch (HttpRequestException e)
         {
             // TODO: Parse ProblemDetails once implemented in server
-            throw new VaasServerException("TODO", e);
+            throw new VaasServerException("Server-side error", e);
         }
     } 
     
@@ -199,9 +197,9 @@ public class Vaas : IDisposable, IVaas
         switch (status)
         {
             case >= 400 and < 500:
-                throw new VaasClientException("TODO");
+                throw new VaasClientException("Client-side error");
             case >= 500 and < 600:
-                throw new VaasServerException("TODO");
+                throw new VaasServerException("Server-side error");
         }
     }
 
@@ -213,9 +211,9 @@ public class Vaas : IDisposable, IVaas
             return JsonSerializer.Deserialize<T>(contentStream) ?? throw
                 new VaasServerException("Server returned 'null'");
         }
-        catch (JsonException e)
+        catch (Exception e) when (e is JsonException or ArgumentException)
         {
-            throw new VaasServerException("TODO", e);
+            throw new VaasServerException("Server-side error", e);
         }
     }
     
