@@ -1,44 +1,103 @@
 using System;
 using System.Net;
+using System.Net.Http;
+using System.Reflection;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
+using Moq;
+using Moq.Contrib.HttpClient;
+using Vaas.Messages;
 using Xunit;
 
 namespace Vaas.Test;
 
 public class VaasTest
 {
-    [Fact]
-    public Task ForSha256Async_SendsUserAgent()
+    private readonly ChecksumSha256 _maliciousChecksum256 = new("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
+    private readonly HttpClient _httpClient;
+    private readonly Mock<HttpMessageHandler> _handler;
+    private readonly Vaas _vaas;
+
+    public VaasTest()
     {
-        throw new NotImplementedException();
+        _handler = new Mock<HttpMessageHandler>();
+        _httpClient = _handler.CreateClient();
+        _vaas = new Vaas(_httpClient);
     }
     
     [Fact]
-    public Task ForSha256Async_IfRelativeUrl_ThrowsVaasClientException()
+    public async Task ForSha256Async_SendsUserAgent()
     {
-        throw new NotImplementedException();
+        const string productName = "VaaS_C#_SDK";
+        var productVersion = Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
+        _handler.SetupRequest(r => r.Headers.UserAgent.ToString() == $"{productName}/{productVersion}")
+            .ReturnsResponse(JsonSerializer.Serialize(new VerdictResponse(_maliciousChecksum256, Verdict.Malicious)));
+        
+        var verdict = await _vaas.ForSha256Async(_maliciousChecksum256, CancellationToken.None);
+        
+        Assert.Equal(Verdict.Malicious, verdict.Verdict);
+    }
+    
+    [Fact]
+    public void Constructor_IfRelativeUrl_ThrowsVaasClientException()
+    { 
+        var e = Assert.Throws<ArgumentException>(() => new Vaas(_httpClient, new VaasOptions() { Url = new Uri("/relative") }));
+        Assert.Equal("Parameter \"options?.Url.Host ?? VaasOptions.Defaults.Url.Host\" (string) must not be null or whitespace, was whitespace. (Parameter 'options?.Url.Host ?? VaasOptions.Defaults.Url.Host')", e.Message);
     }
     
     [Theory]
     [InlineData(HttpStatusCode.BadRequest)]
     [InlineData(HttpStatusCode.NotFound)]
-    public Task ForSha256Async_OnClientError_ThrowsVaasClientException(HttpStatusCode statusCode)
+    public async Task ForSha256Async_OnClientError_ThrowsVaasClientException(HttpStatusCode statusCode)
     {
-        throw new NotImplementedException();
+        _handler.SetupAnyRequest()
+            .ReturnsResponse(statusCode);
+        
+        var e = await Assert.ThrowsAsync<VaasClientException>(() => _vaas.ForSha256Async(_maliciousChecksum256, CancellationToken.None));
+        Assert.Equal("Client-side error", e.Message);
     }
 
     [Theory]
     [InlineData(HttpStatusCode.InternalServerError)]
     [InlineData(HttpStatusCode.BadGateway)]
     [InlineData(HttpStatusCode.GatewayTimeout)]
-    public Task ForSha256Async_OnServerError_ThrowsVaasServerError(HttpStatusCode statusCode)
+    public async Task ForSha256Async_OnServerError_ThrowsVaasServerError(HttpStatusCode statusCode)
     {
-        throw new NotImplementedException();
+        _handler.SetupAnyRequest()
+            .ReturnsResponse(statusCode);
+        
+        var e = await Assert.ThrowsAsync<VaasServerException>(() => _vaas.ForSha256Async(_maliciousChecksum256, CancellationToken.None));
+        Assert.Equal("Server-side error", e.Message);
     }
     
     [Fact]
-    public Task ForSha256Async_IfNullIsReturned_ThrowsVaasServerError()
+    public async Task ForSha256Async_IfNullIsReturned_ThrowsVaasServerError()
     {
-        throw new NotImplementedException();
+        _handler.SetupAnyRequest()
+            .ReturnsResponse("null");
+        
+        var e = await Assert.ThrowsAsync<VaasServerException>(() => _vaas.ForSha256Async(_maliciousChecksum256, CancellationToken.None));
+        Assert.Equal("Server returned 'null'", e.Message);
+    }
+    
+    [Fact]
+    public async Task ForSha256Async_OnJsonException_ThrowsVaasServerException()
+    {
+        _handler.SetupAnyRequest()
+            .ReturnsResponse("{");
+        
+        var e = await Assert.ThrowsAsync<VaasServerException>(() => _vaas.ForSha256Async(_maliciousChecksum256, CancellationToken.None));
+        Assert.Equal("Server-side error", e.Message);
+    }
+    
+    [Fact]
+    public async Task ForSha256Async_OnSha256Null_ThrowsVaasServerException()
+    {
+        _handler.SetupAnyRequest()
+            .ReturnsResponse("{}");
+        
+        var e = await Assert.ThrowsAsync<VaasServerException>(() => _vaas.ForSha256Async(_maliciousChecksum256, CancellationToken.None));
+        Assert.Equal("Server-side error", e.Message);
     }
 }

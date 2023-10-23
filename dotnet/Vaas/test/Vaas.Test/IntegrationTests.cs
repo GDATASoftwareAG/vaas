@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -33,7 +34,7 @@ public class IntegrationTests
         const string clientSecret = "foobar2";
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, TokenUrl);
 
-        var vaas = new Vaas(new VaasOptions {Url = VaasUrl});
+        var vaas = new Vaas(new HttpClient(), new VaasOptions {Url = VaasUrl});
         await Assert.ThrowsAsync<VaasAuthenticationException>(async () =>
             await vaas.Connect(await authenticator.GetToken()));
     }
@@ -167,7 +168,7 @@ public class IntegrationTests
     {
         var authenticator = new ClientCredentialsGrantAuthenticator(ClientId, ClientSecret, TokenUrl);
 
-        var vaas = new Vaas(new VaasOptions { Url = VaasUrl });
+        var vaas = new Vaas(new HttpClient(),new VaasOptions { Url = VaasUrl });
 
         await vaas.Connect(await authenticator.GetToken());
         return vaas;
@@ -188,7 +189,7 @@ public class IntegrationTests
     {
         var authenticator = new ResourceOwnerPasswordGrantAuthenticator(ClientIdForResourceOwnerPasswordGrant, UserName, Password, TokenUrl);
 
-        var vaas = new Vaas(new VaasOptions { Url = VaasUrl });
+        var vaas = new Vaas(new HttpClient(), new VaasOptions { Url = VaasUrl });
         await vaas.Connect(await authenticator.GetToken());
     }
 }
