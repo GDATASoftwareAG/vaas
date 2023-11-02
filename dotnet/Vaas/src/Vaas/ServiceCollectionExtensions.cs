@@ -19,6 +19,7 @@ public static class ServiceCollectionExtensions
         
         services
             .AddSingleton<VaasOptions>(p => p.GetRequiredService<IOptions<VaasOptions>>().Value)
+            .AddSingleton<ISystemClock, SystemClock>()
             .AddSingleton<IAuthenticator, Authenticator>();
     
         services

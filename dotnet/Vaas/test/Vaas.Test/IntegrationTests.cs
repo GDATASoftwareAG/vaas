@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Vaas.Test.Authentication;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -16,16 +17,6 @@ public class IntegrationTests
     private static Uri VaasUrl => new Uri(DotNetEnv.Env.GetString(
         "VAAS_URL",
         "wss://gateway.production.vaas.gdatasecurity.de"));
-
-    private static Uri TokenUrl => new Uri(DotNetEnv.Env.GetString(
-        "TOKEN_URL",
-        "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
-
-    private static string ClientId => DotNetEnv.Env.GetString("CLIENT_ID");
-    private static string ClientSecret => DotNetEnv.Env.GetString("CLIENT_SECRET");
-    private static string ClientIdForResourceOwnerPasswordGrant => DotNetEnv.Env.GetString("VAAS_CLIENT_ID");
-    private static string UserName => DotNetEnv.Env.GetString("VAAS_USER_NAME");
-    private static string Password => DotNetEnv.Env.GetString("VAAS_PASSWORD");
 
     private readonly ITestOutputHelper _output;
 
@@ -41,7 +32,7 @@ public class IntegrationTests
         var services = GetServices(new Dictionary<string, string>()
         {
             { "VerdictAsAService:Url", VaasUrl.ToString() },
-            { "VerdictAsAService:TokenUrl", TokenUrl.ToString() },
+            { "VerdictAsAService:TokenUrl", AuthenticationEnvironment.TokenUrl.ToString() },
             { "VerdictAsAService:Credentials:GrantType", "ClientCredentials" },
             { "VerdictAsAService:Credentials:ClientId", "foobar" },
             { "VerdictAsAService:Credentials:ClientSecret", "foobar2" },
@@ -193,10 +184,10 @@ public class IntegrationTests
         var services = GetServices(new Dictionary<string, string>()
         {
             { "VerdictAsAService:Url", VaasUrl.ToString() },
-            { "VerdictAsAService:TokenUrl", TokenUrl.ToString() },
+            { "VerdictAsAService:TokenUrl", AuthenticationEnvironment.TokenUrl.ToString() },
             { "VerdictAsAService:Credentials:GrantType", "ClientCredentials" },
-            { "VerdictAsAService:Credentials:ClientId", ClientId },
-            { "VerdictAsAService:Credentials:ClientSecret", ClientSecret },
+            { "VerdictAsAService:Credentials:ClientId", AuthenticationEnvironment.ClientId },
+            { "VerdictAsAService:Credentials:ClientSecret", AuthenticationEnvironment.ClientSecret },
         });
         ServiceCollectionTools.Output(_output, services);
         var provider = services.BuildServiceProvider();
@@ -234,11 +225,11 @@ public class IntegrationTests
         var services = GetServices(new Dictionary<string, string>()
         {
             { "VerdictAsAService:Url", VaasUrl.ToString() },
-            { "VerdictAsAService:TokenUrl", TokenUrl.ToString() },
+            { "VerdictAsAService:TokenUrl", AuthenticationEnvironment.TokenUrl.ToString() },
             { "VerdictAsAService:Credentials:GrantType", "Password" },
-            { "VerdictAsAService:Credentials:ClientId", ClientIdForResourceOwnerPasswordGrant },
-            { "VerdictAsAService:Credentials:UserName", UserName },
-            { "VerdictAsAService:Credentials:Password", Password },
+            { "VerdictAsAService:Credentials:ClientId", AuthenticationEnvironment.ClientIdForResourceOwnerPasswordGrant },
+            { "VerdictAsAService:Credentials:UserName", AuthenticationEnvironment.UserName },
+            { "VerdictAsAService:Credentials:Password", AuthenticationEnvironment.Password },
         });
         var provider = services.BuildServiceProvider();
 
