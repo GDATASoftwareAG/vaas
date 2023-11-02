@@ -13,6 +13,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Diagnostics;
+using Vaas.Authentication;
 using Vaas.Messages;
 using Websocket.Client;
 using Websocket.Client.Exceptions;
@@ -28,7 +29,7 @@ public class ForSha256Options
 
 public interface IVaas
 {
-    Task Connect(string token);
+    Task Connect(CancellationToken cancellationToken);
     Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null);
     
@@ -58,21 +59,24 @@ public class Vaas : IDisposable, IVaas
 
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
 
+    private readonly IAuthenticator _authenticator;
     private readonly VaasOptions _options;
 
-    public Vaas(HttpClient httpClient, VaasOptions? options = null)
+    public Vaas(HttpClient httpClient, IAuthenticator authenticator, VaasOptions options)
     {
-        Guard.IsNotNullOrWhiteSpace(options?.Url.Host ?? VaasOptions.Defaults.Url.Host);
+        Guard.IsNotNullOrWhiteSpace(options.Url.Host);
         _httpClient = httpClient;
-        _options = options ?? VaasOptions.Defaults;
+        _authenticator = authenticator;
+        _options = options;
         _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
     }
 
     private const string ProductName = "VaaS_C#_SDK";
     private static string ProductVersion => Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
     
-    public async Task Connect(string token)
+    public async Task Connect(CancellationToken cancellationToken)
     {
+        var token = await _authenticator.GetTokenAsync(cancellationToken);
         _client = new WebsocketClient(_options.Url, WebsocketClientFactory);
         _client.ReconnectTimeout = null;
         _client.MessageReceived.Subscribe(HandleResponseMessage);
