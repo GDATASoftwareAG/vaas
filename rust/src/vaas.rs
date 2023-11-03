@@ -1,60 +1,26 @@
 //! The `Vaas` module provides all needed functions to check a hash or file for malicious content.
 
+use crate::auth::Authenticator;
 use crate::builder::Builder;
 use crate::connection::Connection;
 use crate::error::{Error, VResult};
-use crate::message::{AuthRequest, AuthResponse, OpenIdConnectTokenResponse};
+use crate::message::{AuthRequest, AuthResponse};
 use crate::options::Options;
-use reqwest::{StatusCode, Url};
+use reqwest::Url;
 use websockets::{Frame, WebSocket, WebSocketReadHalf, WebSocketWriteHalf};
 
 /// Provides all functionality needed to check a hash or file for malicious content.
 #[derive(Debug, Clone)]
-pub struct Vaas {
-    pub(super) token: String,
+pub struct Vaas<A: Authenticator> {
+    pub(super) authenticator: A,
     pub(super) url: Url,
     pub(super) options: Options,
 }
 
-impl Vaas {
-    /// Get an OpenID Connect token to use for authentication from a custom authentication provider URL.
-    pub async fn get_token_from_url(
-        client_id: &str,
-        client_secret: &str,
-        token_endpoint: Url,
-    ) -> VResult<String> {
-        let params = [
-            ("client_id", client_id),
-            ("client_secret", client_secret),
-            ("grant_type", "client_credentials"),
-        ];
-        let client = reqwest::Client::new();
-        let token_response = client.post(token_endpoint).form(&params).send().await?;
-
-        match token_response.status() {
-            StatusCode::OK => {
-                let json_string = token_response.text().await?;
-                Ok(OpenIdConnectTokenResponse::try_from(&json_string)?.access_token)
-            }
-            status => Err(Error::FailedAuthTokenRequest(
-                status,
-                token_response.text().await.unwrap_or_default(),
-            )),
-        }
-    }
-
-    /// Get an OpenID Connect token to use for authentication from the default authentication provider.
-    pub async fn get_token(client_id: &str, client_secret: &str) -> VResult<String> {
-        let default_auth_url = Url::parse(
-            "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token",
-        )
-        .unwrap();
-        Vaas::get_token_from_url(client_id, client_secret, default_auth_url).await
-    }
-
+impl<A: Authenticator> Vaas<A> {
     /// Create a new [Builder] instance to configure the `Vaas` instance.
-    pub fn builder(token: String) -> Builder {
-        Builder::new(token)
+    pub fn builder(authenticator: A) -> Builder<A> {
+        Builder::new(authenticator)
     }
 
     /// Connect to the server endpoints to request a verdict for a hash or file.
@@ -78,7 +44,8 @@ impl Vaas {
         ws_reader: &mut WebSocketReadHalf,
         ws_writer: &mut WebSocketWriteHalf,
     ) -> VResult<String> {
-        let auth_request = AuthRequest::new(self.token.clone(), None).to_json()?;
+        let token = self.authenticator.get_token().await?;
+        let auth_request = AuthRequest::new(token, None).to_json()?;
         ws_writer.send_text(auth_request).await?;
 
         let frame = ws_reader.receive().await?;

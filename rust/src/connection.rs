@@ -83,8 +83,13 @@ impl Connection {
     }
 
     /// Request a verdict for files behind a list of URLs.
-    pub async fn for_url_list(&self, url_list: &[Url], ct: &CancellationToken) -> Vec<VResult<VaasVerdict>> {
-        let req = url_list.iter()
+    pub async fn for_url_list(
+        &self,
+        url_list: &[Url],
+        ct: &CancellationToken,
+    ) -> Vec<VResult<VaasVerdict>> {
+        let req = url_list
+            .iter()
             .map(|url| self.for_url(url, ct))
             .collect::<Vec<_>>();
 
@@ -259,10 +264,10 @@ impl Connection {
                 match Self::parse_frame(frame) {
                     Ok(MessageType::VerdictResponse(vr)) => {
                         result_channel.send(Ok(vr))?;
-                    },
+                    }
                     Ok(MessageType::Close) => {
                         result_channel.send(Err(Error::ConnectionClosed))?;
-                    },
+                    }
                     Err(e) => {
                         result_channel.send(Err(e))?;
                     }

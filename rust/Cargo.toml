@@ -15,13 +15,14 @@ websockets = "0.3.0"
 serde = { version = "1.0", features = ["derive"]}
 serde_json = "1.0"
 thiserror = "1.0"
-uuid = { version = "1.4.1", features = ["serde", "v4"] }
+uuid = { version = "1.5", features = ["serde", "v4"] }
 reqwest = "0.11"
 regex = "1.10"
 tokio = { version = "1.33", features = ["sync", "fs"] }
-sha2 = "0.10.8"
+sha2 = "0.10"
 futures = "0.3"
 rand = "0.8"
+async-trait = "0.1"
 
 [dev-dependencies]
 dotenv = "0.15"

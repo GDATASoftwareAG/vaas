@@ -75,7 +75,7 @@ pub enum Error {
     NoSessionIdInAuthResp,
     /// Connection was closed, reconnect is necessary
     #[error("Connection was closed")]
-    ConnectionClosed
+    ConnectionClosed,
 }
 
 impl From<PoisonError<std::sync::MutexGuard<'_, websockets::WebSocketWriteHalf>>> for Error {

@@ -3,7 +3,7 @@ use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Url;
 use std::convert::TryFrom;
 use std::ops::Deref;
-use vaas::error::Error::FailedAuthTokenRequest;
+use vaas::auth::authenticators::{ClientCredentials, Password};
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
 async fn get_vaas() -> Connection {
@@ -15,12 +15,10 @@ async fn get_vaas() -> Connection {
         .expect("No CLIENT_ID environment variable set to be used in the integration tests");
     let client_secret = dotenv::var("CLIENT_SECRET")
         .expect("No CLIENT_SECRET environment variable set to be used in the integration tests");
-    let token = Vaas::get_token_from_url(&client_id, &client_secret, token_url)
-        .await
-        .unwrap();
+    let authenticator = ClientCredentials::new(client_id, client_secret).with_token_url(token_url);
     let vaas_url = dotenv::var("VAAS_URL")
         .expect("No VAAS_URL environment variable set to be used in the integration tests");
-    Vaas::builder(token)
+    Vaas::builder(authenticator)
         .url(Url::parse(&vaas_url).unwrap())
         .build()
         .unwrap()
@@ -30,21 +28,28 @@ async fn get_vaas() -> Connection {
 }
 
 #[tokio::test]
-async fn from_sha256_wrong_credentials() {
+async fn connect_with_username_and_password() {
     let token_url: Url = dotenv::var("TOKEN_URL")
         .expect("No TOKEN_URL environment variable set to be used in the integration tests")
         .parse()
         .expect("Failed to parse TOKEN_URL environment variable");
-    let client_id = "invalid";
-    let client_secret = "invalid";
-    let token = Vaas::get_token_from_url(&client_id, &client_secret, token_url).await;
+    let client_id = dotenv::var("VAAS_CLIENT_ID")
+        .expect("No CLIENT_ID environment variable set to be used in the integration tests");
+    let user_name = dotenv::var("VAAS_USER_NAME")
+        .expect("No VAAS_USER_NAME environment variable set to be used in the integration tests");
+    let password = dotenv::var("VAAS_PASSWORD")
+        .expect("No VAAS_PASSWORD environment variable set to be used in the integration tests");
+    let vaas_url = dotenv::var("VAAS_URL")
+        .expect("No VAAS_URL environment variable set to be used in the integration tests");
+    let authenticator = Password::new(client_id, user_name, password).with_token_url(token_url);
+    let connection = Vaas::builder(authenticator)
+        .url(Url::parse(&vaas_url).unwrap())
+        .build()
+        .unwrap()
+        .connect()
+        .await;
 
-    assert!(token.is_err());
-    assert!(match token {
-        Ok(_) => false,
-        Err(FailedAuthTokenRequest(_, _)) => true,
-        _ => false,
-    })
+    assert!(connection.is_ok())
 }
 
 #[tokio::test]
