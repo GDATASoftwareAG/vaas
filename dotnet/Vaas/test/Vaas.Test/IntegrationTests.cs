@@ -1,8 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Vaas.Test;
 
@@ -11,54 +16,50 @@ public class IntegrationTests
     private static Uri VaasUrl => new Uri(DotNetEnv.Env.GetString(
         "VAAS_URL",
         "wss://gateway.production.vaas.gdatasecurity.de"));
+
     private static Uri TokenUrl => new Uri(DotNetEnv.Env.GetString(
         "TOKEN_URL",
         "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
+
     private static string ClientId => DotNetEnv.Env.GetString("CLIENT_ID");
     private static string ClientSecret => DotNetEnv.Env.GetString("CLIENT_SECRET");
     private static string ClientIdForResourceOwnerPasswordGrant => DotNetEnv.Env.GetString("VAAS_CLIENT_ID");
     private static string UserName => DotNetEnv.Env.GetString("VAAS_USER_NAME");
     private static string Password => DotNetEnv.Env.GetString("VAAS_PASSWORD");
-    
-    public IntegrationTests()
+
+    private readonly ITestOutputHelper _output;
+
+    public IntegrationTests(ITestOutputHelper output)
     {
+        _output = output;
         DotNetEnv.Env.TraversePath().Load();
     }
 
     [Fact]
     public async void ConnectWithWrongCredentialsThrowsVaasAuthenticationException()
     {
-        const string clientId = "foobar";
-        const string clientSecret = "foobar2";
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, TokenUrl);
+        var services = GetServices(new Dictionary<string, string>()
+        {
+            { "VerdictAsAService:Url", VaasUrl.ToString() },
+            { "VerdictAsAService:TokenUrl", TokenUrl.ToString() },
+            { "VerdictAsAService:Credentials:GrantType", "ClientCredentials" },
+            { "VerdictAsAService:Credentials:ClientId", "foobar" },
+            { "VerdictAsAService:Credentials:ClientSecret", "foobar2" },
+        });
+        var provider = services.BuildServiceProvider();
 
-        var vaas = new Vaas() { Url = VaasUrl };
+        var vaas = provider.GetRequiredService<IVaas>();
         await Assert.ThrowsAsync<VaasAuthenticationException>(async () =>
-            await vaas.Connect(await authenticator.GetToken()));
-    }
-
-    [Fact]
-    public async void FromSha256VaasInvalidStateException()
-    {
-        var vaas = new Vaas();
-        await Assert.ThrowsAsync<VaasInvalidStateException>(() =>
-            vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
-    }
-
-    [Fact]
-    public async void FromSha256ThrowsVaasConnectionClosedException()
-    {
-        var vaas = await AuthenticateWithCredentials();
-        vaas.Dispose();
-        await Assert.ThrowsAsync<VaasConnectionClosedException>(() =>
-            vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
+            await vaas.Connect(CancellationToken.None));
     }
 
     [Fact]
     public async void FromSha256SingleMaliciousHash()
     {
         var vaas = await AuthenticateWithCredentials();
-        var verdict = await vaas.ForSha256Async("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
+        var verdict = await vaas.ForSha256Async(
+            new ChecksumSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"),
+            CancellationToken.None);
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
         Assert.Equal("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", verdict.Sha256);
     }
@@ -67,7 +68,9 @@ public class IntegrationTests
     public async void FromSha256SingleCleanHash()
     {
         var vaas = await AuthenticateWithCredentials();
-        var verdict = await vaas.ForSha256Async("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
+        var verdict = await vaas.ForSha256Async(
+            new ChecksumSha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"),
+            CancellationToken.None);
         Assert.Equal(Verdict.Clean, verdict.Verdict);
         Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
     }
@@ -77,11 +80,11 @@ public class IntegrationTests
     {
         var vaas = await AuthenticateWithCredentials();
         const string guid = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
-        var verdict = await vaas.ForSha256Async(guid);
+        var verdict = await vaas.ForSha256Async(new ChecksumSha256(guid), CancellationToken.None);
         Assert.Equal(Verdict.Clean, verdict.Verdict);
         Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
         await Task.Delay(40000);
-        verdict = await vaas.ForSha256Async(guid);
+        verdict = await vaas.ForSha256Async(new ChecksumSha256(guid), CancellationToken.None);
         Assert.Equal(Verdict.Clean, verdict.Verdict);
         Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
     }
@@ -90,7 +93,9 @@ public class IntegrationTests
     public async void FromSha256SingleUnknownHash()
     {
         var vaas = await AuthenticateWithCredentials();
-        var verdict = await vaas.ForSha256Async("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9");
+        var verdict = await vaas.ForSha256Async(
+            new ChecksumSha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"),
+            CancellationToken.None);
         Assert.Equal(Verdict.Unknown, verdict.Verdict);
         Assert.Equal("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9", verdict.Sha256);
     }
@@ -105,7 +110,7 @@ public class IntegrationTests
             "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
         };
         var vaas = await AuthenticateWithCredentials();
-        var verdictList = await vaas.ForSha256ListAsync(myList);
+        var verdictList = await vaas.ForSha256ListAsync(myList, CancellationToken.None);
         Assert.Equal(Verdict.Malicious, verdictList[0].Verdict);
         Assert.Equal("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", verdictList[0].Sha256, true);
         Assert.Equal(Verdict.Clean, verdictList[1].Verdict);
@@ -123,7 +128,7 @@ public class IntegrationTests
         rnd.NextBytes(b);
         await File.WriteAllBytesAsync("test.txt", b);
         var vaas = await AuthenticateWithCredentials();
-        var result = await vaas.ForFileAsync("test.txt");
+        var result = await vaas.ForFileAsync("test.txt", CancellationToken.None);
         Assert.Equal(Verdict.Clean, result.Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("test.txt"), result.Sha256);
     }
@@ -140,7 +145,8 @@ public class IntegrationTests
         rnd.NextBytes(b);
         await File.WriteAllBytesAsync("test3.txt", b);
         var vaas = await AuthenticateWithCredentials();
-        var resultList = await vaas.ForFileListAsync(new List<string> { "test1.txt", "test2.txt", "test3.txt" });
+        var resultList = await vaas.ForFileListAsync(new List<string> { "test1.txt", "test2.txt", "test3.txt" },
+            CancellationToken.None);
         Assert.Equal(Verdict.Clean, resultList[0].Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("test1.txt"), resultList[0].Sha256);
         Assert.Equal(Verdict.Clean, resultList[1].Verdict);
@@ -153,7 +159,9 @@ public class IntegrationTests
     public async void FromSha256_ReturnsPup_ForAmtsoSample()
     {
         var vaas = await AuthenticateWithCredentials();
-        var actual = await vaas.ForSha256Async("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
+        var actual = await vaas.ForSha256Async(
+            new ChecksumSha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"),
+            CancellationToken.None);
         Assert.Equal(Verdict.Pup, actual.Verdict);
         Assert.Equal("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", actual.Sha256, true);
     }
@@ -164,7 +172,7 @@ public class IntegrationTests
     public async Task FromUrlReturnVerdict(string url, Verdict verdict)
     {
         var vaas = await AuthenticateWithCredentials();
-        var actual = await vaas.ForUrlAsync(new Uri(url));
+        var actual = await vaas.ForUrlAsync(new Uri(url), CancellationToken.None);
         Assert.Equal(verdict, actual.Verdict);
     }
 
@@ -173,7 +181,8 @@ public class IntegrationTests
     {
         var vaas = await AuthenticateWithCredentials();
         var e = await Assert.ThrowsAsync<VaasClientException>(() =>
-            vaas.ForUrlAsync(new Uri("https://upload.production.vaas.gdatasecurity.de/nocontenthere")));
+            vaas.ForUrlAsync(new Uri("https://upload.production.vaas.gdatasecurity.de/nocontenthere"),
+                CancellationToken.None));
         Assert.Equal(
             "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere",
             e.Message);
@@ -181,14 +190,32 @@ public class IntegrationTests
 
     private async Task<Vaas> AuthenticateWithCredentials()
     {
-        var authenticator = new ClientCredentialsGrantAuthenticator(ClientId, ClientSecret, TokenUrl);
-
-        var vaas = new Vaas()
+        var services = GetServices(new Dictionary<string, string>()
         {
-            Url = VaasUrl
-        };
-        await vaas.Connect(await authenticator.GetToken());
-        return vaas;
+            { "VerdictAsAService:Url", VaasUrl.ToString() },
+            { "VerdictAsAService:TokenUrl", TokenUrl.ToString() },
+            { "VerdictAsAService:Credentials:GrantType", "ClientCredentials" },
+            { "VerdictAsAService:Credentials:ClientId", ClientId },
+            { "VerdictAsAService:Credentials:ClientSecret", ClientSecret },
+        });
+        ServiceCollectionTools.Output(_output, services);
+        var provider = services.BuildServiceProvider();
+
+        var vaas = provider.GetRequiredService<IVaas>();
+        await vaas.Connect(CancellationToken.None);
+        return (Vaas)vaas;
+    }
+
+    private static IServiceCollection GetServices(Dictionary<string, string> data)
+    {
+        var s = new MemoryConfigurationSource() { InitialData = data };
+        var configuration = new ConfigurationBuilder()
+            .Add(s)
+            .Build();
+
+        var services = new ServiceCollection();
+        services.AddVerdictAsAService(configuration);
+        return services;
     }
 
     [Fact]
@@ -196,7 +223,7 @@ public class IntegrationTests
     {
         await File.WriteAllBytesAsync("empty.txt", Array.Empty<byte>());
         var vaas = await AuthenticateWithCredentials();
-        var result = await vaas.ForFileAsync("empty.txt");
+        var result = await vaas.ForFileAsync("empty.txt", CancellationToken.None);
         Assert.Equal(Verdict.Clean, result.Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("empty.txt"), result.Sha256);
     }
@@ -204,12 +231,18 @@ public class IntegrationTests
     [Fact]
     public async Task Connect_WithResourceOwnerPasswordGrantAuthenticator()
     {
-        var authenticator = new ResourceOwnerPasswordGrantAuthenticator(ClientIdForResourceOwnerPasswordGrant, UserName, Password, TokenUrl);
-
-        var vaas = new Vaas()
+        var services = GetServices(new Dictionary<string, string>()
         {
-            Url = VaasUrl
-        };
-        await vaas.Connect(await authenticator.GetToken());
+            { "VerdictAsAService:Url", VaasUrl.ToString() },
+            { "VerdictAsAService:TokenUrl", TokenUrl.ToString() },
+            { "VerdictAsAService:Credentials:GrantType", "Password" },
+            { "VerdictAsAService:Credentials:ClientId", ClientIdForResourceOwnerPasswordGrant },
+            { "VerdictAsAService:Credentials:UserName", UserName },
+            { "VerdictAsAService:Credentials:Password", Password },
+        });
+        var provider = services.BuildServiceProvider();
+
+        var vaas = provider.GetRequiredService<IVaas>();
+        await vaas.Connect(CancellationToken.None);
     }
 }

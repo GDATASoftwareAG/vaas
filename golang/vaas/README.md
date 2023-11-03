@@ -9,36 +9,50 @@ This is a Golang package that provides a client for the G DATA VaaS API.
 
 _Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration into your application. With a few lines of code, you can start scanning files for malware.
 
+# Table of Contents
+
+- [What does the SDK do?](#what-does-the-sdk-do)
+- [How to use](#how-to-use)
+    - [Installation](#installation)
+    - [Import](#import)
+    - [Authentication](#authentication)
+        - [Client Credentials Grant](#client-credentials-grant)
+        - [Resource Owner Password Grant](#resource-owner-password-grant)
+    - [Request a verdict](#request-a-verdict)
+- [I'm interested in VaaS](#interested)
+- [Developing with Visual Studio Code](#developing-with-visual-studio-code)
+
+
 ## What does the SDK do?
 
 It gives you as a developer functions to talk to G DATA VaaS. It wraps away the complexity of the API into basic functions.
 
-### Connect(token string) error
+### Connect(ctx context.Context, auth authenticator.Authenticator) (termChan <-chan error, err error)
 
-Connects to the G DATA VaaS API using the given authentication token. `token` is the authentication token provided by G DATA. If authentication fails, an error will be returned.
+Connect opens a websocket connection to the VAAS Server, which is kept open until the context.Context expires. The termChan indicates when a connection was closed. In the case of an unexpected close, an error is written to the channel.
 
-### Authenticate(token string) error
+### ForSha256(ctx context.Context, sha256 string) (messages.VaasVerdict, error)
 
-Sends an authentication request to the G DATA VaaS API using the given authentication token. If authentication is successful, the session ID will be stored in the `vaas` object.
+Retrieves the verdict for the given SHA256 hash from the G DATA VaaS API. `ctx` is the context for request cancellation, and `sha256` is the SHA256 hash of the file. If the request fails, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
 
-### ForSha256(sha256 string) (messages.VaasVerdict, error)
+### ForFile(ctx context.Context, filePath string) (messages.VaasVerdict, error)
 
-Retrieves the verdict for the given SHA256 hash from the G DATA VaaS API. `sha256` is the SHA256 hash of the file. If the request fails, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
+Retrieves the verdict for the given file at the specified `filePath` from the G DATA VaaS API. `ctx` is the context for request cancellation. If the file cannot be opened, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
 
-### ForFile(file string) (messages.VaasVerdict, error)
+### ForFileInMemory(ctx context.Context, fileData io.Reader) (messages.VaasVerdict, error)
 
-Retrieves the verdict for the given file from the G DATA VaaS API. `file` is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
+Retrieves the verdict for file data provided as an `io.Reader` to the G DATA VaaS API. `ctx` is the context for request cancellation. If the request fails, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
 
-### ForUrl(url string) (messages.VaasVerdict, error)
+### ForUrl(ctx context.Context, url string) (messages.VaasVerdict, error)
 
-Retrieves the verdict for the given file URL from the G DATA VaaS API. `url` is the path to the file. If the file cannot be opened, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
+Retrieves the verdict for the given file URL from the G DATA VaaS API. `ctx` is the context for request cancellation. If the request fails, an error will be returned. Otherwise, a `messages.VaasVerdict` object containing the verdict will be returned.
 
 ## How to use
 
 ### Installation
 
 ```sh
-go get -u github.com/GDATASoftwareAG/vaas/golang/vaas
+go get github.com/GDATASoftwareAG/vaas/golang/vaas
 ```
 
 ### Import
@@ -50,56 +64,95 @@ import (
 )
 ```
 
+### Authentication
+
+VaaS offers two authentication methods:
+
+#### Client Credentials Grant
+This is suitable for cases where you have a `client_id`and `client_secret`. Here's how to use it:
+
+```go
+authenticator := authenticator.New("client_id", "client_secret", "token_endpoint")
+```
+or
+```go
+authenticator := authenticator.NewWithDefaultTokenEndpoint("client_id", "client_secret")
+```
+#### Resource Owner Password Grant 
+This method is used when you have a `username` and `password`. Here's how to use it:
+
+```go
+authenticator := authenticator.NewWithResourceOwnerPassword("client_id", "username", "password", "token_endpoint")
+```
+If you do not have a specific Client ID, please use `"vaas-customer"` as the client_id.
+
 ### Request a verdict
 
 Authentication & Initialization:
 ```go
-authenticator := authenticator.New(CLIENT_ID, CLIENT_SECRET, TOKEN_ENDPOINT)
+// Create a new authenticator with the provided Client ID and Client Secret
+auth := authenticator.NewWithDefaultTokenEndpoint(clientID, clientSecret)
 
-var accessToken string
-if err := authenticator.GetToken(&accessToken); err != nil {
-  log.Fatal(err)
+// Create a new VaaS client with default options
+vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{
+      UseHashLookup: true,
+      UseCache:      false,
+      EnableLogs:    false,
+})
+
+// Create a context with a cancellation function
+ctx, webSocketCancel := context.WithCancel(context.Background())
+
+// Establish a WebSocket connection to the VaaS server
+termChan, err := vaasClient.Connect(ctx, auth)
+if err != nil {
+      log.Fatalf("failed to connect to VaaS %s", err.Error())
 }
 
-vaasClient := vaas.New(options.VaasOptions{
-  UseHashLookup:  true,
-  UseCache: false,
-}, VAAS_URL)
-
-if err := vaasClient.Connect(accessToken); err != nil {
-  log.Fatal("Something went wrong", err.Error())
-}
+// Create a context with a timeout for the analysis
+analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)
+defer analysisCancel()
 ```
 
 Verdict Request for SHA256:
 ```go
-result, err := vaasClient.ForSha256(sha256)
+// Request a verdict for a specific SHA256 hash (replace "sha256-hash" with the actual SHA256 hash)
+result, err := vaasClient.ForFile(analysisCtx, "sha256-hash")
 if err != nil {
-  return err
+    log.Fatalf("Failed to get verdict: %v", err)
 }
 fmt.Println(result.Verdict)
 ```
 
 Verdict Request for a file:
 ```go
-result, err := vaasClient.ForFile(file)
+// Request a verdict for a specific file (replace "path-to-your-file" with the actual file path)
+result, err := vaasClient.ForFile(analysisCtx, "path-to-your-file")
 if err != nil {
-  return err
+    log.Fatalf("Failed to get verdict: %v", err)
 }
-fmt.Println(result.Verdict)
+fmt.Printf("Verdict: %s\n", result.Verdict)
 ```
 
-Verdict Request for a URL:
+Verdict Request for file data provided as an io.Reader:
 ```go
-result, err := vaasClient.ForUrl(url)
+fileData := bytes.NewReader([]byte("file contents"))
+result, err := vaasClient.ForFileInMemory(analysisCtx, fileData)
 if err != nil {
-  return err
+    log.Fatalf("Failed to get verdict: %v", err)
 }
-fmt.Println(result.Verdict)
+fmt.Printf("Verdict: %s\n", result.Verdict)
 ```
 
+Verdict Request for a file URL:
+```go
+result, err := vaasClient.ForUrl(analysisCtx, "https://example.com/examplefile")
+if err != nil {
+    log.Fatalf("Failed to get verdict: %v", err)
+}
+fmt.Printf("Verdict: %s\n", result.Verdict)
+```
 
-For more details, please refer to the package [documentation](https://pkg.go.dev/github.com/GDATASoftwareAG/vaas/golang/vaas/).
 
 ## <a name="interested"></a>I'm interested in VaaS
 

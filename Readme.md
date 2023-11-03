@@ -29,7 +29,9 @@ Create a Discord bot that scans and deletes malicious files uploaded on your Dis
 
 ## I'm interested in VaaS
 
-You need credentials to use the service in your application. If you are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
+Interested in trying out VaaS? Sign up on our website to create a free trial account. Visit our [registration page](https://vaas.gdata.de/login) and follow the instructions to get started.
+
+If you have a business case or specific requirements, please contact us at [oem@gdata.de](mailto:oem@gdata.de) to discuss your needs and explore how VaaS can best fit your organization.
 
 ## SDKs
 
@@ -49,14 +51,11 @@ At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescri
 Documentation for the SDKs is available in the corresponding SDK folder.
 
 * [Rust SDK](./rust/), [Examples](./rust/examples)
-* [Java SDK](./java/)
+* [Java SDK](./java/) [Examples](./java/examples)
 * [PHP SDK](./php/), [Examples](./php/examples)
-* [TypeScript SDK](./typescript/)
-* [Python SDK](./python/)
-* [.NET SDK](./dotnet/)
-* [Ruby SDK](./ruby/)
-* [Golang SDK](./golang/vaas/)
+* [TypeScript SDK](./typescript/), [Examples](./typescript/examples)
+* [Python SDK](./python/), [Examples](./python/examples)
+* [.NET SDK](./dotnet/), [Examples](./dotnet/examples)
+* [Ruby SDK](./ruby/), [Examples](./ruby/examples)
+* [Golang SDK](./golang/vaas/), [Examples](./golang/examples)
 
-### Planned SDKs
-
-The following SDKs are planned but not yet available: *Swift*. If you need SDKs for other languages, please create an issue or contribute an SDK with a pull request.

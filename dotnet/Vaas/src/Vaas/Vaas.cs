@@ -6,24 +6,50 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
+using CommunityToolkit.Diagnostics;
+using Vaas.Authentication;
 using Vaas.Messages;
 using Websocket.Client;
 using Websocket.Client.Exceptions;
 
 namespace Vaas;
 
-public class Vaas : IDisposable
+public class ForSha256Options
+{
+    public bool UseCache { get; set; } = true;
+
+    public static ForSha256Options Default { get; } = new();
+}
+
+public interface IVaas
+{
+    Task Connect(CancellationToken cancellationToken);
+    Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
+        Dictionary<string, string>? verdictRequestAttributes = null);
+    
+    /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
+    /// <exception cref="VaasServerException">The server encountered an internal error.</exception>
+    /// <exception cref="T:System.Threading.Tasks.TaskCanceledException">The request failed due to timeout.</exception>
+    Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken, ForSha256Options? options = null);
+    
+    Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
+        Dictionary<string, string>? verdictRequestAttributes = null);
+}
+
+public class Vaas : IDisposable, IVaas
 {
     private const int AuthenticationTimeoutInMs = 1000;
 
     private WebsocketClient? _client;
     private WebsocketClient AuthenticatedClient => GetAuthenticatedWebSocket();
 
-    private readonly HttpClient _httpClient = new();
+    private readonly HttpClient _httpClient;
 
     private string? SessionId { get; set; }
     private bool AuthenticatedErrorOccured { get; set; }
@@ -31,20 +57,27 @@ public class Vaas : IDisposable
     private readonly TaskCompletionSource _authenticatedSource = new();
     private Task Authenticated => _authenticatedSource.Task;
 
-    public Uri Url { get; set; } = new("wss://gateway.production.vaas.gdatasecurity.de");
-
     private readonly ConcurrentDictionary<string, TaskCompletionSource<VerdictResponse>> _verdictResponses = new();
 
+    private readonly IAuthenticator _authenticator;
     private readonly VaasOptions _options;
 
-    public Vaas(VaasOptions? options = null)
+    public Vaas(HttpClient httpClient, IAuthenticator authenticator, VaasOptions options)
     {
-        _options = options ?? VaasOptions.Defaults;
+        Guard.IsNotNullOrWhiteSpace(options.Url.Host);
+        _httpClient = httpClient;
+        _authenticator = authenticator;
+        _options = options;
+        _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
     }
 
-    public async Task Connect(string token)
+    private const string ProductName = "VaaS_C#_SDK";
+    private static string ProductVersion => Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
+    
+    public async Task Connect(CancellationToken cancellationToken)
     {
-        _client = new WebsocketClient(Url, WebsocketClientFactory);
+        var token = await _authenticator.GetTokenAsync(cancellationToken);
+        _client = new WebsocketClient(_options.Url, WebsocketClientFactory);
         _client.ReconnectTimeout = null;
         _client.MessageReceived.Subscribe(HandleResponseMessage);
         await _client.Start();
@@ -122,7 +155,7 @@ public class Vaas : IDisposable
         }
     }
 
-    public async Task<VaasVerdict> ForUrlAsync(Uri uri, Dictionary<string, string>? verdictRequestAttributes = null)
+    public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken, Dictionary<string, string>? verdictRequestAttributes = null)
     {
         var verdictResponse = await ForUrlRequestAsync(new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
         {
@@ -133,18 +166,62 @@ public class Vaas : IDisposable
         return new VaasVerdict(verdictResponse);
     }
 
-    public async Task<VaasVerdict> ForSha256Async(string sha256, Dictionary<string, string>? verdictRequestAttributes = null)
+    public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken, ForSha256Options? options = null)
     {
-        var verdictResponse = await ForRequestAsync(new VerdictRequest(sha256, SessionId ?? throw new VaasInvalidStateException())
-        {
-            UseCache = _options.UseCache,
-            UseShed = _options.UseHashLookup,
-            VerdictRequestAttributes = verdictRequestAttributes
-        });
+        var url = _options.Url;
+        var authority = _options.Url.Authority.Replace("gateway", "upload");
+        var scheme = url.Scheme == "wss" ? "https" : "http";
+        url = new Uri($"{scheme}://{authority}/verdicts/sha256/{sha256}");
+
+        var responseMessage = await GetAsync(url, cancellationToken);
+
+        EnsureSuccess(responseMessage);
+
+        var verdictResponse = await DeserializeResponse<VerdictResponse>(responseMessage, cancellationToken);
         return new VaasVerdict(verdictResponse);
     }
 
-    public async Task<VaasVerdict> ForFileAsync(string path, Dictionary<string, string>? verdictRequestAttributes = null)
+    private Task<HttpResponseMessage> GetAsync(Uri url, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return _httpClient.GetAsync(url, cancellationToken);
+        }
+        catch (HttpRequestException e)
+        {
+            // TODO: Parse ProblemDetails once implemented in server
+            throw new VaasServerException("Server-side error", e);
+        }
+    } 
+    
+    private static void EnsureSuccess(HttpResponseMessage responseMessage)
+    {
+        // TODO: Parse ProblemDetails once implemented in server
+        var status = (int)responseMessage.StatusCode;
+        switch (status)
+        {
+            case >= 400 and < 500:
+                throw new VaasClientException("Client-side error");
+            case >= 500 and < 600:
+                throw new VaasServerException("Server-side error");
+        }
+    }
+
+    private static async Task<T> DeserializeResponse<T>(HttpResponseMessage responseMessage, CancellationToken cancellationToken)
+    {
+        var contentStream = await responseMessage.Content.ReadAsStreamAsync(cancellationToken);
+        try
+        {
+            return JsonSerializer.Deserialize<T>(contentStream) ?? throw
+                new VaasServerException("Server returned 'null'");
+        }
+        catch (Exception e) when (e is JsonException or ArgumentException)
+        {
+            throw new VaasServerException("Server-side error", e);
+        }
+    }
+    
+    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken, Dictionary<string, string>? verdictRequestAttributes = null)
     {
         var sha256 = Sha256CheckSum(path);
         var verdictResponse = await ForRequestAsync(
@@ -193,18 +270,16 @@ public class Vaas : IDisposable
                 throw new VaasServerException("Server did not return ProblemDetails");
             }
         }
-
-
     }
 
-    public async Task<List<VaasVerdict>> ForSha256ListAsync(IEnumerable<string> sha256List)
+    public async Task<List<VaasVerdict>> ForSha256ListAsync(IEnumerable<string> sha256List, CancellationToken cancellationToken)
     {
-        return (await Task.WhenAll(sha256List.Select(async sha256 => await ForSha256Async(sha256)))).ToList();
+        return (await Task.WhenAll(sha256List.Select(async sha256 => await ForSha256Async(new ChecksumSha256(sha256), cancellationToken)))).ToList();
     }
 
-    public async Task<List<VaasVerdict>> ForFileListAsync(IEnumerable<string> fileList)
+    public async Task<List<VaasVerdict>> ForFileListAsync(IEnumerable<string> fileList, CancellationToken cancellationToken)
     {
-        return (await Task.WhenAll(fileList.Select(async filePath => await ForFileAsync(filePath)))).ToList();
+        return (await Task.WhenAll(fileList.Select(async filePath => await ForFileAsync(filePath, cancellationToken)))).ToList();
     }
 
     private async Task<VerdictResponse> ForRequestAsync(VerdictRequest verdictRequest)

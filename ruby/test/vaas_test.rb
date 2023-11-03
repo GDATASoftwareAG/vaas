@@ -3,6 +3,7 @@ require 'minitest/spec'
 require 'async'
 
 require_relative '../lib/vaas/client_credentials_grant_authenticator'
+require_relative '../lib/vaas/resource_owner_password_grant_authenticator'
 require_relative '../lib/vaas/vaas_main'
 
 # # test locally with .env file (comment this when push)
@@ -18,6 +19,8 @@ CLIENT_ID = ENV.fetch('CLIENT_ID')
 CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
 TOKEN_URL = ENV.fetch('TOKEN_URL')
 VAAS_URL = ENV.fetch('VAAS_URL')
+USER_NAME = ENV.fetch('VAAS_USER_NAME')
+PASSWORD = ENV.fetch('VAAS_PASSWORD')
 
 class VaasTest < Minitest::Test
   TEST_CLASS = self
@@ -104,6 +107,18 @@ class VaasTest < Minitest::Test
 
           vaas.close
         end
+      end
+
+      specify 'authenticate' do
+        authenticator = VAAS::ResourceOwnerPasswordGrantAuthenticator.new(
+          "vaas-customer",
+          USER_NAME,
+          PASSWORD,
+          TOKEN_URL
+        )
+
+        token = authenticator.get_token
+        refute_nil token
       end
     end
 
