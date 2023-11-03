@@ -1,31 +1,41 @@
 //! The `Builder` struct create a new [Vaas] instance with the expected default values and allows the custom configuration.
-use reqwest::Url;
 
+use crate::auth::Authenticator;
 use crate::error::VResult;
 use crate::options::Options;
 use crate::vaas::Vaas;
+use reqwest::Url;
 
 /// Builder struct to create a new Vaas instance with the expected default values.
 /// ```rust
 /// // Create a new [Vaas] instance from the builder.
 /// # fn main() -> vaas::error::VResult<()> {
 /// use vaas::Builder;
+/// use vaas::auth::authenticators::ClientCredentials;
 ///
-/// let vaas = Builder::new(String::from("mytoken")).build()?;
+/// let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
+///
+/// let vaas = Builder::new(authenticator).build()?;
 /// # Ok(()) }
 /// ```
-pub struct Builder {
-    token: String,
+pub struct Builder<A: Authenticator> {
+    authenticator: A,
     url: Url,
     options: Options,
 }
 
-impl Builder {
+impl<A: Authenticator> Builder<A> {
     /// Create a new VaasBuilder to create a [Vaas] instance.
-    pub fn new(token: String) -> Self {
+    pub fn new(authenticator: A) -> Self {
+        use std::str::FromStr;
         Self {
-            token,
-            ..Self::default()
+            options: Options {
+                keep_alive_delay_ms: 10_000,
+                keep_alive: true,
+                channel_capacity: 100,
+            },
+            authenticator,
+            url: Url::from_str("wss://gateway.production.vaas.gdatasecurity.de").unwrap(),
         }
     }
 
@@ -72,26 +82,11 @@ impl Builder {
     }
 
     /// Create a [Vaas] struct from the `VaasBuilder`.
-    pub fn build(self) -> VResult<Vaas> {
+    pub fn build(self) -> VResult<Vaas<A>> {
         Ok(Vaas {
             options: self.options,
-            token: self.token,
+            authenticator: self.authenticator,
             url: self.url,
         })
-    }
-}
-
-impl Default for Builder {
-    fn default() -> Self {
-        use std::str::FromStr;
-        Self {
-            options: Options {
-                keep_alive_delay_ms: 10_000,
-                keep_alive: true,
-                channel_capacity: 100,
-            },
-            token: String::new(),
-            url: Url::from_str("wss://gateway.production.vaas.gdatasecurity.de").unwrap(),
-        }
     }
 }

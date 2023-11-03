@@ -17,6 +17,7 @@
 //! Check a file hash for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict, Sha256};
+//! use vaas::auth::authenticators::ClientCredentials;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
@@ -26,8 +27,8 @@
 //!     let ct = CancellationToken::from_seconds(10);
 //!     
 //!     //Authenticate and create VaaS instance
-//!     let token = Vaas::get_token("client_id", "client_secret").await?;
-//!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
+//!     let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
+//!     let vaas = Vaas::builder(authenticator).build()?.connect().await?;
 //!
 //!     // Create the SHA256 we want to check.
 //!     let sha256 = Sha256::try_from("698CDA840A0B344639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")?;
@@ -43,6 +44,7 @@
 //! Check a file for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
+//! use vaas::auth::authenticators::ClientCredentials;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
@@ -52,8 +54,8 @@
 //!     let ct = CancellationToken::from_seconds(10);
 //!
 //!     //Authenticate and create VaaS instance
-//!     let token = Vaas::get_token("client_id", "client_secret").await?;
-//!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
+//!     let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
+//!     let vaas = Vaas::builder(authenticator).build()?.connect().await?;
 //!
 //!     // Create file we want to check.
 //!     let file = std::path::PathBuf::from("myfile");
@@ -69,6 +71,7 @@
 //! Check a file behind a URL for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
+//! use vaas::auth::authenticators::ClientCredentials;
 //! use reqwest::Url;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
@@ -79,8 +82,8 @@
 //!     let ct = CancellationToken::from_seconds(10);
 //!     
 //!     //Authenticate and create VaaS instance
-//!     let token = Vaas::get_token("client_id", "client_secret").await?;
-//!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
+//!     let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
+//!     let vaas = Vaas::builder(authenticator).build()?.connect().await?;
 //!
 //!     let url = Url::parse("https://mytesturl.test").unwrap();
 //!     let verdict = vaas.for_url(&url, &ct).await?;
@@ -91,39 +94,15 @@
 //! }
 //! ```
 //!
-//! Check a file behind a URL for malicious content:
-//! ```rust,no_run
-//! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
-//! use reqwest::Url;
-//! use std::convert::TryFrom;
-//! use std::time::Duration;
-//!
-//! #[tokio::main]
-//! async fn main() -> VResult<()> {
-//!     // Cancel the request after 10 seconds if no response is received.
-//!     let ct = CancellationToken::from_seconds(10);
-//!     
-//!     //Authenticate and create VaaS instance
-//!     let token = Vaas::get_token("client_id", "client_secret").await?;
-//!     let vaas = Vaas::builder(token.into()).build()?.connect().await?;
-//!
-//!     let url = Url::parse("https://mytesturl.test").unwrap();
-//!     let response = vaas.for_url(&url, &ct).await;
-//!
-//!     // Prints "Clean", "Pup" or "Malicious"
-//!     println!("{}", response.as_ref().unwrap().verdict);
-//!     Ok(())
-//! }
 #![warn(missing_docs)]
 
-mod authenticator;
+pub mod auth;
 pub mod builder;
 pub mod cancellation;
 pub mod connection;
 pub mod error;
 pub mod message;
 mod options;
-mod resource_owner_password_grant_authenticator;
 pub mod sha256;
 pub mod vaas;
 pub mod vaas_verdict;

@@ -24,7 +24,6 @@ impl TryFrom<&String> for MessageType {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -40,13 +39,14 @@ mod tests {
             "url": null,
             "upload_token": null
         }
-        "#.to_string();
+        "#
+        .to_string();
 
         let message_type = MessageType::try_from(&msg).unwrap();
 
         let is_correct_type = match message_type {
             MessageType::VerdictResponse(_) => true,
-            _ => false
+            _ => false,
         };
 
         assert!(is_correct_type);
@@ -60,13 +60,14 @@ mod tests {
             "type": "UniqueErrorType",
             "text": "Something went wrong..."
         }
-        "#.to_string();
+        "#
+        .to_string();
 
         let message_type = MessageType::try_from(&msg);
 
         let is_correct_type = match message_type {
             Err(Error::ErrorResponse(_)) => true,
-            _ => false
+            _ => false,
         };
 
         assert!(is_correct_type);
