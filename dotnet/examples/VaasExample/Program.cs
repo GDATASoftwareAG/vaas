@@ -21,6 +21,8 @@ public static class Program
             await UrlScan();
         if (args.Contains("FileScan"))
             await FileScan();
+        if (args.Contains("HashsumScan"))
+            await HashsumScan();
     }
 
     private static async Task FileScan()
@@ -28,6 +30,24 @@ public static class Program
         var vaas = await CreateVaasAndConnect();
         var file = Environment.GetEnvironmentVariable("SCAN_PATH") ?? string.Empty;
         var verdict = await vaas.ForFileAsync(file, CancellationToken.None);
+
+        Console.WriteLine($"{verdict.Sha256} is detected as {verdict.Verdict}");
+    }
+
+    private static async Task HashsumScan()
+    {
+        var vaas = await CreateVaasAndConnect();
+        var verdict = await vaas.ForSha256Async(new ChecksumSha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"), CancellationToken.None);
+
+        Console.WriteLine($"{verdict.Sha256} is detected as {verdict.Verdict}");
+    }
+    
+    private static async Task UrlScan()
+    {
+        var vaas = await CreateVaasAndConnect();
+
+        var uri = new Uri("https://secure.eicar.org/eicar.com.txt");
+        var verdict = await vaas.ForUrlAsync(uri, CancellationToken.None);
 
         Console.WriteLine($"{verdict.Sha256} is detected as {verdict.Verdict}");
     }
@@ -59,23 +79,11 @@ public static class Program
         //     Credentials = new TokenRequest
         //     {
         //         GrantType = GrantType.ClientCredentials,
-        //         ClientId = "client_id",
-        //         ClientSecret = "client_secret"
+        //         ClientId = ClientId,
+        //         ClientSecret = ClientSecret
         //     }
         // });
         await vaas.Connect(CancellationToken.None);
         return vaas;
-    }
-    
-    
-
-    private static async Task UrlScan()
-    {
-        var vaas = await CreateVaasAndConnect();
-
-        var uri = new Uri("https://secure.eicar.org/eicar.com.txt");
-        var verdict = await vaas.ForUrlAsync(uri, CancellationToken.None);
-
-        Console.WriteLine($"{verdict.Sha256} is detected as {verdict.Verdict}");
     }
 }
