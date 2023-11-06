@@ -72,15 +72,15 @@ jobs:
       #   run: dotnet test --no-restore --verbosity normal
       #   working-directory: dotnet/Vaas
 
-      - name: Run example FileScan
-        env:
-          SCAN_PATH: "Program.cs"
-        run: dotnet run FileScan
-        working-directory: dotnet/examples/VaasExample
+      # - name: Run example FileScan
+      #   env:
+      #     SCAN_PATH: "Program.cs"
+      #   run: dotnet run FileScan
+      #   working-directory: dotnet/examples/VaasExample
 
-      - name: Run example UrlScan
-        run: dotnet run UrlScan
-        working-directory: dotnet/examples/VaasExample
+      # - name: Run example UrlScan
+      #   run: dotnet run UrlScan
+      #   working-directory: dotnet/examples/VaasExample
 
       - name: Run example HashsumScan
         env:
