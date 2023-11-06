@@ -82,6 +82,16 @@ jobs:
         run: dotnet run UrlScan
         working-directory: dotnet/examples/VaasExample
 
+      - name: Run example HashsumScan
+        env:
+          TOKEN_URL: 'https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token'
+          VAAS_URL: 'wss://gateway.develop.vaas.gdatasecurity.de'
+          VAAS_CLIENT_ID: ${{ secrets.DEVELOP_VAAS_CLIENT_ID }}
+          VAAS_USER_NAME: ${{ secrets.DEVELOP_VAAS_USER_NAME }}
+          VAAS_PASSWORD: ${{ secrets.DEVELOP_VAAS_PASSWORD }}      
+        run: dotnet run HashsumScan
+        working-directory: dotnet/examples/VaasExample        
+
       - name: Pack
         if: startsWith(github.ref, 'refs/tags/cs')
         run: dotnet pack -c Release src/Vaas
