@@ -68,27 +68,21 @@ jobs:
         run: dotnet build --configuration Release --no-restore
         working-directory: dotnet/Vaas
 
-      # - name: Test
-      #   run: dotnet test --no-restore --verbosity normal
-      #   working-directory: dotnet/Vaas
+      - name: Test
+        run: dotnet test --no-restore --verbosity normal
+        working-directory: dotnet/Vaas
 
-      # - name: Run example FileScan
-      #   env:
-      #     SCAN_PATH: "Program.cs"
-      #   run: dotnet run FileScan
-      #   working-directory: dotnet/examples/VaasExample
-
-      # - name: Run example UrlScan
-      #   run: dotnet run UrlScan
-      #   working-directory: dotnet/examples/VaasExample
-
-      - name: Run example HashsumScan
+      - name: Run example FileScan
         env:
-          TOKEN_URL: 'https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token'
-          VAAS_URL: 'wss://gateway.develop.vaas.gdatasecurity.de'
-          VAAS_CLIENT_ID: ${{ secrets.DEVELOP_VAAS_CLIENT_ID }}
-          VAAS_USER_NAME: ${{ secrets.DEVELOP_VAAS_USER_NAME }}
-          VAAS_PASSWORD: ${{ secrets.DEVELOP_VAAS_PASSWORD }}      
+          SCAN_PATH: "Program.cs"
+        run: dotnet run FileScan
+        working-directory: dotnet/examples/VaasExample
+
+      - name: Run example UrlScan
+        run: dotnet run UrlScan
+        working-directory: dotnet/examples/VaasExample
+
+      - name: Run example HashsumScan     
         run: dotnet run HashsumScan
         working-directory: dotnet/examples/VaasExample        
 
