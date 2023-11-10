@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.WebSockets;
@@ -50,6 +51,9 @@ public class Vaas : IDisposable, IVaas
     private WebsocketClient AuthenticatedClient => GetAuthenticatedWebSocket();
 
     private readonly HttpClient _httpClient;
+    // Uploads use a custom token instead of the identity provider token
+    // TODO: Use the identity provider token for uploads
+    private readonly HttpClient _uploadHttpClient = new();
 
     private string? SessionId { get; set; }
     private bool AuthenticatedErrorOccured { get; set; }
@@ -76,7 +80,20 @@ public class Vaas : IDisposable, IVaas
     
     public async Task Connect(CancellationToken cancellationToken)
     {
-        var token = await _authenticator.GetTokenAsync(cancellationToken);
+        string token;
+        try
+        {
+            token = await _authenticator.GetTokenAsync(cancellationToken);
+        }
+        catch (HttpRequestException e)
+        {
+            if (e.StatusCode != null)
+            {
+                EnsureSuccess(e.StatusCode.Value);
+            }
+            // How can this happen?
+            throw new VaasClientException("Unknown authentication error", e);
+        }
         _client = new WebsocketClient(_options.Url, WebsocketClientFactory);
         _client.ReconnectTimeout = null;
         _client.MessageReceived.Subscribe(HandleResponseMessage);
@@ -197,9 +214,15 @@ public class Vaas : IDisposable, IVaas
     private static void EnsureSuccess(HttpResponseMessage responseMessage)
     {
         // TODO: Parse ProblemDetails once implemented in server
-        var status = (int)responseMessage.StatusCode;
-        switch (status)
+        EnsureSuccess(responseMessage.StatusCode);
+    }
+
+    private static void EnsureSuccess(HttpStatusCode status)
+    {
+        switch ((int)status)
         {
+            case 401 or 403:
+                throw new VaasAuthenticationException();
             case >= 400 and < 500:
                 throw new VaasClientException("Client-side error");
             case >= 500 and < 600:
@@ -255,7 +278,7 @@ public class Vaas : IDisposable, IVaas
 
         request.Headers.Authorization = new AuthenticationHeaderValue(token);
         request.Content = streamContent;
-        var httpResponse = await _httpClient.SendAsync(request);
+        var httpResponse = await _uploadHttpClient.SendAsync(request);
 
         if (!httpResponse.IsSuccessStatusCode)
         {
