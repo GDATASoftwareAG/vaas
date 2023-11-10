@@ -209,7 +209,11 @@ class Vaas:
         return result
 
     async def __receive_loop(self):
-        websocket = self.get_authenticated_websocket()
+        try:
+            websocket = self.get_authenticated_websocket()
+        except VaasConnectionClosedError as e:
+            # Fix for Python >= 3.12: Connection has already been closed again. End loop.
+            return
         try:
             async for message in websocket:
                 vaas_message = json.loads(message)
