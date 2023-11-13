@@ -10,7 +10,7 @@
 //!
 //! ## Contact
 //!
-//! For questions and support please contact us at [OpenSource at GDATA](mailto:opensource@gdata.de)!
+//! For questions and support please contact us at [OEM at GDATA](mailto:oem@gdata.de)!
 //!
 //! # Examples
 //!
