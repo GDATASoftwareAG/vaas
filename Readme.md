@@ -8,34 +8,63 @@
 
 # Verdict-as-a-Service
 
-*Verdict-as-a-Service* (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware. 
+<img align="right" src="assets/G_DATA_VAAS_Logo_R.png" alt="G DATA VaaS logo" style="width:40%">
 
+*Verdict-as-a-Service* (VaaS) is a cloud service that provides capabilities to scan files for malware and other threats. It allows you to easily integrate malware detection in your application with a few lines of code. You can use VaaS to secure any scenario where a file is exchanged or stored, such as:
 
-## Integration of Malware Detection
+- Upload forms with file submissions
+- Collaboration software like MS Teams, Nextcloud or Slack
+- Backup and distributed file storage like Dropbox or OneDrive
 
-Easily integrate malware detection into **any kind** of application, service or platform.
+With minimal effort, you can check a file, URL or hashsum for malicious content. No local installation of any anti-malware product is necessary. VaaS works out of the box, by providing detections from the G DATA cloud. Hosting VaaS on your own Kubernetes cluster, is an option as well.
 
-Create a command line scanner to find malware with a few lines of code: [Example](rust/examples/gscan)
-<img src="demo/gscan.gif" alt="GScan command line malware scanner" style="width:100%">
+Simple example in Rust. Check below for more programming languages.
 
-Create a KDE Dolphin plugin to scan for malicious content with a few lines of code: [Example](rust/examples/kde_dolphin)
-<img src="demo/dolphin_plugin.gif" alt="KDE Dolphin malware scanner plugin" style="width:100%">
+```rust
+use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
+use vaas::auth::authenticators::ClientCredentials;
+use std::convert::TryFrom;
+use std::time::Duration;
 
-Create a WordPress plugin that scans all file uploads for malware with a few lines of code: [Example](php/examples/wordpress)
-<img src="demo/wordpress.gif" alt="Wordpress plugin malware scanner" style="width:100%">
+#[tokio::main]
+async fn main() -> VResult<()> {
+    // Cancel the request after 10 seconds if no response is received
+    let ct = CancellationToken::from_seconds(10);
 
-Create a Discord bot that scans and deletes malicious files uploaded on your Discord server with few lines of code: [Example](typescript/examples/discordbot)
-<img src="demo/discord_bot.gif" alt="VaaS Discord Bot" style="width:100%">
+    //Authenticate and create VaaS instance
+    let authenticator = ClientCredentials::new(CLIENT_ID, CLIENT_SECRET);
+    let vaas = Vaas::builder(authenticator).build()?.connect().await?;
 
-## I'm interested in VaaS
+    // Create file we want to check
+    let file = std::path::PathBuf::from("myfile");
 
-Interested in trying out VaaS? Sign up on our website to create a free trial account. Visit our [registration page](https://vaas.gdata.de/login) and follow the instructions to get started.
+    // Ask VaaS for a verdict
+    let verdict = vaas.for_file(&file, &ct).await?;
 
-If you have a business case or specific requirements, please contact us at [oem@gdata.de](mailto:oem@gdata.de) to discuss your needs and explore how VaaS can best fit your organization.
+    // Prints "Clean", "Pup" or "Malicious"
+    println!("{}", verdict.verdict);
+    Ok(())
+}
+```
+
+## How to get started with VaaS
+If you are interested in trying out VaaS, you can sign up on our website to create a free trial account. Visit our registration page and follow the instructions to get started. If you have a business case or specific requirements, please contact us at oem@gdata.de to discuss your needs and explore how VaaS can best fit your organization.
 
 ## SDKs
+We provide SDKs for various programming languages to make it easy for you to integrate VaaS in your application. You can find the source code, examples, and documentation for each SDK in the corresponding repository. Currently, we support the following languages:
 
-At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescript/), [Microsoft .NET](./dotnet/), [Python](./python/), [PHP](./php/), [Ruby](./ruby/) and [Golang](./golang/vaas/) are available.
+|Language|Source Code|Examples|Documentation|Repository|
+|--------|-----------|--------|-------------|----------|
+|Rust|[Rust SDK](./rust/)| [Examples](./rust/examples)| [docs.rs](https://docs.rs/vaas/latest/vaas/) | [crates.io](https://crates.io/crates/vaas) | 
+|Java|[Java SDK](./java/)|[Examples](./java/examples)| [Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/java/Readme.md) | [maven central](https://mvnrepository.com/artifact/de.gdata/vaas)|
+|PHP|[PHP SDK](./php/)|[Examples](./php/examples)||[packagist](https://packagist.org/packages/gdata/vaas)|
+|TypeScript|[TypeScript SDK](./typescript/)|[Examples](./typescript/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/typescript/Readme.md)|[npmjs](https://www.npmjs.com/package/gdata-vaas)
+|Python|[Python SDK](./python/)|[Examples](./python/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/python/README.md)|[pypi](https://pypi.org/project/gdata-vaas/)|
+|.NET|[.NET SDK](./dotnet/)|[Examples](./dotnet/examples)||[nuget.org](https://www.nuget.org/packages/GDataCyberDefense.Vaas)|
+|Ruby|[Ruby SDK](./ruby/)|[Examples](./ruby/examples)|[Reamde](https://github.com/GDATASoftwareAG/vaas/blob/main/ruby/README.md)|[rubygems](https://rubygems.org/gems/vaas)|
+|Go|[Go SDK](./golang/vaas/)|[Examples](./golang/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/golang/vaas/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/golang/vaas)|
+
+The following table shows the functionality supported by each SDK:
 
 |Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby|Golang
 |---|---|---|---|---|---|---|---|---|
@@ -46,16 +75,18 @@ At the moment SDKs for [Rust](./rust/), [Java](./java/), [Typescript](./typescri
 |Check file list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|&#9989;|
 |Custom Guids for tracability on user side|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|
 
-### Documentation
 
-Documentation for the SDKs is available in the corresponding SDK folder.
+## Integration Ideas for Malware Detection trough VaaS
+You can use VaaS to create various applications that scan for malicious content with a few lines of code. Here are some examples:
 
-* [Rust SDK](./rust/), [Examples](./rust/examples)
-* [Java SDK](./java/) [Examples](./java/examples)
-* [PHP SDK](./php/), [Examples](./php/examples)
-* [TypeScript SDK](./typescript/), [Examples](./typescript/examples)
-* [Python SDK](./python/), [Examples](./python/examples)
-* [.NET SDK](./dotnet/), [Examples](./dotnet/examples)
-* [Ruby SDK](./ruby/), [Examples](./ruby/examples)
-* [Golang SDK](./golang/vaas/), [Examples](./golang/examples)
+Create a command line scanner to find malware: [Example](rust/examples/gscan)
+<img src="assets/gscan.gif" alt="GScan command line malware scanner" style="width:100%">
 
+Create a KDE Dolphin plugin to scan for malicious content: [Example](rust/examples/kde_dolphin)
+<img src="assets/dolphin_plugin.gif" alt="KDE Dolphin malware scanner plugin" style="width:100%">
+
+Create a WordPress plugin that scans all file uploads for malware: [Example](php/examples/wordpress)
+<img src="assets/wordpress.gif" alt="Wordpress plugin malware scanner" style="width:100%">
+
+Create a Discord bot that scans and deletes malicious files uploaded on your Discord server: [Example](typescript/examples/discordbot)
+<img src="assets/discord_bot.gif" alt="VaaS Discord Bot" style="width:100%">
