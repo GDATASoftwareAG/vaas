@@ -31,11 +31,11 @@ async fn main() -> VResult<()> {
     // Cancel the request after 10 seconds if no response is received
     let ct = CancellationToken::from_seconds(10);
 
-    //Authenticate and create VaaS instance
+    // Authenticate and create VaaS instance
     let authenticator = ClientCredentials::new(CLIENT_ID, CLIENT_SECRET);
     let vaas = Vaas::builder(authenticator).build()?.connect().await?;
 
-    // Create file we want to check
+    // Open a file we want to check
     let file = std::path::PathBuf::from("myfile");
 
     // Ask VaaS for a verdict
