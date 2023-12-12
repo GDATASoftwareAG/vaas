@@ -16,8 +16,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/internal/messages"
-
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 )

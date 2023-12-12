@@ -16,9 +16,8 @@ import (
 	"sync"
 	"time"
 
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/internal/hash"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/internal/messages"
-
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 	"github.com/gorilla/websocket"
@@ -30,12 +29,12 @@ import (
 // Please refer to the individual function comments for more details on their usage and behavior.
 type Vaas interface {
 	Connect(ctx context.Context, auth authenticator.Authenticator) (termChan <-chan error, err error)
-	ForUrl(ctx context.Context, uri string) (messages.VaasVerdict, error)
-	ForSha256(ctx context.Context, sha256 string) (messages.VaasVerdict, error)
-	ForFile(ctx context.Context, path string) (messages.VaasVerdict, error)
-	ForFileInMemory(ctx context.Context, file io.Reader) (messages.VaasVerdict, error)
-	ForSha256List(ctx context.Context, sha256List []string) ([]messages.VaasVerdict, error)
-	ForFileList(ctx context.Context, fileList []string) ([]messages.VaasVerdict, error)
+	ForUrl(ctx context.Context, uri string) (msg.VaasVerdict, error)
+	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
+	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
+	ForFileInMemory(ctx context.Context, file io.Reader) (msg.VaasVerdict, error)
+	ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error)
+	ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error)
 }
 
 // Confer example for constants, pong handler, and ping ticker
@@ -55,9 +54,9 @@ const (
 type vaas struct {
 	logger              *log.Logger
 	websocketConnection *websocket.Conn
-	openRequests        map[string]chan messages.VerdictResponse
-	requestChannel      chan messages.VerdictRequest
-	responseChannel     chan messages.VerdictResponse
+	openRequests        map[string]chan msg.VerdictResponse
+	requestChannel      chan msg.VerdictRequest
+	responseChannel     chan msg.VerdictResponse
 	sessionID           string
 	vaasURL             string
 	waitAuthenticated   sync.WaitGroup
@@ -72,9 +71,9 @@ func New(options options.VaasOptions, vaasURL string) Vaas {
 		logger:          log.Default(),
 		options:         options,
 		vaasURL:         vaasURL,
-		requestChannel:  make(chan messages.VerdictRequest, 1),
-		responseChannel: make(chan messages.VerdictResponse),
-		openRequests:    make(map[string]chan messages.VerdictResponse, 0),
+		requestChannel:  make(chan msg.VerdictRequest, 1),
+		responseChannel: make(chan msg.VerdictResponse),
+		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -86,9 +85,9 @@ func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 		logger:          log.Default(),
 		options:         options,
 		vaasURL:         "wss://gateway.production.vaas.gdatasecurity.de",
-		requestChannel:  make(chan messages.VerdictRequest, 1),
-		responseChannel: make(chan messages.VerdictResponse),
-		openRequests:    make(map[string]chan messages.VerdictResponse, 0),
+		requestChannel:  make(chan msg.VerdictRequest, 1),
+		responseChannel: make(chan msg.VerdictResponse),
+		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -130,24 +129,24 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (t
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForSha256(ctx context.Context, sha256 string) (messages.VaasVerdict, error) {
+func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
-		return messages.VaasVerdict{}, errors.New("invalid operation")
+		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	request := messages.NewVerdictRequest(v.sessionID, v.options, sha256)
+	request := msg.NewVerdictRequest(v.sessionID, v.options, sha256)
 
 	responseChannel := v.openRequest(request)
 	defer v.closeRequest(request)
 
-	var response messages.VerdictResponse
+	var response msg.VerdictResponse
 	select {
 	case response = <-responseChannel:
 	case <-ctx.Done():
-		return messages.VaasVerdict{}, ctx.Err()
+		return msg.VaasVerdict{}, ctx.Err()
 	}
 
-	return messages.VaasVerdict{
+	return msg.VaasVerdict{
 		Verdict: response.Verdict,
 		Sha256:  response.Sha256,
 	}, nil
@@ -169,13 +168,13 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (messages.VaasVerdi
 //	    fmt.Printf("SHA256: %s\n", verdict.Sha256)
 //	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	}
-func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]messages.VaasVerdict, error) {
+func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error) {
 	if v.sessionID == "" {
-		return []messages.VaasVerdict{}, errors.New("invalid operation")
+		return []msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
 	var waitGroup sync.WaitGroup
-	verdicts := make([]messages.VaasVerdict, len(sha256List))
+	verdicts := make([]msg.VaasVerdict, len(sha256List))
 
 	for i, sha256 := range sha256List {
 		waitGroup.Add(1)
@@ -183,7 +182,7 @@ func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]messag
 			defer waitGroup.Done()
 			verdict, err := v.ForSha256(ctx, sha256)
 			if err != nil {
-				verdict = messages.VaasVerdict{Sha256: sha256, Verdict: messages.Error, ErrMsg: err.Error()}
+				verdict = msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error()}
 			}
 			verdicts[i] = verdict
 		}(i, sha256)
@@ -207,9 +206,9 @@ func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]messag
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForFile(ctx context.Context, filePath string) (messages.VaasVerdict, error) {
+func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
-		return messages.VaasVerdict{}, errors.New("invalid operation")
+		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
 	file, err := os.Open(filePath)
@@ -218,23 +217,23 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (messages.VaasVerdi
 	}()
 
 	if err != nil {
-		return messages.VaasVerdict{
-			Verdict: messages.Error,
+		return msg.VaasVerdict{
+			Verdict: msg.Error,
 			ErrMsg:  err.Error(),
 		}, err
 	}
 
 	sha256, err := hash.CalculateSha256(file)
 	if err != nil {
-		return messages.VaasVerdict{
-			Verdict: messages.Error,
+		return msg.VaasVerdict{
+			Verdict: msg.Error,
 			ErrMsg:  err.Error(),
 		}, err
 	}
 
 	if _, err = file.Seek(0, 0); err != nil {
-		return messages.VaasVerdict{
-			Verdict: messages.Error,
+		return msg.VaasVerdict{
+			Verdict: msg.Error,
 			ErrMsg:  err.Error(),
 		}, err
 	}
@@ -256,23 +255,23 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (messages.VaasVerdi
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (messages.VaasVerdict, error) {
+func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
-		return messages.VaasVerdict{}, errors.New("invalid operation")
+		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, data); err != nil {
-		return messages.VaasVerdict{
-			Verdict: messages.Error,
+		return msg.VaasVerdict{
+			Verdict: msg.Error,
 			ErrMsg:  err.Error(),
 		}, err
 	}
 
 	sha256, err := hash.CalculateSha256(bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return messages.VaasVerdict{
-			Verdict: messages.Error,
+		return msg.VaasVerdict{
+			Verdict: msg.Error,
 			ErrMsg:  err.Error(),
 		}, err
 	}
@@ -296,13 +295,13 @@ func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (messages.Va
 //	    fmt.Printf("File: %s\n", verdict.Sha256)
 //	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	}
-func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]messages.VaasVerdict, error) {
+func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error) {
 	if v.sessionID == "" {
 		return nil, errors.New("invalid operation")
 	}
 
 	var waitGroup sync.WaitGroup
-	verdicts := make([]messages.VaasVerdict, len(fileList))
+	verdicts := make([]msg.VaasVerdict, len(fileList))
 
 	for i, file := range fileList {
 		waitGroup.Add(1)
@@ -311,7 +310,7 @@ func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]messages.V
 			defer waitGroup.Done()
 			verdict, err := v.ForFile(ctx, file)
 			if err != nil {
-				verdict = messages.VaasVerdict{Verdict: messages.Error, ErrMsg: err.Error()}
+				verdict = msg.VaasVerdict{Verdict: msg.Error, ErrMsg: err.Error()}
 			}
 			verdicts[i] = verdict
 		}(i, file)
@@ -333,24 +332,24 @@ func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]messages.V
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForUrl(ctx context.Context, url string) (messages.VaasVerdict, error) {
+func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
-		return messages.VaasVerdict{}, errors.New("invalid operation")
+		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	request := messages.NewVerdictRequestForURL(v.sessionID, v.options, url)
+	request := msg.NewVerdictRequestForURL(v.sessionID, v.options, url)
 
 	responseChan := v.openRequest(request)
 	defer v.closeRequest(request)
 
-	var response messages.VerdictResponse
+	var response msg.VerdictResponse
 	select {
 	case response = <-responseChan:
 	case <-ctx.Done():
-		return messages.VaasVerdict{}, ctx.Err()
+		return msg.VaasVerdict{}, ctx.Err()
 	}
 
-	return messages.VaasVerdict{
+	return msg.VaasVerdict{
 		Verdict: response.Verdict,
 		Sha256:  response.Sha256,
 	}, nil
@@ -381,14 +380,14 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 		return err
 	}
 
-	if err = v.websocketConnection.WriteJSON(messages.AuthRequest{
+	if err = v.websocketConnection.WriteJSON(msg.AuthRequest{
 		Kind:  "AuthRequest",
 		Token: token,
 	}); err != nil {
 		return err
 	}
 
-	var authResponse messages.AuthResponse
+	var authResponse msg.AuthResponse
 	if err = v.websocketConnection.ReadJSON(&authResponse); err != nil {
 		return err
 	}
@@ -403,26 +402,26 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 	return nil
 }
 
-func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string) (messages.VaasVerdict, error) {
+func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string) (msg.VaasVerdict, error) {
 	if v.sessionID == "" {
-		return messages.VaasVerdict{}, errors.New("invalid operation")
+		return msg.VaasVerdict{}, errors.New("invalid operation")
 	}
 
-	request := messages.NewVerdictRequest(v.sessionID, v.options, sha256)
+	request := msg.NewVerdictRequest(v.sessionID, v.options, sha256)
 	responseChan := v.openRequest(request)
 	defer v.closeRequest(request)
 
-	var response messages.VerdictResponse
+	var response msg.VerdictResponse
 	select {
 	case response = <-responseChan:
 	case <-ctx.Done():
-		return messages.VaasVerdict{}, ctx.Err()
+		return msg.VaasVerdict{}, ctx.Err()
 	}
 
-	if response.Verdict == messages.Unknown {
+	if response.Verdict == msg.Unknown {
 		if err := v.uploadFile(data, response.URL, response.UploadToken); err != nil {
-			return messages.VaasVerdict{
-				Verdict: messages.Error,
+			return msg.VaasVerdict{
+				Verdict: msg.Error,
 				Sha256:  sha256,
 				ErrMsg:  err.Error(),
 			}, err
@@ -430,13 +429,13 @@ func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string
 		response = <-responseChan
 	}
 
-	return messages.VaasVerdict{
+	return msg.VaasVerdict{
 		Verdict: response.Verdict,
 		Sha256:  response.Sha256,
 	}, nil
 }
 
-func (v *vaas) openRequest(request messages.VerdictRequest) <-chan messages.VerdictResponse {
+func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
 	if v.options.EnableLogs {
 		v.logger.Printf("Opening request for %s", request.GetGUID())
 	}
@@ -444,14 +443,14 @@ func (v *vaas) openRequest(request messages.VerdictRequest) <-chan messages.Verd
 	v.waitAuthenticated.Wait()
 
 	v.openRequestsMutex.Lock()
-	resultChan := make(chan messages.VerdictResponse, 1)
+	resultChan := make(chan msg.VerdictResponse, 1)
 	v.openRequests[request.GetGUID()] = resultChan
 	v.openRequestsMutex.Unlock()
 	v.requestChannel <- request
 	return resultChan
 }
 
-func (v *vaas) closeRequest(request messages.VerdictRequest) {
+func (v *vaas) closeRequest(request msg.VerdictRequest) {
 	if v.options.EnableLogs {
 		v.logger.Printf("Closing request for %s", request.GetGUID())
 	}
@@ -573,7 +572,7 @@ func (v *vaas) listenWebSocket(ctx context.Context) chan error {
 }
 
 func (v *vaas) readWebSocket(termChan chan<- error) {
-	var verdictResponse messages.VerdictResponse
+	var verdictResponse msg.VerdictResponse
 	for {
 		err := v.websocketConnection.ReadJSON(&verdictResponse)
 		if err == nil {
