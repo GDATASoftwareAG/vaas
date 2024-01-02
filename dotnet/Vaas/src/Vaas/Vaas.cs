@@ -350,7 +350,7 @@ public class Vaas : IDisposable, IVaas
     {
         if (!disposing) return;
 
-        AuthenticatedClient.Dispose();
+        _client?.Dispose();
         _httpClient.Dispose();
     }
 
