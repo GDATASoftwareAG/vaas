@@ -1,0 +1,22 @@
+name: Delete old container images
+
+on:
+  schedule:
+    - cron: "15 * * * *" # run hourly
+
+jobs:
+  clean-ghcr:
+    name: Delete old unused container images
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete 'dev' containers older than 2 Month
+        uses: snok/container-retention-policy@v2
+        with:
+          image-names: scanserver,scanclient,vaas/*
+          cut-off: 2 month ago UTC
+          timestamp-to-use: created_at
+          account-type: org
+          org-name: GDATASoftwareAG
+          keep-at-least: 5
+          dry-run: false
+          token: ${{ secrets.PAT_CONTAINER_REGISTRY }}
