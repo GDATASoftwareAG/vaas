@@ -3,6 +3,9 @@ name: Delete old container images
 on:
   schedule:
     - cron: "15 * * * *" # run hourly
+  push:
+    branches:
+      - "!main" # excludes main
 
 jobs:
   clean-ghcr:
