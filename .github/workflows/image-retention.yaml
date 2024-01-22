@@ -5,43 +5,53 @@ on:
     - cron: "15 * * * *" # run hourly
   push:
     branches:
+      - "*"
       - "!main" # excludes main
 
 jobs:
-  clean-ghcr:
-    runs-on: ubuntu-20.04
+  cleanup-packages:
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: 1.21.6
 
       - name: Verify dependencies
         run: go mod verify
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Build
-        run: go build -v ./github-actions/cleanup-packages/...
+        run: go build -v ./...
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Run go vet
-        run: go vet ./github-actions/cleanup-packages/...
+        run: go vet ./...
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Install staticcheck
         run: go install honnef.co/go/tools/cmd/staticcheck@latest
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Run staticcheck
-        run: staticcheck ./github-actions/cleanup-packages/...
+        run: staticcheck ./...
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Install golint
         run: go install golang.org/x/lint/golint@latest
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Run golint
-        run: golint ./github-actions/cleanup-packages/...
+        run: golint ./...
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Run tests
-        run: go test -race -vet=off ./github-actions/cleanup-packages/...
+        run: go test -race -vet=off ./...
+        working-directory: ./github-actions/cleanup-packages/
 
       - name: Delete Versions
         if: github.ref == 'refs/heads/main'
-        run: go run ./github-actions/cleanup-packages/cmd/main.go
+        run: go run ./cmd/main.go
+        working-directory: ./github-actions/cleanup-packages/

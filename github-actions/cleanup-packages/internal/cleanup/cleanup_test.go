@@ -7,35 +7,35 @@ import (
 
 func TestMatch_Inputgdscanserver_ShouldMatches(t *testing.T) {
 	name := "gdscanserver"
-	if !match(NameRegex, &name) {
+	if !match(globalNameRegex, &name) {
 		t.Errorf("Name %v should have matched", name)
 	}
 }
 
 func TestMatch_Inputgdscanserver1_ShouldNotMatches(t *testing.T) {
 	name := "gdscanserver1"
-	if match(NameRegex, &name) {
+	if match(globalNameRegex, &name) {
 		t.Errorf("Name %v should not have matched", name)
 	}
 }
 
 func TestMatch_Inputvaas_ShouldNotMatches(t *testing.T) {
 	name := "vaas"
-	if match(NameRegex, &name) {
+	if match(globalNameRegex, &name) {
 		t.Errorf("Name %v should not have matched", name)
 	}
 }
 
 func TestMatch_InputvaaswithSlashAndSomethingbehind_ShouldMatches(t *testing.T) {
 	name := "vaas/server"
-	if !match(NameRegex, &name) {
+	if !match(globalNameRegex, &name) {
 		t.Errorf("Name %v should have matched", name)
 	}
 }
 
 func TestMatch_InputvaaswithSlashAndNothingbehind_ShouldNotMatches(t *testing.T) {
 	name := "vaas/"
-	if match(NameRegex, &name) {
+	if match(globalNameRegex, &name) {
 		t.Errorf("Name %v should have matched", name)
 	}
 }
