@@ -12,15 +12,16 @@ import (
 const gdataOrganisation = "GDATASoftwareAG"
 
 var packageType = "container"
-var NameRegex, _ = regexp.Compile(`(gdscanserver|scanclient|vaas/.+)$`)
-var TagsNotToDelete, _ = regexp.Compile(`(latest|[0-9]*\.[0-9]*\.[0-9]*|[0-9]*)$`)
+var globalNameRegex, _ = regexp.Compile(`(gdscanserver|scanclient|vaas/.+)$`)
+var globalTagsNotToDelete, _ = regexp.Compile(`(latest|[0-9]*\.[0-9]*\.[0-9]*|[0-9]*)$`)
 var nowTime = time.Now()
 
+// Cleanup the main method of this lib
 func Cleanup(client *github.Client) {
 	start := time.Now()
 	ctx := context.Background()
 
-	packageList := getContainerPackages(ctx, client, NameRegex)
+	packageList := getContainerPackages(ctx, client, globalNameRegex)
 	for _, pack := range packageList {
 		println("checking versions for package ", pack.GetName())
 		versions := getVersionsOlderThan2Month(ctx, client, pack.Name)
@@ -73,7 +74,7 @@ func getVersionsOlderThan2Month(context context.Context, client *github.Client, 
 
 func areWeAllowedToDeleteThisVersion(tags []string) bool {
 	for _, tag := range tags {
-		if TagsNotToDelete.Match([]byte(tag)) {
+		if globalTagsNotToDelete.Match([]byte(tag)) {
 			return false
 		}
 	}
