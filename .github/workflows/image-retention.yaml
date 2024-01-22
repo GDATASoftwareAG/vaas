@@ -53,5 +53,5 @@ jobs:
 
       - name: Delete Versions
         if: github.ref == 'refs/heads/main'
-        run: go run ./cmd/main.go
+        run: go run ./cmd/cleanup/main.go
         working-directory: ./github-actions/cleanup-packages/
