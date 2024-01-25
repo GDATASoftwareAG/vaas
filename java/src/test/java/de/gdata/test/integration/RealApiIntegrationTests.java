@@ -451,8 +451,7 @@ public class RealApiIntegrationTests {
     public void forInputStream_WithCleanString_ReturnsCleanVerdict() throws Exception {
         var vaas = this.getVaasWithCredentials();
         InputStream targetStream = new ByteArrayInputStream("I am clean".getBytes());
-        var uuid = UUID.fromString("d34b1485-8bb3-4b7e-b0c3-010166d0de68");
-        var verdict = vaas.forInputStream(targetStream, uuid);
+        var verdict = vaas.forInputStream(targetStream);
 
         assertEquals("Clean", verdict.getVerdict());
     }
@@ -472,7 +471,7 @@ public class RealApiIntegrationTests {
     private Vaas getVaasWithCredentials()
             throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException,
             VaasAuthenticationException {
-        var dotenv = Dotenv.configure().directory("/workspaces/vaas.git/java/src/test/java/de/gdata/test/integration/.env")
+        var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
         var clientId = dotenv.get("CLIENT_ID");
