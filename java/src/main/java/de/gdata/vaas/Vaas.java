@@ -6,7 +6,10 @@ import lombok.Getter;
 import lombok.NonNull;
 import org.java_websocket.exceptions.WebsocketNotConnectedException;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -21,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Stream;
 
 public class Vaas {
     private static final int connectionRetryDelayInMs = 1000;
@@ -379,6 +383,26 @@ public class Vaas {
                 .newBuilder(new URI(url))
                 .header("Authorization", authToken)
                 .PUT(HttpRequest.BodyPublishers.ofFile(file))
+                .build();
+
+        var futureResponse = this.httpClient
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString());
+
+        return futureResponse.thenAccept(response -> {
+            if (response.statusCode() != 200) {
+                throwAsUnchecked(new IOException(
+                        "Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: "
+                                + response.body()));
+            }
+        });
+    }
+
+    private CompletableFuture<Void> UploadFile(InputStream stream, String url, String authToken)
+        throws IOException, URISyntaxException {
+        var request = HttpRequest
+                .newBuilder(new URI(url))
+                .header("Authorization", authToken)
+                .PUT(HttpRequest.BodyPublishers.ofInputStream(() -> stream))
                 .build();
 
         var futureResponse = this.httpClient
