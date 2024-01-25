@@ -14,7 +14,10 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -22,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -443,6 +447,16 @@ public class RealApiIntegrationTests {
         assertEquals("sha256 is marked non-null but is null", e.getMessage());
     }
 
+    @Test
+    public void forInputStream_WithCleanString_ReturnsCleanVerdict() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        InputStream targetStream = new ByteArrayInputStream("I am clean".getBytes());
+        var uuid = UUID.fromString("d34b1485-8bb3-4b7e-b0c3-010166d0de68");
+        var verdict = vaas.forInputStream(targetStream, uuid);
+
+        assertEquals("Clean", verdict.getVerdict());
+    }
+
     private @NotNull String getRandomString(int size) {
         String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvxyz0123456789";
         StringBuilder sb = new StringBuilder(size);
@@ -458,7 +472,7 @@ public class RealApiIntegrationTests {
     private Vaas getVaasWithCredentials()
             throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException,
             VaasAuthenticationException {
-        var dotenv = Dotenv.configure()
+        var dotenv = Dotenv.configure().directory("/workspaces/vaas.git/java/src/test/java/de/gdata/test/integration/.env")
                 .ignoreIfMissing()
                 .load();
         var clientId = dotenv.get("CLIENT_ID");

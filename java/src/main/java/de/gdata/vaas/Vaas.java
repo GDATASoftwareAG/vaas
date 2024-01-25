@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import org.java_websocket.exceptions.WebsocketNotConnectedException;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +17,7 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.net.http.HttpRequest.BodyPublishers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
@@ -24,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public class Vaas {
@@ -353,6 +356,125 @@ public class Vaas {
         return new VaasVerdict(verdictResponse);
     }
 
+    /**
+     * Request verdict for input stream
+     * 
+     * @param stream  the input stream to analyze
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException  if the connection is in an invalid state
+     * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
+     * @throws IOException  if the file can not be read
+     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
+     *                                   available in the environment
+     * @throws ExecutionException  if the request fails
+     * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
+     * @throws TimeoutException  if the request times out
+     */
+    public VaasVerdict forInputStream(InputStream stream)
+            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            ExecutionException, InterruptedException, TimeoutException {
+        EnsureClientIsConnectedAndAuthenticated();
+        var verdictResponse = this.forInputStreamAsync(stream, UUID.randomUUID(), null).get(
+                this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
+        return new VaasVerdict(verdictResponse);
+    }
+
+    /**
+     * Request verdict for input stream
+     * 
+     * @param stream  the input stream to analyze
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException  if the connection is in an invalid state
+     * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
+     * @throws IOException  if the file can not be read
+     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
+     *                                   available in the environment
+     * @throws ExecutionException  if the request fails
+     * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
+     * @throws TimeoutException  if the request times out
+     */
+    public VaasVerdict forInputStream(InputStream stream, UUID guid)
+            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            ExecutionException, InterruptedException, TimeoutException {
+        EnsureClientIsConnectedAndAuthenticated();
+        var verdictResponse = this.forInputStreamAsync(stream, guid, null).get(
+                this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
+        return new VaasVerdict(verdictResponse);
+    }
+
+    /**
+     * Request verdict for input stream
+     * 
+     * @param stream  the input stream to analyze
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException  if the connection is in an invalid state
+     * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
+     * @throws IOException  if the file can not be read
+     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
+     *                                   available in the environment
+     * @throws ExecutionException  if the request fails
+     * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
+     * @throws TimeoutException  if the request times out
+     */
+    public VaasVerdict forInputStream(InputStream stream, VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            ExecutionException, InterruptedException, TimeoutException {
+        EnsureClientIsConnectedAndAuthenticated();
+        var verdictResponse = this.forInputStreamAsync(stream, UUID.randomUUID(), verdictRequestAttributes).get(
+                this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
+        return new VaasVerdict(verdictResponse);
+    }
+
+    /**
+     * Request verdict for input stream
+     * 
+     * @param stream  the input stream to analyze
+     * @return the Vaas verdict
+     * @throws VaasInvalidStateException  if the connection is in an invalid state
+     * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
+     * @throws IOException  if the file can not be read
+     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
+     *                                   available in the environment
+     * @throws ExecutionException  if the request fails
+     * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
+     * @throws TimeoutException  if the request times out
+     */
+    public VaasVerdict forInputStream(InputStream stream, UUID guid, VerdictRequestAttributes verdictRequestAttributes)
+            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            ExecutionException, InterruptedException, TimeoutException {
+        EnsureClientIsConnectedAndAuthenticated();
+        var verdictResponse = this.forInputStreamAsync(stream, guid, verdictRequestAttributes).get(
+                this.config.getDefaultTimeout().toMillis(),
+                TimeUnit.MILLISECONDS);
+        return new VaasVerdict(verdictResponse);
+    }
+
+    private CompletableFuture<VerdictResponse> forInputStreamAsync(InputStream stream, UUID guid,
+    VerdictRequestAttributes verdictRequestAttributes)
+            throws NoSuchAlgorithmException, IOException, VaasConnectionClosedException {
+        var verdictRequestForStream = new VerdictRequestForStream(this.client.getSessionId(), guid, verdictRequestAttributes, this.options);
+
+        return this.forRequest(verdictRequestForStream)
+                .thenCompose(verdictResponse -> {
+                    var verdict = verdictResponse.getVerdict();
+                    if (verdict != Verdict.UNKNOWN) {
+                        return CompletableFuture.completedStage(verdictResponse);
+                    }
+                    try {
+                        var uploadResponseFuture = this.client.waitForVerdict(verdictRequestForStream.getGuid());
+
+                        return UploadFile(stream, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
+                                .thenCompose((v) -> uploadResponseFuture);
+                    } catch (Exception e) {
+                        throwAsUnchecked(e);
+                        return null;
+                    }
+                });
+    }
+
     private CompletableFuture<VerdictResponse> forFileAsync(Path file, UUID guid,
             VerdictRequestAttributes verdictRequestAttributes)
             throws NoSuchAlgorithmException, IOException, VaasConnectionClosedException {
@@ -399,14 +521,15 @@ public class Vaas {
 
     private CompletableFuture<Void> UploadFile(InputStream stream, String url, String authToken)
         throws IOException, URISyntaxException {
+        var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(()-> stream), stream.available());
         var request = HttpRequest
-                .newBuilder(new URI(url))
-                .header("Authorization", authToken)
-                .PUT(HttpRequest.BodyPublishers.ofInputStream(() -> stream))
-                .build();
+            .newBuilder(new URI(url))
+            .header("Authorization", authToken)
+            .PUT(bodyPublisher)
+            .build();
 
         var futureResponse = this.httpClient
-                .sendAsync(request, HttpResponse.BodyHandlers.ofString());
+            .sendAsync(request, HttpResponse.BodyHandlers.ofString());
 
         return futureResponse.thenAccept(response -> {
             if (response.statusCode() != 200) {
@@ -418,6 +541,20 @@ public class Vaas {
     }
 
     private CompletableFuture<VerdictResponse> forRequest(VerdictRequest verdictRequest) throws VaasConnectionClosedException {
+        var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
+
+        verdictRequest.setSessionId(this.client.getSessionId());
+        try {
+            this.client.send(verdictRequest.toJson());
+        }
+        catch (WebsocketNotConnectedException ignored) {
+            throw new VaasConnectionClosedException();
+        }
+
+        return verdictResponse;
+    }
+
+    private CompletableFuture<VerdictResponse> forRequest(VerdictRequestForStream verdictRequest) throws VaasConnectionClosedException {
         var verdictResponse = this.client.waitForVerdict(verdictRequest.getGuid());
 
         verdictRequest.setSessionId(this.client.getSessionId());
