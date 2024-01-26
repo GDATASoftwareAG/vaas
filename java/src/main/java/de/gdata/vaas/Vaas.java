@@ -363,7 +363,7 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws IOException  if the file can not be read
+     * @throws IOException  if the stream can not be read
      * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
      *                                   available in the environment
      * @throws ExecutionException  if the request fails
@@ -466,7 +466,7 @@ public class Vaas {
                     try {
                         var uploadResponseFuture = this.client.waitForVerdict(verdictRequestForStream.getGuid());
 
-                        return UploadFile(stream, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
+                        return UploadStream(stream, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
                                 .thenCompose((v) -> uploadResponseFuture);
                     } catch (Exception e) {
                         throwAsUnchecked(e);
@@ -519,7 +519,7 @@ public class Vaas {
         });
     }
 
-    private CompletableFuture<Void> UploadFile(InputStream stream, String url, String authToken)
+    private CompletableFuture<Void> UploadStream(InputStream stream, String url, String authToken)
         throws IOException, URISyntaxException {
         var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(()-> stream), stream.available());
         var request = HttpRequest

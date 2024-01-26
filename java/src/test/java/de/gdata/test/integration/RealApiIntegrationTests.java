@@ -453,7 +453,40 @@ public class RealApiIntegrationTests {
         InputStream targetStream = new ByteArrayInputStream("I am clean".getBytes());
         var verdict = vaas.forInputStream(targetStream);
 
-        assertEquals("Clean", verdict.getVerdict());
+        assertEquals(Verdict.CLEAN, verdict.getVerdict());
+    }
+
+    @Test
+    public void forInputStream_WithEicarString_ReturnsMaliciousVerdict() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        InputStream targetStream = new ByteArrayInputStream("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
+        var verdict = vaas.forInputStream(targetStream);
+
+        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+    }
+
+    @Test
+    public void forInputStream_WithCleanUrl_ReturnsCleanVerdict() throws Exception {
+        var url = new URL("https://github.com/GDATASoftwareAG/vaas");
+        var conn = url.openConnection();
+        InputStream targetStream = new ByteArrayInputStream(conn.getInputStream().readAllBytes());
+
+        var vaas = this.getVaasWithCredentials();
+        var verdict = vaas.forInputStream(targetStream);
+
+        assertEquals(Verdict.CLEAN, verdict.getVerdict());
+    }
+
+    @Test
+    public void forInputStream_WithEicarUrl_ReturnsMaliciousVerdict() throws Exception {
+        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var conn = url.openConnection();
+        InputStream targetStream = new ByteArrayInputStream(conn.getInputStream().readAllBytes());
+
+        var vaas = this.getVaasWithCredentials();
+        var verdict = vaas.forInputStream(targetStream);
+
+        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
     }
 
     private @NotNull String getRandomString(int size) {
