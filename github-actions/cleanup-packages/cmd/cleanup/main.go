@@ -3,6 +3,7 @@ package main
 import (
 	"GDATACyberDefense/cleanup-packages/internal/cleanup"
 	"fmt"
+	"os"
 
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v58/github"
@@ -14,7 +15,7 @@ func main() {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	client := github.NewClient(rateLimiter).WithAuthToken("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")
+	client := github.NewClient(rateLimiter).WithAuthToken(os.Getenv("PAT_CONTAINER_REGISTRY"))
 
 	cleanup.Cleanup(client)
 }
