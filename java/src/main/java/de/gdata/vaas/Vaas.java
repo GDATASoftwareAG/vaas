@@ -363,15 +363,12 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws IOException  if the stream can not be read
-     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
-     *                                   available in the environment
      * @throws ExecutionException  if the request fails
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
     public VaasVerdict forInputStream(InputStream stream, long contentLength)
-            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            throws VaasInvalidStateException, VaasConnectionClosedException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
         var verdictResponse = this.forInputStreamAsync(stream, contentLength, UUID.randomUUID(), null).get(
@@ -387,15 +384,12 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws IOException  if the file can not be read
-     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
-     *                                   available in the environment
      * @throws ExecutionException  if the request fails
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
     public VaasVerdict forInputStream(InputStream stream, long contentLength, UUID guid)
-            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            throws VaasInvalidStateException, VaasConnectionClosedException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
         var verdictResponse = this.forInputStreamAsync(stream, contentLength, guid, null).get(
@@ -411,15 +405,12 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws IOException  if the file can not be read
-     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
-     *                                   available in the environment
      * @throws ExecutionException  if the request fails
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
     public VaasVerdict forInputStream(InputStream stream, long contentLength, VerdictRequestAttributes verdictRequestAttributes)
-            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            throws VaasInvalidStateException, VaasConnectionClosedException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
         var verdictResponse = this.forInputStreamAsync(stream, contentLength, UUID.randomUUID(), verdictRequestAttributes).get(
@@ -435,15 +426,12 @@ public class Vaas {
      * @return the Vaas verdict
      * @throws VaasInvalidStateException  if the connection is in an invalid state
      * @throws VaasConnectionClosedException  if the connection to the Vaas backend is closed
-     * @throws IOException  if the file can not be read
-     * @throws NoSuchAlgorithmException  if a particular cryptographic algorithm is requested but is not
-     *                                   available in the environment
      * @throws ExecutionException  if the request fails
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
     public VaasVerdict forInputStream(InputStream stream, long contentLength, UUID guid, VerdictRequestAttributes verdictRequestAttributes)
-            throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
+            throws VaasInvalidStateException, VaasConnectionClosedException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
         var verdictResponse = this.forInputStreamAsync(stream, contentLength, guid, verdictRequestAttributes).get(
@@ -454,14 +442,14 @@ public class Vaas {
 
     private CompletableFuture<VerdictResponse> forInputStreamAsync(InputStream stream, long contentLength, UUID guid,
     VerdictRequestAttributes verdictRequestAttributes)
-            throws NoSuchAlgorithmException, IOException, VaasConnectionClosedException {
+            throws VaasConnectionClosedException {
         var verdictRequestForStream = new VerdictRequestForStream(this.client.getSessionId(), guid, verdictRequestAttributes, this.options);
 
         return this.forRequest(verdictRequestForStream)
                 .thenCompose(verdictResponse -> {
                     var verdict = verdictResponse.getVerdict();
                     if (verdict != Verdict.UNKNOWN) {
-                        return CompletableFuture.completedStage(verdictResponse);
+                        return CompletableFuture.failedFuture(new VaasServerException("Server returned verdict without receiving content"));
                     }
                     try {
                         var uploadResponseFuture = this.client.waitForVerdict(verdictRequestForStream.getGuid());
