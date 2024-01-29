@@ -1,21 +1,11 @@
 package de.gdata.test.integration;
 
-import de.gdata.vaas.*;
-import de.gdata.vaas.exceptions.VaasAuthenticationException;
-import de.gdata.vaas.exceptions.VaasClientException;
-import de.gdata.vaas.exceptions.VaasConnectionClosedException;
-import de.gdata.vaas.exceptions.VaasInvalidStateException;
-import de.gdata.vaas.messages.VaasOptions;
-import de.gdata.vaas.messages.Verdict;
-import de.gdata.vaas.messages.VerdictRequest;
-import de.gdata.vaas.messages.VerdictRequestAttributes;
-import io.github.cdimascio.dotenv.Dotenv;
-import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.testng.AssertJUnit.assertEquals;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -25,14 +15,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.testng.AssertJUnit.assertEquals;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Resources;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
+import de.gdata.vaas.IAuthenticator;
+import de.gdata.vaas.ResourceOwnerPasswordGrantAuthenticator;
+import de.gdata.vaas.Sha256;
+import de.gdata.vaas.Vaas;
+import de.gdata.vaas.VaasConfig;
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasClientException;
+import de.gdata.vaas.exceptions.VaasConnectionClosedException;
+import de.gdata.vaas.exceptions.VaasInvalidStateException;
+import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.messages.VerdictRequest;
+import de.gdata.vaas.messages.VerdictRequestAttributes;
+import io.github.cdimascio.dotenv.Dotenv;
 
 public class RealApiIntegrationTests {
     @Test
@@ -450,8 +455,9 @@ public class RealApiIntegrationTests {
     @Test
     public void forInputStream_WithCleanString_ReturnsCleanVerdict() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        InputStream targetStream = new ByteArrayInputStream("I am clean".getBytes());
-        var verdict = vaas.forInputStream(targetStream);
+        var targetStream = new ByteArrayInputStream("I am clean".getBytes());
+        var contentLength = targetStream.available();
+        var verdict = vaas.forInputStream(targetStream, contentLength);
 
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
@@ -459,20 +465,22 @@ public class RealApiIntegrationTests {
     @Test
     public void forInputStream_WithEicarString_ReturnsMaliciousVerdict() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        InputStream targetStream = new ByteArrayInputStream("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
-        var verdict = vaas.forInputStream(targetStream);
+        var targetStream = new ByteArrayInputStream("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
+        var contentLength = targetStream.available();
+        var verdict = vaas.forInputStream(targetStream, contentLength);
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
     }
 
     @Test
     public void forInputStream_WithCleanUrl_ReturnsCleanVerdict() throws Exception {
-        var url = new URL("https://github.com/GDATASoftwareAG/vaas");
+        var url = new URL("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md");
         var conn = url.openConnection();
-        InputStream targetStream = new ByteArrayInputStream(conn.getInputStream().readAllBytes());
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLengthLong();
 
         var vaas = this.getVaasWithCredentials();
-        var verdict = vaas.forInputStream(targetStream);
+        var verdict = vaas.forInputStream(inputStream, contentLength);
 
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
@@ -481,13 +489,32 @@ public class RealApiIntegrationTests {
     public void forInputStream_WithEicarUrl_ReturnsMaliciousVerdict() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
-        InputStream targetStream = new ByteArrayInputStream(conn.getInputStream().readAllBytes());
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLengthLong();
 
         var vaas = this.getVaasWithCredentials();
-        var verdict = vaas.forInputStream(targetStream);
+        var verdict = vaas.forInputStream(inputStream, contentLength);
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
     }
+
+    @Test
+    public void forInputStream_WithEicarUrl_ReturnsMaliciousVerdict2() throws Exception {
+        var client = WebClient.create();
+        var resource = client
+                .get()
+                .uri("https://secure.eicar.org/eicar.com.txt")
+                .retrieve()
+                .bodyToMono(InputStream.class)
+                .block();
+
+
+        System.out.println(resource);
+        // var vaas = this.getVaasWithCredentials();
+        // var verdict = vaas.forInputStream(resource);
+
+        // assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+    }    
 
     private @NotNull String getRandomString(int size) {
         String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvxyz0123456789";

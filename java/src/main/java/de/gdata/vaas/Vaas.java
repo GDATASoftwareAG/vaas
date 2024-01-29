@@ -370,11 +370,11 @@ public class Vaas {
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
-    public VaasVerdict forInputStream(InputStream stream)
+    public VaasVerdict forInputStream(InputStream stream, long contentLength)
             throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
-        var verdictResponse = this.forInputStreamAsync(stream, UUID.randomUUID(), null).get(
+        var verdictResponse = this.forInputStreamAsync(stream, contentLength, UUID.randomUUID(), null).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
@@ -394,11 +394,11 @@ public class Vaas {
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
-    public VaasVerdict forInputStream(InputStream stream, UUID guid)
+    public VaasVerdict forInputStream(InputStream stream, long contentLength, UUID guid)
             throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
-        var verdictResponse = this.forInputStreamAsync(stream, guid, null).get(
+        var verdictResponse = this.forInputStreamAsync(stream, contentLength, guid, null).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
@@ -418,11 +418,11 @@ public class Vaas {
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
-    public VaasVerdict forInputStream(InputStream stream, VerdictRequestAttributes verdictRequestAttributes)
+    public VaasVerdict forInputStream(InputStream stream, long contentLength, VerdictRequestAttributes verdictRequestAttributes)
             throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
-        var verdictResponse = this.forInputStreamAsync(stream, UUID.randomUUID(), verdictRequestAttributes).get(
+        var verdictResponse = this.forInputStreamAsync(stream, contentLength, UUID.randomUUID(), verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
@@ -442,17 +442,17 @@ public class Vaas {
      * @throws InterruptedException  if the operation is interrupted by Thread.interrupt()
      * @throws TimeoutException  if the request times out
      */
-    public VaasVerdict forInputStream(InputStream stream, UUID guid, VerdictRequestAttributes verdictRequestAttributes)
+    public VaasVerdict forInputStream(InputStream stream, long contentLength, UUID guid, VerdictRequestAttributes verdictRequestAttributes)
             throws VaasInvalidStateException, VaasConnectionClosedException, IOException, NoSuchAlgorithmException,
             ExecutionException, InterruptedException, TimeoutException {
         EnsureClientIsConnectedAndAuthenticated();
-        var verdictResponse = this.forInputStreamAsync(stream, guid, verdictRequestAttributes).get(
+        var verdictResponse = this.forInputStreamAsync(stream, contentLength, guid, verdictRequestAttributes).get(
                 this.config.getDefaultTimeout().toMillis(),
                 TimeUnit.MILLISECONDS);
         return new VaasVerdict(verdictResponse);
     }
 
-    private CompletableFuture<VerdictResponse> forInputStreamAsync(InputStream stream, UUID guid,
+    private CompletableFuture<VerdictResponse> forInputStreamAsync(InputStream stream, long contentLength, UUID guid,
     VerdictRequestAttributes verdictRequestAttributes)
             throws NoSuchAlgorithmException, IOException, VaasConnectionClosedException {
         var verdictRequestForStream = new VerdictRequestForStream(this.client.getSessionId(), guid, verdictRequestAttributes, this.options);
