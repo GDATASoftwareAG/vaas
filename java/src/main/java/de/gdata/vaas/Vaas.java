@@ -449,8 +449,14 @@ public class Vaas {
                 .thenCompose(verdictResponse -> {
                     var verdict = verdictResponse.getVerdict();
                     if (verdict != Verdict.UNKNOWN) {
-                        return CompletableFuture.failedFuture(new VaasServerException("Server returned verdict without receiving content"));
+                        try {
+                            throw new VaasServerException("Server returned verdict without receiving content");
+                        } catch (VaasServerException e) {
+                            throwAsUnchecked(e);
+                            return null;
+                        }
                     }
+                    
                     try {
                         var uploadResponseFuture = this.client.waitForVerdict(verdictRequestForStream.getGuid());
 
