@@ -54,4 +54,6 @@ jobs:
       - name: Delete Versions
         if: github.ref == 'refs/heads/main'
         run: go run ./cmd/cleanup/main.go
+        env:
+          PAT_CONTAINER_REGISTRY: ${{ secrets.PAT_CONTAINER_REGISTRY }}
         working-directory: ./github-actions/cleanup-packages/
