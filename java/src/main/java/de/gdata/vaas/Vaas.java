@@ -466,7 +466,7 @@ public class Vaas {
                     try {
                         var uploadResponseFuture = this.client.waitForVerdict(verdictRequestForStream.getGuid());
 
-                        return UploadStream(stream, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
+                        return uploadStream(stream, contentLength, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
                                 .thenCompose((v) -> uploadResponseFuture);
                     } catch (Exception e) {
                         throwAsUnchecked(e);
@@ -519,9 +519,9 @@ public class Vaas {
         });
     }
 
-    private CompletableFuture<Void> UploadStream(InputStream stream, String url, String authToken)
+    private CompletableFuture<Void> uploadStream(InputStream stream, long contentLength, String url, String authToken)
         throws IOException, URISyntaxException {
-        var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(()-> stream), stream.available());
+        var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(()-> stream), contentLength);
         var request = HttpRequest
             .newBuilder(new URI(url))
             .header("Authorization", authToken)

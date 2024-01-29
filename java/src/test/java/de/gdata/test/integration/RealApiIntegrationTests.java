@@ -21,8 +21,6 @@ import java.util.concurrent.TimeoutException;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Resources;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
 import de.gdata.vaas.IAuthenticator;
@@ -70,7 +68,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromSha256SingleMaliciousHash() throws Exception {
+    public void forSha256SingleMaliciousHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
 
@@ -135,7 +133,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromSha256MultipleMaliciousHash() throws Exception {
+    public void forSha256MultipleMaliciousHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var sha256_1 = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
         var sha256_2 = new Sha256("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
@@ -159,7 +157,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromSha256MultipleCleanHash() throws Exception {
+    public void forSha256MultipleCleanHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var sha256_1 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         var sha256_2 = new Sha256("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391");
@@ -183,7 +181,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromSha256MultipleUnknownHash() throws Exception {
+    public void forSha256MultipleUnknownHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var sha256_1 = new Sha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
         var sha256_2 = new Sha256("11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
@@ -207,7 +205,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromFileSingleMaliciousFile()
+    public void forFileSingleMaliciousFile()
             throws Exception {
         var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
@@ -224,7 +222,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromFileSingleMaliciousFileWithVerdictRequestAttributes()
+    public void forFileSingleMaliciousFileWithVerdictRequestAttributes()
             throws Exception {
         var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
@@ -245,7 +243,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromFileSingleCleanFile()
+    public void forFileSingleCleanFile()
             throws Exception {
         byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
@@ -262,7 +260,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromFileSingleUnknownFile()
+    public void forFileSingleUnknownFile()
             throws Exception {
         var unknown = getRandomString(50);
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "unknown.txt");
@@ -280,7 +278,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromFileEmptyFile()
+    public void forFileEmptyFile()
             throws Exception {
         byte[] clean = {};
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "empty.txt");
@@ -298,7 +296,7 @@ public class RealApiIntegrationTests {
 
     @Test
     @Disabled("Enable to test keep-alive")
-    public void fromFile_WorksWithBigSample() throws Exception {
+    public void forFile_WorksWithBigSample() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var verdict = vaas.forFile(Path.of("/home/vscode/big.zip"));
         assert (verdict != null);
@@ -307,7 +305,7 @@ public class RealApiIntegrationTests {
 
     @Test
     @Disabled("Enable to test keep-alive")
-    public void fromSha256_WorksAfter40s() throws Exception {
+    public void forSha256_WorksAfter40s() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         var verdict = vaas.forSha256(sha256);
@@ -320,7 +318,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromSha256_ThrowsConnectionClosed() throws Exception {
+    public void forSha256_ThrowsConnectionClosed() throws Exception {
         var vaas = this.getVaasWithCredentials();
         vaas.disconnect();
         var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
@@ -330,7 +328,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromSha256_ConnectHasntBeCalled() throws Exception {
+    public void forSha256_ConnectHasntBeCalled() throws Exception {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
@@ -349,7 +347,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromUrlMultipleMaliciousUrls() throws Exception {
+    public void forUrlMultipleMaliciousUrls() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://secure.eicar.org/eicar.com");
         var url_2 = new URL("https://secure.eicar.org/eicar.com.txt");
@@ -390,7 +388,7 @@ public class RealApiIntegrationTests {
 
     @Test
     @Disabled("Used for manual testing")
-    public void fromUrlInALoop() throws Exception {
+    public void forUrlInALoop() throws Exception {
         var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");
 
         while (true) {
@@ -414,7 +412,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void fromUrlMultipleCleanUrls() throws Exception {
+    public void forUrlMultipleCleanUrls() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");
         var url_2 = new URL("https://github.com/GDATASoftwareAG/vaas");
@@ -497,24 +495,6 @@ public class RealApiIntegrationTests {
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
     }
-
-    @Test
-    public void forInputStream_WithEicarUrl_ReturnsMaliciousVerdict2() throws Exception {
-        var client = WebClient.create();
-        var resource = client
-                .get()
-                .uri("https://secure.eicar.org/eicar.com.txt")
-                .retrieve()
-                .bodyToMono(InputStream.class)
-                .block();
-
-
-        System.out.println(resource);
-        // var vaas = this.getVaasWithCredentials();
-        // var verdict = vaas.forInputStream(resource);
-
-        // assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-    }    
 
     private @NotNull String getRandomString(int size) {
         String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvxyz0123456789";
