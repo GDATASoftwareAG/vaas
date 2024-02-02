@@ -40,6 +40,8 @@ func Cleanup(client *github.Client) {
 func getVersionsOlderThan2Month(context context.Context, client *github.Client, name *string) (versionList []*github.PackageVersion) {
 	run := true
 	nextPage := 1
+	packageType := "container"
+	packageState := "active"
 	for run {
 		packageVersions, response, err := client.Organizations.PackageGetAllVersions(
 			context, gdataOrganisation, packageType, *name,
@@ -48,6 +50,8 @@ func getVersionsOlderThan2Month(context context.Context, client *github.Client, 
 					Page:    nextPage,
 					PerPage: 10,
 				},
+				PackageType: &packageType,
+				State:       &packageState,
 			})
 		if err != nil {
 			log.Println(response)
@@ -72,6 +76,9 @@ func getVersionsOlderThan2Month(context context.Context, client *github.Client, 
 }
 
 func areWeAllowedToDeleteThisVersion(tags []string) bool {
+	if len(tags) == 0 {
+		return false
+	}
 	for _, tag := range tags {
 		if globalTagsNotToDelete.Match([]byte(tag)) {
 			return false
