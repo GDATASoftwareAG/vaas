@@ -22,16 +22,17 @@ on:
         options:
           - production
           - staging
+          - develop
         default: "production"
 
 env:
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
-  CLIENT_SECRET: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
-  VAAS_URL: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
-  TOKEN_URL: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
+  CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+  VAAS_URL: 'wss://gateway.production.vaas.gdatasecurity.de'
+  TOKEN_URL: 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token'
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
-  VAAS_PASSWORD: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && secrets.VAAS_PASSWORD || secrets.STAGING_VAAS_PASSWORD }}
+  VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
 
 jobs:
   build-java:
@@ -41,6 +42,31 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+    
+      - name: set staging environment
+        if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/java') && endsWith(github.ref, '-beta')))
+        env:
+          CLIENT_ID: ${{ secrets.STAGING_CLIENT_ID }}
+          CLIENT_SECRET: ${{secrets.STAGING_CLIENT_SECRET}}
+          VAAS_URL: 'wss://gateway.staging.vaas.gdatasecurity.de'
+          TOKEN_URL: 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token'
+          VAAS_CLIENT_ID: ${{ secrets.STAGING_VAAS_CLIENT_ID }}
+          VAAS_USER_NAME: ${{ secrets.STAGING_VAAS_USER_NAME }}
+          VAAS_PASSWORD: ${{ secrets.STAGING_VAAS_PASSWORD }}
+        run: echo "set staging env"
+        
+
+      - name: set develop environment
+        if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags/java') && endsWith(github.ref, '-alpha')))
+        env:
+          CLIENT_ID: ${{ secrets.DEVELOP_CLIENT_ID }}
+          CLIENT_SECRET: ${{secrets.DEVELOP_CLIENT_SECRET}}
+          VAAS_URL: 'wss://gateway.develop.vaas.gdatasecurity.de'
+          TOKEN_URL: 'https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token'
+          VAAS_CLIENT_ID: ${{ secrets.DEVELOP_VAAS_CLIENT_ID }}
+          VAAS_USER_NAME: ${{ secrets.DEVELOP_VAAS_USER_NAME }}
+          VAAS_PASSWORD: ${{ secrets.DEVELOP_VAAS_PASSWORD }}  
+        run: echo "set develop env"
 
       - name: install Java
         uses: actions/setup-java@v3
