@@ -78,6 +78,9 @@ jobs:
         uses: gradle/gradle-build-action@v2
         with:
           gradle-version: "8.1"
+      
+      - name: show environment
+        run: printenv
 
       - name: run tests
         uses: gradle/gradle-build-action@v2
