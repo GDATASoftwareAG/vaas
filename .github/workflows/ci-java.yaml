@@ -22,16 +22,17 @@ on:
         options:
           - production
           - staging
+          - develop
         default: "production"
 
 env:
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
-  CLIENT_SECRET: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && secrets.CLIENT_SECRET || secrets.STAGING_CLIENT_SECRET }}
-  VAAS_URL: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && 'wss://gateway.production.vaas.gdatasecurity.de' || 'wss://gateway.staging.vaas.gdatasecurity.de' }}
-  TOKEN_URL: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token' || 'https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token' }}
+  CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+  VAAS_URL: 'wss://gateway.production.vaas.gdatasecurity.de'
+  TOKEN_URL: 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token'
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
-  VAAS_PASSWORD: ${{ (inputs.environment == 'production' || inputs.environment == null || startsWith(github.ref, 'refs/tags/java')) && secrets.VAAS_PASSWORD || secrets.STAGING_VAAS_PASSWORD }}
+  VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
 
 jobs:
   build-java:
@@ -41,46 +42,68 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
+    
+      - name: set staging environment
+        if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/java') && endsWith(github.ref, '-beta')))
+        run: |
+          echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
+          echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
+          echo "VAAS_PASSWORD=${{ secrets.STAGING_VAAS_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: set develop environment
+        if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags/java') && endsWith(github.ref, '-alpha')))
+        run: |
+          echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
+          echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
+          echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: install Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: "17"
-          distribution: "adopt"
+          distribution: "temurin"
 
       - name: setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
-          gradle-version: "8.1"
+          gradle-version: "8.6"
 
       - name: run tests
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
-          arguments: test
-          gradle-version: "8.1"
+          arguments: test --info
+          gradle-version: "8.6"
           build-root-directory: java
 
       - name: run examples for file
         env:
           SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: fileScan
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
       - name: run examples for url
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: urlScan
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
       - name: run authentication examples
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: authentication
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
       - name: extract version
@@ -101,10 +124,10 @@ jobs:
           ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGPASSWORD }}
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: publish
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java
 
       - name: push to Maven Central
@@ -112,10 +135,10 @@ jobs:
         env:
           ORG_GRADLE_PROJECT_username: ${{ secrets.ORG_GRADLE_PROJECT_USERNAME }}
           ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: closeAndReleaseRepository
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java
 
       - name: Microsoft Teams Notification
