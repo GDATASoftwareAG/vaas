@@ -185,13 +185,12 @@ public class Vaas : IDisposable, IVaas
 
     public async Task<VaasVerdict> ForStreamAsync(
         Stream stream,
-        long contentLength,
         CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null
     )
     {
-        if (stream == null || contentLength <= 0)
-            throw new VaasClientException("Stream or content length was null.");
+        if (stream == null)
+            throw new VaasClientException("Stream was null.");
 
         var verdictResponse = await ForStreamRequestAsync(
             new VerdictRequestForStream(SessionId ?? throw new InvalidOperationException())
@@ -216,14 +215,14 @@ public class Vaas : IDisposable, IVaas
         }
 
         var response = WaitForResponseAsync(verdictResponse.Guid);
-        await UploadStream(stream, contentLength, verdictResponse.Url, verdictResponse.UploadToken, cancellationToken);
+        await UploadStream(stream, verdictResponse.Url, verdictResponse.UploadToken, cancellationToken);
         
         return new VaasVerdict(await response);
     }
     
-    private async Task UploadStream(Stream stream, long contentLength, string url, string token, CancellationToken cancellationToken)
+    private async Task UploadStream(Stream stream, string url, string token, CancellationToken cancellationToken)
     {
-        using var requestContent = new StreamContent(stream, (int)contentLength);
+        using var requestContent = new StreamContent(stream);
         using var requestMessage = new HttpRequestMessage(HttpMethod.Put, url);
         requestMessage.Content = requestContent;
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue(token);

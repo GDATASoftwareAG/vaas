@@ -190,10 +190,9 @@ public class IntegrationTests
         var eicarBytes = System.Text.Encoding.UTF8.GetBytes("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
         targetStream.Write(eicarBytes, 0, eicarBytes.Length);
         targetStream.Position = 0;
-        var contentLength = targetStream.Length;
         
         // Act
-        var verdict = await vaas.ForStreamAsync(targetStream, contentLength, CancellationToken.None);
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
         
         // Assert
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
@@ -208,10 +207,9 @@ public class IntegrationTests
         var cleanBytes = System.Text.Encoding.UTF8.GetBytes("This is a clean file");
         targetStream.Write(cleanBytes, 0, cleanBytes.Length);
         targetStream.Position = 0;
-        var contentLength = targetStream.Length;
         
         // Act
-        var verdict = await vaas.ForStreamAsync(targetStream, contentLength, CancellationToken.None);
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
         
         // Assert
         Assert.Equal(Verdict.Clean, verdict.Verdict);
@@ -225,11 +223,9 @@ public class IntegrationTests
         var url = new Uri("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md");
         var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
         var targetStream = await response.Content.ReadAsStreamAsync();
-        var contentLength = response.Content.Headers.ContentLength;
-        Assert.NotNull(contentLength);
         
         // Act
-        var verdict = await vaas.ForStreamAsync(targetStream, (long)contentLength, CancellationToken.None);
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
         
         // Assert
         Assert.Equal(Verdict.Clean, verdict.Verdict);
@@ -243,11 +239,9 @@ public class IntegrationTests
         var url = new Uri("https://secure.eicar.org/eicar.com.txt");
         var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
         var targetStream = await response.Content.ReadAsStreamAsync();
-        var contentLength = response.Content.Headers.ContentLength;
-        Assert.NotNull(contentLength);
         
         // Act
-        var verdict = await vaas.ForStreamAsync(targetStream, (long)contentLength, CancellationToken.None);
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
         
         // Assert
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
