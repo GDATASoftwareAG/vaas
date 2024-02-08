@@ -14,7 +14,7 @@ import {
 import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
 import ResourceOwnerPasswordGrantAuthenticator from "../src/ResourceOwnerPasswordGrantAuthenticator";
 import { Readable } from "stream";
-import { ReadStream } from "fs";
+import axios from "axios";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -239,20 +239,34 @@ describe("Test verdict requests", function () {
         expect(verdict.verdict).to.equal("Malicious");
     });
 
-    it('if clean stream is submitted, a verdict "clean" is expected', async () => {
+    it('if a clean stream is submitted, a verdict "clean" is expected', async () => {
         const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-        const stream = Readable.from("I Am Clean")
+        const stream = new Readable();
+        stream.push("I am Clean");
+        stream.push(null);
         const verdict = await vaas.forStream(stream);
         expect(verdict.verdict).to.equal("Clean");
     });
 
-    it('if EICAR stream is submitted, a verdict "malicious" is expected', async () => {
+    it('if a EICAR stream is submitted, a verdict "malicious" is expected', async () => {
         const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const stream = new Readable();
-        stream.push("X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+        stream._read = () => {};
+        stream.push("X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
+        stream.push(null);
         const verdict = await vaas.forStream(stream);
         expect(verdict.verdict).to.equal("Malicious");
     });
+
+    it('if a clean stream from an url is submitted, a verdict "malicious" is expected', async () => {
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+        const response = await axios.get("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md", {
+            responseType: "stream"
+        });
+        const stream = Readable.from(response.data)
+        const verdict = await vaas.forStream(stream);
+        expect(verdict.verdict).to.equal("Malicious");
+    });    
 });
 
 describe("Vaas", async () => {

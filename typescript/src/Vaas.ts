@@ -15,12 +15,10 @@ import {
   VaasAuthenticationError,
   VaasConnectionClosedError,
   VaasInvalidStateError,
-  VaasServerError,
   VaasTimeoutError,
 } from "./VaasErrors";
 import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
-import { ReadStream } from "fs";
 import { VerdictRequestForStream } from "./messages/verdict_request_for_stream";
 import { Readable } from "stream";
 
@@ -249,12 +247,11 @@ export class Vaas {
       if (this.debug) console.debug("uuid", guid);
       this.verdictPromises.set(guid, {
         resolve: async (verdictResponse: VerdictResponse) => {
-          if (verdictResponse.verdict !== Verdict.UNKNOWN) {
-            throw new VaasServerError("Server returned verdict without receiving content");
+          if (verdictResponse.verdict === Verdict.UNKNOWN) {
+            const contentLength = stream.readableLength;
+            await this.upload(verdictResponse, stream, contentLength);
+            this.verdictPromises.delete(guid);
           }
-          const contentLength = stream.readableLength;
-          await this.upload(verdictResponse, stream, contentLength);
-          this.verdictPromises.delete(guid);
           resolve(new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict));
         },
         reject: (reason) => reject(reason),
