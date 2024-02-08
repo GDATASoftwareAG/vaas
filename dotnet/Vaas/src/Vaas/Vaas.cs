@@ -183,6 +183,69 @@ public class Vaas : IDisposable, IVaas
         return new VaasVerdict(verdictResponse);
     }
 
+    public async Task<VaasVerdict> ForStreamAsync(
+        Stream stream,
+        long contentLength,
+        CancellationToken cancellationToken,
+        Dictionary<string, string>? verdictRequestAttributes = null
+    )
+    {
+        if (stream == null || contentLength <= 0)
+            throw new VaasClientException("Stream or content length was null.");
+
+        var verdictResponse = await ForStreamRequestAsync(
+            new VerdictRequestForStream(SessionId ?? throw new InvalidOperationException())
+            {
+                UseCache = _options.UseCache,
+                UseHashLookup = _options.UseHashLookup,
+                VerdictRequestAttributes = verdictRequestAttributes
+            });
+        if (!verdictResponse.IsValid)
+            throw new JsonException("VerdictResponse is not valid");
+        if (verdictResponse.Verdict != Verdict.Unknown)
+            throw new VaasServerException("Server returned verdict without receiving content.");
+
+        if (
+            string.IsNullOrWhiteSpace(verdictResponse.Url)
+            || string.IsNullOrWhiteSpace(verdictResponse.UploadToken)
+        )
+        {
+            throw new JsonException(
+                "VerdictResponse missing URL or UploadToken for stream upload."
+            );
+        }
+
+        var response = WaitForResponseAsync(verdictResponse.Guid);
+        await UploadStream(stream, contentLength, verdictResponse.Url, verdictResponse.UploadToken, cancellationToken);
+        
+        return new VaasVerdict(await response);
+    }
+    
+    private async Task UploadStream(Stream stream, long contentLength, string url, string token, CancellationToken cancellationToken)
+    {
+        using var requestContent = new StreamContent(stream, (int)contentLength);
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Put, url);
+        requestMessage.Content = requestContent;
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue(token);
+
+        var response = await _uploadHttpClient.SendAsync(requestMessage, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            ProblemDetails? problemDetails;
+            try
+            {
+                problemDetails = JsonSerializer.Deserialize<ProblemDetails>(responseBody);
+            }
+            catch (JsonException)
+            {
+                throw new VaasServerException("Server did not return proper ProblemDetails");
+            }
+
+            throw ProblemDetailsToException(problemDetails);
+        }
+    }
+
     public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken, ForSha256Options? options = null)
     {
         var url = _options.Url;
@@ -306,6 +369,14 @@ public class Vaas : IDisposable, IVaas
     }
 
     private async Task<VerdictResponse> ForRequestAsync(VerdictRequest verdictRequest)
+    {
+        var jsonString = JsonSerializer.Serialize(verdictRequest);
+        AuthenticatedClient.Send(jsonString);
+
+        return await WaitForResponseAsync(verdictRequest.Guid);
+    }
+    
+    private async Task<VerdictResponse> ForStreamRequestAsync(VerdictRequestForStream verdictRequest)
     {
         var jsonString = JsonSerializer.Serialize(verdictRequest);
         AuthenticatedClient.Send(jsonString);
