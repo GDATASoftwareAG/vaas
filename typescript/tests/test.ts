@@ -257,16 +257,6 @@ describe("Test verdict requests", function () {
         const verdict = await vaas.forStream(stream);
         expect(verdict.verdict).to.equal("Malicious");
     });
-
-    it('if a clean stream from an url is submitted, a verdict "malicious" is expected', async () => {
-        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-        const response = await axios.get("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md", {
-            responseType: "stream"
-        });
-        const stream = Readable.from(response.data)
-        const verdict = await vaas.forStream(stream);
-        expect(verdict.verdict).to.equal("Malicious");
-    });    
 });
 
 describe("Vaas", async () => {
