@@ -69,21 +69,18 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: "17"
-          distribution: "adopt"
+          distribution: "temurin"
 
       - name: setup Gradle
         uses: gradle/gradle-build-action@v3
         with:
-          gradle-version: "8.1"
-      
-      - name: show environment
-        run: printenv
+          gradle-version: "8.6"
 
       - name: run tests
         uses: gradle/gradle-build-action@v3
         with:
           arguments: test --info
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java
 
       - name: run examples for file
@@ -92,21 +89,21 @@ jobs:
         uses: gradle/gradle-build-action@v3
         with:
           arguments: fileScan
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
       - name: run examples for url
         uses: gradle/gradle-build-action@v3
         with:
           arguments: urlScan
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
       - name: run authentication examples
         uses: gradle/gradle-build-action@v3
         with:
           arguments: authentication
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
       - name: extract version
@@ -130,7 +127,7 @@ jobs:
         uses: gradle/gradle-build-action@v3
         with:
           arguments: publish
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java
 
       - name: push to Maven Central
@@ -141,7 +138,7 @@ jobs:
         uses: gradle/gradle-build-action@v3
         with:
           arguments: closeAndReleaseRepository
-          gradle-version: "8.1"
+          gradle-version: "8.6"
           build-root-directory: java
 
       - name: Microsoft Teams Notification
