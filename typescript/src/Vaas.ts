@@ -73,7 +73,7 @@ export class Vaas {
     }).join("");
   }
 
-  /** Get verdict for InputStream
+  /** Get verdict for Readable Stream
    * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
