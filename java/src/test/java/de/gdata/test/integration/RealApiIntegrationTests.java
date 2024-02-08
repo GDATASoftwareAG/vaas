@@ -451,47 +451,47 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void forInputStream_WithCleanString_ReturnsCleanVerdict() throws Exception {
+    public void forStream_WithCleanString_ReturnsCleanVerdict() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var targetStream = new ByteArrayInputStream("I am clean".getBytes());
         var contentLength = targetStream.available();
-        var verdict = vaas.forInputStream(targetStream, contentLength);
+        var verdict = vaas.forStream(targetStream, contentLength);
 
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
 
     @Test
-    public void forInputStream_WithEicarString_ReturnsMaliciousVerdict() throws Exception {
+    public void forStream_WithEicarString_ReturnsMaliciousVerdict() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var targetStream = new ByteArrayInputStream("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
         var contentLength = targetStream.available();
-        var verdict = vaas.forInputStream(targetStream, contentLength);
+        var verdict = vaas.forStream(targetStream, contentLength);
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
     }
 
     @Test
-    public void forInputStream_WithCleanUrl_ReturnsCleanVerdict() throws Exception {
+    public void forStream_WithCleanUrl_ReturnsCleanVerdict() throws Exception {
         var url = new URL("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLengthLong();
 
         var vaas = this.getVaasWithCredentials();
-        var verdict = vaas.forInputStream(inputStream, contentLength);
+        var verdict = vaas.forStream(inputStream, contentLength);
 
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
     }
 
     @Test
-    public void forInputStream_WithEicarUrl_ReturnsMaliciousVerdict() throws Exception {
+    public void forStream_WithEicarUrl_ReturnsMaliciousVerdict() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLengthLong();
 
         var vaas = this.getVaasWithCredentials();
-        var verdict = vaas.forInputStream(inputStream, contentLength);
+        var verdict = vaas.forStream(inputStream, contentLength);
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
     }
