@@ -33,10 +33,3 @@ export class VaasTimeoutError extends Error {
     super("Timeout");
   }
 }
-
-/** Vaas server error. */
-export class VaasServerError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}

@@ -15,14 +15,10 @@ import {
   VaasAuthenticationError,
   VaasConnectionClosedError,
   VaasInvalidStateError,
-  VaasServerError,
   VaasTimeoutError,
 } from "./VaasErrors";
 import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
-import { ReadStream } from "fs";
-import { VerdictRequestForStream } from "./messages/verdict_request_for_stream";
-import { Readable } from "stream";
 
 const VAAS_URL = "wss://gateway.production.vaas.gdatasecurity.de";
 const defaultSerializer = new JsonSerializer();
@@ -61,8 +57,6 @@ export class Vaas {
 
   defaultTimeoutHashReq: number = 2_000;
   defaultTimeoutFileReq: number = 600_000;
-  defaultTimeoutUrlReq: number = 600_000;
-  defaultTimeoutStreamReq: number = 100_000;
   debug = false;
 
   constructor(private webSocketFactory = (url: string) => new WebSocket(url)) {
@@ -75,24 +69,6 @@ export class Vaas {
     }).join("");
   }
 
-  /** Get verdict for InputStream
-   * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
-   * @throws {VaasAuthenticationError} Authentication failed.
-   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
-   * @throws {VaasTimeoutError} Timeout. Retry request.
-   */
-  public async forStream(
-    stream: Readable,
-    ct: CancellationToken = CancellationToken.fromMilliseconds(
-      this.defaultTimeoutStreamReq
-    )
-  ): Promise<VaasVerdict> {
-    const request = this.forStreamRequest(stream).then(
-      (response) => response
-    );
-    return timeout(request, ct.timeout());
-  }  
-
   /** Get verdict for URL
    * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
    * @throws {VaasAuthenticationError} Authentication failed.
@@ -102,7 +78,7 @@ export class Vaas {
    public async forUrl(
     url: URL,
     ct: CancellationToken = CancellationToken.fromMilliseconds(
-      this.defaultTimeoutUrlReq
+      this.defaultTimeoutHashReq
     )
   ): Promise<VaasVerdict> {
     const request = this.forUrlRequest(url).then(
@@ -239,35 +215,6 @@ export class Vaas {
       ws.send(verdictReq);
     });
   }
-
-  private async forStreamRequest(
-    stream: Readable
-  ): Promise<VaasVerdict> {
-    const ws = this.getAuthenticatedWebSocket();
-    return new Promise((resolve, reject) => {
-      const guid = uuidv4();
-      if (this.debug) console.debug("uuid", guid);
-      this.verdictPromises.set(guid, {
-        resolve: async (verdictResponse: VerdictResponse) => {
-          if (verdictResponse.verdict !== Verdict.UNKNOWN) {
-            throw new VaasServerError("Server returned verdict without receiving content");
-          }
-          const contentLength = stream.readableLength;
-          await this.upload(verdictResponse, stream, contentLength);
-          this.verdictPromises.delete(guid);
-          resolve(new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict));
-        },
-        reject: (reason) => reject(reason),
-      });
-
-      const verdictReq = JSON.stringify(
-        defaultSerializer.serialize(
-          new VerdictRequestForStream(guid, this.connection!.sessionId as string)
-        )
-      );
-      ws.send(verdictReq);
-    });
-  }
   
   /** Connect to VaaS
    * @throws {VaasAuthenticationError} Authentication failed.
@@ -356,8 +303,7 @@ export class Vaas {
 
   private async upload(
     verdictResponse: VerdictResponse,
-    input: Uint8Array | Readable,
-    contentLength: number = Infinity
+    fileBuffer: Uint8Array
   ) {
     return new Promise(async (resolve, reject) => {
       const instance = axios.default.create({
@@ -368,10 +314,10 @@ export class Vaas {
           Authorization: verdictResponse.upload_token!,
           "Content-Type": "application/octet-stream"
         },
-        maxBodyLength: contentLength,
+        maxBodyLength: Infinity,
       });
       await instance
-        .put("/", input)
+        .put("/", fileBuffer)
         .then((response) => resolve(response))
         .catch((error) => {
           if (error instanceof axios.AxiosError && error.response) {

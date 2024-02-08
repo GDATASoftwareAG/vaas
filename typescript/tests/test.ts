@@ -13,8 +13,6 @@ import {
 } from "../src/VaasErrors";
 import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
 import ResourceOwnerPasswordGrantAuthenticator from "../src/ResourceOwnerPasswordGrantAuthenticator";
-import { Readable } from "stream";
-import { ReadStream } from "fs";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -70,7 +68,7 @@ async function createVaasWithResourceOwnerPasswordGrantAuthenticator() {
     return vaas;
 }
 
-const defaultTimeout: number = 99999999999999_000;
+const defaultTimeout: number = 130_000;
 
 const eicarSha256 =
     "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
@@ -233,24 +231,9 @@ describe("Test verdict requests", function () {
         expect(verdict.verdict).to.equal("Clean");
     });
     
-    it('if EICAR url is submitted, a verdict "malicious" is expected', async () => {
+    it('if EICAR url is submitted, a verdict "clean" is expected', async () => {
         const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forUrl(new URL("https://secure.eicar.org/eicar.com"));
-        expect(verdict.verdict).to.equal("Malicious");
-    });
-
-    it('if clean stream is submitted, a verdict "clean" is expected', async () => {
-        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-        const stream = Readable.from("I Am Clean")
-        const verdict = await vaas.forStream(stream);
-        expect(verdict.verdict).to.equal("Clean");
-    });
-
-    it('if EICAR stream is submitted, a verdict "malicious" is expected', async () => {
-        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-        const stream = new Readable();
-        stream.push("X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
-        const verdict = await vaas.forStream(stream);
         expect(verdict.verdict).to.equal("Malicious");
     });
 });

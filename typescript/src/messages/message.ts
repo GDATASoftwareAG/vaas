@@ -10,8 +10,7 @@ export enum Kind {
   DetectionResponse = "DetectionResponse",
   PersistedRequest = "PersistedRequest",
   SampleProcessingResponse = "SampleProcessingResponse",
-  VerdictRequestForUrl = "VerdictRequestForUrl",
-  VerdictRequestForStream = "VerdictRequestForStream"
+  VerdictRequestForUrl = "VerdictRequestForUrl"
 }
 
 @JsonObject()
