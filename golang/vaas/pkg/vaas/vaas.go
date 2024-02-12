@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/internal/hash"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
-	"github.com/gorilla/websocket"
+	"github.com/Noooste/websocket"
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
@@ -38,7 +38,7 @@ type Vaas interface {
 }
 
 // Confer example for constants, pong handler, and ping ticker
-// https://github.com/gorilla/websocket/blob/master/examples/chat/client.go
+// https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
 const (
 	// Time allowed to write a message to the peer.
 	writeWait = 10 * time.Second
@@ -359,7 +359,7 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 	v.waitAuthenticated.Add(1)
 	defer v.waitAuthenticated.Done()
 
-	connection, resp, err := websocket.DefaultDialer.DialContext(ctx, v.vaasURL, nil)
+	connection, resp, err := websocket.DefaultDialer.DialContext(ctx, v.vaasURL, nil, nil)
 	if err == websocket.ErrBadHandshake {
 		return fmt.Errorf("handshake failed with status {%d}", resp.StatusCode)
 	}
