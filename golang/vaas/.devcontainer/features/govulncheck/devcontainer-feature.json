@@ -1,0 +1,20 @@
+{
+    "name": "govulncheck",
+    "id": "govulncheck",
+    "version": "1.0.0",
+    "description": "installs govulncheck https://pkg.go.dev/golang.org/x/vuln@v1.0.4/cmd/govulncheck",
+    "options": {
+        "version": {
+            "type": "string",
+            "enum": [
+                "latest",
+                "v1.0.4",
+                "v1.0.0",
+                "v0.2.0",
+                "v0.1.0"
+            ],
+            "default": "v1.0.4",
+            "description": "Choose the govulncheck version."
+        }
+    }
+}
