@@ -14,5 +14,7 @@ public enum Kind {
     @SerializedName("Error")
     Error,
     @SerializedName("VerdictRequestForUrl")
-    VerdictRequestForUrl
+    VerdictRequestForUrl,
+    @SerializedName("VerdictRequestForStream")
+    VerdictRequestForStream
 }    

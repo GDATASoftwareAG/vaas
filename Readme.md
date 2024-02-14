@@ -87,6 +87,3 @@ Create a KDE Dolphin plugin to scan for malicious content: [Example](rust/exampl
 
 Create a WordPress plugin that scans all file uploads for malware: [Example](php/examples/wordpress)
 <img src="assets/wordpress.gif" alt="Wordpress plugin malware scanner" style="width:100%">
-
-Create a Discord bot that scans and deletes malicious files uploaded on your Discord server: [Example](typescript/examples/discordbot)
-<img src="assets/discord_bot.gif" alt="VaaS Discord Bot" style="width:100%">
