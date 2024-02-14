@@ -1,5 +1,5 @@
-github.com/Noooste/fhttp v0.0.1 h1:OOLbtYm1FrWnOSMgBnzEwbLK69oRkbiSRxerUgDprsA=
-github.com/Noooste/fhttp v0.0.1/go.mod h1:CMVxKOhNheqJN5HYE4Rlvz2SRdV8Uv7YWmi6OwmB/Bk=
+github.com/Noooste/fhttp v1.0.6 h1:E1u8b+GMhRZSuoINNpiXjE1MHUdZMIcs/g4HEjapWLg=
+github.com/Noooste/fhttp v1.0.6/go.mod h1:7rH441v5BuOAQ60LPj7Uwinew1bmv7A0q8DryN/YA6s=
 github.com/Noooste/utls v1.2.5 h1:x7ye66hXXeeMju2redAUSQ5IZBVpTMqX0/C5dHPLpUA=
 github.com/Noooste/utls v1.2.5/go.mod h1:MRUEmRiDO6ORKziZ2ObNwMjxy0vRviJ91JF1qVa0loM=
 github.com/Noooste/websocket v1.0.3 h1:drW7tvZ3YqzqI9wApnaH1Q0syFMXO7gbLlsBWjZvMNA=

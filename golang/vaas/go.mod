@@ -1,6 +1,6 @@
 module github.com/GDATASoftwareAG/vaas/golang/vaas
 
-go 1.21
+go 1.22.0
 
 require (
 	github.com/Noooste/websocket v1.0.3
@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/Noooste/fhttp v0.0.1 // indirect
+	github.com/Noooste/fhttp v1.0.6 // indirect
 	github.com/Noooste/utls v1.2.5 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
