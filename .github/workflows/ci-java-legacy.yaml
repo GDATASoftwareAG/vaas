@@ -36,7 +36,7 @@ env:
 jobs:
   build-java-legacy:
     name: Build & Test Java 11 SDK
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: checkout
@@ -46,7 +46,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: "11"
-          distribution: "adopt"
+          distribution: "temurin"
 
       - name: setup Gradle
         uses: gradle/gradle-build-action@v2
