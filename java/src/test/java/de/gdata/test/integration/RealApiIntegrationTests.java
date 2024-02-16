@@ -32,6 +32,7 @@ import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
 import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
+import de.gdata.vaas.exceptions.VaasServerException;
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
 import de.gdata.vaas.messages.VerdictRequestAttributes;
@@ -367,14 +368,17 @@ public class RealApiIntegrationTests {
     public void forUrl_WithInvalidUrl_ThrowsVaasClientException() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://");
-        var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
-        assertEquals("Call failed. An invalid request URI was provided. Either the request URI must be an absolute URI or BaseAddress must be set: GET https:", e.getMessage());
+        var e = assertThrows(VaasServerException.class, () -> vaas.forUrl(url_1));
+        assertEquals(
+                "Cannot send Request. https: is a not a valid URL.",
+                e.getMessage());
     }
 
     @Test
     public void forUrl_WithUrlNull_ThrowsNullPointerException() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        @SuppressWarnings("DataFlowIssue") var e = assertThrows(NullPointerException.class, () -> vaas.forUrl(null));
+        @SuppressWarnings("DataFlowIssue")
+        var e = assertThrows(NullPointerException.class, () -> vaas.forUrl(null));
         assertEquals("url is marked non-null but is null", e.getMessage());
     }
 
@@ -383,7 +387,9 @@ public class RealApiIntegrationTests {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://upload.production.vaas.gdatasecurity.de/nocontenthere");
         var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
-        assertEquals("Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere", e.getMessage());
+        assertEquals(
+                "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere",
+                e.getMessage());
     }
 
     @Test
@@ -446,7 +452,8 @@ public class RealApiIntegrationTests {
     @Test
     public void forSha256_WithSha256Null_ThrowsNullPointerException() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        @SuppressWarnings("DataFlowIssue") var e = assertThrows(NullPointerException.class, () -> vaas.forSha256(null));
+        @SuppressWarnings("DataFlowIssue")
+        var e = assertThrows(NullPointerException.class, () -> vaas.forSha256(null));
         assertEquals("sha256 is marked non-null but is null", e.getMessage());
     }
 
@@ -463,7 +470,8 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_WithEicarString_ReturnsMaliciousVerdict() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var targetStream = new ByteArrayInputStream("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
+        var targetStream = new ByteArrayInputStream(
+                "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
         var contentLength = targetStream.available();
         var verdict = vaas.forStream(targetStream, contentLength);
 
