@@ -47,10 +47,10 @@ public class VaasTest
     [Fact]
     public void Constructor_IfRelativeUrl_ThrowsVaasClientException()
     {
-        var e = Assert.Throws<ArgumentException>(() =>
+        var e = Assert.Throws<UriFormatException>(() =>
             new Vaas(_httpClient, _authenticator.Object, new VaasOptions() { Url = new Uri("/relative") }));
         Assert.Equal(
-            "Parameter \"options.Url.Host\" (string) must not be null or whitespace, was whitespace. (Parameter 'options.Url.Host')",
+            "Invalid URI: The format of the URI could not be determined.",
             e.Message);
     }
 
