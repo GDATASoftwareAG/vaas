@@ -46,7 +46,7 @@ jobs:
       - uses: actions/checkout@v3
           
       - name: set staging environment
-        if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/java') && endsWith(github.ref, '-beta')))
+        if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/cs') && endsWith(github.ref, '-beta')))
         run: |
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
@@ -57,7 +57,7 @@ jobs:
           echo "VAAS_PASSWORD=${{ secrets.STAGING_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: set develop environment
-        if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags/java') && endsWith(github.ref, '-alpha')))
+        if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags/cs') && endsWith(github.ref, '-alpha')))
         run: |
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
@@ -95,19 +95,19 @@ jobs:
         run: dotnet test --no-restore --verbosity normal
         working-directory: dotnet/Vaas
 
-      # - name: Run example FileScan
-      #   env:
-      #     SCAN_PATH: "Program.cs"
-      #   run: dotnet run FileScan
-      #   working-directory: dotnet/examples/VaasExample
+      - name: Run example FileScan
+        env:
+          SCAN_PATH: "Program.cs"
+        run: dotnet run FileScan
+        working-directory: dotnet/examples/VaasExample
 
-      # - name: Run example UrlScan
-      #   run: dotnet run UrlScan
-      #   working-directory: dotnet/examples/VaasExample
+      - name: Run example UrlScan
+        run: dotnet run UrlScan
+        working-directory: dotnet/examples/VaasExample
 
-      # - name: Run example HashsumScan     
-      #   run: dotnet run HashsumScan
-      #   working-directory: dotnet/examples/VaasExample        
+      - name: Run example HashsumScan     
+        run: dotnet run HashsumScan
+        working-directory: dotnet/examples/VaasExample        
 
       - name: Pack
         if: startsWith(github.ref, 'refs/tags/cs')
