@@ -3,9 +3,12 @@
 namespace VaasSdk;
 
 use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Psr7\Stream;
 use InvalidArgumentException;
 use JsonMapper;
 use JsonMapper_Exception;
+use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
@@ -19,11 +22,13 @@ use VaasSdk\Message\Error;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Message\Kind;
 use VaasSdk\Message\VerdictRequest;
+use VaasSdk\Message\VerdictRequestForStream;
 use VaasSdk\Message\VerdictResponse;
 use VaasSdk\Message\VerdictRequestForUrl;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use VaasSdk\Message\VaasVerdict;
+use WebSocket\BadOpcodeException;
 
 class Vaas
 {
@@ -151,6 +156,41 @@ class Vaas
             return new VaasVerdict($this->_waitForVerdict($verdictResponse->guid));
         }
 
+        return new VaasVerdict($verdictResponse);
+    }
+
+    /**
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     * @throws TimeoutException
+     * @throws VaasServerException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     * @throws GuzzleException
+     * @throws UploadFailedException
+     */
+    public function ForStream(Stream $stream, string $uuid=null): VaasVerdict
+    {
+        if ($uuid == null){
+            $uuid = UuidV4::getFactory()->uuid4()->toString();
+        }
+        
+        $verdictResponse = $this->_verdictResponseForStream($uuid);
+        
+        if ($verdictResponse->verdict != Verdict::UNKNOWN){
+            throw new VaasServerException("Server returned verdict without receiving content.");
+        }
+        if ($verdictResponse->upload_token == null || $verdictResponse->upload_token == ""){
+            throw new JsonMapper_Exception("VerdictResponse missing UploadToken for stream upload.");
+        }
+        if ($verdictResponse->url == null || $verdictResponse->url == ""){
+            throw new JsonMapper_Exception("VerdictResponse missing URL for stream upload.");
+        }
+
+        $this->UploadStream($stream, $verdictResponse->url, $verdictResponse->upload_token);
+
+        $verdictResponse = $this->_waitForVerdict($uuid);
+        
         return new VaasVerdict($verdictResponse);
     }
 
@@ -350,6 +390,33 @@ class Vaas
     }
 
     /**
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     * @throws TimeoutException
+     * @throws VaasServerException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     */
+    private function _verdictResponseForStream(string $uuid=null): VerdictResponse
+    {
+        if ($this->_logger != null)
+            $this->_logger->debug("_verdictResponseForStream");
+
+        if (!isset($this->_vaasConnection)) {
+            throw new VaasInvalidStateException("connect() was not called");
+        }
+        $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
+
+        $request = new VerdictRequestForStream($uuid, $this->_vaasConnection->SessionId);
+        $websocket->send(json_encode($request));
+
+        if ($this->_logger != null)
+            $this->_logger->debug("verdictResponse", ["VerdictResponse" => json_encode($request)]);
+
+        return $this->_waitForVerdict($request->guid);
+    }
+
+    /**
      * Sets the timeout in seconds the websocket client can take for one receive
      *
      * @param int $timeoutInSeconds timeout for the websocket
@@ -385,5 +452,21 @@ class Vaas
     {
         $this->_uploadTimeoutInSeconds = $UploadTimeoutInSeconds;
         return $this;
+    }
+
+    /**
+     * @throws GuzzleException
+     * @throws UploadFailedException
+     */
+    private function UploadStream(Stream $stream, string $url, string $uploadToken)
+    {
+        $response = $this->_httpClient->put($url, [
+            'body' => $stream,
+            'timeout' => $this->_uploadTimeoutInSeconds,
+            'headers' => ["Authorization" => $uploadToken]
+        ]);
+        if ($response->getStatusCode() > 399) {
+            throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+        }
     }
 }

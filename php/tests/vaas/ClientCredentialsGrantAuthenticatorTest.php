@@ -39,4 +39,11 @@ final class ClientCredentialsGrantAuthenticatorTest extends TestCase
         $authenticator = new ClientCredentialsGrantAuthenticator("invalid", "invalid", $_ENV["TOKEN_URL"]);
         $authenticator->getToken();
     }
+
+    public function testAuthenticatorWithValidCredentials_ReturnsToken(): void
+    {
+        $authenticator = new ClientCredentialsGrantAuthenticator($_ENV["CLIENT_ID"], $_ENV["CLIENT_SECRET"], $_ENV["TOKEN_URL"]);
+        $token = $authenticator->getToken();
+        $this->assertNotEmpty($token);
+    }
 }
