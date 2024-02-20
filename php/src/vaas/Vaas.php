@@ -407,7 +407,7 @@ class Vaas
         }
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
-        $request = new VerdictRequestForStream($uuid, $this->_vaasConnection->SessionId);
+        $request = new VerdictRequestForStream($this->_vaasConnection->SessionId, $uuid);
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)

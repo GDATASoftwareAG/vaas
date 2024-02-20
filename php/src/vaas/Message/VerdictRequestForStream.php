@@ -12,7 +12,7 @@ class VerdictRequestForStream
 
     public function __construct(string $SessionId, string $uuid = null)
     {
-        $this->kind = new Kind(Kind::VERDICT_REQUEST_FOR_URL);
+        $this->kind = new Kind(Kind::VERDICT_REQUEST_FOR_STREAM);
         $this->guid = $uuid != null ? $uuid : UuidV4::getFactory()->uuid4()->toString();
         $this->session_id = $SessionId;
     }
