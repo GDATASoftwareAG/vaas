@@ -406,7 +406,7 @@ final class VaasTest extends TestCase
     public function testForUrl_WithNull_ThrowsVaasClientException()
     {
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
-        $this->expectException(\TypeError::class);
+        $this->expectException(\InvalidArgumentException::class);
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
 
         $invalidUrl = null;
@@ -449,7 +449,7 @@ final class VaasTest extends TestCase
         $stream = fopen(sprintf('data://text/plain,%s', $eicar), 'r');
         rewind($stream);
         $eicarStream = new Stream($stream);
-        
+
         $verdict = $vaas->ForStream($eicarStream);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
@@ -500,9 +500,9 @@ final class VaasTest extends TestCase
         $httpClient = new Client();
         $response = $httpClient->get($url);
         $stream = new Stream($response->getBody()->detach());
-        
+
         $verdict = $vaas->ForStream($stream);
-        
+
         $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
     }
 

@@ -106,7 +106,7 @@ class Vaas
      * @throws TimeoutException
      * @throws InvalidArgumentException
      */
-    public function ForUrl(string $url, string $uuid = null): VaasVerdict
+    public function ForUrl(?string $url, string $uuid = null): VaasVerdict
     {
         if ($this->_logger != null) $this->_logger->debug("ForUrl", ["URL:" => $url]);
 
@@ -169,28 +169,28 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    public function ForStream(Stream $stream, string $uuid=null): VaasVerdict
+    public function ForStream(Stream $stream, string $uuid = null): VaasVerdict
     {
-        if ($uuid == null){
+        if ($uuid == null) {
             $uuid = UuidV4::getFactory()->uuid4()->toString();
         }
-        
+
         $verdictResponse = $this->_verdictResponseForStream($uuid);
-        
-        if ($verdictResponse->verdict != Verdict::UNKNOWN){
+
+        if ($verdictResponse->verdict != Verdict::UNKNOWN) {
             throw new VaasServerException("Server returned verdict without receiving content.");
         }
-        if ($verdictResponse->upload_token == null || $verdictResponse->upload_token == ""){
+        if ($verdictResponse->upload_token == null || $verdictResponse->upload_token == "") {
             throw new JsonMapper_Exception("VerdictResponse missing UploadToken for stream upload.");
         }
-        if ($verdictResponse->url == null || $verdictResponse->url == ""){
+        if ($verdictResponse->url == null || $verdictResponse->url == "") {
             throw new JsonMapper_Exception("VerdictResponse missing URL for stream upload.");
         }
 
         $this->UploadStream($stream, $verdictResponse->url, $verdictResponse->upload_token);
 
         $verdictResponse = $this->_waitForVerdict($uuid);
-        
+
         return new VaasVerdict($verdictResponse);
     }
 
@@ -335,7 +335,7 @@ class Vaas
             $details = null;
         }
         $errorType = $errorResponse->getType();
-        if ($errorType == "ClientError"){
+        if ($errorType == "ClientError") {
             throw new VaasClientException($details);
         }
         throw new VaasServerException($details);
@@ -397,7 +397,7 @@ class Vaas
      * @throws BadOpcodeException
      * @throws VaasInvalidStateException
      */
-    private function _verdictResponseForStream(string $uuid=null): VerdictResponse
+    private function _verdictResponseForStream(string $uuid = null): VerdictResponse
     {
         if ($this->_logger != null)
             $this->_logger->debug("_verdictResponseForStream");
