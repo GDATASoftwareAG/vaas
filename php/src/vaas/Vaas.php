@@ -462,6 +462,7 @@ class Vaas
     {
         $response = $this->_httpClient->put($url, [
             'body' => $stream,
+            'content-length' => $stream->getSize(),
             'timeout' => $this->_uploadTimeoutInSeconds,
             'headers' => ["Authorization" => $uploadToken]
         ]);
