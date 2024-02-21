@@ -22,8 +22,6 @@ use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Sha256;
 
-use function PHPUnit\Framework\assertEquals;
-
 final class VaasTest extends TestCase
 {
     use ProphecyTrait;
@@ -382,7 +380,8 @@ final class VaasTest extends TestCase
      * @throws VaasAuthenticationException
      * @throws TimeoutException
      */
-    public function testForUrl_WithInvalidUrl_ThrowsVaasClientException() {
+    public function testForUrl_WithInvalidUrl_ThrowsVaasClientException()
+    {
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage("Url is not valid");
@@ -397,7 +396,8 @@ final class VaasTest extends TestCase
      * @throws VaasAuthenticationException
      * @throws TimeoutException
      */
-    public function testForUrl_WithNull_ThrowsVaasClientException() {
+    public function testForUrl_WithNull_ThrowsVaasClientException()
+    {
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->expectException(\TypeError::class);
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
@@ -411,7 +411,8 @@ final class VaasTest extends TestCase
      * @throws VaasAuthenticationException
      * @throws TimeoutException
      */
-    public function testForUrl_WithStatus4xx_ThrowsVaasClientException() {
+    public function testForUrl_WithStatus4xx_ThrowsVaasClientException()
+    {
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
         $this->expectException(VaasClientException::class);
         $this->expectExceptionMessage("Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere");

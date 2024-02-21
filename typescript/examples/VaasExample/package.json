@@ -12,13 +12,13 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "gdata-vaas": "6.0.0",
-        "ts-node": "^10.9.1",
         "@types/node": "20.4.8",
+        "gdata-vaas": "^6.0.1",
+        "ts-node": "^10.9.2",
         "typescript": "5.1.6"
     },
     "devDependencies": {
-        "dotenv": "^16.0.0",
+        "dotenv": "^16.4.4",
         "ts-node": "^10.9.1"
     }
 }

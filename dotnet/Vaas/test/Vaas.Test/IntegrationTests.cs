@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,7 @@ public class IntegrationTests
         "wss://gateway.production.vaas.gdatasecurity.de"));
 
     private readonly ITestOutputHelper _output;
+    private readonly HttpClient _httpClient = new();
 
     public IntegrationTests(ITestOutputHelper output)
     {
@@ -177,6 +179,72 @@ public class IntegrationTests
         Assert.Equal(
             "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere",
             e.Message);
+    }
+    
+    [Fact]
+    public async Task ForStream_WithEicarString_ReturnsMalicious()
+    {
+        // Arrange
+        var vaas = await AuthenticateWithCredentials();
+        var targetStream = new MemoryStream();
+        var eicarBytes = System.Text.Encoding.UTF8.GetBytes("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
+        targetStream.Write(eicarBytes, 0, eicarBytes.Length);
+        targetStream.Position = 0;
+        
+        // Act
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        
+        // Assert
+        Assert.Equal(Verdict.Malicious, verdict.Verdict);
+    }
+    
+    [Fact]
+    public async Task ForStream_WithCleanString_ReturnsClean()
+    {
+        // Arrange
+        var vaas = await AuthenticateWithCredentials();
+        var targetStream = new MemoryStream();
+        var cleanBytes = System.Text.Encoding.UTF8.GetBytes("This is a clean file");
+        targetStream.Write(cleanBytes, 0, cleanBytes.Length);
+        targetStream.Position = 0;
+        
+        // Act
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        
+        // Assert
+        Assert.Equal(Verdict.Clean, verdict.Verdict);
+    }
+
+    [Fact]
+    public async Task ForStream_WithCleanUrl_ReturnsClean()
+    {
+        // Arrange
+        var vaas = await AuthenticateWithCredentials();
+        var url = new Uri("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md");
+        var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
+        var targetStream = await response.Content.ReadAsStreamAsync();
+        
+        // Act
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        
+        // Assert
+        Assert.Equal(Verdict.Clean, verdict.Verdict);
+    }
+    
+    [Fact]
+    public async Task ForStream_WithEicarUrl_ReturnsEicar()
+    {
+        // Arrange
+        var vaas = await AuthenticateWithCredentials();
+        var url = new Uri("https://secure.eicar.org/eicar.com.txt");
+        var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
+        var targetStream = await response.Content.ReadAsStreamAsync();
+        
+        // Act
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        
+        // Assert
+        Assert.Equal(Verdict.Malicious, verdict.Verdict);
     }
 
     private async Task<Vaas> AuthenticateWithCredentials()
