@@ -33,3 +33,12 @@ export class VaasTimeoutError extends Error {
     super("Timeout");
   }
 }
+
+/** Vaas server error.
+ * @description These are coding errors and be prevented by the developer.
+ */
+export class VaasServerError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
