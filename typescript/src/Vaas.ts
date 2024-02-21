@@ -79,6 +79,7 @@ export class Vaas {
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
    * @throws {VaasTimeoutError} Timeout. Retry request.
+   * @throws {VaasServerError} Stream could not be read properly in VaaS clouds
    */
   public async forStream(
     stream: Readable,
