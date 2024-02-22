@@ -476,6 +476,20 @@ final class VaasTest extends TestCase
         $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
     }
 
+    public function testForStreamWithFlags_WithEicarString_ReturnsMalicious()
+    {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}\$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!\$H+H*";
+        $stream = fopen(sprintf('data://text/plain,%s', $eicar), 'r');
+        rewind($stream);
+        $eicarStream = new Stream($stream);
+
+        $verdict = $vaas->ForStreamWithFlags($eicarStream, false, false);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
+    }
+
     /**
      * @throws JsonMapper_Exception
      * @throws VaasClientException

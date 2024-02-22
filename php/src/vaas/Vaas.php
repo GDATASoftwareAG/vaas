@@ -119,7 +119,7 @@ class Vaas
     /**
      * Gets verdict by url
      *
-     * @param string $url url to get the verdict for
+     * @param string|null $url url to get the verdict for
      * @param bool   $useCache   enables verdict cache on the server
      * @param bool   $useShed    enables hash-lookup on the server
      * @param string|null $uuid unique identifier
@@ -129,7 +129,7 @@ class Vaas
      * @throws TimeoutException
      * @throws InvalidArgumentException
      */
-    public function ForUrlWithFlags(string $url, bool $useCache = true, bool $useShed = true, string $uuid = null): VaasVerdict
+    public function ForUrlWithFlags(?string $url, bool $useCache = true, bool $useShed = true, string $uuid = null): VaasVerdict
     {
         if ($this->_logger != null) $this->_logger->debug("ForUrlWithFlags", ["URL:" => $url]);
 
@@ -143,7 +143,7 @@ class Vaas
     /**
      * Gets verdict by url
      *
-     * @param string $url url to get the verdict for
+     * @param string|null $url url to get the verdict for
      * @param string|null $uuid unique identifier
      *
      * @return VaasVerdict the verdict
@@ -284,7 +284,7 @@ class Vaas
      */
     public function ForStream(Stream $stream, string $uuid = null): VaasVerdict
     {
-        return ForStreamWithFlags($stream, true, true $uuid);
+        return $this->ForStreamWithFlags($stream, true, true, $uuid);
     }
 
     /**
