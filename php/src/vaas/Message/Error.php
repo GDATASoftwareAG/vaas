@@ -14,7 +14,7 @@ class Error extends BaseMessage
 
     public function __construct()
     {
-        parent::__construct(new Kind(Kind::ERROR));
+        $this->kind = Kind::Error;
     }
 
     /**

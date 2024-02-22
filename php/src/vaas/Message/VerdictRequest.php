@@ -8,7 +8,7 @@ class VerdictRequest extends BaseVerdictRequest
 
     public function __construct(string $sha256, string $uuid = null, string $SessionId)
     {
-        parent::__construct(new Kind(Kind::VERDICT_REQUEST), $uuid, $SessionId);
+        parent::__construct(Kind::VerdictRequest, $uuid, $SessionId);
         $this->sha256 = $sha256;
     }
 }

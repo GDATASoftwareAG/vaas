@@ -2,7 +2,7 @@
 
 namespace VaasSdk\Message;
 
-class VerdictResponse
+class VerdictResponse extends BaseMessage
 {
     public Verdict $verdict;
     public ?string $url;

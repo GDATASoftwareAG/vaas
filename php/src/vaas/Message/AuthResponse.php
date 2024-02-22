@@ -10,6 +10,6 @@ class AuthResponse extends BaseMessage
 
     public function __construct()
     {
-        parent::__construct(new Kind(Kind::AUTH_RESPONSE));
+        $this->kind = Kind::AuthResponse;
     }
 }

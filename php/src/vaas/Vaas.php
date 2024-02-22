@@ -27,6 +27,8 @@ use VaasSdk\Message\VerdictResponse;
 use VaasSdk\Message\VerdictRequestForUrl;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use VaasSdk\Message\BaseMessage;
+use VaasSdk\Message\BaseVerdictRequest;
 use VaasSdk\Message\VaasVerdict;
 use WebSocket\BadOpcodeException;
 
@@ -321,11 +323,14 @@ class Vaas
             if ($result != null) {
                 if ($this->_logger != null)
                     $this->_logger->debug("Result", json_decode($result, true));
-
-                $resultObject = json_decode($result);
-                if ($resultObject->kind == Kind::AUTH_RESPONSE) {
+                $genericObject = \json_decode($result);
+                $resultObject = (new JsonMapper())->map(
+                    $genericObject,
+                    new BaseMessage()
+                );
+                if ($resultObject->kind == Kind::AuthResponse) {
                     $authResponse = (new JsonMapper())->map(
-                        $resultObject,
+                        $genericObject,
                         new AuthResponse()
                     );
                     if ($this->_logger != null)
@@ -335,10 +340,10 @@ class Vaas
                     }
                     return $authResponse;
                 }
-                if ($resultObject->kind == Kind::ERROR) {
+                if ($resultObject->kind == Kind::Error) {
                     try {
                         $errorResponse = (new JsonMapper())->map(
-                            $resultObject,
+                            $genericObject,
                             new Error()
                         );
                     } catch (JsonMapper_Exception $e) {
@@ -387,7 +392,11 @@ class Vaas
                 if ($this->_logger != null)
                     $this->_logger->debug("Result", json_decode($result, true));
                 $resultObject = json_decode($result);
-                if ($resultObject->kind == Kind::ERROR) {
+                $baseMessage = (new JsonMapper())->map(
+                    $resultObject,
+                    new BaseMessage()
+                );
+                if ($baseMessage->kind == Kind::Error) {
                     try {
                         $errorResponse = (new JsonMapper())->map(
                             $resultObject,
@@ -399,17 +408,20 @@ class Vaas
                     }
                     $this->_handleWebSocketErrorResponse($errorResponse);
                 }
-                if (!isset($resultObject->guid) || !isset($resultObject->kind)) {
+                if ($baseMessage->kind != Kind::VerdictResponse) {
                     continue;
                 }
-                if ($resultObject->kind != Kind::VERDICT_RESPONSE) {
+
+                $verdictResponse = (new JsonMapper())->map(
+                    $resultObject,
+                    new VerdictResponse()
+                );
+                if (!isset($verdictResponse->guid) || !isset($verdictResponse->kind)) {
                     continue;
                 }
-                if ($resultObject->guid == $guid) {
-                    return (new JsonMapper())->map(
-                        $resultObject,
-                        new VerdictResponse()
-                    );
+
+                if ($verdictResponse->guid == $guid) {
+                    return $verdictResponse;
                 }
             }
             sleep(1);
@@ -452,7 +464,6 @@ class Vaas
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_vaasConnection->SessionId);
         $request->UseCache = $useCache;
         $request->UseShed = $useShed;
-        \fwrite(\STDERR, json_encode($request));
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)

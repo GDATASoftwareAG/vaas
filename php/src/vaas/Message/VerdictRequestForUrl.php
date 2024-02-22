@@ -10,7 +10,7 @@ class VerdictRequestForUrl extends BaseVerdictRequest
 
     public function __construct(string $url, string $uuid = null, string $SessionId)
     {
-        parent::__construct(new Kind(Kind::VERDICT_REQUEST_FOR_URL), $uuid, $SessionId);
+        parent::__construct(Kind::VerdictRequestForUrl, $uuid, $SessionId);
         $this->url = $url;
     }
 }

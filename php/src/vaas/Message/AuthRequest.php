@@ -9,7 +9,7 @@ class AuthRequest extends BaseMessage
 
     public function __construct(string $token, string $sessionId = "")
     {
-        parent::__construct(new Kind(Kind::AUTH_REQUEST));
+        $this->kind = Kind::AuthRequest;
         $this->token = $token;
         $this->session_id = $sessionId;
     }
