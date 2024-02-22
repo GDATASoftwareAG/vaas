@@ -13,6 +13,8 @@ import {
 } from "../src/VaasErrors";
 import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
 import ResourceOwnerPasswordGrantAuthenticator from "../src/ResourceOwnerPasswordGrantAuthenticator";
+import { Readable } from "stream";
+import axios, { AxiosResponse } from "axios";
 
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -203,7 +205,7 @@ describe("Test verdict requests", function () {
         expect(verdict2.verdict).to.equal("Clean");
         expect(verdict2.sha256.toUpperCase()).to.equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
     });
-
+    https://www.virustotal.com/gui/file/edb6991d68ba5c7ed43f198c3d2593c770f2634beeb8c83afe3138279e5e81f3
     xit("keeps connection alive", async () => {
         const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const sha256 =
@@ -231,11 +233,37 @@ describe("Test verdict requests", function () {
         expect(verdict.verdict).to.equal("Clean");
     });
     
-    it('if EICAR url is submitted, a verdict "clean" is expected', async () => {
+    it('if EICAR url is submitted, a verdict "malicious" is expected', async () => {
         const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
         const verdict = await vaas.forUrl(new URL("https://secure.eicar.org/eicar.com"));
         expect(verdict.verdict).to.equal("Malicious");
     });
+
+    it('if a clean stream is submitted, a verdict "clean" is expected', async () => {
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+        const stream = new Readable();
+        stream.push("I am Clean");
+        stream.push(null);
+        const verdict = await vaas.forStream(stream);
+        expect(verdict.verdict).to.equal("Clean");
+    });
+
+    it('if a EICAR stream is submitted, a verdict "malicious" is expected', async () => {
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+        const stream = new Readable();
+        stream._read = () => {};
+        stream.push(`X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`);
+        stream.push(null);
+        const verdict = await vaas.forStream(stream);
+        expect(verdict.verdict).to.equal("Malicious");
+    });
+
+    it('if a EICAR stream from an url is submitted, a verdict "malicious" is expected', async () => {
+        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+        const response = await axios.get<Readable>("https://secure.eicar.org/eicar.com.txt", { responseType: "stream" });
+        const verdict = await vaas.forStream(response.data);
+        expect(verdict.verdict).to.equal("Malicious");
+    });    
 });
 
 describe("Vaas", async () => {
