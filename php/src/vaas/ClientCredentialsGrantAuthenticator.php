@@ -14,9 +14,10 @@ class ClientCredentialsGrantAuthenticator
     private HttpClient $_httpClient;
 
     public function __construct(
-        string $clientId, string $clientSecret,
-        string $tokenEndpoint = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
-    {
+        string $clientId,
+        string $clientSecret,
+        string $tokenEndpoint = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+    ) {
         $this->_clientId = $clientId;
         $this->_clientSecret = $clientSecret;
         $this->_tokenEndpoint = $tokenEndpoint;
@@ -43,8 +44,7 @@ class ClientCredentialsGrantAuthenticator
             if ($response->getStatusCode() != 200) {
                 throw new VaasAuthenticationException($response->getReasonPhrase(), $response->getStatusCode());
             }
-        }
-        catch (ClientException $e) {
+        } catch (ClientException $e) {
             throw new VaasAuthenticationException($e->getMessage(), $e->getCode());
         }
         $response_body = json_decode($response->getBody());

@@ -12,6 +12,7 @@ class Kind implements JsonSerializable
     public const VERDICT_REQUEST = "VerdictRequest";
     public const VERDICT_RESPONSE = "VerdictResponse";
     public const VERDICT_REQUEST_FOR_URL = "VerdictRequestForUrl";
+    public const VERDICT_REQUEST_FOR_STREAM = "VerdictRequestForStream";
     public const ERROR = "Error";
 
     private string $_kindString = "";
@@ -33,6 +34,9 @@ class Kind implements JsonSerializable
                 break;
             case self::VERDICT_REQUEST_FOR_URL:
                 $this->_kindString = self::VERDICT_REQUEST_FOR_URL;
+                break;
+            case self::VERDICT_REQUEST_FOR_STREAM:
+                $this->_kindString = self::VERDICT_REQUEST_FOR_STREAM;
                 break;
             case self::ERROR:
                 $this->_kindString = self::ERROR;

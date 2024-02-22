@@ -4,12 +4,18 @@ namespace VaasTesting;
 
 require_once __DIR__ . "/vendor/autoload.php";
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Psr7\Stream;
+use JsonMapper_Exception;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\TimeoutException;
+use VaasSdk\Exceptions\UploadFailedException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
+use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
@@ -21,6 +27,7 @@ use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Sha256;
+use WebSocket\BadOpcodeException;
 
 final class VaasTest extends TestCase
 {
@@ -399,7 +406,7 @@ final class VaasTest extends TestCase
     public function testForUrl_WithNull_ThrowsVaasClientException()
     {
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
-        $this->expectException(\TypeError::class);
+        $this->expectException(\InvalidArgumentException::class);
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
 
         $invalidUrl = null;
@@ -421,5 +428,106 @@ final class VaasTest extends TestCase
         $invalidUrl = "https://upload.production.vaas.gdatasecurity.de/nocontenthere";
         $verdict = $vaas->ForUrl($invalidUrl);
         $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
+    }
+
+    /**
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     * @throws VaasServerException
+     * @throws UploadFailedException
+     * @throws TimeoutException
+     * @throws BadOpcodeException
+     * @throws GuzzleException
+     * @throws VaasAuthenticationException
+     * @throws VaasInvalidStateException
+     */
+    public function testForStream_WithEicarString_ReturnsMalicious()
+    {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}\$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!\$H+H*";
+        $stream = fopen(sprintf('data://text/plain,%s', $eicar), 'r');
+        rewind($stream);
+        $eicarStream = new Stream($stream);
+
+        $verdict = $vaas->ForStream($eicarStream);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
+    }
+
+    /**
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     * @throws VaasServerException
+     * @throws TimeoutException
+     * @throws UploadFailedException
+     * @throws GuzzleException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     * @throws VaasAuthenticationException
+     */
+    public function testForStream_WithCleanString_ReturnsClean()
+    {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $clean = "I am a clean string";
+        $stream = fopen(sprintf('data://text/plain,%s', $clean), 'r');
+        rewind($stream);
+        $eicarStream = new Stream($stream);
+
+        $verdict = $vaas->ForStream($eicarStream);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+    }
+
+    /**
+     * @throws GuzzleException
+     * @throws JsonMapper_Exception
+     * * @throws VaasClientException
+     * * @throws VaasServerException
+     * * @throws TimeoutException
+     * * @throws UploadFailedException
+     * * @throws GuzzleException
+     * * @throws BadOpcodeException
+     * * @throws VaasInvalidStateException
+     * * @throws VaasAuthenticationException
+     */
+    public function testForStream_WithCleanUrlContentAsStream_ReturnsClean()
+    {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $url = "https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md";
+        $httpClient = new Client();
+        $response = $httpClient->get($url);
+        $stream = new Stream($response->getBody()->detach());
+
+        $verdict = $vaas->ForStream($stream);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+    }
+
+    /**
+     * @throws GuzzleException
+     * @throws JsonMapper_Exception
+     * * @throws VaasClientException
+     * * @throws VaasServerException
+     * * @throws TimeoutException
+     * * @throws UploadFailedException
+     * * @throws GuzzleException
+     * * @throws BadOpcodeException
+     * * @throws VaasInvalidStateException
+     * * @throws VaasAuthenticationException
+     */
+    public function testForStream_WithEicarUrlContentAsStream_ReturnsMalicious()
+    {
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger());
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $httpClient = new Client();
+        $response = $httpClient->get(self::MALICIOUS_URL);
+        $stream = new Stream($response->getBody()->detach());
+
+        $verdict = $vaas->ForStream($stream);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
     }
 }
