@@ -357,7 +357,7 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 	}, nil
 }
 
-// ForUrl sends an analysis request for a file URL to the Vaas server and returns the verdict.
+// ForStream sends an analysis request for a file stream to the Vaas server and returns the verdict.
 // The analysis can be canceled using the provided context.
 //
 // Example usage:
