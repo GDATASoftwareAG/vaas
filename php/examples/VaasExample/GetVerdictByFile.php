@@ -2,7 +2,6 @@
 
 namespace VaasExamples;
 
-use Monolog\Logger;
 use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Vaas;
 
@@ -22,4 +21,4 @@ $vaas->Connect($authenticator->getToken());
 $scanPath = getenv("SCAN_PATH");
 $vaasVerdict = $vaas->ForFile($scanPath);
 
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
+fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is " . $vaasVerdict->Verdict->value . " \n");
