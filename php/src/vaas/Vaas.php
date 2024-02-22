@@ -384,6 +384,7 @@ class Vaas
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_vaasConnection->SessionId);
         $request->UseCache = $useCache;
         $request->UseShed = $useShed;
+        \fwrite(\STDERR, json_encode($request));
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)

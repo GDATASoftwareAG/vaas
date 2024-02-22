@@ -2,7 +2,7 @@
 
 namespace VaasSdk\Message;
 
-class Error
+class Error extends BaseMessage
 {
     public string $type;
 
@@ -12,7 +12,10 @@ class Error
 
     public ?ProblemDetails $problem_details;
 
-    public Kind $kind;
+    public function __construct()
+    {
+        parent::__construct(new Kind(Kind::ERROR));
+    }
 
     /**
      * @return string
