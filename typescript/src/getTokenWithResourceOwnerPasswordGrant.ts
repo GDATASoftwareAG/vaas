@@ -2,10 +2,10 @@ import URLSearchParams from "@ungap/url-search-params";
 import * as axios from "axios";
 
 export default async function getTokenWithResourceOwnerPasswordGrant(
-    clientId: string,
-    username: string,
-    password: string,
-    tokenEndpoint: string
+  clientId: string,
+  username: string,
+  password: string,
+  tokenEndpoint: string,
 ) {
   var formData = new URLSearchParams();
   formData.append("client_id", clientId);
