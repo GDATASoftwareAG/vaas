@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,8 +17,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 )
 
@@ -283,6 +284,41 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
 			}
 		})
+	}
+}
+
+func TestVaas_ForStream_WithStreamFromString(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	fixture := new(testFixture)
+	VaasClient := fixture.setUp(t)
+	defer fixture.tearDown(t)
+
+	verdict, err := VaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size())
+
+	if err != nil {
+		t.Fatalf("unexpected error - %v", err)
+	}
+
+	if verdict.Verdict != msg.Malicious {
+		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
+	}
+}
+
+func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
+	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
+
+	fixture := new(testFixture)
+	VaasClient := fixture.setUp(t)
+	defer fixture.tearDown(t)
+
+	verdict, err := VaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
+
+	if err != nil {
+		t.Fatalf("unexpected error - %v", err)
+	}
+
+	if verdict.Verdict != msg.Malicious {
+		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
 	}
 }
 
