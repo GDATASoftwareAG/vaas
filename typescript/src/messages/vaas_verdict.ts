@@ -5,6 +5,6 @@ import { Verdict } from "../Verdict";
 export class VaasVerdict {
   public constructor(
     @JsonProperty() public sha256: string,
-    @JsonProperty() public verdict: Verdict
-  ) {  }
+    @JsonProperty() public verdict: Verdict,
+  ) {}
 }

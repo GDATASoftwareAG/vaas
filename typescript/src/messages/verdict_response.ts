@@ -9,7 +9,7 @@ export class VerdictResponse extends Message {
     @JsonProperty() public guid: string,
     @JsonProperty() public verdict: Verdict,
     @JsonProperty() public upload_token: string | undefined,
-    @JsonProperty() public url: string | undefined
+    @JsonProperty() public url: string | undefined,
   ) {
     super(Kind.VerdictResponse);
   }
