@@ -7,6 +7,7 @@ use reqwest::Url;
 
 /// Authenticator for the VaaS service using the client credentials flow.
 /// Expects a client id and a client secret.
+#[derive(Clone)]
 pub struct ClientCredentials {
     client_id: String,
     client_secret: String,

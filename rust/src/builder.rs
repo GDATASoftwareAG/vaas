@@ -18,6 +18,7 @@ use reqwest::Url;
 /// let vaas = Builder::new(authenticator).build()?;
 /// # Ok(()) }
 /// ```
+#[derive(Clone)]
 pub struct Builder<A: Authenticator> {
     authenticator: A,
     url: Url,

@@ -6,6 +6,7 @@ use reqwest::{StatusCode, Url};
 
 /// Authenticator for the VaaS service using the password flow.
 /// Expects a client id, a user name and a password.
+#[derive(Clone)]
 pub struct Password {
     client_id: String,
     user_name: String,
