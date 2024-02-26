@@ -15,10 +15,13 @@ import {
   VaasAuthenticationError,
   VaasConnectionClosedError,
   VaasInvalidStateError,
+  VaasServerError,
   VaasTimeoutError,
 } from "./VaasErrors";
 import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
+import { VerdictRequestForStream } from "./messages/verdict_request_for_stream";
+import { Readable } from "stream";
 
 const VAAS_URL = "wss://gateway.production.vaas.gdatasecurity.de";
 const defaultSerializer = new JsonSerializer();
@@ -32,7 +35,7 @@ const timeout = <T>(promise: Promise<T>, timeoutInMs: number) => {
     promise,
     new Promise<never>(
       (_resolve, reject) =>
-        (timer = setTimeout(reject, timeoutInMs, new VaasTimeoutError()))
+        (timer = setTimeout(reject, timeoutInMs, new VaasTimeoutError())),
     ),
   ]).finally(() => clearTimeout(timer));
 };
@@ -57,6 +60,8 @@ export class Vaas {
 
   defaultTimeoutHashReq: number = 2_000;
   defaultTimeoutFileReq: number = 600_000;
+  defaultTimeoutUrlReq: number = 600_000;
+  defaultTimeoutStreamReq: number = 100_000;
   debug = false;
 
   constructor(private webSocketFactory = (url: string) => new WebSocket(url)) {
@@ -69,21 +74,36 @@ export class Vaas {
     }).join("");
   }
 
+  /** Get verdict for Readable Stream
+   * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
+   * @throws {VaasAuthenticationError} Authentication failed.
+   * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
+   * @throws {VaasTimeoutError} Timeout. Retry request.
+   * @throws {VaasServerError} Stream could not be read properly in VaaS clouds
+   */
+  public async forStream(
+    stream: Readable,
+    ct: CancellationToken = CancellationToken.fromMilliseconds(
+      this.defaultTimeoutStreamReq,
+    ),
+  ): Promise<VaasVerdict> {
+    const request = this.forStreamRequest(stream).then((response) => response);
+    return timeout(request, ct.timeout());
+  }
+
   /** Get verdict for URL
    * @throws {VaasInvalidStateError} If connect() has not been called and awaited. Signifies caller error.
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
    * @throws {VaasTimeoutError} Timeout. Retry request.
    */
-   public async forUrl(
+  public async forUrl(
     url: URL,
     ct: CancellationToken = CancellationToken.fromMilliseconds(
-      this.defaultTimeoutHashReq
-    )
+      this.defaultTimeoutUrlReq,
+    ),
   ): Promise<VaasVerdict> {
-    const request = this.forUrlRequest(url).then(
-      (response) => response
-    );
+    const request = this.forUrlRequest(url).then((response) => response);
     return timeout(request, ct.timeout());
   }
 
@@ -96,12 +116,10 @@ export class Vaas {
   public async forSha256(
     sha256: string,
     ct: CancellationToken = CancellationToken.fromMilliseconds(
-      this.defaultTimeoutHashReq
-    )
+      this.defaultTimeoutHashReq,
+    ),
   ): Promise<VaasVerdict> {
-    const request = this.forRequest(sha256).then(
-      (response) => response
-    );
+    const request = this.forRequest(sha256).then((response) => response);
     return timeout(request, ct.timeout());
   }
 
@@ -114,8 +132,8 @@ export class Vaas {
   public async forSha256List(
     sha256List: string[],
     ct: CancellationToken = CancellationToken.fromMilliseconds(
-      this.defaultTimeoutHashReq
-    )
+      this.defaultTimeoutHashReq,
+    ),
   ): Promise<VaasVerdict[]> {
     const promises = sha256List.map((sha256) => this.forSha256(sha256, ct));
     return Promise.all(promises);
@@ -130,12 +148,10 @@ export class Vaas {
   public async forFile(
     fileBuffer: Uint8Array,
     ct: CancellationToken = CancellationToken.fromMilliseconds(
-      this.defaultTimeoutFileReq
-    )
+      this.defaultTimeoutFileReq,
+    ),
   ): Promise<VaasVerdict> {
-    const request = this.forRequest(fileBuffer).then(
-      (response) => response
-    );
+    const request = this.forRequest(fileBuffer).then((response) => response);
     return timeout(request, ct.timeout());
   }
 
@@ -148,16 +164,14 @@ export class Vaas {
   public async forFileList(
     fileBuffers: Uint8Array[],
     ct: CancellationToken = CancellationToken.fromMilliseconds(
-      this.defaultTimeoutFileReq
-    )
+      this.defaultTimeoutFileReq,
+    ),
   ): Promise<VaasVerdict[]> {
     const promises = fileBuffers.map((f) => this.forFile(f, ct));
     return Promise.all(promises);
   }
 
-  private async forRequest(
-    sample: string | Uint8Array
-  ): Promise<VaasVerdict> {
+  private async forRequest(sample: string | Uint8Array): Promise<VaasVerdict> {
     const ws = this.getAuthenticatedWebSocket();
     return new Promise((resolve, reject) => {
       const guid = uuidv4();
@@ -173,7 +187,9 @@ export class Vaas {
           }
 
           this.verdictPromises.delete(guid);
-          resolve(new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict));
+          resolve(
+            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict),
+          );
         },
         reject: (reason) => reject(reason),
       });
@@ -184,16 +200,14 @@ export class Vaas {
           : Vaas.toHexString(sha256.hash(sample));
       const verdictReq = JSON.stringify(
         defaultSerializer.serialize(
-          new VerdictRequest(hash, guid, this.connection!.sessionId as string)
-        )
+          new VerdictRequest(hash, guid, this.connection!.sessionId as string),
+        ),
       );
       ws.send(verdictReq);
     });
   }
 
-  private async forUrlRequest(
-    url: URL
-  ): Promise<VaasVerdict> {
+  private async forUrlRequest(url: URL): Promise<VaasVerdict> {
     const ws = this.getAuthenticatedWebSocket();
     return new Promise((resolve, reject) => {
       const guid = uuidv4();
@@ -201,21 +215,66 @@ export class Vaas {
       this.verdictPromises.set(guid, {
         resolve: async (verdictResponse: VerdictResponse) => {
           this.verdictPromises.delete(guid);
-          resolve(new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict));
+          resolve(
+            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict),
+          );
         },
         reject: (reason) => reject(reason),
       });
 
-    
       const verdictReq = JSON.stringify(
         defaultSerializer.serialize(
-          new VerdictRequestForUrl(url, guid, this.connection!.sessionId as string)
-        )
+          new VerdictRequestForUrl(
+            url,
+            guid,
+            this.connection!.sessionId as string,
+          ),
+        ),
       );
       ws.send(verdictReq);
     });
   }
-  
+
+  private async forStreamRequest(stream: Readable): Promise<VaasVerdict> {
+    const ws = this.getAuthenticatedWebSocket();
+    return new Promise((resolve, reject) => {
+      const guid = uuidv4();
+      if (this.debug) console.debug("uuid", guid);
+      this.verdictPromises.set(guid, {
+        resolve: async (verdictResponse: VerdictResponse) => {
+          var contentLength;
+          if (verdictResponse.verdict === Verdict.UNKNOWN) {
+            contentLength = stream.readableLength;
+            await this.upload(verdictResponse, stream, contentLength);
+            this.verdictPromises.delete(guid);
+          }
+          if (
+            verdictResponse.verdict !== Verdict.UNKNOWN &&
+            contentLength === 0
+          ) {
+            throw new VaasServerError(
+              "Server returned verdict without receiving content",
+            );
+          }
+          resolve(
+            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict),
+          );
+        },
+        reject: (reason) => reject(reason),
+      });
+
+      const verdictReq = JSON.stringify(
+        defaultSerializer.serialize(
+          new VerdictRequestForStream(
+            guid,
+            this.connection!.sessionId as string,
+          ),
+        ),
+      );
+      ws.send(verdictReq);
+    });
+  }
+
   /** Connect to VaaS
    * @throws {VaasAuthenticationError} Authentication failed.
    * @throws {VaasConnectionClosedError} Connection was closed. Call connect() to reconnect.
@@ -261,13 +320,16 @@ export class Vaas {
         reject(reason);
       };
       ws.onmessage = async (event) => {
-        const message = defaultSerializer.deserializeObject(event.data, Message) as Message;
+        const message = defaultSerializer.deserializeObject(
+          event.data,
+          Message,
+        ) as Message;
 
         switch (message.kind) {
           case Kind.AuthResponse:
             const authResponse = defaultSerializer.deserializeObject(
               event.data,
-              AuthenticationResponse
+              AuthenticationResponse,
             ) as AuthenticationResponse;
             if (authResponse.success) {
               this.connection!.sessionId = authResponse.session_id;
@@ -279,13 +341,18 @@ export class Vaas {
             break;
           case Kind.Error:
             reject(
-              (defaultSerializer.deserialize(event.data, WebsocketError) as WebsocketError).text
+              (
+                defaultSerializer.deserialize(
+                  event.data,
+                  WebsocketError,
+                ) as WebsocketError
+              ).text,
             );
             break;
           case Kind.VerdictResponse:
             const verdictResponse = defaultSerializer.deserialize(
               event.data,
-              VerdictResponse
+              VerdictResponse,
             ) as VerdictResponse;
             const promise = this.verdictPromises.get(verdictResponse.guid);
             if (promise) {
@@ -303,7 +370,8 @@ export class Vaas {
 
   private async upload(
     verdictResponse: VerdictResponse,
-    fileBuffer: Uint8Array
+    input: Uint8Array | Readable,
+    contentLength: number = Infinity,
   ) {
     return new Promise(async (resolve, reject) => {
       const instance = axios.default.create({
@@ -312,19 +380,19 @@ export class Vaas {
         timeout: 10 * 60 * 1000,
         headers: {
           Authorization: verdictResponse.upload_token!,
-          "Content-Type": "application/octet-stream"
+          "Content-Type": "application/octet-stream",
         },
-        maxBodyLength: Infinity,
+        maxBodyLength: contentLength,
       });
       await instance
-        .put("/", fileBuffer)
+        .put("/", input)
         .then((response) => resolve(response))
         .catch((error) => {
           if (error instanceof axios.AxiosError && error.response) {
             reject(
               new Error(
-                `Upload failed with ${error.response.status} - Error ${error.response.data.message}`
-              )
+                `Upload failed with ${error.response.status} - Error ${error.response.data.message}`,
+              ),
             );
           } else {
             throw error;
@@ -342,7 +410,7 @@ export class Vaas {
 
   private authenticate(token: string): void {
     const authReq: string = JSON.stringify(
-      defaultSerializer.serialize(new AuthenticationRequest(token))
+      defaultSerializer.serialize(new AuthenticationRequest(token)),
     );
     const ws = this.getConnectedWebSocket();
     ws.send(authReq);
@@ -370,7 +438,7 @@ export class Vaas {
     if (!this.connection?.sessionId) {
       if (this.authenticationError) throw new VaasAuthenticationError();
       throw new VaasInvalidStateError(
-        "Not yet authenticated - connect() was not awaited"
+        "Not yet authenticated - connect() was not awaited",
       );
     }
     return ws;

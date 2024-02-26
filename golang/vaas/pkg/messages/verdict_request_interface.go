@@ -6,8 +6,9 @@ type Kind string
 
 // VerdictRequestKind and VerdictRequestForURLKind are kinds of VerdictRequest.
 const (
-	VerdictRequestKind       Kind = "VerdictRequest"
-	VerdictRequestForURLKind Kind = "VerdictRequestForUrl"
+	VerdictRequestKind          Kind = "VerdictRequest"
+	VerdictRequestForURLKind    Kind = "VerdictRequestForUrl"
+	VerdictRequestForStreamKind Kind = "VerdictRequestForStream"
 )
 
 // VerdictRequest is an interface for various types of verdict requests.

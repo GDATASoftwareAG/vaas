@@ -11,6 +11,9 @@
       "groupName": "typescript",
       "matchPaths": [
         "typescript/**"
+      ],
+      "excludePackageNames": [
+        "chai"
       ]
     },
     {

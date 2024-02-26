@@ -3,9 +3,12 @@
 namespace VaasSdk;
 
 use GuzzleHttp\Client as HttpClient;
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Psr7\Stream;
 use InvalidArgumentException;
 use JsonMapper;
 use JsonMapper_Exception;
+use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
@@ -19,11 +22,15 @@ use VaasSdk\Message\Error;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Message\Kind;
 use VaasSdk\Message\VerdictRequest;
+use VaasSdk\Message\VerdictRequestForStream;
 use VaasSdk\Message\VerdictResponse;
 use VaasSdk\Message\VerdictRequestForUrl;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use VaasSdk\Message\BaseMessage;
+use VaasSdk\Message\BaseVerdictRequest;
 use VaasSdk\Message\VaasVerdict;
+use WebSocket\BadOpcodeException;
 
 class Vaas
 {
@@ -73,6 +80,29 @@ class Vaas
      * Gets verdict by hashstring
      *
      * @param string $hashString the hash to get the verdict for
+     * @param bool   $useCache   enables verdict cache on the server
+     * @param bool   $useShed    enables hash-lookup on the server
+     * @param string $uuid       unique identifier
+     * 
+     * @throws Exceptions\InvalidSha256Exception
+     * @throws Exceptions\TimeoutException
+     * 
+     * @return VaasVerdict the verdict
+     */
+    public function ForSha256WithFlags(string $hashString, bool $useCache = true, bool $useShed = true, string $uuid = null): VaasVerdict
+    {
+        if ($this->_logger != null)
+            $this->_logger->debug("ForSha256WithFlags", ["Sha256" => $hashString]);
+
+        $sha256 = Sha256::TryFromString($hashString);
+
+        return new VaasVerdict($this->_verdictResponseForSha256($sha256, $useCache, $useShed, $uuid));
+    }
+
+    /**
+     * Gets verdict by hashstring
+     *
+     * @param string $hashString the hash to get the verdict for
      * @param string $uuid       unique identifier
      * 
      * @throws Exceptions\InvalidSha256Exception
@@ -85,15 +115,15 @@ class Vaas
         if ($this->_logger != null)
             $this->_logger->debug("ForSha256", ["Sha256" => $hashString]);
 
-        $sha256 = Sha256::TryFromString($hashString);
-
-        return new VaasVerdict($this->_verdictResponseForSha256($sha256, $uuid));
+        return $this->ForSha256WithFlags($hashString, true, true, $uuid);
     }
 
     /**
      * Gets verdict by url
      *
-     * @param string $url url to get the verdict for
+     * @param string|null $url url to get the verdict for
+     * @param bool   $useCache   enables verdict cache on the server
+     * @param bool   $useShed    enables hash-lookup on the server
      * @param string|null $uuid unique identifier
      *
      * @return VaasVerdict the verdict
@@ -101,21 +131,41 @@ class Vaas
      * @throws TimeoutException
      * @throws InvalidArgumentException
      */
-    public function ForUrl(string $url, string $uuid = null): VaasVerdict
+    public function ForUrlWithFlags(?string $url, bool $useCache = true, bool $useShed = true, string $uuid = null): VaasVerdict
     {
-        if ($this->_logger != null) $this->_logger->debug("ForUrl", ["URL:" => $url]);
+        if ($this->_logger != null) $this->_logger->debug("ForUrlWithFlags", ["URL:" => $url]);
 
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
             throw new \InvalidArgumentException("Url is not valid");
         }
 
-        return new VaasVerdict($this->_verdictResponseForUrl($url, $uuid));
+        return new VaasVerdict($this->_verdictResponseForUrl($url, $useCache, $useShed, $uuid));
+    }
+
+    /**
+     * Gets verdict by url
+     *
+     * @param string|null $url url to get the verdict for
+     * @param string|null $uuid unique identifier
+     *
+     * @return VaasVerdict the verdict
+     *
+     * @throws TimeoutException
+     * @throws InvalidArgumentException
+     */
+    public function ForUrl(?string $url, string $uuid = null): VaasVerdict
+    {
+        if ($this->_logger != null) $this->_logger->debug("ForUrl", ["URL:" => $url]);
+
+        return $this->ForUrlWithFlags($url, true, true, $uuid);
     }
 
     /**
      * Gets verdict by file
      *
      * @param string $path   the path to get the verdict for
+     * @param bool   $useCache   enables verdict cache on the server
+     * @param bool   $useShed    enables hash-lookup on the server
      * @param bool   $upload should the file be uploaded if initial verdict is unknown
      * @param string $uuid   unique identifier
      * 
@@ -126,16 +176,16 @@ class Vaas
      * 
      * @return VaasVerdict the verdict
      */
-    public function ForFile(string $path, bool $upload = true, string $uuid = null): VaasVerdict
+    public function ForFileWithFlags(string $path, bool $useCache = true, bool $useShed = true, $upload = true, string $uuid = null): VaasVerdict
     {
         if ($this->_logger != null)
-            $this->_logger->debug("ForFile", ["File" => $path]);
+            $this->_logger->debug("ForFileWithFlags", ["File" => $path]);
 
         $sha256 = Sha256::TryFromFile($path);
         if ($this->_logger != null)
             $this->_logger->debug("Calculated Hash", ["Sha256" => $sha256]);
 
-        $verdictResponse = $this->_verdictResponseForSha256($sha256, $uuid);
+        $verdictResponse = $this->_verdictResponseForSha256($sha256, $useCache, $useShed, $uuid);
         if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
             if ($this->_logger != null)
                 $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
@@ -152,6 +202,91 @@ class Vaas
         }
 
         return new VaasVerdict($verdictResponse);
+    }
+
+    /**
+     * Gets verdict by file
+     *
+     * @param string $path   the path to get the verdict for
+     * @param bool   $upload should the file be uploaded if initial verdict is unknown
+     * @param string $uuid   unique identifier
+     * 
+     * @throws Exceptions\TimeoutException
+     * @throws Exceptions\FileDoesNotExistException
+     * @throws Exceptions\InvalidSha256Exception
+     * @throws Exceptions\UploadFailedException
+     * 
+     * @return VaasVerdict the verdict
+     */
+    public function ForFile(string $path, $upload = true, string $uuid = null): VaasVerdict
+    {
+        if ($this->_logger != null)
+            $this->_logger->debug("ForFile", ["File" => $path]);
+
+        return $this->ForFileWithFlags($path, true, true, $upload, $uuid);
+    }
+
+    /**
+     * Gets verdict by stream
+     *
+     * @param string $path   the path to get the verdict for
+     * @param bool   $upload should the file be uploaded if initial verdict is unknown
+     * @param string $uuid   unique identifier
+     * 
+
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     * @throws TimeoutException
+     * @throws VaasServerException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     * @throws GuzzleException
+     * @throws UploadFailedException
+     */
+    public function ForStreamWithFlags(Stream $stream, bool $useCache = true, bool $useShed = true, string $uuid = null): VaasVerdict
+    {
+        if ($uuid == null) {
+            $uuid = UuidV4::getFactory()->uuid4()->toString();
+        }
+
+        $verdictResponse = $this->_verdictResponseForStream($useCache, $useShed, $uuid);
+
+        if ($verdictResponse->verdict != Verdict::UNKNOWN) {
+            throw new VaasServerException("Server returned verdict without receiving content.");
+        }
+        if ($verdictResponse->upload_token == null || $verdictResponse->upload_token == "") {
+            throw new JsonMapper_Exception("VerdictResponse missing UploadToken for stream upload.");
+        }
+        if ($verdictResponse->url == null || $verdictResponse->url == "") {
+            throw new JsonMapper_Exception("VerdictResponse missing URL for stream upload.");
+        }
+
+        $this->UploadStream($stream, $verdictResponse->url, $verdictResponse->upload_token);
+
+        $verdictResponse = $this->_waitForVerdict($uuid);
+
+        return new VaasVerdict($verdictResponse);
+    }
+
+    /**
+     * Gets verdict by stream
+     *
+     * @param string $path   the path to get the verdict for
+     * @param bool   $upload should the file be uploaded if initial verdict is unknown
+     * @param string $uuid   unique identifier
+     * 
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     * @throws TimeoutException
+     * @throws VaasServerException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     * @throws GuzzleException
+     * @throws UploadFailedException
+     */
+    public function ForStream(Stream $stream, string $uuid = null): VaasVerdict
+    {
+        return $this->ForStreamWithFlags($stream, true, true, $uuid);
     }
 
     /**
@@ -188,11 +323,14 @@ class Vaas
             if ($result != null) {
                 if ($this->_logger != null)
                     $this->_logger->debug("Result", json_decode($result, true));
-
-                $resultObject = json_decode($result);
-                if ($resultObject->kind == Kind::AUTH_RESPONSE) {
+                $genericObject = \json_decode($result);
+                $resultObject = (new JsonMapper())->map(
+                    $genericObject,
+                    new BaseMessage()
+                );
+                if ($resultObject->kind == Kind::AuthResponse) {
                     $authResponse = (new JsonMapper())->map(
-                        $resultObject,
+                        $genericObject,
                         new AuthResponse()
                     );
                     if ($this->_logger != null)
@@ -202,10 +340,10 @@ class Vaas
                     }
                     return $authResponse;
                 }
-                if ($resultObject->kind == Kind::ERROR) {
+                if ($resultObject->kind == Kind::Error) {
                     try {
                         $errorResponse = (new JsonMapper())->map(
-                            $resultObject,
+                            $genericObject,
                             new Error()
                         );
                     } catch (JsonMapper_Exception $e) {
@@ -254,7 +392,11 @@ class Vaas
                 if ($this->_logger != null)
                     $this->_logger->debug("Result", json_decode($result, true));
                 $resultObject = json_decode($result);
-                if ($resultObject->kind == Kind::ERROR) {
+                $baseMessage = (new JsonMapper())->map(
+                    $resultObject,
+                    new BaseMessage()
+                );
+                if ($baseMessage->kind == Kind::Error) {
                     try {
                         $errorResponse = (new JsonMapper())->map(
                             $resultObject,
@@ -266,17 +408,20 @@ class Vaas
                     }
                     $this->_handleWebSocketErrorResponse($errorResponse);
                 }
-                if (!isset($resultObject->guid) || !isset($resultObject->kind)) {
+                if ($baseMessage->kind != Kind::VerdictResponse) {
                     continue;
                 }
-                if ($resultObject->kind != Kind::VERDICT_RESPONSE) {
+
+                $verdictResponse = (new JsonMapper())->map(
+                    $resultObject,
+                    new VerdictResponse()
+                );
+                if (!isset($verdictResponse->guid) || !isset($verdictResponse->kind)) {
                     continue;
                 }
-                if ($resultObject->guid == $guid) {
-                    return (new JsonMapper())->map(
-                        $resultObject,
-                        new VerdictResponse()
-                    );
+
+                if ($verdictResponse->guid == $guid) {
+                    return $verdictResponse;
                 }
             }
             sleep(1);
@@ -295,7 +440,7 @@ class Vaas
             $details = null;
         }
         $errorType = $errorResponse->getType();
-        if ($errorType == "ClientError"){
+        if ($errorType == "ClientError") {
             throw new VaasClientException($details);
         }
         throw new VaasServerException($details);
@@ -306,7 +451,7 @@ class Vaas
      * 
      * @return VerdictResponse
      */
-    private function _verdictResponseForSha256(Sha256 $sha256, string $uuid = null): VerdictResponse
+    private function _verdictResponseForSha256(Sha256 $sha256, bool $useCache, bool $useShed, string $uuid = null): VerdictResponse
     {
         if ($this->_logger != null)
             $this->_logger->debug("_verdictResponseForSha256");
@@ -317,6 +462,8 @@ class Vaas
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_vaasConnection->SessionId);
+        $request->UseCache = $useCache;
+        $request->UseShed = $useShed;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
@@ -330,7 +477,7 @@ class Vaas
      * 
      * @return VerdictResponse
      */
-    private function _verdictResponseForUrl(string $url, string $uuid = null): VerdictResponse
+    private function _verdictResponseForUrl(string $url, bool $useCache, bool $useShed, string $uuid = null): VerdictResponse
     {
         if ($this->_logger != null)
             $this->_logger->debug("_verdictResponseForUrl");
@@ -341,6 +488,37 @@ class Vaas
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
         $request = new VerdictRequestForUrl($url, $uuid, $this->_vaasConnection->SessionId);
+        $request->UseCache = $useCache;
+        $request->UseShed = $useShed;
+        $websocket->send(json_encode($request));
+
+        if ($this->_logger != null)
+            $this->_logger->debug("verdictResponse", ["VerdictResponse" => json_encode($request)]);
+
+        return $this->_waitForVerdict($request->guid);
+    }
+
+    /**
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     * @throws TimeoutException
+     * @throws VaasServerException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     */
+    private function _verdictResponseForStream(bool $useCache, bool $useShed, string $uuid = null): VerdictResponse
+    {
+        if ($this->_logger != null)
+            $this->_logger->debug("_verdictResponseForStream");
+
+        if (!isset($this->_vaasConnection)) {
+            throw new VaasInvalidStateException("connect() was not called");
+        }
+        $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
+
+        $request = new VerdictRequestForStream($this->_vaasConnection->SessionId, $uuid);
+        $request->UseCache = $useCache;
+        $request->UseShed = $useShed;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
@@ -385,5 +563,22 @@ class Vaas
     {
         $this->_uploadTimeoutInSeconds = $UploadTimeoutInSeconds;
         return $this;
+    }
+
+    /**
+     * @throws GuzzleException
+     * @throws UploadFailedException
+     */
+    private function UploadStream(Stream $stream, string $url, string $uploadToken)
+    {
+        $response = $this->_httpClient->put($url, [
+            'body' => $stream,
+            'content-length' => $stream->getSize(),
+            'timeout' => $this->_uploadTimeoutInSeconds,
+            'headers' => ["Authorization" => $uploadToken]
+        ]);
+        if ($response->getStatusCode() > 399) {
+            throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+        }
     }
 }
