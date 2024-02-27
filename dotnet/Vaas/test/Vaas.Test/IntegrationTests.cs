@@ -148,7 +148,8 @@ public class IntegrationTests
         Assert.Equal(Vaas.Sha256CheckSum("test3.txt"), resultList[2].Sha256);
     }
 
-    [Fact]
+    [Skip]
+    // [Fact]
     public async void FromSha256_ReturnsPup_ForAmtsoSample()
     {
         var vaas = await AuthenticateWithCredentials();

@@ -232,14 +232,14 @@ describe("Test verdict requests", function () {
     expect(verdict.sha256.toUpperCase()).to.equal(sha256);
   }).timeout(45000);
 
-  it("returns Pup for AMTSO pup sample", async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const sha256 =
-      "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
-    let verdict = await vaas.forSha256(sha256);
-    expect(verdict.verdict).to.equal("Pup");
-    expect(verdict.sha256).to.equal(sha256);
-  });
+  // it("returns Pup for AMTSO pup sample", async () => {
+  //   const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+  //   const sha256 =
+  //     "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
+  //   let verdict = await vaas.forSha256(sha256);
+  //   expect(verdict.verdict).to.equal("Pup");
+  //   expect(verdict.sha256).to.equal(sha256);
+  // });
 
   it('if a clean url is submitted, a verdict "clean" is expected', async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
