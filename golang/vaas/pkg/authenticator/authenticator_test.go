@@ -97,7 +97,7 @@ func Test_resourceOwnerPasswordGrantAuthenticator_GetToken(t *testing.T) {
 
 				clientID, exists := os.LookupEnv("VAAS_CLIENT_ID")
 				if !exists {
-					log.Fatal("no username set")
+					log.Fatal("no client-id set")
 				}
 				username, exists := os.LookupEnv("VAAS_USER_NAME")
 				if !exists {
