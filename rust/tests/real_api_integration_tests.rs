@@ -1,10 +1,7 @@
-use bytes::Bytes;
 use futures::future::try_join_all;
-use futures::StreamExt;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Url;
 use std::convert::TryFrom;
-use std::fmt::Error;
 use std::ops::Deref;
 use vaas::auth::authenticators::{ClientCredentials, Password};
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
@@ -129,14 +126,14 @@ async fn from_http_response_stream_returns_malicious_verdict() {
 
 #[tokio::test]
 async fn from_string_stream_returns_malicious_verdict() {
-    let eicarString = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+    let eicar_string = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
 
-    let resultBytes = Result::<bytes::Bytes, Error>::from(Ok(eicarString.into()));
+    let stream: Vec<Result<bytes::Bytes, std::io::Error>> = vec![Ok(bytes::Bytes::from(eicar_string))];
+    let stream = futures_util::stream::iter(stream);
+
     let vaas = get_vaas().await;
-
     let ct = CancellationToken::from_seconds(10);
-    let iter = resultBytes.into_iter();
-    let verdict = vaas.for_stream(iter, eicarString.len(), &ct).await;
+    let verdict = vaas.for_stream(stream, eicar_string.len(), &ct).await;
 
     assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
 }

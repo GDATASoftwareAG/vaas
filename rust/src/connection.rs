@@ -10,21 +10,17 @@ use crate::sha256::Sha256;
 use crate::vaas_verdict::VaasVerdict;
 use crate::CancellationToken;
 use bytes::Bytes;
-use futures::future::{join_all, ok};
-use futures::{stream, StreamExt};
+use futures::future::join_all;
 use reqwest::{Body, Url};
-use std::arch::x86_64::_rdseed16_step;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::result::IntoIter;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tokio_stream::Stream;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 type ThreadHandle = JoinHandle<Result<(), Error>>;
@@ -120,12 +116,17 @@ impl Connection {
     }
 
     /// Request a verdict for a SHA256 file hash.
-    pub async fn for_stream(
+    pub async fn for_stream<S>(
         &self,
-        stream: IntoIter<Bytes>,
+        stream: S,
         content_length: usize,
         ct: &CancellationToken,
-    ) -> VResult<VaasVerdict> {
+    ) -> VResult<VaasVerdict>
+    where
+        S: futures_util::stream::TryStream + Send + Sync + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        Bytes: From<S::Ok>,
+    {
         let request = VerdictRequestForStream::new(self.session_id.clone());
         let guid = request.guid().to_string();
 
@@ -139,7 +140,7 @@ impl Connection {
 
         let verdict = Verdict::try_from(&response)?;
 
-        return match verdict {
+        match verdict {
             Verdict::Unknown { upload_url } => {
                 Self::handle_unknown_stream(
                     stream,
@@ -153,7 +154,7 @@ impl Connection {
                 .await
             }
             _ => Err(Error::Cancelled),
-        };
+        }
     }
 
     /// Request verdicts for a list of SHA256 file hashes.
@@ -226,15 +227,20 @@ impl Connection {
         VaasVerdict::try_from(resp)
     }
 
-    async fn handle_unknown_stream(
-        stream: IntoIter<Bytes>,
+    async fn handle_unknown_stream<S>(
+        stream: S,
         content_length: usize,
         guid: &str,
         response: VerdictResponse,
         upload_url: UploadUrl,
         result_channel: &mut ResultChannelRx,
         ct: &CancellationToken,
-    ) -> Result<VaasVerdict, Error> {
+    ) -> Result<VaasVerdict, Error>
+    where
+        S: futures_util::stream::TryStream + Send + Sync + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        Bytes: From<S::Ok>,
+    {
         let auth_token = response
             .upload_token
             .as_ref()
@@ -387,17 +393,22 @@ async fn upload_file(
     Ok(response)
 }
 
-async fn upload_stream(
-    stream: IntoIter<Bytes>,
+async fn upload_stream<S>(
+    stream: S,
     content_length: usize,
     upload_url: UploadUrl,
     auth_token: &str,
-) -> VResult<reqwest::Response> {
+) -> VResult<reqwest::Response>
+where
+    S: futures_util::stream::TryStream + Send + Sync + 'static,
+    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    Bytes: From<S::Ok>,
+{
     let client = reqwest::Client::new();
-    let stream = stream::iter(stream);
+    let body = Body::wrap_stream(stream);
     let response = client
         .put(upload_url.deref())
-        .body(Body::from(stream))
+        .body(body)
         .header("Authorization", auth_token)
         .header("Content-Length", content_length)
         .send()
