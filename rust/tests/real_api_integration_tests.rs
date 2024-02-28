@@ -1,7 +1,10 @@
+use bytes::Bytes;
 use futures::future::try_join_all;
+use futures::StreamExt;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::Url;
 use std::convert::TryFrom;
+use std::fmt::Error;
 use std::ops::Deref;
 use vaas::auth::authenticators::{ClientCredentials, Password};
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
@@ -108,6 +111,34 @@ async fn from_sha256_single_malicious_hash() {
         "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
         verdict.unwrap().sha256.deref()
     );
+}
+
+#[tokio::test]
+async fn from_http_response_stream_returns_malicious_verdict() {
+    let result = reqwest::get("http://eicar.eu/eicar.com.txt").await;
+    let vaas = get_vaas().await;
+
+    let ct = CancellationToken::from_seconds(10);
+    let response = result.unwrap();
+    let content_length: usize = response.content_length().unwrap() as usize;
+    let byte_stream = response.bytes_stream();
+    let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+}
+
+#[tokio::test]
+async fn from_string_stream_returns_malicious_verdict() {
+    let eicarString = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+
+    let resultBytes = Result::<bytes::Bytes, Error>::from(Ok(eicarString.into()));
+    let vaas = get_vaas().await;
+
+    let ct = CancellationToken::from_seconds(10);
+    let iter = resultBytes.into_iter();
+    let verdict = vaas.for_stream(iter, eicarString.len(), &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
 }
 
 // #[tokio::test]

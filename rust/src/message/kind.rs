@@ -8,4 +8,5 @@ pub enum Kind {
     VerdictResponse,
     Error,
     VerdictRequestForUrl,
+    VerdictRequestForStream,
 }
