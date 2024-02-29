@@ -33,6 +33,8 @@ impl<A: Authenticator> Builder<A> {
                 keep_alive_delay_ms: 10_000,
                 keep_alive: true,
                 channel_capacity: 100,
+                use_cache: true,
+                use_hash_lookup: true,
             },
             authenticator,
             url: Url::from_str("wss://gateway.production.vaas.gdatasecurity.de").unwrap(),
@@ -57,6 +59,28 @@ impl<A: Authenticator> Builder<A> {
         Self {
             options: Options {
                 keep_alive,
+                ..self.options
+            },
+            ..self
+        }
+    }
+
+    /// Enable or disable the Cache-Lookup on the server
+    pub fn use_cache(self, use_cache: bool) -> Self {
+        Self {
+            options: Options {
+                use_cache,
+                ..self.options
+            },
+            ..self
+        }
+    }
+
+    /// Enable or disable the Hash-Lookup on the server
+    pub fn use_hash_lookup(self, use_hash_lookup: bool) -> Self {
+        Self {
+            options: Options {
+                use_hash_lookup,
                 ..self.options
             },
             ..self

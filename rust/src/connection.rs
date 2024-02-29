@@ -34,6 +34,7 @@ pub struct Connection {
     reader_thread: ThreadHandle,
     keep_alive_thread: Option<ThreadHandle>,
     result_channel: ResultChannelTx,
+    options: Options,
 }
 
 impl Connection {
@@ -55,6 +56,7 @@ impl Connection {
             reader_thread: reader_loop,
             keep_alive_thread: keep_alive_loop,
             result_channel: tx,
+            options,
         }
     }
 
@@ -71,7 +73,12 @@ impl Connection {
 
     /// Request a verdict for a file behind a URL.
     pub async fn for_url(&self, url: &Url, ct: &CancellationToken) -> VResult<VaasVerdict> {
-        let request = VerdictRequestForUrl::new(url, self.session_id.clone());
+        let request = VerdictRequestForUrl::new(
+            url,
+            self.session_id.clone(),
+            self.options.use_cache,
+            self.options.use_hash_lookup,
+        );
         let response = Self::for_url_request(
             request,
             self.ws_writer.clone(),
@@ -102,7 +109,12 @@ impl Connection {
         sha256: &Sha256,
         ct: &CancellationToken,
     ) -> VResult<VaasVerdict> {
-        let request = VerdictRequest::new(sha256, self.session_id.clone());
+        let request = VerdictRequest::new(
+            sha256,
+            self.session_id.clone(),
+            self.options.use_cache,
+            self.options.use_hash_lookup,
+        );
         let response = Self::for_request(
             request,
             self.ws_writer.clone(),
@@ -130,7 +142,12 @@ impl Connection {
     /// Request a verdict for a file.
     pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<VaasVerdict> {
         let sha256 = Sha256::try_from(file)?;
-        let request = VerdictRequest::new(&sha256, self.session_id.clone());
+        let request = VerdictRequest::new(
+            &sha256,
+            self.session_id.clone(),
+            self.options.use_cache,
+            self.options.use_hash_lookup,
+        );
         let guid = request.guid().to_string();
 
         let response = Self::for_request(
