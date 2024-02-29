@@ -308,7 +308,8 @@ async fn from_file_single_malicious_file() {
 #[tokio::test]
 async fn from_file_single_malicious_file_without_cache() {
     let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-    let tmp_file = std::env::temp_dir().join("eicar.txt");
+    let tmp_file =
+        std::env::temp_dir().join("from_file_single_malicious_file_without_cache_eicar.txt");
     std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
 
     let vaas = get_vaas_with_flags(false, true).await;
@@ -327,7 +328,8 @@ async fn from_file_single_malicious_file_without_cache() {
 #[tokio::test]
 async fn from_file_single_malicious_file_without_hash_lookup() {
     let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-    let tmp_file = std::env::temp_dir().join("eicar.txt");
+    let tmp_file =
+        std::env::temp_dir().join("from_file_single_malicious_file_without_hash_lookup_eicar.txt");
     std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
 
     let vaas = get_vaas_with_flags(true, false).await;
@@ -346,7 +348,8 @@ async fn from_file_single_malicious_file_without_hash_lookup() {
 #[tokio::test]
 async fn from_file_single_malicious_file_without_cache_and_without_hash_lookup() {
     let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-    let tmp_file = std::env::temp_dir().join("eicar.txt");
+    let tmp_file = std::env::temp_dir()
+        .join("from_file_single_malicious_file_without_cache_and_without_hash_lookup_eicar.txt");
     std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
 
     let vaas = get_vaas_with_flags(false, false).await;
