@@ -402,7 +402,7 @@ class Vaas
 
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_vaasConnection->SessionId);
         $request->UseCache = $this->_options->UseCache;
-        $request->UseShed = $this->_options->UseHashLookup;
+        $request->UseHashLookup = $this->_options->UseHashLookup;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
@@ -428,7 +428,7 @@ class Vaas
 
         $request = new VerdictRequestForUrl($url, $uuid, $this->_vaasConnection->SessionId);
         $request->UseCache = $this->_options->UseCache;
-        $request->UseShed = $this->_options->UseHashLookup;
+        $request->UseHashLookup = $this->_options->UseHashLookup;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
@@ -457,7 +457,7 @@ class Vaas
 
         $request = new VerdictRequestForStream($this->_vaasConnection->SessionId, $uuid);
         $request->UseCache = $this->_options->UseCache;
-        $request->UseShed = $this->_options->UseHashLookup;
+        $request->UseHashLookup = $this->_options->UseHashLookup;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
