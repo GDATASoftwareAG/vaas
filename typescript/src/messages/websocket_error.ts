@@ -5,7 +5,7 @@ import { Kind, Message } from "./message";
 export class WebsocketError extends Message {
   public constructor(
     @JsonProperty() public type: string,
-    @JsonProperty() public text: string
+    @JsonProperty() public text: string,
   ) {
     super(Kind.Error);
   }

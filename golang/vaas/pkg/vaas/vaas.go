@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"io"
 	"log"
@@ -30,6 +31,7 @@ import (
 type Vaas interface {
 	Connect(ctx context.Context, auth authenticator.Authenticator) (termChan <-chan error, err error)
 	ForUrl(ctx context.Context, uri string) (msg.VaasVerdict, error)
+	ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error)
 	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
 	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
 	ForFileInMemory(ctx context.Context, file io.Reader) (msg.VaasVerdict, error)
@@ -355,6 +357,62 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 	}, nil
 }
 
+// ForStream sends an analysis request for a file stream to the Vaas server and returns the verdict.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	ctx := context.Background()
+//	verdict, err := vaasClient.ForStream(ctx, stream)
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdict: %v", err)
+//	}
+//	fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	fmt.Printf("SHA256: %s\n", verdict.Sha256)
+func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
+	if v.sessionID == "" {
+		return msg.VaasVerdict{}, errors.New("invalid operation")
+	}
+
+	request := msg.NewVerdictRequestForStream(v.sessionID, v.options)
+
+	responseChan := v.openRequest(request)
+	defer v.closeRequest(request)
+
+	var response msg.VerdictResponse
+	select {
+	case response = <-responseChan:
+	case <-ctx.Done():
+		return msg.VaasVerdict{}, ctx.Err()
+	}
+
+	if response.Verdict != "" && response.Verdict != msg.Unknown {
+		return msg.VaasVerdict{}, errors.New("server returned verdict without receiving content")
+	}
+
+	if len(strings.TrimSpace(response.UploadToken)) == 0 {
+		return msg.VaasVerdict{}, errors.New("verdictResponse missing UploadToken for stream upload")
+	}
+
+	if len(strings.TrimSpace(response.URL)) == 0 {
+		return msg.VaasVerdict{}, errors.New("verdictResponse missing URL for stream upload")
+	}
+
+	if err := v.uploadFile(stream, contentLength, response.URL, response.UploadToken); err != nil {
+		return msg.VaasVerdict{
+			Verdict: msg.Error,
+			ErrMsg:  err.Error(),
+		}, err
+	}
+	response = <-responseChan
+
+	return msg.VaasVerdict{
+		Verdict: response.Verdict,
+		Sha256:  response.Sha256,
+	}, nil
+}
+
 func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticator) error {
 	v.waitAuthenticated.Add(1)
 	defer v.waitAuthenticated.Done()
@@ -419,7 +477,7 @@ func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string
 	}
 
 	if response.Verdict == msg.Unknown {
-		if err := v.uploadFile(data, response.URL, response.UploadToken); err != nil {
+		if err := v.uploadFile(data, 0, response.URL, response.UploadToken); err != nil {
 			return msg.VaasVerdict{
 				Verdict: msg.Error,
 				Sha256:  sha256,
@@ -461,24 +519,36 @@ func (v *vaas) closeRequest(request msg.VerdictRequest) {
 	v.openRequestsMutex.Unlock()
 }
 
-func (v *vaas) uploadFile(file io.Reader, url string, token string) error {
+func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token string) error {
 	req, err := http.NewRequest(http.MethodPut, url, file)
 	if err != nil {
 		return err
 	}
 
-	// VAAS requires a set Content-Length.
-	// Here can add support for various io.Reader, which are not supported by the http package.
-	if req.ContentLength == 0 {
-		switch t := file.(type) {
-		case *os.File:
-			var info os.FileInfo
-			if info, err = t.Stat(); err != nil {
-				return err
+	if contentLength > 0 {
+		req.ContentLength = contentLength
+	} else {
+		// VAAS requires a set Content-Length.
+		// Here can add support for various io.Reader, which are not supported by the http package.
+		if req.ContentLength == 0 {
+			switch t := file.(type) {
+			case *os.File:
+				var info os.FileInfo
+				if info, err = t.Stat(); err != nil {
+					return err
+				}
+				req.ContentLength = info.Size()
+			case io.ReadCloser:
+				if s, ok := file.(io.Seeker); ok {
+					if size, err := s.Seek(0, io.SeekEnd); err == nil {
+						if _, err = s.Seek(0, io.SeekStart); err == nil {
+							req.ContentLength = size
+						}
+					}
+				}
+			default:
+				return fmt.Errorf("unsupported reader (%T), can not determine content length", file)
 			}
-			req.ContentLength = info.Size()
-		default:
-			return fmt.Errorf("unsupported reader (%T), can not determine content length", file)
 		}
 	}
 

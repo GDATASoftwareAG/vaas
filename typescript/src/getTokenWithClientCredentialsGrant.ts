@@ -4,7 +4,7 @@ import * as axios from "axios";
 export default async function getTokenWithClientCredentialsGrant(
   clientId: string,
   clientSecret: string,
-  tokenEndpoint: string
+  tokenEndpoint: string,
 ) {
   var formData = new URLSearchParams();
   formData.append("client_id", clientId);

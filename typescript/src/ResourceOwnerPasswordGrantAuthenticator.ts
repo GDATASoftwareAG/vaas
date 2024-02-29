@@ -5,7 +5,7 @@ export default class ResourceOwnerPasswordGrantAuthenticator {
     private clientId: string,
     private username: string,
     private password: string,
-    private tokenEndpoint: string
+    private tokenEndpoint: string,
   ) {}
 
   getToken() {
@@ -13,7 +13,7 @@ export default class ResourceOwnerPasswordGrantAuthenticator {
       this.clientId,
       this.username,
       this.password,
-      this.tokenEndpoint
+      this.tokenEndpoint,
     );
   }
 }

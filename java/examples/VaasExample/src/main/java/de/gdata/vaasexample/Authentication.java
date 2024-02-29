@@ -9,6 +9,7 @@ public class Authentication {
     public static void main(String[] args) throws Exception {
         var clientId = System.getenv("CLIENT_ID");
         var clientSecret = System.getenv("CLIENT_SECRET");
+        var vaasclientId = System.getenv("VAAS_CLIENT_ID");
         var userName = System.getenv("VAAS_USER_NAME");
         var password = System.getenv("VAAS_PASSWORD");
         var tokenUrl = System.getenv("TOKEN_URL");
@@ -18,7 +19,7 @@ public class Authentication {
 
         // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
         var authenticator = new ResourceOwnerPasswordGrantAuthenticator(
-                "vaas-customer",
+                vaasclientId,
                 userName,
                 password,
                 new URI(tokenUrl)

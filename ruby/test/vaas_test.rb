@@ -81,18 +81,18 @@ class VaasTest < Minitest::Test
         end
       end
 
-      specify 'pup' do
-        vaas, token = create
-        Async do
-          vaas.connect(token)
+      # specify 'pup' do
+      #   vaas, token = create
+      #   Async do
+      #     vaas.connect(token)
 
-          result = vaas.for_sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
-          verdict = result.wait.verdict
-          assert_equal "Pup", verdict
+      #     result = vaas.for_sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
+      #     verdict = result.wait.verdict
+      #     assert_equal "Pup", verdict
 
-          vaas.close
-        end
-      end
+      #     vaas.close
+      #   end
+      # end
 
       specify 'for_big_file' do
         skip

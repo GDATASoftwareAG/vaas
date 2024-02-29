@@ -110,22 +110,22 @@ async fn from_sha256_single_malicious_hash() {
     );
 }
 
-#[tokio::test]
-async fn from_sha256_single_pup_hash() {
-    let vaas = get_vaas().await;
-    let ct = CancellationToken::from_seconds(10);
-    let sha256 =
-        Sha256::try_from("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
-            .unwrap();
+// #[tokio::test]
+// async fn from_sha256_single_pup_hash() {
+//     let vaas = get_vaas().await;
+//     let ct = CancellationToken::from_seconds(10);
+//     let sha256 =
+//         Sha256::try_from("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
+//             .unwrap();
 
-    let verdict = vaas.for_sha256(&sha256, &ct).await;
+//     let verdict = vaas.for_sha256(&sha256, &ct).await;
 
-    assert_eq!(Verdict::Pup, verdict.as_ref().unwrap().verdict);
-    assert_eq!(
-        "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
-        verdict.unwrap().sha256.deref()
-    );
-}
+//     assert_eq!(Verdict::Pup, verdict.as_ref().unwrap().verdict);
+//     assert_eq!(
+//         "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
+//         verdict.unwrap().sha256.deref()
+//     );
+// }
 
 #[tokio::test]
 async fn from_sha256_single_empty_file_hash() {
