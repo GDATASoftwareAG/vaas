@@ -1,0 +1,61 @@
+name: vaas-golang-ci
+on:
+  push:
+    tags:
+      - "go*"
+
+env:
+  CLIENT_ID: ${{ secrets.CLIENT_ID }}
+  CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+  VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+  TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+  VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
+  VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
+  VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
+
+jobs:
+  build-git-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghrc.io/gdatasoftwareag/vaas/git-scan
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+          flavor: |
+            latest=auto
+
+      - name: login to ghcr.io/gdatasoftwareag
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io/gdatasoftwareag
+          username: ${{ secrets.VAAS_GHCR_USER }}
+          password: ${{ secrets.VAAS_GHCR_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: "golang/vaas/"
+          file: "golang/vaas/git-scan.Dockerfile"
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: push git-scan
+        if: startsWith(github.ref, 'refs/tags/go')
+        working-directory: golang/vaas/
+        run: |
+          docker build -t ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go} -f git-scan.Dockerfile .
+          docker tag ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go} ghrc.io/gdatasoftwareag/vaas/git-scan:latest
+          docker push ghrc.io/gdatasoftwareag/vaas/git-scan:latest
+          docker push ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go}
