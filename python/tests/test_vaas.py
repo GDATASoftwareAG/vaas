@@ -197,22 +197,22 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
 
-    async def test_for_url_without_shed_and_cache_returns_clean_for_random_beer(self):
+    async def test_for_url_without_shed_and_cache_returns_clean_for_robots_txt(self):
         options = get_disabled_options()
         async with await create_and_connect(options=options) as vaas:
             guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://random-data-api.com/api/v2/beers", guid=guid)
+            verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
 
-    async def test_for_url_without_cache_returns_clean_for_random_beer(self):
+    async def test_for_url_without_cache_returns_clean_for_robots_txt(self):
         options = VaasOptions()
         options.use_cache = False
         options.use_hash_lookup = True
         async with await create_and_connect(options=options) as vaas:
             guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://random-data-api.com/api/v2/beers", guid=guid)
+            verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
