@@ -24,7 +24,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghrc.io/gdatasoftwareag/vaas/git-scan
+            ghcr.io/gdatasoftwareag/vaas/git-scan
           tags: |
             type=semver,pattern={{version}},value=${{ env.RELEASE_VERSION }}
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_VERSION }}
