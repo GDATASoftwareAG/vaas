@@ -15,20 +15,17 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("need 2 parameter: targetBranch")
+	if len(os.Args) < 3 {
+		log.Fatal("need 2 parameter: targetBranch, remote")
 	}
 
 	targetBranch := os.Args[1]
 	if targetBranch == "" {
 		log.Fatal("no targetBranch set")
 	}
-	remote := ""
-	if len(os.Args) > 2 {
-		remote = os.Args[2]
-	}
-	if remote == "" {
-		remote = "origin"
+	remote := os.Args[2]
+	if targetBranch == "" {
+		log.Fatal("no remote set")
 	}
 
 	clientID, exists := os.LookupEnv("VAAS_CLIENT_ID")
@@ -63,7 +60,7 @@ func main() {
 	}
 	log.Println("fetch result: ", string(fetchBytes))
 
-	gitDiffCommand := exec.Command("git", "diff", "--name-only", targetBranch)
+	gitDiffCommand := exec.Command("git", "diff", "--name-only", remote+"/"+targetBranch)
 	diffBytes, err := gitDiffCommand.Output()
 	if err != nil {
 		log.Fatal("git diff ", err, string(diffBytes))
