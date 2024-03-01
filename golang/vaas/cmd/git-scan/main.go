@@ -59,7 +59,7 @@ func main() {
 	gitDiffCommand := exec.Command("git", "diff", "--name-only", targetBranch)
 	diffBytes, err := gitDiffCommand.Output()
 	if err != nil {
-		log.Fatal("git diff", err, string(gitDiffCommand))
+		log.Fatal("git diff", err, string(diffBytes))
 	}
 	files := strings.Split(strings.ReplaceAll(string(diffBytes), "\r\n", "\n"), "\n")
 	if len(files) < 1 {
