@@ -42,10 +42,12 @@ func main() {
 	if !exists {
 		vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de/"
 	}
+	log.Println("vaas url: ", vaasUrl)
 	tokenUrl, exists := os.LookupEnv("VAAS_TOKEN_URL")
 	if !exists {
 		tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 	}
+	log.Println("token url: ", tokenUrl)
 
 	gitRevParseCommand := exec.Command("git", "rev-parse", "--show-toplevel")
 	rootDirectoryBytes, err := gitRevParseCommand.CombinedOutput()
@@ -72,15 +74,13 @@ func main() {
 		log.Println("no changed files found in diff")
 		os.Exit(0)
 	}
-	log.Println("found changed files: ", string(diffBytes))
-
 	authenticator := authenticator.New(clientID, clientSecret, tokenUrl)
 
 	vaas := vaas.New(options.DefaultOptions(), vaasUrl)
 	ctx, webSocketCancel := context.WithCancel(context.Background())
 	termChan, err := vaas.Connect(ctx, authenticator)
 	if err != nil {
-		log.Fatal("vaas connect error", err)
+		log.Fatal("vaas connect error: ", err)
 	}
 	if termChan == nil {
 		log.Fatal("vaas connect error")
@@ -88,6 +88,7 @@ func main() {
 	var maliciousFileFound bool
 	for _, file := range files {
 		if file != "" {
+			log.Println("checking file: ", file)
 			pathToFile := filepath.Join(rootDirectory, file)
 			verdict, err := vaas.ForFile(context.Background(), pathToFile)
 			if err != nil {
