@@ -23,10 +23,12 @@ func main() {
 	if targetBranch == "" {
 		log.Fatal("no targetBranch set")
 	}
+	log.Println("targetBranch: ", targetBranch)
 	remote := os.Args[2]
 	if targetBranch == "" {
 		log.Fatal("no remote set")
 	}
+	log.Println("remote: ", remote)
 
 	clientID, exists := os.LookupEnv("VAAS_CLIENT_ID")
 	if !exists {
