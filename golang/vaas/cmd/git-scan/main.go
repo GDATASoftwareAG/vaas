@@ -15,29 +15,20 @@ import (
 )
 
 func main() {
-	if len(os.Args) < 3 {
-		log.Fatal("need 2 parameter: path, targetBranch")
-	}
-	path := os.Args[1]
-	if path == "" {
-		log.Fatal("no path set")
+	if len(os.Args) < 2 {
+		log.Fatal("need 2 parameter: targetBranch")
 	}
 
-	targetBranch := os.Args[2]
+	targetBranch := os.Args[1]
 	if targetBranch == "" {
 		log.Fatal("no targetBranch set")
 	}
 	remote := ""
-	if len(os.Args) > 3 {
-		remote = os.Args[3]
+	if len(os.Args) > 2 {
+		remote = os.Args[2]
 	}
 	if remote == "" {
 		remote = "origin"
-	}
-
-	err := os.Chdir(path)
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	clientID, exists := os.LookupEnv("CLIENT_ID")
