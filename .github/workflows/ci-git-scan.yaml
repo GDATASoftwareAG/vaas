@@ -4,12 +4,11 @@ on:
     tags:
       - "go*"
 
-permissions:
-  contents: read
-  packages: write
-
 jobs:
   build-git-scan:
+    permissions:
+      contents: read
+      packages: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
