@@ -32,12 +32,12 @@ jobs:
           flavor: |
             latest=auto
 
-      - name: login to ghcr.io/gdatasoftwareag
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_USERNAME }}
-          password: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_PASSWORD }}
+      # - name: login to ghcr.io/gdatasoftwareag
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_USERNAME }}
+      #     password: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_PASSWORD }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
