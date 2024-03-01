@@ -51,7 +51,7 @@ func main() {
 	gitRevParseCommand := exec.Command("git", "rev-parse", "--show-toplevel")
 	rootDirectoryBytes, err := gitRevParseCommand.Output()
 	if err != nil {
-		log.Fatal("git rev-parse: ", err, rootDirectory)
+		log.Fatal("git rev-parse: ", err, string(rootDirectoryBytes))
 	}
 	rootDirectory := strings.Split(strings.ReplaceAll(string(rootDirectoryBytes), "\r\n", "\n"), "\n")[0]
 
@@ -59,7 +59,7 @@ func main() {
 	gitDiffCommand := exec.Command("git", "diff", "--name-only", targetBranch)
 	diffBytes, err := gitDiffCommand.Output()
 	if err != nil {
-		log.Fatal("git diff", err, rootDirectory)
+		log.Fatal("git diff", err, string(gitDiffCommand))
 	}
 	files := strings.Split(strings.ReplaceAll(string(diffBytes), "\r\n", "\n"), "\n")
 	if len(files) < 1 {
