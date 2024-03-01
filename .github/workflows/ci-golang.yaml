@@ -88,6 +88,6 @@ jobs:
         run: |
           docker build -t ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go} -f git-scan.Dockerfile .
           docker tag ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go} ghrc.io/gdatasoftwareag/vaas/git-scan:latest
-          docker login ghcr.io -u ${{ secrets.VAAS_GHCR_USER }} -p ${{ secrets.VAAS_GHCR_TOKEN }}
+          docker login ghcr.io/gdatasoftwareag -u ${{ secrets.VAAS_GHCR_USER }} -p ${{ secrets.VAAS_GHCR_TOKEN }}
           docker push ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go}
           docker push ghrc.io/gdatasoftwareag/vaas/git-scan:latest
