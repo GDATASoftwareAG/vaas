@@ -4,6 +4,10 @@ on:
     tags:
       - "go*"
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-git-scan:
     runs-on: ubuntu-latest
