@@ -13,7 +13,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.*;
 
 public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
@@ -62,7 +61,8 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     }
 
     public void Authenticate(long timeout, TimeUnit timeUnit)
-            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException, WebsocketNotConnectedException {
+            throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException,
+            WebsocketNotConnectedException {
         var authRequest = new AuthRequest(this.getToken());
         this.send(authRequest.toJson());
         waitForAuthentication(timeout, timeUnit);
@@ -112,8 +112,7 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
         var detail = problemDetails != null ? problemDetails.getDetail() : null;
         if (error.getType().equals("ClientError")) {
             verdictResponse.completeExceptionally(new VaasClientException(detail));
-        }
-        else {
+        } else {
             verdictResponse.completeExceptionally(new VaasServerException(detail));
         }
     }
