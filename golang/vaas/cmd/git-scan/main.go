@@ -16,19 +16,19 @@ import (
 
 func main() {
 	if len(os.Args) < 3 {
-		log.Fatal("need 2 parameter: targetBranch, remote")
+		log.Fatal("need 2 parameter: remote, targetBranch")
 	}
 
-	targetBranch := os.Args[1]
+	remote := os.Args[1]
+	if remote == "" {
+		log.Fatal("no remote set")
+	}
+	log.Println("remote:", remote)
+	targetBranch := os.Args[2]
 	if targetBranch == "" {
 		log.Fatal("no targetBranch set")
 	}
-	log.Println("targetBranch: ", targetBranch)
-	remote := os.Args[2]
-	if targetBranch == "" {
-		log.Fatal("no remote set")
-	}
-	log.Println("remote: ", remote)
+	log.Println("targetBranch:", targetBranch)
 
 	clientID, exists := os.LookupEnv("VAAS_CLIENT_ID")
 	if !exists {
@@ -50,7 +50,7 @@ func main() {
 	gitRevParseCommand := exec.Command("git", "rev-parse", "--show-toplevel")
 	rootDirectoryBytes, err := gitRevParseCommand.CombinedOutput()
 	if err != nil {
-		log.Fatal("git rev-parse: ", err, string(rootDirectoryBytes))
+		log.Fatal("git rev-parse: ", err, " ", string(rootDirectoryBytes))
 	}
 	rootDirectory := strings.Split(strings.ReplaceAll(string(rootDirectoryBytes), "\r\n", "\n"), "\n")[0]
 	log.Println("repository root directory: ", rootDirectory)
@@ -58,14 +58,14 @@ func main() {
 	fetchBytesCommand := exec.Command("git", "fetch", remote, targetBranch)
 	fetchBytes, err := fetchBytesCommand.CombinedOutput()
 	if err != nil {
-		log.Fatal("git fetch ", err, string(fetchBytes))
+		log.Fatal("git fetch ", err, " ", string(fetchBytes))
 	}
 	log.Println("fetch result: ", string(fetchBytes))
 
 	gitDiffCommand := exec.Command("git", "diff", "--name-only", remote+"/"+targetBranch)
 	diffBytes, err := gitDiffCommand.CombinedOutput()
 	if err != nil {
-		log.Fatal("git diff ", err, string(diffBytes))
+		log.Fatal("git diff ", err, " ", string(diffBytes))
 	}
 	files := strings.Split(strings.ReplaceAll(string(diffBytes), "\r\n", "\n"), "\n")
 	if len(files) < 1 {
