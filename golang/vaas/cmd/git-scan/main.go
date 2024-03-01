@@ -46,7 +46,7 @@ func main() {
 	}
 
 	gitRevParseCommand := exec.Command("git", "rev-parse", "--show-toplevel")
-	rootDirectoryBytes, err := gitRevParseCommand.Output()
+	rootDirectoryBytes, err := gitRevParseCommand.CombinedOutput()
 	if err != nil {
 		log.Fatal("git rev-parse: ", err, string(rootDirectoryBytes))
 	}
@@ -54,14 +54,14 @@ func main() {
 	log.Println("repository root directory: ", rootDirectory)
 
 	fetchBytesCommand := exec.Command("git", "fetch", remote, targetBranch)
-	fetchBytes, err := fetchBytesCommand.Output()
+	fetchBytes, err := fetchBytesCommand.CombinedOutput()
 	if err != nil {
 		log.Fatal("git fetch ", err, string(fetchBytes))
 	}
 	log.Println("fetch result: ", string(fetchBytes))
 
 	gitDiffCommand := exec.Command("git", "diff", "--name-only", remote+"/"+targetBranch)
-	diffBytes, err := gitDiffCommand.Output()
+	diffBytes, err := gitDiffCommand.CombinedOutput()
 	if err != nil {
 		log.Fatal("git diff ", err, string(diffBytes))
 	}
