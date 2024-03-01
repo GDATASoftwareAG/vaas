@@ -29,9 +29,9 @@ jobs:
           images: |
             ghrc.io/gdatasoftwareag/vaas/git-scan
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=semver,pattern={{version}},value=${GITHUB_REF#refs/tags/go}
+            type=semver,pattern={{major}}.{{minor}},value=${GITHUB_REF#refs/tags/go}
+            type=semver,pattern={{major}},value=${GITHUB_REF#refs/tags/go}
           flavor: |
             latest=auto
 
@@ -50,12 +50,3 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
-      - name: push git-scan
-        if: startsWith(github.ref, 'refs/tags/go')
-        working-directory: golang/vaas/
-        run: |
-          docker build -t ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go} -f git-scan.Dockerfile .
-          docker tag ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go} ghrc.io/gdatasoftwareag/vaas/git-scan:latest
-          docker push ghrc.io/gdatasoftwareag/vaas/git-scan:latest
-          docker push ghrc.io/gdatasoftwareag/vaas/git-scan:${GITHUB_REF#refs/tags/go}
