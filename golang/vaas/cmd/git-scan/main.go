@@ -42,12 +42,12 @@ func main() {
 	if !exists {
 		vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de/"
 	}
-	log.Println("vaas url: ", vaasUrl)
+	log.Println("vaas url:", vaasUrl)
 	tokenUrl, exists := os.LookupEnv("VAAS_TOKEN_URL")
 	if !exists {
 		tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 	}
-	log.Println("token url: ", tokenUrl)
+	log.Println("token url:", tokenUrl)
 
 	gitRevParseCommand := exec.Command("git", "rev-parse", "--show-toplevel")
 	rootDirectoryBytes, err := gitRevParseCommand.CombinedOutput()
