@@ -110,6 +110,34 @@ async fn from_sha256_single_malicious_hash() {
     );
 }
 
+#[tokio::test]
+async fn from_http_response_stream_returns_malicious_verdict() {
+    let result = reqwest::get("http://eicar.eu/eicar.com.txt").await;
+    let vaas = get_vaas().await;
+
+    let ct = CancellationToken::from_seconds(10);
+    let response = result.unwrap();
+    let content_length: usize = response.content_length().unwrap() as usize;
+    let byte_stream = response.bytes_stream();
+    let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+}
+
+#[tokio::test]
+async fn from_string_stream_returns_malicious_verdict() {
+    let eicar_string = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+
+    let stream: Vec<Result<bytes::Bytes, std::io::Error>> = vec![Ok(bytes::Bytes::from(eicar_string))];
+    let stream = futures_util::stream::iter(stream);
+
+    let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+    let verdict = vaas.for_stream(stream, eicar_string.len(), &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+}
+
 // #[tokio::test]
 // async fn from_sha256_single_pup_hash() {
 //     let vaas = get_vaas().await;
