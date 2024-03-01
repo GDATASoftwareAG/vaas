@@ -54,12 +54,15 @@ func main() {
 		log.Fatal("git rev-parse: ", err, string(rootDirectoryBytes))
 	}
 	rootDirectory := strings.Split(strings.ReplaceAll(string(rootDirectoryBytes), "\r\n", "\n"), "\n")[0]
+	log.Println("repository root directory: ", rootDirectory)
 
 	fetchBytesCommand := exec.Command("git", "fetch", remote, targetBranch)
 	fetchBytes, err := fetchBytesCommand.Output()
 	if err != nil {
 		log.Fatal("git fetch ", err, string(fetchBytes))
 	}
+	log.Println("fetch result: ", string(fetchBytes))
+
 	gitDiffCommand := exec.Command("git", "diff", "--name-only", targetBranch)
 	diffBytes, err := gitDiffCommand.Output()
 	if err != nil {
@@ -70,6 +73,7 @@ func main() {
 		log.Println("no changed files found in diff")
 		os.Exit(0)
 	}
+	log.Println("found changed files: ", string(diffBytes))
 
 	authenticator := authenticator.New(clientID, clientSecret, tokenUrl)
 
