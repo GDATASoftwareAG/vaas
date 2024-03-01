@@ -2,14 +2,16 @@
 
 use crate::error::{Error, VResult};
 use crate::message::{
-    MessageType, UploadUrl, Verdict, VerdictRequest, VerdictRequestForUrl, VerdictResponse,
+    MessageType, UploadUrl, Verdict, VerdictRequest, VerdictRequestForStream, VerdictRequestForUrl,
+    VerdictResponse,
 };
 use crate::options::Options;
 use crate::sha256::Sha256;
 use crate::vaas_verdict::VaasVerdict;
 use crate::CancellationToken;
+use bytes::Bytes;
 use futures::future::join_all;
-use reqwest::Url;
+use reqwest::{Body, Url};
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -125,6 +127,48 @@ impl Connection {
         VaasVerdict::try_from(response)
     }
 
+    /// Request a verdict for a SHA256 file hash.
+    pub async fn for_stream<S>(
+        &self,
+        stream: S,
+        content_length: usize,
+        ct: &CancellationToken,
+    ) -> VResult<VaasVerdict>
+    where
+        S: futures_util::stream::TryStream + Send + Sync + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        Bytes: From<S::Ok>,
+    {
+        let request = VerdictRequestForStream::new(self.session_id.clone());
+        let guid = request.guid().to_string();
+
+        let response = Self::for_stream_request(
+            request,
+            self.ws_writer.clone(),
+            &mut self.result_channel.subscribe(),
+            ct,
+        )
+        .await?;
+
+        let verdict = Verdict::try_from(&response)?;
+
+        match verdict {
+            Verdict::Unknown { upload_url } => {
+                Self::handle_unknown_stream(
+                    stream,
+                    content_length,
+                    &guid,
+                    response,
+                    upload_url,
+                    &mut self.result_channel.subscribe(),
+                    ct,
+                )
+                .await
+            }
+            _ => Err(Error::Cancelled),
+        }
+    }
+
     /// Request verdicts for a list of SHA256 file hashes.
     /// The order of the output is the same order as the provided input.
     pub async fn for_sha256_list(
@@ -200,6 +244,37 @@ impl Connection {
         VaasVerdict::try_from(resp)
     }
 
+    async fn handle_unknown_stream<S>(
+        stream: S,
+        content_length: usize,
+        guid: &str,
+        response: VerdictResponse,
+        upload_url: UploadUrl,
+        result_channel: &mut ResultChannelRx,
+        ct: &CancellationToken,
+    ) -> Result<VaasVerdict, Error>
+    where
+        S: futures_util::stream::TryStream + Send + Sync + 'static,
+        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+        Bytes: From<S::Ok>,
+    {
+        let auth_token = response
+            .upload_token
+            .as_ref()
+            .ok_or(Error::MissingAuthToken)?;
+        let response = upload_stream(stream, content_length, upload_url, auth_token).await?;
+
+        if response.status() != 200 {
+            return Err(Error::FailedUploadFile(
+                response.status(),
+                response.text().await.expect("failed to get payload"),
+            ));
+        }
+
+        let resp = Self::wait_for_response(guid, result_channel, ct).await?;
+        VaasVerdict::try_from(resp)
+    }
+
     /// Request a verdict for a list of files.
     /// The order of the output is the same order as the provided input.
     pub async fn for_file_list(
@@ -224,6 +299,17 @@ impl Connection {
 
     async fn for_url_request(
         request: VerdictRequestForUrl,
+        ws_writer: WebSocketWriter,
+        result_channel: &mut ResultChannelRx,
+        ct: &CancellationToken,
+    ) -> VResult<VerdictResponse> {
+        let guid = request.guid().to_string();
+        ws_writer.lock().await.send_text(request.to_json()?).await?;
+        Self::wait_for_response(&guid, result_channel, ct).await
+    }
+
+    async fn for_stream_request(
+        request: VerdictRequestForStream,
         ws_writer: WebSocketWriter,
         result_channel: &mut ResultChannelRx,
         ct: &CancellationToken,
@@ -321,6 +407,30 @@ async fn upload_file(
         .header("Content-Length", body_len)
         .send()
         .await?;
+    Ok(response)
+}
+
+async fn upload_stream<S>(
+    stream: S,
+    content_length: usize,
+    upload_url: UploadUrl,
+    auth_token: &str,
+) -> VResult<reqwest::Response>
+where
+    S: futures_util::stream::TryStream + Send + Sync + 'static,
+    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    Bytes: From<S::Ok>,
+{
+    let client = reqwest::Client::new();
+    let body = Body::wrap_stream(stream);
+    let response = client
+        .put(upload_url.deref())
+        .body(body)
+        .header("Authorization", auth_token)
+        .header("Content-Length", content_length)
+        .send()
+        .await?;
+
     Ok(response)
 }
 
