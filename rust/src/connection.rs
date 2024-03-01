@@ -139,7 +139,11 @@ impl Connection {
         S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         Bytes: From<S::Ok>,
     {
-        let request = VerdictRequestForStream::new(self.session_id.clone());
+        let request = VerdictRequestForStream::new(
+            self.session_id.clone(),
+            self.options.use_cache,
+            self.options.use_hash_lookup,
+        );
         let guid = request.guid().to_string();
 
         let response = Self::for_stream_request(
