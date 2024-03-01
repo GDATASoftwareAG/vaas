@@ -1,4 +1,4 @@
-name: vaas-golang-ci
+name: git-scan
 on:
   push:
     tags:
