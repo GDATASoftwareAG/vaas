@@ -55,11 +55,15 @@ func main() {
 	}
 	rootDirectory := strings.Split(strings.ReplaceAll(string(rootDirectoryBytes), "\r\n", "\n"), "\n")[0]
 
-	exec.Command("git", "fetch", remote, targetBranch)
+	fetchBytesCommand := exec.Command("git", "fetch", remote, targetBranch)
+	fetchBytes, err := fetchBytesCommand.Output()
+	if err != nil {
+		log.Fatal("git fetch ", err, string(fetchBytes))
+	}
 	gitDiffCommand := exec.Command("git", "diff", "--name-only", targetBranch)
 	diffBytes, err := gitDiffCommand.Output()
 	if err != nil {
-		log.Fatal("git diff", err, string(diffBytes))
+		log.Fatal("git diff ", err, string(diffBytes))
 	}
 	files := strings.Split(strings.ReplaceAll(string(diffBytes), "\r\n", "\n"), "\n")
 	if len(files) < 1 {
