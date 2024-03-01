@@ -31,11 +31,11 @@ func main() {
 		remote = "origin"
 	}
 
-	clientID, exists := os.LookupEnv("CLIENT_ID")
+	clientID, exists := os.LookupEnv("VAAS_CLIENT_ID")
 	if !exists {
 		log.Fatal("no Client ID set")
 	}
-	clientSecret, exists := os.LookupEnv("CLIENT_SECRET")
+	clientSecret, exists := os.LookupEnv("VAAS_CLIENT_SECRET")
 	if !exists {
 		log.Fatal("no Client Secret set")
 	}
@@ -43,7 +43,7 @@ func main() {
 	if !exists {
 		vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de/"
 	}
-	tokenUrl, exists := os.LookupEnv("TOKEN_URL")
+	tokenUrl, exists := os.LookupEnv("VAAS_TOKEN_URL")
 	if !exists {
 		tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 	}
