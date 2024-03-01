@@ -42,5 +42,6 @@ jobs:
           context: "golang/vaas/"
           file: "golang/vaas/git-scan.Dockerfile"
           push: true
+          provenance: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
