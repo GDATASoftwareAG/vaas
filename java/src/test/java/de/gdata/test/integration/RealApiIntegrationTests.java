@@ -7,7 +7,6 @@ import static org.testng.AssertJUnit.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -124,7 +123,6 @@ public class RealApiIntegrationTests {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
-        var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new MockAuthenticator();

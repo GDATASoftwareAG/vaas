@@ -5,12 +5,8 @@ import de.gdata.vaas.exceptions.*;
 import lombok.Getter;
 import lombok.NonNull;
 import org.java_websocket.exceptions.WebsocketNotConnectedException;
-
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -26,8 +22,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 public class Vaas {
     private static final int connectionRetryDelayInMs = 1000;
@@ -548,13 +542,15 @@ public class Vaas {
 
     private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)
             throws IOException, URISyntaxException {
-        var request = HttpRequest
+
+        var builder = HttpRequest
                 .newBuilder(new URI(url))
                 .header("Authorization", authToken)
-                .header("Content-Length",
-                        String.valueOf(Files.size(file)))
-                .PUT(HttpRequest.BodyPublishers.ofFile(file))
-                .build();
+                .PUT(HttpRequest.BodyPublishers.ofFile(file));
+        if (Files.size(file) == 0) {
+            builder.header("Content-Length", "0");
+        }
+        var request = builder.build();
 
         var futureResponse = this.httpClient
                 .sendAsync(request, HttpResponse.BodyHandlers.ofString());
