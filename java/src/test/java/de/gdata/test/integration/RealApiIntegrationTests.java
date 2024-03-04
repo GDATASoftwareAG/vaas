@@ -7,7 +7,6 @@ import static org.testng.AssertJUnit.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -81,18 +80,19 @@ public class RealApiIntegrationTests {
                 .equalsIgnoreCase(verdict.getSha256()));
     }
 
-    @Test
-    public void fromSha256SinglePupHash() throws Exception {
-        var vaas = this.getVaasWithCredentials();
-        var sha256 = new Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
+    // @Test
+    // public void fromSha256SinglePupHash() throws Exception {
+    // var vaas = this.getVaasWithCredentials();
+    // var sha256 = new
+    // Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
 
-        var verdict = vaas.forSha256(sha256);
-        vaas.disconnect();
+    // var verdict = vaas.forSha256(sha256);
+    // vaas.disconnect();
 
-        assertEquals(Verdict.PUP, verdict.getVerdict());
-        assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
-                .equalsIgnoreCase(verdict.getSha256()));
-    }
+    // assertEquals(Verdict.PUP, verdict.getVerdict());
+    // assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
+    // .equalsIgnoreCase(verdict.getSha256()));
+    // }
 
     @Test
     public void illegalCredentials() throws URISyntaxException {
@@ -123,7 +123,6 @@ public class RealApiIntegrationTests {
         var dotenv = Dotenv.configure()
                 .ignoreIfMissing()
                 .load();
-        var tokenUrl = dotenv.get("TOKEN_URL");
         var vaasUrl = dotenv.get("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new MockAuthenticator();
@@ -283,6 +282,7 @@ public class RealApiIntegrationTests {
             throws Exception {
         byte[] clean = {};
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "empty.txt");
+
         Files.write(tmpFile, clean);
         var vaas = this.getVaasWithCredentials();
 

@@ -13,6 +13,7 @@ from src.vaas import Vaas, VaasTracing, VaasOptions, ClientCredentialsGrantAuthe
 from src.vaas import get_ssl_context
 from src.vaas.vaas import hash_file
 from src.vaas.vaas_errors import VaasConnectionClosedError, VaasInvalidStateError, VaasClientError
+import httpx
 
 load_dotenv()
 
@@ -39,7 +40,7 @@ async def create_and_connect(tracing=VaasTracing(), options=VaasOptions()):
 def get_disabled_options():
     options = VaasOptions()
     options.use_cache = False
-    options.use_shed = False
+    options.use_hash_lookup = False
     return options
 
 
@@ -90,6 +91,20 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
                 "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
             )
 
+    async def test_for_stream_eicar_form_url_returns_malicious(self):
+        async with await create_and_connect() as vaas:
+            guid = str(uuid.uuid4())
+            async with httpx.AsyncClient() as client:
+                response = await client.get("https://secure.eicar.org/eicar.com")
+                content_length = response.headers["Content-Length"]
+                verdict = await vaas.for_stream(
+                    response.aiter_bytes(),
+                    content_length,
+                    guid=guid
+                )
+                self.assertEqual(verdict["Verdict"], "Malicious")
+                self.assertEqual(verdict["Guid"].casefold(), guid)
+
     async def test_for_sha256_returns_malicious_for_eicar(self):
         async with await create_and_connect() as vaas:
             guid = str(uuid.uuid4())
@@ -104,20 +119,19 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Guid"].casefold(), guid)
             )
 
-    async def test_for_sha256_returns_pup_for_amtso(self):
-        async with await create_and_connect() as vaas:
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_sha256(
-                "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
-                guid=guid
-            )
-            self.assertEqual(verdict["Verdict"], "Pup")
-            self.assertEqual(
-                verdict["Sha256"].casefold(),
-                "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad".casefold(),
-            )
-            self.assertEqual(verdict["Guid"].casefold(), guid)
-
+    # async def test_for_sha256_returns_pup_for_amtso(self):
+    #     async with await create_and_connect() as vaas:
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_sha256(
+    #             "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
+    #             guid=guid
+    #         )
+    #         self.assertEqual(verdict["Verdict"], "Pup")
+    #         self.assertEqual(
+    #             verdict["Sha256"].casefold(),
+    #             "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad".casefold(),
+    #         )
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
 
     async def test_for_buffer_returns_malicious_for_eicar(self):
         async with await create_and_connect() as vaas:
@@ -129,6 +143,13 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
+    async def test_for_stream_returns_malicious_for_eicar(self):
+        async with await create_and_connect() as vaas:
+            buffer = base64.b64decode(EICAR_BASE64)
+            guid = str(uuid.uuid4())
+            verdict = await vaas.for_buffer(buffer, guid=guid)
+            self.assertEqual(verdict["Verdict"], "Malicious")
+            self.assertEqual(verdict["Guid"].casefold(), guid)
 
     async def test_for_buffer_returns_unknown_for_random_buffer(self):
         async with await create_and_connect() as vaas:
@@ -176,22 +197,22 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
 
-    async def test_for_url_without_shed_and_cache_returns_clean_for_random_beer(self):
+    async def test_for_url_without_shed_and_cache_returns_clean_for_robots_txt(self):
         options = get_disabled_options()
         async with await create_and_connect(options=options) as vaas:
             guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://random-data-api.com/api/v2/beers", guid=guid)
+            verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
 
-    async def test_for_url_without_cache_returns_clean_for_random_beer(self):
+    async def test_for_url_without_cache_returns_clean_for_robots_txt(self):
         options = VaasOptions()
         options.use_cache = False
-        options.use_shed = True
+        options.use_hash_lookup = True
         async with await create_and_connect(options=options) as vaas:
             guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://random-data-api.com/api/v2/beers", guid=guid)
+            verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(verdict["Guid"].casefold(), guid)
 

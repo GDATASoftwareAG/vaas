@@ -1,11 +1,9 @@
 use crate::error::VResult;
 use crate::message::kind::Kind;
-use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerdictRequestForUrl {
-    pub url: String,
+pub struct VerdictRequestForStream {
     pub kind: Kind,
     pub guid: String,
     pub session_id: String,
@@ -13,12 +11,11 @@ pub struct VerdictRequestForUrl {
     pub use_cache: bool,
 }
 
-impl VerdictRequestForUrl {
-    pub fn new(url: &Url, session_id: String, use_cache: bool, use_shed: bool) -> Self {
+impl VerdictRequestForStream {
+    pub fn new(session_id: String, use_cache: bool, use_shed: bool) -> Self {
         Self {
             guid: uuid::Uuid::new_v4().to_string(),
-            url: url.to_string(),
-            kind: Kind::VerdictRequestForUrl,
+            kind: Kind::VerdictRequestForStream,
             session_id,
             use_cache,
             use_shed,

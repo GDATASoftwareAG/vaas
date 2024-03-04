@@ -411,9 +411,9 @@ func TestVaas_ForSha256List(t *testing.T) {
 	vaasClient := fixture.setUp(t)
 	defer fixture.tearDown(t)
 
-	maliciousSha256 := "00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
-	cleanSha256 := "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
-	unknownSha256 := "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
+	maliciousSha256 := strings.ToLower("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c")
+	cleanSha256 := strings.ToLower("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")
+	unknownSha256 := strings.ToLower("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9")
 
 	verdicts, err := vaasClient.ForSha256List(context.Background(), []string{maliciousSha256, cleanSha256, unknownSha256})
 	if err != nil {

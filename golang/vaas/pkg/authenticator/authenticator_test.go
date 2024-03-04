@@ -95,7 +95,10 @@ func Test_resourceOwnerPasswordGrantAuthenticator_GetToken(t *testing.T) {
 					log.Printf("failed to load environment - %v", err)
 				}
 
-				clientID := "vaas-customer"
+				clientID, exists := os.LookupEnv("VAAS_CLIENT_ID")
+				if !exists {
+					log.Fatal("no client-id set")
+				}
 				username, exists := os.LookupEnv("VAAS_USER_NAME")
 				if !exists {
 					log.Fatal("no username set")

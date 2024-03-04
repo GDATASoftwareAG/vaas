@@ -53,7 +53,7 @@ class VaasOptions:
 
     def __init__(self):
         self.use_cache = True
-        self.use_shed = True
+        self.use_hash_lookup = True
 
 
 def hash_file(filename):
@@ -173,6 +173,35 @@ class Vaas:
             "Verdict": verdict_response.get("verdict"),
         }
 
+    async def __for_stream(self, verdict_request_attributes=None, guid=None):
+        if verdict_request_attributes is not None and not isinstance(
+            verdict_request_attributes, dict
+        ):
+            raise TypeError("verdict_request_attributes has to be dict(str, str)")
+
+        websocket = self.get_authenticated_websocket()
+        start = time.time()
+        guid = guid or str(uuid.uuid4())
+        verdict_request = {
+            "kind": "VerdictRequestForStream",
+            "session_id": self.session_id,
+            "guid": guid,
+            "use_hash_lookup": self.options.use_hash_lookup,
+            "use_cache": self.options.use_cache,
+            "verdict_request_attributes": verdict_request_attributes,
+        }
+        response_message = self.__response_message_for_guid(guid)
+        await websocket.send(json.dumps(verdict_request))
+
+        try:
+            result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
+        except asyncio.TimeoutError as ex:
+            self.tracing.trace_hash_request_timeout()
+            raise VaasTimeoutError() from ex
+
+        self.tracing.trace_hash_request(time.time() - start)
+        return result
+
     async def __for_sha256(self, sha256, verdict_request_attributes=None, guid=None):
         if verdict_request_attributes is not None and not isinstance(
             verdict_request_attributes, dict
@@ -187,7 +216,7 @@ class Vaas:
             "sha256": sha256,
             "session_id": self.session_id,
             "guid": guid,
-            "use_shed": self.options.use_shed,
+            "use_hash_lookup": self.options.use_hash_lookup,
             "use_cache": self.options.use_cache,
             "verdict_request_attributes": verdict_request_attributes,
         }
@@ -257,7 +286,7 @@ class Vaas:
             "Guid": verdict_response.get("guid"),
             "Verdict": verdict_response.get("verdict"),
         }
-
+    
     async def _for_unknown_buffer(self, response, buffer, buffer_len):
         start = time.time()
         guid = response.get("guid")
@@ -272,6 +301,42 @@ class Vaas:
             raise VaasTimeoutError() from ex
         self.tracing.trace_upload_request(time.time() - start, buffer_len)
         return verdict_response
+
+    async def for_stream(self, asyncBufferedReader, len, verdict_request_attributes=None, guid=None):
+        """Returns the verdict for a file"""
+
+        verdict_response = await self.__for_stream(
+            verdict_request_attributes, guid
+        )
+        guid = verdict_response.get("guid")
+        token = verdict_response.get("upload_token")
+        url = verdict_response.get("url")
+        verdict = verdict_response.get("verdict")
+
+        if verdict != "Unknown":
+            raise VaasServerError("server returned verdict without receiving content")
+        
+        if token == None:
+            raise VaasServerError("VerdictResponse missing UploadToken for stream upload")
+        
+        if url == None:
+            raise VaasServerError("VerdictResponse missing URL for stream upload")
+
+        start = time.time()
+        response_message = self.__response_message_for_guid(guid)
+        await self.__upload(token, url, asyncBufferedReader, len)
+        try:
+            verdict_response = await asyncio.wait_for(response_message, timeout=TIMEOUT)
+        except asyncio.TimeoutError as ex:
+            self.tracing.trace_upload_result_timeout(len)
+            raise VaasTimeoutError() from ex
+        self.tracing.trace_upload_request(time.time() - start, len)
+
+        return {
+            "Sha256": verdict_response.get("sha256"),
+            "Guid": verdict_response.get("guid"),
+            "Verdict": verdict_response.get("verdict"),
+        }
 
     async def for_file(self, path, verdict_request_attributes=None, guid=None):
         """Returns the verdict for a file"""
@@ -331,7 +396,7 @@ class Vaas:
             "url": url,
             "session_id": self.session_id,
             "guid": guid,
-            "use_shed": self.options.use_shed,
+            "use_hash_lookup": self.options.use_hash_lookup,
             "use_cache": self.options.use_cache,
             "verdict_request_attributes": verdict_request_attributes,
         }

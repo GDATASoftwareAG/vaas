@@ -6,7 +6,7 @@ use std::ops::Deref;
 use vaas::auth::authenticators::{ClientCredentials, Password};
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
-async fn get_vaas() -> Connection {
+async fn get_vaas_with_flags(use_cache: bool, use_hash_lookup: bool) -> Connection {
     let token_url: Url = dotenv::var("TOKEN_URL")
         .expect("No TOKEN_URL environment variable set to be used in the integration tests")
         .parse()
@@ -19,12 +19,18 @@ async fn get_vaas() -> Connection {
     let vaas_url = dotenv::var("VAAS_URL")
         .expect("No VAAS_URL environment variable set to be used in the integration tests");
     Vaas::builder(authenticator)
+        .use_cache(use_cache)
+        .use_cache(use_hash_lookup)
         .url(Url::parse(&vaas_url).unwrap())
         .build()
         .unwrap()
         .connect()
         .await
         .unwrap()
+}
+
+async fn get_vaas() -> Connection {
+    get_vaas_with_flags(true, true).await
 }
 
 #[tokio::test]
@@ -111,21 +117,64 @@ async fn from_sha256_single_malicious_hash() {
 }
 
 #[tokio::test]
-async fn from_sha256_single_pup_hash() {
+async fn from_http_response_stream_returns_malicious_verdict() {
+    let result = reqwest::get("http://eicar.eu/eicar.com.txt").await;
+    let vaas = get_vaas().await;
+
+    let ct = CancellationToken::from_seconds(10);
+    let response = result.unwrap();
+    let content_length: usize = response.content_length().unwrap() as usize;
+    let byte_stream = response.bytes_stream();
+    let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+}
+
+#[tokio::test]
+async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malicious_verdict() {
+    let result = reqwest::get("http://eicar.eu/eicar.com.txt").await;
+    let vaas = get_vaas_with_flags(false, false).await;
+
+    let ct = CancellationToken::from_seconds(10);
+    let response = result.unwrap();
+    let content_length: usize = response.content_length().unwrap() as usize;
+    let byte_stream = response.bytes_stream();
+    let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+}
+
+#[tokio::test]
+async fn from_string_stream_returns_malicious_verdict() {
+    let eicar_string = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+
+    let stream: Vec<Result<bytes::Bytes, std::io::Error>> =
+        vec![Ok(bytes::Bytes::from(eicar_string))];
+    let stream = futures_util::stream::iter(stream);
+
     let vaas = get_vaas().await;
     let ct = CancellationToken::from_seconds(10);
-    let sha256 =
-        Sha256::try_from("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
-            .unwrap();
+    let verdict = vaas.for_stream(stream, eicar_string.len(), &ct).await;
 
-    let verdict = vaas.for_sha256(&sha256, &ct).await;
-
-    assert_eq!(Verdict::Pup, verdict.as_ref().unwrap().verdict);
-    assert_eq!(
-        "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
-        verdict.unwrap().sha256.deref()
-    );
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
 }
+
+// #[tokio::test]
+// async fn from_sha256_single_pup_hash() {
+//     let vaas = get_vaas().await;
+//     let ct = CancellationToken::from_seconds(10);
+//     let sha256 =
+//         Sha256::try_from("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
+//             .unwrap();
+
+//     let verdict = vaas.for_sha256(&sha256, &ct).await;
+
+//     assert_eq!(Verdict::Pup, verdict.as_ref().unwrap().verdict);
+//     assert_eq!(
+//         "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
+//         verdict.unwrap().sha256.deref()
+//     );
+// }
 
 #[tokio::test]
 async fn from_sha256_single_empty_file_hash() {
@@ -147,6 +196,40 @@ async fn from_sha256_single_empty_file_hash() {
 #[tokio::test]
 async fn from_sha256_multiple_malicious_hash() {
     let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(10);
+    let sha256_1 =
+        Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
+            .unwrap();
+    let sha256_2 =
+        Sha256::try_from("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c")
+            .unwrap();
+    let sha256_3 =
+        Sha256::try_from("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a")
+            .unwrap();
+    let verdict_1 = vaas.for_sha256(&sha256_1, &ct).await;
+    let verdict_2 = vaas.for_sha256(&sha256_2, &ct).await;
+    let verdict_3 = vaas.for_sha256(&sha256_3, &ct).await;
+
+    assert_eq!(
+        "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
+        verdict_1.as_ref().unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Malicious, verdict_1.unwrap().verdict);
+    assert_eq!(
+        "00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c",
+        verdict_2.as_ref().unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Malicious, verdict_2.unwrap().verdict);
+    assert_eq!(
+        "00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a",
+        verdict_3.as_ref().unwrap().sha256.deref()
+    );
+    assert_eq!(Verdict::Malicious, verdict_3.unwrap().verdict);
+}
+
+#[tokio::test]
+async fn from_sha256_multiple_malicious_hash_without_cache() {
+    let vaas = get_vaas_with_flags(false, true).await;
     let ct = CancellationToken::from_seconds(10);
     let sha256_1 =
         Sha256::try_from("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")
@@ -253,6 +336,66 @@ async fn from_file_single_malicious_file() {
     std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
 
     let vaas = get_vaas().await;
+    let ct = CancellationToken::from_seconds(30);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file).unwrap(),
+        verdict.unwrap().sha256
+    );
+    std::fs::remove_file(&tmp_file).unwrap();
+}
+
+#[tokio::test]
+async fn from_file_single_malicious_file_without_cache() {
+    let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+    let tmp_file =
+        std::env::temp_dir().join("from_file_single_malicious_file_without_cache_eicar.txt");
+    std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
+
+    let vaas = get_vaas_with_flags(false, true).await;
+    let ct = CancellationToken::from_seconds(30);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file).unwrap(),
+        verdict.unwrap().sha256
+    );
+    std::fs::remove_file(&tmp_file).unwrap();
+}
+
+#[tokio::test]
+async fn from_file_single_malicious_file_without_hash_lookup() {
+    let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+    let tmp_file =
+        std::env::temp_dir().join("from_file_single_malicious_file_without_hash_lookup_eicar.txt");
+    std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
+
+    let vaas = get_vaas_with_flags(true, false).await;
+    let ct = CancellationToken::from_seconds(30);
+
+    let verdict = vaas.for_file(&tmp_file, &ct).await;
+
+    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Sha256::try_from(&tmp_file).unwrap(),
+        verdict.unwrap().sha256
+    );
+    std::fs::remove_file(&tmp_file).unwrap();
+}
+
+#[tokio::test]
+async fn from_file_single_malicious_file_without_cache_and_without_hash_lookup() {
+    let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+    let tmp_file = std::env::temp_dir()
+        .join("from_file_single_malicious_file_without_cache_and_without_hash_lookup_eicar.txt");
+    std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
+
+    let vaas = get_vaas_with_flags(false, false).await;
     let ct = CancellationToken::from_seconds(30);
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;

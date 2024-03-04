@@ -5,7 +5,6 @@ import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
-import org.jetbrains.annotations.Nullable;
 
 import java.net.URL;
 import java.util.UUID;
@@ -40,7 +39,8 @@ public class VerdictRequestForUrl extends MessageType {
         this.url = url.toString();
     }
 
-    public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes) {
+    public VerdictRequestForUrl(URL url, String sessionId, UUID guid,
+            VerdictRequestAttributes verdictRequestAttributes) {
         this(url, sessionId, guid);
         this.verdictRequestAttributes = verdictRequestAttributes;
     }
@@ -51,11 +51,11 @@ public class VerdictRequestForUrl extends MessageType {
         this.UseHashLookup = options.UseHashLookup;
     }
 
-    public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes, VaasOptions options) {
+    public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes,
+            VaasOptions options) {
         this(url, sessionId, guid);
         this.verdictRequestAttributes = verdictRequestAttributes;
     }
-
 
     public String toJson() {
         return new Gson().toJson(this);
