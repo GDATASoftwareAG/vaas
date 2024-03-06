@@ -87,17 +87,21 @@ func main() {
 	}
 	var maliciousFileFound bool
 	for _, file := range files {
-		if file != "" {
-			log.Println("checking file: ", file)
-			pathToFile := filepath.Join(rootDirectory, file)
-			verdict, err := vaas.ForFile(context.Background(), pathToFile)
-			if err != nil {
-				log.Fatalln(err)
-			}
-			log.Println(pathToFile + ": " + string(verdict.Verdict))
-			if verdict.Verdict == messages.Malicious {
-				maliciousFileFound = true
-			}
+		if file == "" {
+			continue
+		}
+		if _, err := os.Stat(file); err != nil {
+			continue
+		}
+		log.Println("checking file: ", file)
+		pathToFile := filepath.Join(rootDirectory, file)
+		verdict, err := vaas.ForFile(context.Background(), pathToFile)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		log.Println(pathToFile + ": " + string(verdict.Verdict))
+		if verdict.Verdict == messages.Malicious {
+			maliciousFileFound = true
 		}
 	}
 	webSocketCancel()
