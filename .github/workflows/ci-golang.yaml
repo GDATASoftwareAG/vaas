@@ -66,6 +66,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.22
+          check-latest: true
           cache: true
           cache-dependency-path: golang/vaas/go.sum
       - name: run tests
