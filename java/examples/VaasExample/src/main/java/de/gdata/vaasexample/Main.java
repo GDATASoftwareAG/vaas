@@ -10,9 +10,9 @@ import java.nio.file.Path;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        var clientId = System.getenv("CLIENT_ID");
-        var clientSecret = System.getenv("CLIENT_SECRET");
-        var scanPath = System.getenv("SCAN_PATH");
+        var clientId = getenv("CLIENT_ID");
+        var clientSecret = getenv("CLIENT_SECRET");
+        var scanPath = getenv("SCAN_PATH");
         var tokenUrl = System.getenv("TOKEN_URL");
         if (tokenUrl == null) {
             tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token";
@@ -34,5 +34,13 @@ public class Main {
         var verdict = vaas.forFile(file, verdictRequestAttributes);
         vaas.disconnect();
         System.out.printf("File %s was detected as %s", verdict.getSha256(), verdict.getVerdict());
+    }
+
+    public static String getenv(String key) {
+        var value = System.getenv(key);
+        if (value == null) {
+            throw new IllegalStateException("The environment variable " + key + " must be set.");
+        }
+        return value;
     }
 }
