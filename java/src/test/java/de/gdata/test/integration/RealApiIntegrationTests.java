@@ -21,6 +21,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import de.gdata.test.unit.Sha256Test;
 import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
 import de.gdata.vaas.IAuthenticator;
 import de.gdata.vaas.ResourceOwnerPasswordGrantAuthenticator;
@@ -207,9 +208,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFileSingleMaliciousFile()
             throws Exception {
-        var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
-        Files.writeString(tmpFile, eicar);
+        var tmpFile = Sha256Test.writeEicar();
         var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
@@ -224,9 +223,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFileSingleMaliciousFileWithVerdictRequestAttributes()
             throws Exception {
-        var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
-        Files.writeString(tmpFile, eicar);
+        var tmpFile = Sha256Test.writeEicar();
         var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
