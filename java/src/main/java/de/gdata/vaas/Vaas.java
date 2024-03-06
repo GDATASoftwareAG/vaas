@@ -531,7 +531,7 @@ public class Vaas {
                     try {
                         var uploadResponseFuture = this.client.waitForVerdict(verdictRequest.getGuid());
 
-                        return UploadFile(file, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
+                        return uploadFile(file, verdictResponse.getUploadUrl(), verdictResponse.getUploadToken())
                                 .thenCompose((v) -> uploadResponseFuture);
                     } catch (Exception e) {
                         throwAsUnchecked(e);
@@ -540,7 +540,7 @@ public class Vaas {
                 });
     }
 
-    private CompletableFuture<Void> UploadFile(Path file, String url, String authToken)
+    private CompletableFuture<Void> uploadFile(Path file, String url, String authToken)
             throws IOException, URISyntaxException {
 
         var builder = HttpRequest
