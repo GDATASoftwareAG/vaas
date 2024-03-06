@@ -5,6 +5,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.NoSuchAlgorithmException;
+
 public class Sha256Test {
     @Test
     public void fromValidSha256() {
@@ -28,5 +33,22 @@ public class Sha256Test {
         assertThrows(IllegalArgumentException.class, () -> {
             new Sha256("1000020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0");
         });
+    }
+
+    @Test
+    public void getValue_returnsSha256() throws IOException, NoSuchAlgorithmException {
+        var tmpFile = writeEicar();
+
+        var sha256 = new Sha256(tmpFile);
+        Files.deleteIfExists(tmpFile);
+
+        assertEquals("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f", sha256.getValue());
+    }
+
+    public static Path writeEicar() throws IOException {
+        var eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
+        Files.writeString(tmpFile, eicar);
+        return tmpFile;
     }
 }
