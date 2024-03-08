@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 import lombok.NonNull;
+import java.util.ArrayList;
 
 public class VerdictResponse extends MessageType {
     @Getter
@@ -25,6 +26,12 @@ public class VerdictResponse extends MessageType {
     @Getter
     @SerializedName("upload_token")
     String uploadToken;
+    @Getter
+    @SerializedName("detections")
+    ArrayList<Detection> detections;
+    @Getter
+    @SerializedName("libMagic")
+    LibMagic libMagic;
 
     private VerdictResponse() {
         super(Kind.VerdictResponse);

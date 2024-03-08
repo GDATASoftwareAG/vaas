@@ -530,4 +530,20 @@ public class RealApiIntegrationTests {
         client.connect();
         return client;
     }
+
+    @Test
+    public void forStream_WithEicarFile_ReturnsMaliciousVerdictWithDetections() throws Exception {
+        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLengthLong();
+
+        var vaas = this.getVaasWithCredentials();
+        var verdict = vaas.forStream(inputStream, contentLength);
+
+        assertNotNull(verdict.getDetections());
+        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+        assertEquals("EICAR virus test files", verdict.getLibMagic().getFileType());
+        assertEquals("text/plain", verdict.getLibMagic().getMimeType());
+    }
 }
