@@ -170,9 +170,9 @@ class Vaas
         if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
             if ($this->_logger != null)
                 $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
-            $fileContent = file_get_contents($path);
+            $fileStream = fopen($path, 'r');
             $response = $this->_httpClient->put($verdictResponse->url, [
-                'body' => $fileContent,
+                'body' => $fileStream,
                 'timeout' => $this->_uploadTimeoutInSeconds,
                 'headers' => ["Authorization" => $verdictResponse->upload_token]
             ]);
