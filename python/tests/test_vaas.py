@@ -161,7 +161,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
-
     async def test_for_file_returns_verdict(self):
         async with await create_and_connect() as vaas:
             with open("eicar.txt", "wb") as f:
@@ -172,7 +171,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Verdict"], "Malicious")
             self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
             self.assertEqual(verdict["Guid"].casefold(), guid)
-
 
     async def test_for_file_returns_verdict_if_no_cache_or_shed(self):
         options = get_disabled_options()
@@ -187,7 +185,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
-
     async def test_for_url_returns_malicious_for_eicar(self):
         options = get_disabled_options()
         async with await create_and_connect(options=options) as vaas:
@@ -196,7 +193,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Verdict"], "Malicious")
             self.assertEqual(verdict["Guid"].casefold(), guid)
 
-
     async def test_for_url_without_shed_and_cache_returns_clean_for_robots_txt(self):
         options = get_disabled_options()
         async with await create_and_connect(options=options) as vaas:
@@ -204,7 +200,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(verdict["Guid"].casefold(), guid)
-
 
     async def test_for_url_without_cache_returns_clean_for_robots_txt(self):
         options = VaasOptions()
@@ -238,7 +233,6 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             tracing.trace_hash_request.assert_called_with(ANY)
             tracing.trace_upload_request.assert_called_with(ANY, 1024)
 
-
     async def test_for_empty_buffer_returns_clean(self):
         async with await create_and_connect() as vaas:
             buffer = bytes("", "utf-8")
@@ -248,6 +242,16 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
             self.assertEqual(verdict["Guid"].casefold(), guid)
+
+    async def test_for_url_returns_detections_and_mime_type(self):
+        options = get_disabled_options()
+        async with await create_and_connect(options=options) as vaas:
+            guid = str(uuid.uuid4())
+            verdict = await vaas.for_url("https://secure.eicar.org/eicar.com.txt", guid=guid)
+            self.assertEqual(verdict["Verdict"], "Malicious")
+            self.assertIsNotNone(verdict["Detections"])
+            self.assertEqual(verdict["LibMagic"]['fileType'], "EICAR virus test files")
+            self.assertEqual(verdict["LibMagic"]['mimeType'], "text/plain")
 
 
 if __name__ == "__main__":
