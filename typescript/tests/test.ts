@@ -264,6 +264,8 @@ describe("Test verdict requests", function () {
     stream.push(null);
     const verdict = await vaas.forStream(stream);
     expect(verdict.verdict).to.equal("Clean");
+    expect(verdict.detections).to.be.undefined;
+    expect(verdict.libMagic).to.be.undefined;
   });
 
   it('if a EICAR stream is submitted, a verdict "malicious" is expected', async () => {
@@ -276,9 +278,12 @@ describe("Test verdict requests", function () {
     stream.push(null);
     const verdict = await vaas.forStream(stream);
     expect(verdict.verdict).to.equal("Malicious");
+    expect(verdict.detections).to.be.not.empty;
+    expect(verdict.libMagic?.fileType).to.equal("EICAR virus test files");
+    expect(verdict.libMagic?.mimeType).to.equal("text/plain");
   });
 
-  it('if a EICAR stream from an url is submitted, a verdict "malicious" is expected', async () => {
+  it('if a EICAR stream from an url is submitted, a response with verdict, libmagic & detections is expected', async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
     const response = await axios.get<Readable>(
       "https://secure.eicar.org/eicar.com.txt",
@@ -286,6 +291,9 @@ describe("Test verdict requests", function () {
     );
     const verdict = await vaas.forStream(response.data);
     expect(verdict.verdict).to.equal("Malicious");
+    expect(verdict.detections).to.be.not.empty;
+    expect(verdict.libMagic?.fileType).to.equal("EICAR virus test files");
+    expect(verdict.libMagic?.mimeType).to.equal("text/plain");
   });
 });
 
