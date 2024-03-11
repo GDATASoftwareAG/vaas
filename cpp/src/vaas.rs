@@ -5,6 +5,7 @@ use std::path::Path;
 use std::str::FromStr;
 use tokio::runtime;
 use tokio::runtime::Runtime;
+use url::Url;
 use vaas::auth::authenticators;
 use vaas::error::VResult;
 use vaas::{auth, cancellation, vaas_verdict};
@@ -47,6 +48,8 @@ mod ffi {
 
         type Connection;
         fn for_file(self: &Connection, file: &str, ct: &CancellationToken) -> Result<VaasVerdict>;
+        fn for_url(self: &Connection, url: &str, ct: &CancellationToken) -> Result<VaasVerdict>;
+        fn for_sha256(self: &Connection, sha256: &str, ct: &CancellationToken) -> Result<VaasVerdict>;
 
         type CancellationToken;
 
@@ -94,7 +97,7 @@ impl ClientCredentials {
     }
 
     pub fn with_token_url(&mut self, token_url: &str) -> Result<(), url::ParseError> {
-        let token_url = reqwest::Url::from_str(token_url)?;
+        let token_url = Url::from_str(token_url)?;
         self.inner = self.inner.clone().with_token_url(token_url);
         Ok(())
     }
@@ -112,7 +115,7 @@ impl Password {
     }
 
     pub fn with_token_url(&mut self, token_url: &str) -> Result<(), url::ParseError> {
-        let token_url = reqwest::Url::from_str(token_url)?;
+        let token_url = Url::from_str(token_url)?;
         self.inner = self.inner.clone().with_token_url(token_url);
         Ok(())
     }
@@ -163,7 +166,7 @@ impl Builder {
     }
 
     pub fn url(&mut self, url: &str) -> Result<(), url::ParseError> {
-        let token_url = reqwest::Url::from_str(url)?;
+        let token_url = Url::from_str(url)?;
         self.inner = self.inner.clone().url(token_url);
         Ok(())
     }
@@ -215,6 +218,25 @@ impl Connection {
             .block_on(async {
                 let file = Path::new(file);
                 self.conn.for_file(file, &ct.0).await
+            })
+            .map(Into::into)
+    }
+
+    pub fn for_url(&self, url: &str, ct: &CancellationToken) -> VResult<VaasVerdict> {
+        self.rt
+            .block_on(async {
+                let url = Url::from_str(url)
+                    .map_err(|e| vaas::error::Error::FailedRequest(e.to_string()))?;
+                self.conn.for_url(&url, &ct.0).await
+            })
+            .map(Into::into)
+    }
+    
+    pub fn for_sha256(&self, sha256: &str, ct: &CancellationToken) -> VResult<VaasVerdict> {
+        let sha256 = vaas::Sha256::try_from(sha256)?;
+        self.rt
+            .block_on(async {
+                self.conn.for_sha256(&sha256, &ct.0).await
             })
             .map(Into::into)
     }
