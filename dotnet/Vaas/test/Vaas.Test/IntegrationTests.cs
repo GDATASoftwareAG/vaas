@@ -304,4 +304,19 @@ public class IntegrationTests
         var vaas = provider.GetRequiredService<IVaas>();
         await vaas.Connect(CancellationToken.None);
     }
+    
+    [Fact]
+    public async Task ForStream_WithEicarUrl_ReturnsMaliciousWithDetectionsAndMimeType()
+    {
+        var vaas = await AuthenticateWithCredentials();
+        var url = new Uri("https://secure.eicar.org/eicar.com.txt");
+        var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
+        var targetStream = await response.Content.ReadAsStreamAsync();
+        
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        
+        Assert.Equal(Verdict.Malicious, verdict.Verdict);
+        Assert.Equal("text/plain", verdict.LibMagic.MimeType);
+        Assert.Contains(verdict.Detections, detection => detection.Virus == "EICAR_TEST_FILE");
+    }
 }
