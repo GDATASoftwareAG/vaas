@@ -256,6 +256,7 @@ public class IntegrationTests
             { "VerdictAsAService:Credentials:GrantType", "ClientCredentials" },
             { "VerdictAsAService:Credentials:ClientId", AuthenticationEnvironment.ClientId },
             { "VerdictAsAService:Credentials:ClientSecret", AuthenticationEnvironment.ClientSecret },
+            { "VerdictAsAService:UseCache", "false" }
         });
         ServiceCollectionTools.Output(_output, services);
         var provider = services.BuildServiceProvider();
@@ -303,5 +304,37 @@ public class IntegrationTests
 
         var vaas = provider.GetRequiredService<IVaas>();
         await vaas.Connect(CancellationToken.None);
+    }
+    
+    [Fact]
+    public async Task ForStream_WithEicarUrl_ReturnsMaliciousWithDetectionsAndMimeType()
+    {
+        var vaas = await AuthenticateWithCredentials();
+        var url = new Uri("https://secure.eicar.org/eicar.com.txt");
+        var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
+        var targetStream = await response.Content.ReadAsStreamAsync();
+        
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        
+        Assert.Equal(Verdict.Malicious, verdict.Verdict);
+        Assert.NotNull(verdict.LibMagic);
+        Assert.NotNull(verdict.Detections);
+        Assert.Equal("text/plain", verdict.LibMagic.MimeType);
+        Assert.Contains(verdict.Detections, detection => detection.Virus == "EICAR_TEST_FILE");
+    }
+    
+    [Fact]
+    public async Task ForUrl_WithEicarUrl_ReturnsMaliciousWithDetectionAndMimeType()
+    {
+        var vaas = await AuthenticateWithCredentials();
+        var uri = new Uri("https://secure.eicar.org/eicar.com");
+        
+        var verdict = await vaas.ForUrlAsync(uri, CancellationToken.None);
+        
+        Assert.Equal(Verdict.Malicious, verdict.Verdict);
+        Assert.NotNull(verdict.LibMagic);
+        Assert.NotNull(verdict.Detections);
+        Assert.Equal("text/plain", verdict.LibMagic.MimeType);
+        Assert.Contains(verdict.Detections, detection => detection.Virus == "EICAR_TEST_FILE");
     }
 }

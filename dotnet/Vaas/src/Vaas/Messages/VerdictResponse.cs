@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Diagnostics;
@@ -32,9 +33,14 @@ public class VerdictResponse
 
     [JsonPropertyName("upload_token")]
     public string? UploadToken { get; init; }
+    
+    [JsonPropertyName("detections")]
+    public List<Detection>? Detections { get; init; }
+    
+    [JsonPropertyName("libMagic")]
+    public LibMagic? LibMagic { get; init; }
 
     [MemberNotNullWhen(true, nameof(Sha256), nameof(Guid))]
     public bool IsValid => !string.IsNullOrWhiteSpace(Sha256)
                            && !string.IsNullOrWhiteSpace(Guid);
-
 }
