@@ -14,6 +14,6 @@ public class VaasVerdict
 
     public string Sha256 { get; init; }
     public Verdict Verdict { get; init; }
-    public List<Detection> Detections { get; init; }
-    public LibMagic LibMagic { get; init; }
+    public List<Detection>? Detections { get; init; }
+    public LibMagic? LibMagic { get; init; }
 }

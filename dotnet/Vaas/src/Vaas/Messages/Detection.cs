@@ -5,7 +5,7 @@ namespace Vaas.Messages;
 public class Detection
 {
     [JsonPropertyName("engine")]
-    public int Engine { get; init; }
+    public int? Engine { get; init; }
     
     [JsonPropertyName("fileName")]
     public string FileName { get; init; }

@@ -35,10 +35,10 @@ public class VerdictResponse
     public string? UploadToken { get; init; }
     
     [JsonPropertyName("detections")]
-    public List<Detection> Detections { get; init; }
+    public List<Detection>? Detections { get; init; }
     
     [JsonPropertyName("libMagic")]
-    public LibMagic LibMagic { get; init; }
+    public LibMagic? LibMagic { get; init; }
 
     [MemberNotNullWhen(true, nameof(Sha256), nameof(Guid))]
     public bool IsValid => !string.IsNullOrWhiteSpace(Sha256)
