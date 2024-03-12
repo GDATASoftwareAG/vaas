@@ -184,7 +184,7 @@ func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.Va
 			defer waitGroup.Done()
 			verdict, err := v.ForSha256(ctx, sha256)
 			if err != nil {
-				verdict = msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error()}
+				verdict = msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error(), Detections: verdict.Detections, LibMagic: verdict.LibMagic}
 			}
 			verdicts[i] = verdict
 		}(i, sha256)
@@ -352,8 +352,10 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 	}
 
 	return msg.VaasVerdict{
-		Verdict: response.Verdict,
-		Sha256:  response.Sha256,
+		Verdict:    response.Verdict,
+		Sha256:     response.Sha256,
+		Detections: response.Detections,
+		LibMagic:   response.LibMagic,
 	}, nil
 }
 
@@ -408,8 +410,10 @@ func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength in
 	response = <-responseChan
 
 	return msg.VaasVerdict{
-		Verdict: response.Verdict,
-		Sha256:  response.Sha256,
+		Verdict:    response.Verdict,
+		Sha256:     response.Sha256,
+		Detections: response.Detections,
+		LibMagic:   response.LibMagic,
 	}, nil
 }
 
@@ -488,8 +492,10 @@ func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string
 	}
 
 	return msg.VaasVerdict{
-		Verdict: response.Verdict,
-		Sha256:  response.Sha256,
+		Verdict:    response.Verdict,
+		Sha256:     response.Sha256,
+		Detections: response.Detections,
+		LibMagic:   response.LibMagic,
 	}, nil
 }
 

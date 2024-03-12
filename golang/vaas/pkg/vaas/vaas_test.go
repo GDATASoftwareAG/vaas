@@ -322,6 +322,38 @@ func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
 	}
 }
 
+func TestVaas_ForStream_WithStreamFromUrl_RetunsMaliciousWithDetectionsAndMimeType(t *testing.T) {
+	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
+
+	fixture := new(testFixture)
+	VaasClient := fixture.setUp(t)
+	defer fixture.tearDown(t)
+
+	verdict, err := VaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
+
+	if err != nil {
+		t.Fatalf("unexpected error - %v", err)
+	}
+
+	if verdict.Verdict != msg.Malicious {
+		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
+	}
+
+	if verdict.LibMagic.MimeType != "text/plain" {
+		t.Errorf("expected mime type to be text/plain, got %v", verdict.LibMagic.MimeType)
+	}
+
+	if len(verdict.Detections) == 0 {
+		t.Errorf("expected detections, got none")
+	}
+
+	for _, detection := range verdict.Detections {
+		if detection.Virus == "EICAR_TEST_FILE" {
+			return
+		}
+	}
+}
+
 func TestVaas_ForUrl(t *testing.T) {
 	const (
 		cleanURL string = "https://random-data-api.com/api/v2/beers"
