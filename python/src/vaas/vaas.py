@@ -85,12 +85,24 @@ def get_ssl_context(url, verify):
         return ssl.create_default_context()
     return ssl._create_unverified_context()  # pylint: disable=W0212
 
+
 def problem_details_to_error(problem_details):
     type = problem_details.get("type")
     details = problem_details.get("details")
     if type == "VaasClientException":
         return VaasClientError(details)
     return VaasServerError(details)
+
+
+def map_response(verdict_response):
+    return {
+        "Sha256": verdict_response.get("sha256"),
+        "Guid": verdict_response.get("guid"),
+        "Verdict": verdict_response.get("verdict"),
+        "LibMagic": verdict_response.get("lib_magic"),
+        "Detections": verdict_response.get("detections"),
+    }
+
 
 class Vaas:
     """Verdict-as-a-Service client"""
@@ -167,11 +179,7 @@ class Vaas:
         verdict_response = await self.__for_sha256(
             sha256, verdict_request_attributes, guid
         )
-        return {
-            "Sha256": verdict_response.get("sha256"),
-            "Guid": verdict_response.get("guid"),
-            "Verdict": verdict_response.get("verdict"),
-        }
+        return map_response(verdict_response)
 
     async def __for_stream(self, verdict_request_attributes=None, guid=None):
         if verdict_request_attributes is not None and not isinstance(
@@ -254,7 +262,7 @@ class Vaas:
                         future.set_result(vaas_message)
                 if message_kind == "Error":
                     problem_details = vaas_message.get("problem_details")
-                    if guid is None or problem_details is None :
+                    if guid is None or problem_details is None:
                         # Error: Server sent guid we are not waiting for, or problem details are null, ignore it
                         continue
                     future = self.results.get(guid)
@@ -281,12 +289,8 @@ class Vaas:
                 verdict_response, buffer, len(buffer)
             )
 
-        return {
-            "Sha256": verdict_response.get("sha256"),
-            "Guid": verdict_response.get("guid"),
-            "Verdict": verdict_response.get("verdict"),
-        }
-    
+        return map_response(verdict_response)
+
     async def _for_unknown_buffer(self, response, buffer, buffer_len):
         start = time.time()
         guid = response.get("guid")
@@ -315,10 +319,10 @@ class Vaas:
 
         if verdict != "Unknown":
             raise VaasServerError("server returned verdict without receiving content")
-        
+
         if token == None:
             raise VaasServerError("VerdictResponse missing UploadToken for stream upload")
-        
+
         if url == None:
             raise VaasServerError("VerdictResponse missing URL for stream upload")
 
@@ -332,11 +336,7 @@ class Vaas:
             raise VaasTimeoutError() from ex
         self.tracing.trace_upload_request(time.time() - start, len)
 
-        return {
-            "Sha256": verdict_response.get("sha256"),
-            "Guid": verdict_response.get("guid"),
-            "Verdict": verdict_response.get("verdict"),
-        }
+        return map_response(verdict_response)
 
     async def for_file(self, path, verdict_request_attributes=None, guid=None):
         """Returns the verdict for a file"""
@@ -356,11 +356,7 @@ class Vaas:
                     verdict_response, buffer, len(buffer)
                 )
 
-        return {
-            "Sha256": verdict_response.get("sha256"),
-            "Guid": verdict_response.get("guid"),
-            "Verdict": verdict_response.get("verdict"),
-        }
+        return map_response(verdict_response)
 
     async def __upload(self, token, upload_uri, buffer_or_file, content_length):
         jwt = PyJWT()
@@ -411,8 +407,4 @@ class Vaas:
 
         self.tracing.trace_url_request(time.time() - start)
 
-        return {
-            "Sha256": result.get("sha256"),
-            "Guid": result.get("guid"),
-            "Verdict": result.get("verdict"),
-        }
+        return map_response(result)
