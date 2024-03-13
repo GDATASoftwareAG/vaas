@@ -378,7 +378,7 @@ class Vaas
         } else {
             $details = null;
         }
-        $errorType = $errorResponse->getType();
+        $errorType = $errorResponse->type;
         if ($errorType == "ClientError") {
             throw new VaasClientException($details);
         }
