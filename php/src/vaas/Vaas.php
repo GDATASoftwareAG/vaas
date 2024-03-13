@@ -374,11 +374,11 @@ class Vaas
     private function _handleWebSocketErrorResponse(Error $errorResponse): void
     {
         if (isset($errorResponse->problem_details->detail)) {
-            $details = $errorResponse->problem_details->getDetail();
+            $details = $errorResponse->problem_details->detail;
         } else {
             $details = null;
         }
-        $errorType = $errorResponse->getType();
+        $errorType = $errorResponse->type;
         if ($errorType == "ClientError") {
             throw new VaasClientException($details);
         }

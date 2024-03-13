@@ -596,4 +596,19 @@ final class VaasTest extends TestCase
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
     }
+
+    public function testForStream_WithEicarUrlContentAsStream_ReturnsMaliciousWithDetectionAndMimeType()
+    {
+        $vaas = $this->_getVaas();
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $httpClient = new Client();
+        $response = $httpClient->get(self::MALICIOUS_URL);
+        $stream = new Stream($response->getBody()->detach());
+
+        $verdict = $vaas->ForStream($stream);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
+        $this->assertEquals("text/plain", $verdict->LibMagic->mimeType);
+        $this->assertContains("EICAR-Test-File", array_column($verdict->Detections, "virus")); 
+    }
 }
