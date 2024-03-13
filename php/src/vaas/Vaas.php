@@ -401,8 +401,8 @@ class Vaas
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
         $request = new VerdictRequest(strtolower($sha256), $uuid, $this->_vaasConnection->SessionId);
-        $request->UseCache = $this->_options->UseCache;
-        $request->UseHashLookup = $this->_options->UseHashLookup;
+        $request->use_cache = $this->_options->UseCache;
+        $request->use_hash_lookup = $this->_options->UseHashLookup;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
@@ -427,8 +427,8 @@ class Vaas
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
         $request = new VerdictRequestForUrl($url, $uuid, $this->_vaasConnection->SessionId);
-        $request->UseCache = $this->_options->UseCache;
-        $request->UseHashLookup = $this->_options->UseHashLookup;
+        $request->use_cache = $this->_options->UseCache;
+        $request->use_hash_lookup = $this->_options->UseHashLookup;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
@@ -456,8 +456,8 @@ class Vaas
         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
 
         $request = new VerdictRequestForStream($this->_vaasConnection->SessionId, $uuid);
-        $request->UseCache = $this->_options->UseCache;
-        $request->UseHashLookup = $this->_options->UseHashLookup;
+        $request->use_cache = $this->_options->UseCache;
+        $request->use_hash_lookup = $this->_options->UseHashLookup;
         $websocket->send(json_encode($request));
 
         if ($this->_logger != null)
