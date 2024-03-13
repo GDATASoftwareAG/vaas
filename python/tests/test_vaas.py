@@ -250,8 +250,8 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             verdict = await vaas.for_url("https://secure.eicar.org/eicar.com.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Malicious")
             self.assertIsNotNone(verdict["Detections"])
-            self.assertEqual(verdict["LibMagic"]['fileType'], "EICAR virus test files")
-            self.assertEqual(verdict["LibMagic"]['mimeType'], "text/plain")
+            self.assertEqual(verdict["LibMagic"]['file_type'], "EICAR virus test files")
+            self.assertEqual(verdict["LibMagic"]['mime_type'], "text/plain")
 
 
 if __name__ == "__main__":

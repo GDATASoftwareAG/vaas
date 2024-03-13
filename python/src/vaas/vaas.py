@@ -99,7 +99,7 @@ def map_response(verdict_response):
         "Sha256": verdict_response.get("sha256"),
         "Guid": verdict_response.get("guid"),
         "Verdict": verdict_response.get("verdict"),
-        "LibMagic": verdict_response.get("libMagic"),
+        "LibMagic": verdict_response.get("lib_magic"),
         "Detections": verdict_response.get("detections"),
     }
 
