@@ -64,9 +64,9 @@ final class VaasTest extends TestCase
         }
     }
 
-    private function _getVaas(): Vaas
+    private function _getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
     {
-        return new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), new VaasOptions(false, false));
+        return new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), new VaasOptions($useCache, $useHashLookup));
     }
 
     private function _getDebugLogger(): LoggerInterface

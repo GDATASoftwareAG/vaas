@@ -57,4 +57,21 @@ final class ProtocolTest extends TestCase
         $vaas = new Vaas("url");
         $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
     }
+
+    public function testVerdictRequestSerializationTest(): void
+    {
+        $verdictRequest = new \VaasSdk\Message\VerdictRequest(
+            "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
+            "guid",
+            "sessionid"
+        );
+        $verdictRequest->use_cache = false;
+        $verdictRequest->use_hash_lookup = false;
+
+        $string = json_encode($verdictRequest);
+        $this->assertEquals(
+            '{"kind":"VerdictRequest","guid":"guid","session_id":"sessionid","use_hash_lookup":false,"use_cache":false,"sha256":"000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"}',
+            $string
+        );
+    }
 }
