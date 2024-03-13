@@ -30,7 +30,7 @@ public class VerdictResponse extends MessageType {
     @SerializedName("detections")
     ArrayList<Detection> detections;
     @Getter
-    @SerializedName("libMagic")
+    @SerializedName("lib_magic")
     LibMagic libMagic;
 
     private VerdictResponse() {

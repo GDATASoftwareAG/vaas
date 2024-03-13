@@ -13,7 +13,7 @@ export class VerdictResponse extends Message {
     @JsonProperty() public upload_token: string | undefined,
     @JsonProperty() public url: string | undefined,
     @JsonProperty() public detections: Detection[] | undefined,
-    @JsonProperty() public libMagic: LibMagic | undefined,    
+    @JsonProperty() public lib_magic: LibMagic | undefined,
   ) {
     super(Kind.VerdictResponse);
   }

@@ -4,7 +4,7 @@ import { JsonProperty, JsonObject } from "typescript-json-serializer";
 export class Detection {
   public constructor(
     @JsonProperty() public engine: number,
-    @JsonProperty() public fileName: string,
+    @JsonProperty() public file_name: string,
     @JsonProperty() public virus: string,
-  ) {}
+  ) { }
 }

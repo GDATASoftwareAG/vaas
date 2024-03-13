@@ -4,6 +4,6 @@ namespace VaasSdk\Message;
 
 class LibMagic
 {
-    public string $fileType;
-    public string $mimeType;
+    public string $file_type;
+    public string $mime_type;
 }

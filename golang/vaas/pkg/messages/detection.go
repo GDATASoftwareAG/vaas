@@ -4,6 +4,6 @@ package messages
 // TokenResponse represents a response containing an access token.
 type Detection struct {
 	Engine   int    `json:"engine"`
-	FileName string `json:"fileName"`
+	FileName string `json:"file_name"`
 	Virus    string `json:"virus"`
 }

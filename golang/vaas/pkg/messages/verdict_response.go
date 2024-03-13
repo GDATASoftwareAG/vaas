@@ -10,7 +10,7 @@ type VerdictResponse struct {
 	URL         string      `json:"url"`
 	UploadToken string      `json:"upload_token"`
 	Detections  []Detection `json:"detections"`
-	LibMagic    LibMagic    `json:"libMagic"`
+	LibMagic    LibMagic    `json:"lib_magic"`
 }
 
 // IsValid checks if the VerdictResponse is valid.

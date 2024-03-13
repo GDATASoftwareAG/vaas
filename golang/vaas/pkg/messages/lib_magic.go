@@ -3,6 +3,6 @@ package messages
 
 // TokenResponse represents a response containing an access token.
 type LibMagic struct {
-	FileType string `json:"fileType"`
-	MimeType string `json:"mimeType"`
+	FileType string `json:"file_type"`
+	MimeType string `json:"mime_type"`
 }

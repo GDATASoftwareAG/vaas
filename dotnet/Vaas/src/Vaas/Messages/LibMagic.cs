@@ -4,9 +4,9 @@ namespace Vaas.Messages;
 
 public class LibMagic
 {
-    [JsonPropertyName("fileType")]
+    [JsonPropertyName("file_type")]
     public string FileType { get; init; }
-    
-    [JsonPropertyName("mimeType")]
+
+    [JsonPropertyName("mime_type")]
     public string MimeType { get; init; }
 }

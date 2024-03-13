@@ -608,7 +608,7 @@ final class VaasTest extends TestCase
         $verdict = $vaas->ForStream($stream);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
-        $this->assertEquals("text/plain", $verdict->LibMagic->mimeType);
-        $this->assertContains("EICAR-Test-File", array_column($verdict->Detections, "virus")); 
+        $this->assertEquals("text/plain", $verdict->LibMagic->mime_type);
+        $this->assertContains("EICAR-Test-File", array_column($verdict->Detections, "virus"));
     }
 }
