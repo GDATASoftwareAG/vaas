@@ -111,5 +111,7 @@ pub use crate::vaas::Vaas;
 pub use builder::Builder;
 pub use cancellation::CancellationToken;
 pub use connection::Connection;
+pub use message::Detection;
+pub use message::LibMagic;
 pub use sha256::Sha256;
 pub use vaas_verdict::VaasVerdict;
