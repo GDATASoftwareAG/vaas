@@ -240,14 +240,9 @@ export class Vaas {
     return new Promise((resolve, reject) => {
       const guid = uuidv4();
       if (this.debug) console.debug("uuid", guid);
+      let contentLength = 0;
       this.verdictPromises.set(guid, {
         resolve: async (verdictResponse: VerdictResponse) => {
-          var contentLength;
-          if (verdictResponse.verdict === Verdict.UNKNOWN) {
-            contentLength = stream.readableLength;
-            await this.upload(verdictResponse, stream, contentLength);
-            this.verdictPromises.delete(guid);
-          }
           if (
             verdictResponse.verdict !== Verdict.UNKNOWN &&
             contentLength === 0
@@ -256,6 +251,13 @@ export class Vaas {
               "Server returned verdict without receiving content",
             );
           }
+          if (verdictResponse.verdict === Verdict.UNKNOWN) {
+            contentLength = stream.readableLength;
+            await this.upload(verdictResponse, stream, contentLength);
+            return;
+          }
+          this.verdictPromises.delete(guid);
+
           resolve(
             new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
           );
