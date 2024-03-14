@@ -120,8 +120,6 @@ jobs:
       - name: publish Maven package
         if: startsWith(github.ref, 'refs/tags/java')
         env:
-          ORG_GRADLE_PROJECT_username: ${{ secrets.ORG_GRADLE_PROJECT_USERNAME }}
-          ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGPASSWORD }}
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
         uses: gradle/gradle-build-action@v3
@@ -130,16 +128,18 @@ jobs:
           gradle-version: "8.6"
           build-root-directory: java
 
-      - name: push to Maven Central
+      - name: zip and publish Maven package
         if: startsWith(github.ref, 'refs/tags/java')
         env:
-          ORG_GRADLE_PROJECT_username: ${{ secrets.ORG_GRADLE_PROJECT_USERNAME }}
-          ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
-        uses: gradle/gradle-build-action@v3
+          MAVEN_CENTRAL_BEARER_TOKEN: ${{ secrets.MAVEN_CENTRAL_BEARER_TOKEN }}
+        run: |
+          zip -r package.zip .
+          curl --request POST \
+            --header 'Authorization: Bearer $MAVEN_CENTRAL_BEARER_TOKEN' \
+            --form bundle=@package.zip \
+            https://central.sonatype.com/api/v1/publisher/upload
         with:
-          arguments: closeAndReleaseRepository
-          gradle-version: "8.6"
-          build-root-directory: java
+          working-directory: java/build/repos/releases
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
