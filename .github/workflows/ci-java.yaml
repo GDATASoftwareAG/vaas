@@ -132,14 +132,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/java')
         env:
           MAVEN_CENTRAL_BEARER_TOKEN: ${{ secrets.MAVEN_CENTRAL_BEARER_TOKEN }}
+        working-directory: java/build/repos/releases          
         run: |
           zip -r package.zip .
           curl --request POST \
             --header 'Authorization: Bearer $MAVEN_CENTRAL_BEARER_TOKEN' \
             --form bundle=@package.zip \
             https://central.sonatype.com/api/v1/publisher/upload
-        with:
-          working-directory: java/build/repos/releases
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
