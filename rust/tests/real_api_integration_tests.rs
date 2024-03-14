@@ -4,7 +4,7 @@ use reqwest::Url;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use vaas::auth::authenticators::{ClientCredentials, Password};
-use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
+use vaas::{message::Verdict, CancellationToken, Connection, LibMagic, Sha256, Vaas};
 
 async fn get_vaas_with_flags(use_cache: bool, use_hash_lookup: bool) -> Connection {
     let token_url: Url = dotenv::var("TOKEN_URL")
@@ -20,7 +20,7 @@ async fn get_vaas_with_flags(use_cache: bool, use_hash_lookup: bool) -> Connecti
         .expect("No VAAS_URL environment variable set to be used in the integration tests");
     Vaas::builder(authenticator)
         .use_cache(use_cache)
-        .use_cache(use_hash_lookup)
+        .use_hash_lookup(use_hash_lookup)
         .url(Url::parse(&vaas_url).unwrap())
         .build()
         .unwrap()
@@ -330,20 +330,29 @@ async fn from_sha256_multiple_unknown_hash() {
 }
 
 #[tokio::test]
-async fn from_file_single_malicious_file() {
+async fn for_file_single_malicious_file() {
     let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
     let tmp_file = std::env::temp_dir().join("eicar.txt");
     std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
 
-    let vaas = get_vaas().await;
+    let vaas = get_vaas_with_flags(false, false).await;
     let ct = CancellationToken::from_seconds(30);
 
-    let verdict = vaas.for_file(&tmp_file, &ct).await;
+    let verdict = vaas.for_file(&tmp_file, &ct).await.unwrap();
 
-    assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(Verdict::Malicious, verdict.verdict);
+    assert_eq!(Sha256::try_from(&tmp_file).unwrap(), verdict.sha256);
+    let detections = verdict.detections.unwrap();
+    assert_eq!(2, detections[0].engine);
+    assert_eq!("EICAR-Test-File".to_string(), detections[0].virus);
+    assert_eq!(3, detections[1].engine);
+    assert_eq!("EICAR_TEST_FILE".to_string(), detections[1].virus);
     assert_eq!(
-        Sha256::try_from(&tmp_file).unwrap(),
-        verdict.unwrap().sha256
+        Some(LibMagic {
+            file_type: "EICAR virus test files".to_string(),
+            mime_type: "text/plain".to_string()
+        }),
+        verdict.lib_magic
     );
     std::fs::remove_file(&tmp_file).unwrap();
 }

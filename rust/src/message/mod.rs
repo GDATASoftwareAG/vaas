@@ -2,8 +2,10 @@
 
 mod auth_request;
 mod auth_response;
+mod detection;
 mod error;
 mod kind;
+mod lib_magic;
 mod message_type;
 mod open_id_connect_token_response;
 mod upload_url;
@@ -15,7 +17,9 @@ mod verdict_response;
 
 pub(super) use auth_request::AuthRequest;
 pub(super) use auth_response::AuthResponse;
+pub use detection::Detection;
 pub(super) use error::ErrorResponse;
+pub use lib_magic::LibMagic;
 pub(super) use message_type::MessageType;
 pub(super) use open_id_connect_token_response::OpenIdConnectTokenResponse;
 pub(super) use upload_url::UploadUrl;
