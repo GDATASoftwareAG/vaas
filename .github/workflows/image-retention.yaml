@@ -19,6 +19,7 @@ jobs:
         with:
           go-version: 1.22.0
           go-version-file: ./github-actions/cleanup-packages/go.mod
+          cache-dependency-path: ./github-actions/cleanup-packages/go.sum
 
       - name: Verify dependencies
         run: go mod verify
