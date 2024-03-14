@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/java') && endsWith(github.ref, '-beta')))
@@ -66,18 +66,18 @@ jobs:
           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: install Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: "11"
           distribution: "temurin"
 
       - name: setup Gradle
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           gradle-version: "8.1"
 
       - name: run tests
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: test
           gradle-version: "8.1"
@@ -86,14 +86,14 @@ jobs:
       #- name: run examples for file
       #  env:
       #    SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
-      #  uses: gradle/gradle-build-action@v2
+      #  uses: gradle/gradle-build-action@v3
       #  with:
       #    arguments: fileScan
       #    gradle-version: "8.1"
       #    build-root-directory: java/examples/VaasExample
 
       #- name: run examples for url
-      #  uses: gradle/gradle-build-action@v2
+      #  uses: gradle/gradle-build-action@v3
       #  with:
       #    arguments: urlScan
       #    gradle-version: "8.1"
@@ -122,7 +122,7 @@ jobs:
           ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGPASSWORD }}
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: publish
           gradle-version: "8.1"
@@ -133,7 +133,7 @@ jobs:
         env:
           ORG_GRADLE_PROJECT_username: ${{ secrets.ORG_GRADLE_PROJECT_USERNAME }}
           ORG_GRADLE_PROJECT_password: ${{ secrets.ORG_GRADLE_PROJECT_PASSWORD }}
-        uses: gradle/gradle-build-action@v2
+        uses: gradle/gradle-build-action@v3
         with:
           arguments: closeAndReleaseRepository
           gradle-version: "8.1"

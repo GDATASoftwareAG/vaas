@@ -188,7 +188,7 @@ export class Vaas {
 
           this.verdictPromises.delete(guid);
           resolve(
-            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.libMagic),
+            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
           );
         },
         reject: (reason) => reject(reason),
@@ -216,7 +216,7 @@ export class Vaas {
         resolve: async (verdictResponse: VerdictResponse) => {
           this.verdictPromises.delete(guid);
           resolve(
-            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.libMagic),
+            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
           );
         },
         reject: (reason) => reject(reason),
@@ -257,7 +257,7 @@ export class Vaas {
             );
           }
           resolve(
-            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.libMagic),
+            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
           );
         },
         reject: (reason) => reject(reason),

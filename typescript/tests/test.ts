@@ -271,7 +271,7 @@ describe("Test verdict requests", function () {
   it('if a EICAR stream is submitted, a verdict "malicious" is expected', async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
     const stream = new Readable();
-    stream._read = () => {};
+    stream._read = () => { };
     stream.push(
       `X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`,
     );
@@ -279,8 +279,8 @@ describe("Test verdict requests", function () {
     const verdict = await vaas.forStream(stream);
     expect(verdict.verdict).to.equal("Malicious");
     expect(verdict.detections).to.be.not.empty;
-    expect(verdict.libMagic?.fileType).to.equal("EICAR virus test files");
-    expect(verdict.libMagic?.mimeType).to.equal("text/plain");
+    expect(verdict.libMagic?.file_type).to.equal("EICAR virus test files");
+    expect(verdict.libMagic?.mime_type).to.equal("text/plain");
   });
 
   it('if a EICAR stream from an url is submitted, a response with verdict, libmagic & detections is expected', async () => {
@@ -292,8 +292,8 @@ describe("Test verdict requests", function () {
     const verdict = await vaas.forStream(response.data);
     expect(verdict.verdict).to.equal("Malicious");
     expect(verdict.detections).to.be.not.empty;
-    expect(verdict.libMagic?.fileType).to.equal("EICAR virus test files");
-    expect(verdict.libMagic?.mimeType).to.equal("text/plain");
+    expect(verdict.libMagic?.file_type).to.equal("EICAR virus test files");
+    expect(verdict.libMagic?.mime_type).to.equal("text/plain");
   });
 });
 
@@ -311,10 +311,10 @@ describe("Vaas", async () => {
   beforeEach(() => {
     webSocket = {
       readyState: WebSocket.CONNECTING as number,
-      onopen: () => {},
-      onclose: () => {},
-      onmessage: () => {},
-      send: (data: any) => {},
+      onopen: () => { },
+      onclose: () => { },
+      onmessage: () => { },
+      send: (data: any) => { },
     } as any;
     vaas = new Vaas((url) => webSocket);
   });

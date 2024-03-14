@@ -9,7 +9,7 @@ class VaasVerdict
         $this->Sha256 = $verdictResponse->sha256 ?? "";
         $this->Verdict = $verdictResponse->verdict ?? Verdict::UNKNOWN;
         $this->Guid = $verdictResponse->guid ?? "";
-        $this->LibMagic = $verdictResponse->libMagic ?? null;
+        $this->LibMagic = $verdictResponse->lib_magic ?? null;
         $this->Detections = $verdictResponse->detections ?? null;
     }
 

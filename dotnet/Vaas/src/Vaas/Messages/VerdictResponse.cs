@@ -14,7 +14,7 @@ public class VerdictResponse
         Sha256 = sha256;
         Verdict = verdict;
     }
-    
+
     [JsonPropertyName("kind")]
     public string Kind { get; init; } = "VerdictResponse";
 
@@ -33,11 +33,11 @@ public class VerdictResponse
 
     [JsonPropertyName("upload_token")]
     public string? UploadToken { get; init; }
-    
+
     [JsonPropertyName("detections")]
     public List<Detection>? Detections { get; init; }
-    
-    [JsonPropertyName("libMagic")]
+
+    [JsonPropertyName("lib_magic")]
     public LibMagic? LibMagic { get; init; }
 
     [MemberNotNullWhen(true, nameof(Sha256), nameof(Guid))]
