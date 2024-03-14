@@ -3,7 +3,6 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
-    id "io.codearte.nexus-staging" version "0.30.0"
 }
 
 group = 'de.gdata'
@@ -79,27 +78,17 @@ publishing {
         }
     }
 
-    repositories {
-        maven {
-            url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            credentials {
-                username = findProperty("username")
-                password = findProperty("password")
-            }
-        }
-    }
-
     signing {
         def signingKey = findProperty("signingKey")
         def signingPassword = findProperty("signingPassword")
         useInMemoryPgpKeys(signingKey, signingPassword)        
         sign publishing.publications.mavenJava
     }
+
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('repos/releases')
+        }
+    }
 }
 
-nexusStaging {
-    serverUrl = "https://s01.oss.sonatype.org/service/local/"
-    username = findProperty("username")
-    password = findProperty("password")    
-    packageGroup = "de.gdata"
-}
