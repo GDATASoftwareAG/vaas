@@ -43,7 +43,7 @@ jobs:
         version: ["8.1", "8.2", "8.3"]
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/php') && endsWith(github.ref, '-beta')))
@@ -65,7 +65,7 @@ jobs:
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
-          echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV        
+          echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
@@ -123,7 +123,7 @@ jobs:
 
       - name: checkout
         if: startsWith(github.ref, 'refs/tags/php')
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: publish on site repo
         if: startsWith(github.ref, 'refs/tags/php')
