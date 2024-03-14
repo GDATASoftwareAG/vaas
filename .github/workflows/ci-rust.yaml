@@ -72,7 +72,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          working-directory: rust
+          workspaces: rust
 
       - name: run tests
         run: cargo test
