@@ -135,7 +135,7 @@ jobs:
         working-directory: java/build/repos/releases          
         run: |
           zip -r package.zip .
-          curl --fail-with-body \
+          curl --fail \
           --request POST \
             --header 'Authorization: Bearer ${MAVEN_CENTRAL_BEARER_TOKEN}' \
             --form bundle=@package.zip \
