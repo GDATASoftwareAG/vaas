@@ -241,22 +241,39 @@ export class Vaas {
       const guid = uuidv4();
       if (this.debug) console.debug("uuid", guid);
       let contentLength = 0;
-      this.verdictPromises.set(guid, {
+      this.verdictPromises.set(guid, { // waits for the verdictRequestForStream response
         resolve: async (verdictResponse: VerdictResponse) => {
-          if (
-            verdictResponse.verdict !== Verdict.UNKNOWN &&
-            contentLength === 0
-          ) {
+          if (verdictResponse.verdict !== Verdict.UNKNOWN) {
             throw new VaasServerError(
               "Server returned verdict without receiving content",
             );
           }
+          if (verdictResponse.upload_token === undefined || verdictResponse.upload_token == "") {
+            throw new VaasServerError(
+              "No upload token set in response",
+            );
+          }
+          if (verdictResponse.url === undefined || verdictResponse.url == "") {
+            throw new VaasServerError(
+              "No upload url set in response",
+            );
+          }
           if (verdictResponse.verdict === Verdict.UNKNOWN) {
+            this.verdictPromises.delete(guid);
+            this.verdictPromises.set(guid, { // waits for the upload response
+              resolve: async (verdictResponse: VerdictResponse) => {
+                this.verdictPromises.delete(guid);
+                resolve(
+                  new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
+                );
+              },
+              reject: (reason) => reject(reason),
+            });
+
             contentLength = stream.readableLength;
             await this.upload(verdictResponse, stream, contentLength);
             return;
           }
-          this.verdictPromises.delete(guid);
 
           resolve(
             new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
