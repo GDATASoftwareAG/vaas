@@ -258,26 +258,20 @@ export class Vaas {
               "No upload url set in response",
             );
           }
-          if (verdictResponse.verdict === Verdict.UNKNOWN) {
-            this.verdictPromises.delete(guid);
-            this.verdictPromises.set(guid, { // waits for the upload response
-              resolve: async (verdictResponse: VerdictResponse) => {
-                this.verdictPromises.delete(guid);
-                resolve(
-                  new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
-                );
-              },
-              reject: (reason) => reject(reason),
-            });
+          this.verdictPromises.delete(guid);
+          this.verdictPromises.set(guid, { // waits for the upload response
+            resolve: async (verdictResponse: VerdictResponse) => {
+              this.verdictPromises.delete(guid);
+              resolve(
+                new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
+              );
+            },
+            reject: (reason) => reject(reason),
+          });
 
-            contentLength = stream.readableLength;
-            await this.upload(verdictResponse, stream, contentLength);
-            return;
-          }
-
-          resolve(
-            new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detections, verdictResponse.lib_magic),
-          );
+          contentLength = stream.readableLength;
+          await this.upload(verdictResponse, stream, contentLength);
+          return;
         },
         reject: (reason) => reject(reason),
       });
