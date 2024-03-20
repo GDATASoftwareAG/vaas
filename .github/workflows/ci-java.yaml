@@ -36,7 +36,7 @@ env:
 
 jobs:
   build-java:
-    name: Build & Test Java SDK
+    name: Build & Test Java 17 SDK
     runs-on: ubuntu-20.04
 
     steps:
