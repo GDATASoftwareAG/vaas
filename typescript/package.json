@@ -23,10 +23,10 @@
     "url": "https://www.gdata.de"
   },
   "devDependencies": {
-    "@types/chai": "4.3.12",
+    "@types/chai": "4.3.14",
     "@types/chai-as-promised": "7.1.8",
     "@types/mocha": "10.0.6",
-    "@types/node": "20.11.28",
+    "@types/node": "20.11.30",
     "@types/random-bytes": "1.0.3",
     "chai": "4.4.1",
     "chai-as-promised": "7.1.1",
@@ -35,7 +35,7 @@
     "prettier": "^3.2.5",
     "random-bytes": "1.0.0",
     "ts-node": "10.9.2",
-    "typescript": "5.4.2"
+    "typescript": "5.4.3"
   },
   "dependencies": {
     "@types/uuid": "9.0.8",
