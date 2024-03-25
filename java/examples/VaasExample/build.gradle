@@ -11,7 +11,7 @@ repositories {
 
 dependencies {
     implementation 'org.slf4j:slf4j-nop:2.0.12'
-    implementation 'de.gdata:vaas:6.4.1'
+    implementation 'de.gdata:vaas:6.4.2'
 }
 
 task fileScan(type: JavaExec) {
