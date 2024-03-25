@@ -28,7 +28,7 @@
     "@types/mocha": "10.0.6",
     "@types/node": "20.11.28",
     "@types/random-bytes": "1.0.3",
-    "chai": "4.4.1",
+    "chai": "5.1.0",
     "chai-as-promised": "7.1.1",
     "dotenv": "16.4.5",
     "mocha": "10.3.0",
