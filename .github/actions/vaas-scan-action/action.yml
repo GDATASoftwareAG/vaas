@@ -31,4 +31,4 @@ runs:
       uses: docker://ghcr.io/gdatasoftwareag/vaas/git-scan:3
       if: github.event_name == 'pull_request'
       with:
-        args: /app/git-scan ${{ inputs.REMOTE }} ${{ github.event.pull_request.base.ref }}
+        args: git config --global --add safe.directory /github/workspace && /app/git-scan ${{ inputs.REMOTE }} ${{ github.event.pull_request.base.ref }}
