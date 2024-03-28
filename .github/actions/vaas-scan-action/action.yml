@@ -20,13 +20,18 @@ inputs:
     description: "the origin name"
     default: "origin"
 runs:
-  env:
-    VAAS_URL: ${{ inputs.VAAS_URL }}
-    VAAS_TOKEN_URL: ${{ inputs.VAAS_TOKEN_URL }}
-    VAAS_CLIENT_ID: ${{ inputs.VAAS_CLIENT_ID }}
-    VAAS_CLIENT_SECRET: ${{ inputs.VAAS_CLIENT_SECRET }}
-  using: "docker"
-  image: "ghcr.io/gdatasoftwareag/vaas/git-scan:3"
-  pre-if: ${{ github.event_name != 'pull_request' }}
-  args:
-    - /app/git-scan ${{ inputs.REMOTE }} ${{ github.event.pull_request.base.ref }}
+  using: "composite"
+  steps:
+    - name: run Scan
+      env:
+        VAAS_URL: ${{ inputs.VAAS_URL }}
+        VAAS_TOKEN_URL: ${{ inputs.VAAS_TOKEN_URL }}
+        VAAS_CLIENT_ID: ${{ inputs.VAAS_CLIENT_ID }}
+        VAAS_CLIENT_SECRET: ${{ inputs.VAAS_CLIENT_SECRET }}
+      uses: docker://ghcr.io/gdatasoftwareag/vaas/git-scan:3
+      if: github.event_name != 'pull_request'
+      with:
+        args:
+          - /app/git-scan
+          - ${{ inputs.REMOTE }}
+          - ${{ github.event.pull_request.base.ref }}
