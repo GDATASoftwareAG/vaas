@@ -27,6 +27,6 @@ runs:
     VAAS_CLIENT_SECRET: ${{ inputs.VAAS_CLIENT_SECRET }}
   using: "docker"
   image: "ghcr.io/gdatasoftwareag/vaas/git-scan:3"
-  pre-if: github.event_name != 'pull_request'
+  pre-if: ${{ github.event_name != 'pull_request' }}
   args:
     - /app/git-scan ${{ inputs.REMOTE }} ${{ github.event.pull_request.base.ref }}
