@@ -18,7 +18,7 @@ thiserror = "1.0"
 uuid = { version = "1.8", features = ["serde", "v4"] }
 reqwest = { version = "0.12", features = ["stream"] }
 regex = "1.10"
-tokio = { version = "1.36", features = ["sync", "fs"] }
+tokio = { version = "1.37", features = ["sync", "fs"] }
 sha2 = "0.10"
 futures = "0.3"
 rand = "0.8"
@@ -30,4 +30,4 @@ tokio-stream = "0.1.15"
 
 [dev-dependencies]
 dotenv = "0.15"
-tokio = { version = "1.36", features = ["rt", "macros", "rt-multi-thread"] }
+tokio = { version = "1.37", features = ["rt", "macros", "rt-multi-thread"] }
