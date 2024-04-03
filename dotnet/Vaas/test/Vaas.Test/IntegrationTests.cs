@@ -98,9 +98,9 @@ public class IntegrationTests
     {
         var myList = new List<string>
         {
-            "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8",
-            "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
-            "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
+            "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
+            "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
+            "1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df"
         };
         var vaas = await AuthenticateWithCredentials();
         var verdictList = await vaas.ForSha256ListAsync(myList, CancellationToken.None);
