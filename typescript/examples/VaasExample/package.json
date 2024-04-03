@@ -13,7 +13,7 @@
     "license": "ISC",
     "dependencies": {
         "@types/node": "20.12.3",
-        "gdata-vaas": "^6.2.3",
+        "gdata-vaas": "^6.2.4",
         "ts-node": "^10.9.2",
         "typescript": "5.4.3"
     },
