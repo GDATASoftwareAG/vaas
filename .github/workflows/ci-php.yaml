@@ -37,7 +37,7 @@ env:
 jobs:
   build-php:
     name: Build & Test PHP SDK
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         version: ["8.1", "8.2", "8.3"]
@@ -110,7 +110,7 @@ jobs:
   deploy:
     needs: build-php
     name: deploy new php version
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: debug output
         run: echo ${{github.ref}}
