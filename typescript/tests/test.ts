@@ -121,11 +121,11 @@ describe("Test verdict requests", function () {
   it('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
     const verdict = await vaas.forSha256(
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
     );
     expect(verdict.verdict).to.equal("Clean");
     expect(verdict.sha256.toUpperCase()).to.equal(
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e".toUpperCase(),
     );
   });
 
@@ -164,16 +164,16 @@ describe("Test verdict requests", function () {
   it("if a list of SHA256 is uploaded, they are detected", async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
     const verdicts = await vaas.forSha256List([
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
+      "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
     ]);
     expect(verdicts[0].verdict).to.equal("Malicious");
     expect(verdicts[0].sha256).to.equal(
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+      "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
     );
     expect(verdicts[1].verdict).to.equal("Clean");
-    expect(verdicts[1].sha256.toUpperCase()).to.equal(
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
+    expect(verdicts[1].sha256).to.equal(
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
     );
   });
 
@@ -205,18 +205,18 @@ describe("Test verdict requests", function () {
   it("if we request the same guid twice, both calls return a result", async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
     const sha256 =
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
     const request1 = vaas.forSha256(sha256);
     const request2 = vaas.forSha256(sha256);
     const verdict1 = await request1;
     const verdict2 = await request2;
     expect(verdict1.verdict).to.equal("Clean");
-    expect(verdict1.sha256.toUpperCase()).to.equal(
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
+    expect(verdict1.sha256).to.equal(
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
     );
     expect(verdict2.verdict).to.equal("Clean");
-    expect(verdict2.sha256.toUpperCase()).to.equal(
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
+    expect(verdict2.sha256).to.equal(
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
     );
   });
   //www.virustotal.com/gui/file/edb6991d68ba5c7ed43f198c3d2593c770f2634beeb8c83afe3138279e5e81f3

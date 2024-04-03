@@ -58,12 +58,12 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
     async def test_for_sha256_returns_clean_for_clean_sha256(self):
         async with await create_and_connect() as vaas:
             verdict = await vaas.for_sha256(
-                "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
+                "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"
             )
             self.assertEqual(verdict["Verdict"], "Clean")
             self.assertEqual(
                 verdict["Sha256"].casefold(),
-                "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C".casefold(),
+                "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e".casefold(),
             )
 
     async def test_use_for_sha256_when_connection_already_closed(self):

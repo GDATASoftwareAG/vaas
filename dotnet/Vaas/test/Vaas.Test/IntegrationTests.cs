@@ -51,10 +51,10 @@ public class IntegrationTests
     {
         var vaas = await AuthenticateWithCredentials();
         var verdict = await vaas.ForSha256Async(
-            new ChecksumSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"),
+            new ChecksumSha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"),
             CancellationToken.None);
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
-        Assert.Equal("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", verdict.Sha256);
+        Assert.Equal("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2", verdict.Sha256);
     }
 
     [Fact]
@@ -62,10 +62,10 @@ public class IntegrationTests
     {
         var vaas = await AuthenticateWithCredentials();
         var verdict = await vaas.ForSha256Async(
-            new ChecksumSha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"),
+            new ChecksumSha256("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"),
             CancellationToken.None);
         Assert.Equal(Verdict.Clean, verdict.Verdict);
-        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
+        Assert.Equal("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e", verdict.Sha256, true);
     }
 
     [Fact(Skip = "Remove Skip to test keepalive")]
@@ -105,11 +105,11 @@ public class IntegrationTests
         var vaas = await AuthenticateWithCredentials();
         var verdictList = await vaas.ForSha256ListAsync(myList, CancellationToken.None);
         Assert.Equal(Verdict.Malicious, verdictList[0].Verdict);
-        Assert.Equal("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8", verdictList[0].Sha256, true);
+        Assert.Equal("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2", verdictList[0].Sha256, true);
         Assert.Equal(Verdict.Clean, verdictList[1].Verdict);
-        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdictList[1].Sha256, true);
+        Assert.Equal("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e", verdictList[1].Sha256, true);
         Assert.Equal(Verdict.Unknown, verdictList[2].Verdict);
-        Assert.Equal("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9", verdictList[2].Sha256, true);
+        Assert.Equal("1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df", verdictList[2].Sha256, true);
     }
 
 
@@ -180,7 +180,7 @@ public class IntegrationTests
             "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere",
             e.Message);
     }
-    
+
     [Fact]
     public async Task ForStream_WithEicarString_ReturnsMalicious()
     {
@@ -190,14 +190,14 @@ public class IntegrationTests
         var eicarBytes = System.Text.Encoding.UTF8.GetBytes("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
         targetStream.Write(eicarBytes, 0, eicarBytes.Length);
         targetStream.Position = 0;
-        
+
         // Act
         var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
-        
+
         // Assert
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
     }
-    
+
     [Fact]
     public async Task ForStream_WithCleanString_ReturnsClean()
     {
@@ -207,10 +207,10 @@ public class IntegrationTests
         var cleanBytes = System.Text.Encoding.UTF8.GetBytes("This is a clean file");
         targetStream.Write(cleanBytes, 0, cleanBytes.Length);
         targetStream.Position = 0;
-        
+
         // Act
         var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
-        
+
         // Assert
         Assert.Equal(Verdict.Clean, verdict.Verdict);
     }
@@ -223,14 +223,14 @@ public class IntegrationTests
         var url = new Uri("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md");
         var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
         var targetStream = await response.Content.ReadAsStreamAsync();
-        
+
         // Act
         var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
-        
+
         // Assert
         Assert.Equal(Verdict.Clean, verdict.Verdict);
     }
-    
+
     [Fact]
     public async Task ForStream_WithEicarUrl_ReturnsEicar()
     {
@@ -239,10 +239,10 @@ public class IntegrationTests
         var url = new Uri("https://secure.eicar.org/eicar.com.txt");
         var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
         var targetStream = await response.Content.ReadAsStreamAsync();
-        
+
         // Act
         var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
-        
+
         // Assert
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
     }
@@ -305,7 +305,7 @@ public class IntegrationTests
         var vaas = provider.GetRequiredService<IVaas>();
         await vaas.Connect(CancellationToken.None);
     }
-    
+
     [Fact]
     public async Task ForStream_WithEicarUrl_ReturnsMaliciousWithDetectionsAndMimeType()
     {
@@ -313,24 +313,24 @@ public class IntegrationTests
         var url = new Uri("https://secure.eicar.org/eicar.com.txt");
         var response = await _httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, url), CancellationToken.None);
         var targetStream = await response.Content.ReadAsStreamAsync();
-        
+
         var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
-        
+
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
         Assert.NotNull(verdict.LibMagic);
         Assert.NotNull(verdict.Detections);
         Assert.Equal("text/plain", verdict.LibMagic.MimeType);
         Assert.Contains(verdict.Detections, detection => detection.Virus == "EICAR_TEST_FILE");
     }
-    
+
     [Fact]
     public async Task ForUrl_WithEicarUrl_ReturnsMaliciousWithDetectionAndMimeType()
     {
         var vaas = await AuthenticateWithCredentials();
         var uri = new Uri("https://secure.eicar.org/eicar.com");
-        
+
         var verdict = await vaas.ForUrlAsync(uri, CancellationToken.None);
-        
+
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
         Assert.NotNull(verdict.LibMagic);
         Assert.NotNull(verdict.Detections);

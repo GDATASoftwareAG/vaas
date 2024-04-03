@@ -78,9 +78,9 @@ func (tf *testFixture) tearDown(t *testing.T) {
 
 func TestVaas_ForSha256(t *testing.T) {
 	const (
-		cleanSha256     string = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
-		maliciousSha256 string = "00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
-		unknownSha256   string = "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"
+		cleanSha256     string = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"
+		maliciousSha256 string = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
+		unknownSha256   string = "1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df"
 	)
 	type fields struct {
 		testingOptions options.VaasOptions
@@ -443,9 +443,9 @@ func TestVaas_ForSha256List(t *testing.T) {
 	vaasClient := fixture.setUp(t)
 	defer fixture.tearDown(t)
 
-	maliciousSha256 := strings.ToLower("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c")
-	cleanSha256 := strings.ToLower("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C")
-	unknownSha256 := strings.ToLower("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9")
+	maliciousSha256 := strings.ToLower("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2")
+	cleanSha256 := strings.ToLower("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e")
+	unknownSha256 := strings.ToLower("1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df")
 
 	verdicts, err := vaasClient.ForSha256List(context.Background(), []string{maliciousSha256, cleanSha256, unknownSha256})
 	if err != nil {
