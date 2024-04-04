@@ -1,0 +1,35 @@
+# action.yml
+name: "VaaS Scan"
+description: "Scans changed files in a PR for malware"
+inputs:
+  VAAS_URL:
+    description: "The gateway URL of your credentials environment"
+    default: "wss://gateway.production.vaas.gdatasecurity.de/"
+  VAAS_TOKEN_URL:
+    description: "The token URL of your credentials environment"
+    default: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+  VAAS_CLIENT_ID:
+    description: "Client ID of your vaas credentials"
+    required: true
+    default: ""
+  VAAS_CLIENT_SECRET:
+    description: "Client secret of your vaas credentials"
+    required: true
+    default: ""
+  REMOTE:
+    description: "the origin name"
+    default: "origin"
+runs:
+  using: "composite"
+  steps:
+    - name: run Scan
+      env:
+        VAAS_URL: ${{ inputs.VAAS_URL }}
+        VAAS_TOKEN_URL: ${{ inputs.VAAS_TOKEN_URL }}
+        VAAS_CLIENT_ID: ${{ inputs.VAAS_CLIENT_ID }}
+        VAAS_CLIENT_SECRET: ${{ inputs.VAAS_CLIENT_SECRET }}
+      uses: docker://ghcr.io/gdatasoftwareag/vaas/git-scan:3
+      if: github.event_name == 'pull_request'
+      with:
+        entrypoint: /bin/bash
+        args: -c "git config --global --add safe.directory '*' && /app/git-scan ${{ inputs.REMOTE }} ${{ github.event.pull_request.base.ref }}"
