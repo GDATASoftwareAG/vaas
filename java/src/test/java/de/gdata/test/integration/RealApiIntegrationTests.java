@@ -71,13 +71,13 @@ public class RealApiIntegrationTests {
     @Test
     public void forSha256SingleMaliciousHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var sha256 = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
 
         var verdict = vaas.forSha256(sha256);
         vaas.disconnect();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue(sha256.getValue()
+        assertTrue("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
                 .equalsIgnoreCase(verdict.getSha256()));
     }
 
@@ -133,59 +133,53 @@ public class RealApiIntegrationTests {
         assertThrows(VaasAuthenticationException.class, client::connect);
     }
 
-    // @Test
-    // public void forSha256MultipleMaliciousHash() throws Exception {
-    // var vaas = this.getVaasWithCredentials();
-    // var sha256_1 = new
-    // Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
-    // var sha256_2 = new
-    // Sha256("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
-    // var sha256_3 = new
-    // Sha256("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a");
+    @Test
+    public void forSha256MultipleMaliciousHash() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var sha256_1 = new Sha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
+        var sha256_2 = new Sha256("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
+        var sha256_3 = new Sha256("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a");
 
-    // var verdict_1 = vaas.forSha256(sha256_1);
-    // var verdict_2 = vaas.forSha256(sha256_2);
-    // var verdict_3 = vaas.forSha256(sha256_3);
-    // vaas.disconnect();
+        var verdict_1 = vaas.forSha256(sha256_1);
+        var verdict_2 = vaas.forSha256(sha256_2);
+        var verdict_3 = vaas.forSha256(sha256_3);
+        vaas.disconnect();
 
-    // assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
-    // assertEquals(Verdict.MALICIOUS, verdict_2.getVerdict());
-    // assertEquals(Verdict.MALICIOUS, verdict_3.getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdict_2.getVerdict());
+        assertEquals(Verdict.MALICIOUS, verdict_3.getVerdict());
 
-    // assertTrue("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
-    // .equalsIgnoreCase(verdict_1.getSha256()));
-    // assertTrue("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
-    // .equalsIgnoreCase(verdict_2.getSha256()));
-    // assertTrue("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a"
-    // .equalsIgnoreCase(verdict_3.getSha256()));
-    // }
+        assertTrue("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
+                .equalsIgnoreCase(verdict_1.getSha256()));
+        assertTrue("00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
+                .equalsIgnoreCase(verdict_2.getSha256()));
+        assertTrue("00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a"
+                .equalsIgnoreCase(verdict_3.getSha256()));
+    }
 
-    // @Test
-    // public void forSha256MultipleCleanHash() throws Exception {
-    // var vaas = this.getVaasWithCredentials();
-    // var sha256_1 = new
-    // Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-    // var sha256_2 = new
-    // Sha256("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391");
-    // var sha256_3 = new
-    // Sha256("4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783");
+    @Test
+    public void forSha256MultipleCleanHash() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var sha256_1 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
+        var sha256_2 = new Sha256("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391");
+        var sha256_3 = new Sha256("4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783");
 
-    // var verdict_1 = vaas.forSha256(sha256_1);
-    // var verdict_2 = vaas.forSha256(sha256_2);
-    // var verdict_3 = vaas.forSha256(sha256_3);
-    // vaas.disconnect();
+        var verdict_1 = vaas.forSha256(sha256_1);
+        var verdict_2 = vaas.forSha256(sha256_2);
+        var verdict_3 = vaas.forSha256(sha256_3);
+        vaas.disconnect();
 
-    // assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
-    // assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
-    // assertEquals(Verdict.CLEAN, verdict_3.getVerdict());
+        assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
+        assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
+        assertEquals(Verdict.CLEAN, verdict_3.getVerdict());
 
-    // assertTrue("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
-    // .equalsIgnoreCase(verdict_1.getSha256()));
-    // assertTrue("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391"
-    // .equalsIgnoreCase(verdict_2.getSha256()));
-    // assertTrue("4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783"
-    // .equalsIgnoreCase(verdict_3.getSha256()));
-    // }
+        assertTrue("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C"
+                .equalsIgnoreCase(verdict_1.getSha256()));
+        assertTrue("1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391"
+                .equalsIgnoreCase(verdict_2.getSha256()));
+        assertTrue("4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783"
+                .equalsIgnoreCase(verdict_3.getSha256()));
+    }
 
     @Test
     public void forSha256MultipleUnknownHash() throws Exception {
