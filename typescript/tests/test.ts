@@ -264,8 +264,9 @@ describe("Test verdict requests", function () {
     stream.push(null);
     const verdict = await vaas.forStream(stream);
     expect(verdict.verdict).to.equal("Clean");
-    expect(verdict.detections).to.be.undefined;
-    expect(verdict.libMagic).to.be.undefined;
+    expect(verdict.detections).to.be.empty;
+    expect(verdict.libMagic?.file_type).to.equal("ASCII text, with no line terminators");
+    expect(verdict.libMagic?.mime_type).to.equal("text/plain");
   });
 
   it('if a EICAR stream is submitted, a verdict "malicious" is expected', async () => {
