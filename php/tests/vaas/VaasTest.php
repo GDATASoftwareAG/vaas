@@ -34,7 +34,7 @@ final class VaasTest extends TestCase
 {
     use ProphecyTrait;
 
-    const MALICIOUS_HASH = "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8";
+    const MALICIOUS_HASH = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2";
     const MALICIOUS_URL = "https://secure.eicar.org/eicar.com.txt";
 
     public function setUp(): void
@@ -162,39 +162,10 @@ final class VaasTest extends TestCase
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
     }
 
-    public function testForMultipleMaliciousSha256_GetsMaliciousResponses(): void
-    {
-        $vaas = $this->_getVaas();
-        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-
-        $uuid1 = $this->getUuid();
-        $sha256_1 = "000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8";
-        $uuid2 = $this->getUuid();
-        $sha256_2 = "00000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c";
-        $uuid3 = $this->getUuid();
-        $sha256_3 = "00000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a";
-
-        $verdict1 = $vaas->ForSha256($sha256_1, $uuid1);
-        $verdict2 = $vaas->ForSha256($sha256_2, $uuid2);
-        $verdict3 = $vaas->ForSha256($sha256_3, $uuid3);
-
-        $this->assertEquals(Verdict::MALICIOUS, $verdict1->Verdict);
-        $this->assertEquals($uuid1, $verdict1->Guid);
-        $this->assertEqualsIgnoringCase($sha256_1, $verdict1->Sha256);
-
-        $this->assertEquals(Verdict::MALICIOUS, $verdict2->Verdict);
-        $this->assertEquals($uuid2, $verdict2->Guid);
-        $this->assertEqualsIgnoringCase($sha256_2, $verdict2->Sha256);
-
-        $this->assertEquals(Verdict::MALICIOUS, $verdict3->Verdict);
-        $this->assertEquals($uuid3, $verdict3->Guid);
-        $this->assertEqualsIgnoringCase($sha256_3, $verdict3->Sha256);
-    }
-
     public function testForSha256CleanSha256_GetsCleanResponse(): void
     {
         $uuid = $this->getUuid();
-        $cleanSha256 = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
+        $cleanSha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
 
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
@@ -219,14 +190,14 @@ final class VaasTest extends TestCase
     //     $this->assertEqualsIgnoringCase($pupSha256, $verdict->Sha256);
     // }
 
-    public function testForMultipleCleanFiles_GetsCleanResponses(): void
+    public function testForMultipleHashes_GetsResponse(): void
     {
         $uuid1 = $this->getUuid();
         $uuid2 = $this->getUuid();
         $uuid3 = $this->getUuid();
-        $cleanHash1 = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
-        $cleanHash2 = "1AFAFE9157FF5670BBEC8CE622F45D1CE51B3EE77B7348D3A237E232F06C5391";
-        $cleanHash3 = "4447FAACEFABA8F040822101E2A4103031660DE9139E70ECFF9AA3A89455A783";
+        $cleanHash1 = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2";
+        $cleanHash2 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+        $cleanHash3 = "1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df";
 
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
@@ -235,13 +206,13 @@ final class VaasTest extends TestCase
         $verdict2 = $vaas->ForSha256($cleanHash2, $uuid2);
         $verdict3 = $vaas->ForSha256($cleanHash3, $uuid3);
 
-        $this->assertEquals(Verdict::CLEAN, $verdict1->Verdict);
+        $this->assertEquals(Verdict::MALICIOUS, $verdict1->Verdict);
         $this->assertEquals($uuid1, $verdict1->Guid);
         $this->assertEqualsIgnoringCase($cleanHash1, $verdict1->Sha256);
         $this->assertEquals(Verdict::CLEAN, $verdict2->Verdict);
         $this->assertEquals($uuid2, $verdict2->Guid);
         $this->assertEqualsIgnoringCase($cleanHash2, $verdict2->Sha256);
-        $this->assertEquals(Verdict::CLEAN, $verdict3->Verdict);
+        $this->assertEquals(Verdict::UNKNOWN, $verdict3->Verdict);
         $this->assertEquals($uuid3, $verdict3->Guid);
         $this->assertEqualsIgnoringCase($cleanHash3, $verdict3->Sha256);
     }

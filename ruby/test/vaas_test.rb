@@ -45,7 +45,7 @@ class VaasTest < Minitest::Test
         Async do
           vaas.connect(token)
 
-          result = vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+          result = vaas.for_sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2")
           verdict = result.wait.verdict
           assert_equal "Malicious", verdict
 
@@ -127,7 +127,7 @@ class VaasTest < Minitest::Test
       specify 'not_connected' do
         vaas = VAAS::VaasMain.new
         assert_raises VAAS::VaasInvalidStateError do
-          vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f").wait
+          vaas.for_sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2").wait
         end
       end
 
@@ -147,7 +147,7 @@ class VaasTest < Minitest::Test
           vaas.connect(token)
           vaas.close
           assert_raises VAAS::VaasConnectionClosedError do
-            vaas.for_sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f").wait
+            vaas.for_sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2").wait
           end
         end
       end
