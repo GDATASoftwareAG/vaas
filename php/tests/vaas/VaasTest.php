@@ -390,7 +390,7 @@ final class VaasTest extends TestCase
 
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $verdict = $vaas->ForUrl("https://random-data-api.com/api/v2/beers", $uuid);
+        $verdict = $vaas->ForUrl("https://www.gdatasoftware.com/oem/verdict-as-a-service", $uuid);
 
         $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
         $this->assertEquals($uuid, $verdict->Guid);

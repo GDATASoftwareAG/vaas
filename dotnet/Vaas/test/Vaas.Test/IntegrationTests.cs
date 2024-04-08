@@ -160,7 +160,7 @@ public class IntegrationTests
     // }
 
     [Theory]
-    [InlineData("https://random-data-api.com/api/v2/beers", Verdict.Clean)]
+    [InlineData("https://www.gdatasoftware.com/oem/verdict-as-a-service", Verdict.Clean)]
     [InlineData("https://secure.eicar.org/eicar.com", Verdict.Malicious)]
     public async Task FromUrlReturnVerdict(string url, Verdict verdict)
     {

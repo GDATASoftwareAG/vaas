@@ -356,7 +356,7 @@ func TestVaas_ForStream_WithStreamFromUrl_RetunsMaliciousWithDetectionsAndMimeTy
 
 func TestVaas_ForUrl(t *testing.T) {
 	const (
-		cleanURL string = "https://random-data-api.com/api/v2/beers"
+		cleanURL string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
 		eicarURL string = "https://secure.eicar.org/eicar.com"
 	)
 	type fields struct {
