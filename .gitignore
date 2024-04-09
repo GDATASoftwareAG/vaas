@@ -14,9 +14,6 @@ WixTools
 vendor/
 *.cache
 
-# local env files
-.env*
-
 # Log files
 npm-debug.log*
 yarn-debug.log*
@@ -56,3 +53,5 @@ _trial_temp*/
 ruby/.idea
 ruby/Gemfile.lock
 ruby/test/test.txt
+
+.env*
