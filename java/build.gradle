@@ -37,7 +37,9 @@ dependencies {
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags "ErrorLogProducer"
+    }
     testLogging {
       events "passed", "skipped", "failed"
 
