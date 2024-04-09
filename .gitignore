@@ -57,4 +57,4 @@ ruby/.idea
 ruby/Gemfile.lock
 ruby/test/test.txt
 
-.env
+.env*
