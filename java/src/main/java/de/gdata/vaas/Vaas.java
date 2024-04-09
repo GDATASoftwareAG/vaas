@@ -186,7 +186,10 @@ public class Vaas {
 
     private CompletableFuture<VerdictResponse> forUrlAsync(URL url, UUID guid,
             VerdictRequestAttributes verdictRequestAttributes)
-            throws VaasConnectionClosedException {
+            throws VaasConnectionClosedException, VaasClientException {
+        if (url.getAuthority().isEmpty()) {
+            throw new VaasClientException("URL must have an authority");
+        }
         var request = new VerdictRequestForUrl(url, this.client.getSessionId(), guid, verdictRequestAttributes,
                 this.options);
         return this.forUrlRequestAsync(request);

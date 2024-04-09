@@ -345,9 +345,9 @@ public class RealApiIntegrationTests {
     public void forUrl_WithInvalidUrl_ThrowsVaasClientException() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://");
-        var e = assertThrows(VaasServerException.class, () -> vaas.forUrl(url_1));
+        var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
         assertEquals(
-                "Cannot send Request. https: is a not a valid URL.",
+                "URL must have an authority",
                 e.getMessage());
     }
 
