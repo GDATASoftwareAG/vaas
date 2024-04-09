@@ -1,6 +1,6 @@
 module github.com/GDATASoftwareAG/vaas/golang/vaas
 
-go 1.22.0
+go 1.22.2
 
 require (
 	github.com/Noooste/websocket v1.0.3
