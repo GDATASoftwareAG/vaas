@@ -14,9 +14,6 @@ WixTools
 vendor/
 *.cache
 
-# local env files
-php/tests/vaas/.env
-
 # Log files
 npm-debug.log*
 yarn-debug.log*
