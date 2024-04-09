@@ -19,6 +19,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import de.gdata.test.unit.Sha256Test;
@@ -96,6 +97,7 @@ public class RealApiIntegrationTests {
     // }
 
     @Test
+    @Tag("ErrorLogProducer")
     public void illegalCredentials() throws URISyntaxException {
 
         var dotenv = Dotenv.configure()
@@ -112,6 +114,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Tag("ErrorLogProducer")
     public void wrongTokenUsedToAuthenticateWebsocket() throws URISyntaxException {
         class MockAuthenticator implements IAuthenticator {
 
@@ -338,6 +341,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Tag("ErrorLogProducer")
     public void forUrl_WithInvalidUrl_ThrowsVaasClientException() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://");
@@ -356,6 +360,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Tag("ErrorLogProducer")
     public void forUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://upload.production.vaas.gdatasecurity.de/nocontenthere");
@@ -391,6 +396,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Tag("ErrorLogProducer")
     public void forUrlMultipleCleanUrls() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");

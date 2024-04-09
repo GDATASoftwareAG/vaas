@@ -15,7 +15,7 @@ vendor/
 *.cache
 
 # local env files
-.env*
+php/tests/vaas/.env
 
 # Log files
 npm-debug.log*
@@ -56,3 +56,5 @@ _trial_temp*/
 ruby/.idea
 ruby/Gemfile.lock
 ruby/test/test.txt
+
+.env
