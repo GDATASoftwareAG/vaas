@@ -37,9 +37,7 @@ dependencies {
 }
 
 test {
-    useJUnitPlatform {
-        excludeTags "ErrorLogProducer"
-    }
+    useJUnitPlatform()
     testLogging {
       events "passed", "skipped", "failed"
 
@@ -47,6 +45,20 @@ test {
       exceptionFormat "full"
       showCauses true
       showStackTraces true
+    }
+}
+
+tasks.register('testWithoutErrorLogProducer', Test) {
+    useJUnitPlatform {
+        excludeTags 'ErrorLogProducer'
+    }
+    testLogging {
+        events "passed", "skipped", "failed"
+
+        showExceptions true
+        exceptionFormat "full"
+        showCauses true
+        showStackTraces true
     }
 }
 
@@ -93,4 +105,3 @@ publishing {
         }
     }
 }
-
