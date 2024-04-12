@@ -2,7 +2,7 @@
 
     This document describes the VaaS Websocket Protocol. All SDKs have to implement this protocol to be able to use the VaaS Websocket API.
 
-    Protocol version: 0.2.0
+    Protocol version: 0.3.0
 
 ## Protocol Internals   
 
@@ -128,7 +128,22 @@ For each request, the server sends a corresponding response. The response contai
     "guid": "...", // Unique identifier of the request
     "verdict": "Clean", // Verdict of the analysis (Unknown, Clean, Malicious, Pub)
     "url": "...", // Optional: Upload URL for the file in the case of an "Unknown" verdict
-    "upload_token": "..." // Optional: Upload token for the file in the case of an "Unknown" verdict
+    "upload_token": "...", // Optional: Upload token for the file in the case of an "Unknown" verdict
+    // optional: a list of detections
+    "detections": [
+        {
+            "engine":2,
+            "file_name":"/tmp/scan/051f699f-b21f-4d33-9cdd-d8b2f01e6118",
+            "virus":"EICAR-Test-File"
+        }
+    ],
+    // optional: file and mime type information as classified by https://github.com/file/file
+    "lib_magic": {
+        {
+            "file_type":"EICAR virus test files",
+            "mime_type":"text/plain"
+        }
+    }
 }
 ```
 
