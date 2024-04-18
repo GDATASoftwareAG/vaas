@@ -3,6 +3,7 @@ package de.gdata.vaas;
 import com.google.gson.JsonParser;
 import lombok.Getter;
 import lombok.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -17,19 +18,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Getter
 public class ResourceOwnerPasswordGrantAuthenticator implements IAuthenticator {
 
-    @Getter
-    private String clientId, username, password;
+    private final String clientId;
+    private final String username;
+    private final String password;
 
-    @Getter
     @NonNull
-    private URI tokenEndpoint;
+    private final URI tokenEndpoint;
 
-    private static HttpClient httpClient = HttpClient.newHttpClient();
+    private static final HttpClient httpClient = HttpClient.newHttpClient();
 
-    public ResourceOwnerPasswordGrantAuthenticator(String clientId, String username, String password, URI tokenEndpoint)
-            throws URISyntaxException {
+    public ResourceOwnerPasswordGrantAuthenticator(String clientId, String username, String password, @NotNull URI tokenEndpoint) {
         this.tokenEndpoint = tokenEndpoint;
         this.clientId = clientId;
         this.username = username;
@@ -42,7 +43,7 @@ public class ResourceOwnerPasswordGrantAuthenticator implements IAuthenticator {
     }
 
     private String encodeValue(String value) throws UnsupportedEncodingException {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     public String getToken() throws IOException, InterruptedException {
