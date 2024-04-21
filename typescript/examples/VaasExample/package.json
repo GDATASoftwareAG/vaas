@@ -12,10 +12,10 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "@types/node": "20.12.5",
+        "@types/node": "20.12.7",
         "gdata-vaas": "^6.2.4",
         "ts-node": "^10.9.2",
-        "typescript": "5.4.4"
+        "typescript": "5.4.5"
     },
     "devDependencies": {
         "dotenv": "^16.4.5",
