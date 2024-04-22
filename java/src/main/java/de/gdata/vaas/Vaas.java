@@ -15,7 +15,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest.BodyPublishers;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
@@ -112,7 +111,7 @@ public class Vaas {
      * @throws TimeoutException              if the request times out
      */
     public VaasVerdict forUrl(URL url) throws VaasInvalidStateException, VaasConnectionClosedException,
-            ExecutionException, InterruptedException, TimeoutException, VaasClientException, VaasServerException {
+            ExecutionException, InterruptedException, TimeoutException, VaasClientException, VaasServerException, URISyntaxException {
         return this.forUrl(url, UUID.randomUUID(), null);
     }
 
@@ -131,7 +130,7 @@ public class Vaas {
      */
     public VaasVerdict forUrl(URL url, VerdictRequestAttributes verdictRequestAttributes)
             throws VaasInvalidStateException, VaasConnectionClosedException,
-            InterruptedException, TimeoutException, VaasClientException, VaasServerException {
+            InterruptedException, TimeoutException, VaasClientException, VaasServerException, URISyntaxException {
         return this.forUrl(url, UUID.randomUUID(), verdictRequestAttributes);
     }
 
@@ -149,7 +148,7 @@ public class Vaas {
      * @throws TimeoutException              if the request times out
      */
     public VaasVerdict forUrl(URL url, UUID guid) throws VaasInvalidStateException, VaasConnectionClosedException,
-            InterruptedException, TimeoutException, VaasClientException, VaasServerException {
+            InterruptedException, TimeoutException, VaasClientException, VaasServerException, URISyntaxException {
         return this.forUrl(url, guid, null);
     }
 
@@ -170,7 +169,7 @@ public class Vaas {
      */
     public VaasVerdict forUrl(@NonNull URL url, UUID guid, VerdictRequestAttributes verdictRequestAttributes)
             throws VaasInvalidStateException, VaasConnectionClosedException,
-            InterruptedException, TimeoutException, VaasClientException, VaasServerException {
+            InterruptedException, TimeoutException, VaasClientException, VaasServerException, URISyntaxException {
         EnsureClientIsConnectedAndAuthenticated();
         try {
             var verdictResponse = this.forUrlAsync(url, guid, verdictRequestAttributes).get(
@@ -186,7 +185,8 @@ public class Vaas {
 
     private CompletableFuture<VerdictResponse> forUrlAsync(URL url, UUID guid,
             VerdictRequestAttributes verdictRequestAttributes)
-            throws VaasConnectionClosedException {
+            throws VaasConnectionClosedException, URISyntaxException {
+        url.toURI();
         var request = new VerdictRequestForUrl(url, this.client.getSessionId(), guid, verdictRequestAttributes,
                 this.options);
         return this.forUrlRequestAsync(request);
@@ -564,7 +564,7 @@ public class Vaas {
     }
 
     private CompletableFuture<Void> uploadStream(InputStream stream, long contentLength, String url, String authToken)
-            throws IOException, URISyntaxException {
+            throws URISyntaxException {
         var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(() -> stream), contentLength);
         var request = HttpRequest
                 .newBuilder(new URI(url))

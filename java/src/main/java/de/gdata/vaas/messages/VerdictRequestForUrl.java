@@ -9,26 +9,21 @@ import lombok.Setter;
 import java.net.URL;
 import java.util.UUID;
 
+@Getter
 public class VerdictRequestForUrl extends MessageType {
-    @Getter
     @NonNull
     String url;
-    @Getter
     @Setter
     @NonNull
     @SerializedName("session_id")
     String sessionId;
-    @Getter
     @NonNull
     String guid;
-    @Getter
     @Setter
     @SerializedName("verdict_request_attributes")
     VerdictRequestAttributes verdictRequestAttributes;
-    @Getter
     @SerializedName("use_hash_lookup")
     transient boolean UseHashLookup;
-    @Getter
     @SerializedName("use_cache")
     boolean UseCache;
 
@@ -52,7 +47,7 @@ public class VerdictRequestForUrl extends MessageType {
     }
 
     public VerdictRequestForUrl(URL url, String sessionId, UUID guid, VerdictRequestAttributes verdictRequestAttributes,
-            VaasOptions options) {
+                                VaasOptions options) {
         this(url, sessionId, guid);
         this.verdictRequestAttributes = verdictRequestAttributes;
     }

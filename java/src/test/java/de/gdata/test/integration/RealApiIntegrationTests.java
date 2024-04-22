@@ -7,6 +7,7 @@ import static org.testng.AssertJUnit.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -33,7 +34,6 @@ import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
 import de.gdata.vaas.exceptions.VaasConnectionClosedException;
 import de.gdata.vaas.exceptions.VaasInvalidStateException;
-import de.gdata.vaas.exceptions.VaasServerException;
 import de.gdata.vaas.messages.Verdict;
 import de.gdata.vaas.messages.VerdictRequest;
 import de.gdata.vaas.messages.VerdictRequestAttributes;
@@ -119,7 +119,7 @@ public class RealApiIntegrationTests {
         class MockAuthenticator implements IAuthenticator {
 
             @Override
-            public String getToken() throws IOException, InterruptedException {
+            public String getToken() {
                 return "arbitrary_wrong_token";
             }
         }
@@ -342,12 +342,12 @@ public class RealApiIntegrationTests {
 
     @Test
     @Tag("ErrorLogProducer")
-    public void forUrl_WithInvalidUrl_ThrowsVaasClientException() throws Exception {
+    public void forUrl_WithoutAuthority_ThrowsURISyntaxException() throws Exception {
         var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://");
-        var e = assertThrows(VaasServerException.class, () -> vaas.forUrl(url_1));
+        var e = assertThrows(URISyntaxException.class, () -> vaas.forUrl(url_1));
         assertEquals(
-                "Cannot send Request. https: is a not a valid URL.",
+                "Expected scheme-specific part at index 6: https:",
                 e.getMessage());
     }
 
