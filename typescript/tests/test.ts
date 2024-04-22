@@ -96,7 +96,7 @@ describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", fun
     const verdict = await vaas.forSha256(
       "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
     );
-    expect(verdict.verdict).to.equal("Clean");
+    expect(verdict.verdict).to.equal("Unknown");
   });
 });
 
