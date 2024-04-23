@@ -122,7 +122,7 @@ async fn from_http_response_stream_returns_malicious_verdict() {
     let vaas = get_vaas().await;
 
     let ct = CancellationToken::from_seconds(10);
-    let response = result.unwrap();
+    let response = result.unwrap().error_for_status().unwrap();
     let content_length: usize = response.content_length().unwrap() as usize;
     let byte_stream = response.bytes_stream();
     let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
@@ -136,7 +136,7 @@ async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malici
     let vaas = get_vaas_with_flags(false, false).await;
 
     let ct = CancellationToken::from_seconds(10);
-    let response = result.unwrap();
+    let response = result.unwrap().error_for_status().unwrap();
     let content_length: usize = response.content_length().unwrap() as usize;
     let byte_stream = response.bytes_stream();
     let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
