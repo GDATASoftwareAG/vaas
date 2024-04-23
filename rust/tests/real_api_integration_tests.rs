@@ -118,7 +118,7 @@ async fn from_sha256_single_malicious_hash() {
 
 #[tokio::test]
 async fn from_http_response_stream_returns_malicious_verdict() {
-    let result = reqwest::get("http://eicar.eu/eicar.com.txt").await;
+    let result = reqwest::get("https://secure.eicar.org/eicar.com.txt").await;
     let vaas = get_vaas().await;
 
     let ct = CancellationToken::from_seconds(10);
@@ -132,7 +132,7 @@ async fn from_http_response_stream_returns_malicious_verdict() {
 
 #[tokio::test]
 async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malicious_verdict() {
-    let result = reqwest::get("http://eicar.eu/eicar.com.txt").await;
+    let result = reqwest::get("https://secure.eicar.org/eicar.com.txt").await;
     let vaas = get_vaas_with_flags(false, false).await;
 
     let ct = CancellationToken::from_seconds(10);
