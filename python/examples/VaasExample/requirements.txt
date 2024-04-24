@@ -1,1 +1,1 @@
-gdata-vaas==4.3.0
+gdata-vaas==4.4.0
