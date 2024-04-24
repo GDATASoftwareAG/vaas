@@ -361,14 +361,12 @@ class Vaas:
     async def __upload(self, token, upload_uri, buffer_or_file, content_length):
         jwt = PyJWT()
         decoded_token = jwt.decode(token, options={"verify_signature": False})
-        trace_id = decoded_token.get("traceId")
         try:
             await self.httpx_client.put(
                 url=upload_uri,
                 content=buffer_or_file,
                 headers={
                     "Authorization": token,
-                    "traceParent": trace_id,
                     "Content-Length": str(content_length),
                 },
                 timeout=UPLOAD_TIMEOUT,
