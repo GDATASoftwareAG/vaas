@@ -249,9 +249,9 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             guid = str(uuid.uuid4())
             verdict = await vaas.for_url("https://secure.eicar.org/eicar.com.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertIsNotNone(verdict["detection"])
-            self.assertEqual(verdict['file_type'], "EICAR virus test files")
-            self.assertEqual(verdict['mime_type'], "text/plain")
+            self.assertIsNotNone(verdict["Detection"])
+            self.assertEqual(verdict['FileType'], "EICAR virus test files")
+            self.assertEqual(verdict['MimeType'], "text/plain")
 
 
 if __name__ == "__main__":
