@@ -13,14 +13,17 @@ public class VaasVerdict {
     @NonNull
     Verdict verdict;
     @Getter
-    ArrayList<Detection> detections;
+    String detection;
     @Getter
-    LibMagic libMagic;
+    String fileType;
+    @Getter
+    String mimeType;
 
     public VaasVerdict(VerdictResponse verdictResponse) {
         this.sha256 = verdictResponse.sha256;
         this.verdict = verdictResponse.verdict;
-        this.detections = verdictResponse.detections;
-        this.libMagic = verdictResponse.libMagic;
+        this.detection = verdictResponse.detection;
+        this.fileType = verdictResponse.fileType;
+        this.mimeType = verdictResponse.mimeType;
     }
 }

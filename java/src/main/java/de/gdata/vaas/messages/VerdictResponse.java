@@ -27,11 +27,14 @@ public class VerdictResponse extends MessageType {
     @SerializedName("upload_token")
     String uploadToken;
     @Getter
-    @SerializedName("detections")
-    ArrayList<Detection> detections;
+    @SerializedName("detection")
+    String detection;
     @Getter
-    @SerializedName("lib_magic")
-    LibMagic libMagic;
+    @SerializedName("file_type")
+    String fileType;
+    @Getter
+    @SerializedName("mime_type")
+    String mimeType;
 
     private VerdictResponse() {
         super(Kind.VerdictResponse);
