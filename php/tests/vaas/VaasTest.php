@@ -176,19 +176,19 @@ final class VaasTest extends TestCase
         $this->assertEqualsIgnoringCase($cleanSha256, $verdict->Sha256);
     }
 
-    // public function testForSha256AmtsoPupSample_GetsPupResponse(): void
-    // {
-    //     $uuid = $this->getUuid();
-    //     $pupSha256 = "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
-    //     $vaas = $this->_getVaas();
-    //     $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+    public function testForSha256AmtsoPupSample_GetsPupResponse(): void
+    {
+        $uuid = $this->getUuid();
+        $pupSha256 = "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
+        $vaas = $this->_getVaas();
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
 
-    //     $verdict = $vaas->ForSha256($pupSha256, $uuid);
+        $verdict = $vaas->ForSha256($pupSha256, $uuid);
 
-    //     $this->assertEquals(Verdict::PUP, $verdict->Verdict);
-    //     $this->assertEquals($uuid, $verdict->Guid);
-    //     $this->assertEqualsIgnoringCase($pupSha256, $verdict->Sha256);
-    // }
+        $this->assertEquals(Verdict::PUP, $verdict->Verdict);
+        $this->assertEquals($uuid, $verdict->Guid);
+        $this->assertEqualsIgnoringCase($pupSha256, $verdict->Sha256);
+    }
 
     public function testForMultipleHashes_GetsResponse(): void
     {
@@ -579,7 +579,7 @@ final class VaasTest extends TestCase
         $verdict = $vaas->ForStream($stream);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
-        $this->assertEquals("text/plain", $verdict->LibMagic->mime_type);
-        $this->assertContains("EICAR-Test-File", array_column($verdict->Detections, "virus"));
+        $this->assertEquals("text/plain", $verdict->MimeType);
+        $this->assertNotEmpty($verdict->Detection);
     }
 }

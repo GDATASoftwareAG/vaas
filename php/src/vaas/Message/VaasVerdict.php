@@ -9,13 +9,15 @@ class VaasVerdict
         $this->Sha256 = $verdictResponse->sha256 ?? "";
         $this->Verdict = $verdictResponse->verdict ?? Verdict::UNKNOWN;
         $this->Guid = $verdictResponse->guid ?? "";
-        $this->LibMagic = $verdictResponse->lib_magic ?? null;
-        $this->Detections = $verdictResponse->detections ?? null;
+        $this->MimeType = $verdictResponse->mime_type ?? null;
+        $this->FileType = $verdictResponse->file_type ?? null;
+        $this->Detection = $verdictResponse->detection ?? null;
     }
 
     public string $Sha256;
     public Verdict $Verdict;
     public string $Guid;
-    public ?LibMagic $LibMagic;
-    public ?array $Detections;
+    public ?string $FileType;
+    public ?string $MimeType;
+    public ?string $Detection;
 }
