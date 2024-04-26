@@ -9,10 +9,12 @@ require_relative '../lib/vaas/vaas_main'
 # # test locally with .env file (comment this when push)
 # require 'dotenv'
 # Dotenv.load
-# CLIENT_ID = ENV['CLIENT_ID']
-# CLIENT_SECRET = ENV['CLIENT_SECRET']
-# TOKEN_URL = ENV['TOKEN_URL']
-# VAAS_URL = ENV['VAAS_URL']
+# CLIENT_ID = ENV.fetch('CLIENT_ID')
+# CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
+# TOKEN_URL = ENV.fetch('TOKEN_URL')
+# VAAS_URL = ENV.fetch('VAAS_URL')
+# USER_NAME = ENV.fetch('VAAS_USER_NAME')
+# PASSWORD = ENV.fetch('VAAS_PASSWORD')
 
 # automatic test (need this when push)
 CLIENT_ID = ENV.fetch('CLIENT_ID')
@@ -40,7 +42,7 @@ class VaasTest < Minitest::Test
 
     describe 'succeeds' do
 
-      specify 'for_sha356' do
+      specify 'for_sha256' do
         vaas, token = create
         Async do
           vaas.connect(token)
@@ -75,24 +77,25 @@ class VaasTest < Minitest::Test
 
           result = vaas.for_url("https://secure.eicar.org/eicar.com.txt")
           verdict = result.wait.verdict
-          assert_equal "Malicious", verdict
+          assert_equal "Malicious", result.wait.verdict
+          assert_empty result.wait.detection
 
           vaas.close
         end
       end
 
-      # specify 'pup' do
-      #   vaas, token = create
-      #   Async do
-      #     vaas.connect(token)
+      specify 'pup' do
+        vaas, token = create
+        Async do
+          vaas.connect(token)
 
-      #     result = vaas.for_sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
-      #     verdict = result.wait.verdict
-      #     assert_equal "Pup", verdict
+          result = vaas.for_sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad")
+          verdict = result.wait.verdict
+          assert_equal "Pup", verdict
 
-      #     vaas.close
-      #   end
-      # end
+          vaas.close
+        end
+      end
 
       specify 'for_big_file' do
         skip
