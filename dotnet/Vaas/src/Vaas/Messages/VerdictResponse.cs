@@ -34,11 +34,14 @@ public class VerdictResponse
     [JsonPropertyName("upload_token")]
     public string? UploadToken { get; init; }
 
-    [JsonPropertyName("detections")]
-    public List<Detection>? Detections { get; init; }
+    [JsonPropertyName("detection")]
+    public string? Detection { get; init; }
 
-    [JsonPropertyName("lib_magic")]
-    public LibMagic? LibMagic { get; init; }
+    [JsonPropertyName("file_type")]
+    public string? FileType { get; init; }
+    
+    [JsonPropertyName("mime_type")]
+    public string? MimeType { get; init; }
 
     [MemberNotNullWhen(true, nameof(Sha256), nameof(Guid))]
     public bool IsValid => !string.IsNullOrWhiteSpace(Sha256)

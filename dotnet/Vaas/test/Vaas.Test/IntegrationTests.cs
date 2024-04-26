@@ -317,10 +317,9 @@ public class IntegrationTests
         var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
 
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
-        Assert.NotNull(verdict.LibMagic);
-        Assert.NotNull(verdict.Detections);
-        Assert.Equal("text/plain", verdict.LibMagic.MimeType);
-        Assert.Contains(verdict.Detections, detection => detection.Virus == "EICAR_TEST_FILE");
+        Assert.Equal("text/plain", verdict.FileType);
+        Assert.Equal("EICAR virus test files", verdict.MimeType);
+        Assert.Contains("EICAR-Test-File", verdict.Detection);
     }
 
     [Fact]
@@ -332,9 +331,8 @@ public class IntegrationTests
         var verdict = await vaas.ForUrlAsync(uri, CancellationToken.None);
 
         Assert.Equal(Verdict.Malicious, verdict.Verdict);
-        Assert.NotNull(verdict.LibMagic);
-        Assert.NotNull(verdict.Detections);
-        Assert.Equal("text/plain", verdict.LibMagic.MimeType);
-        Assert.Contains(verdict.Detections, detection => detection.Virus == "EICAR_TEST_FILE");
+        Assert.Equal("text/plain", verdict.FileType);
+        Assert.Equal("EICAR virus test files", verdict.MimeType);
+        Assert.Contains("EICAR-Test-File", verdict.Detection);
     }
 }
