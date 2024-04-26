@@ -1,8 +1,6 @@
 import { JsonProperty, JsonObject } from "typescript-json-serializer";
 import { Kind, Message } from "./message";
 import { Verdict } from "../Verdict";
-import { Detection } from "./detection";
-import { LibMagic } from "./lib_magic";
 
 @JsonObject()
 export class VerdictResponse extends Message {
@@ -12,8 +10,9 @@ export class VerdictResponse extends Message {
     @JsonProperty() public verdict: Verdict,
     @JsonProperty() public upload_token: string | undefined,
     @JsonProperty() public url: string | undefined,
-    @JsonProperty() public detections: Detection[] | undefined,
-    @JsonProperty() public lib_magic: LibMagic | undefined,
+    @JsonProperty() public detection: string | undefined,
+    @JsonProperty() public file_type: string | undefined,
+    @JsonProperty() public mime_type: string | undefined,
   ) {
     super(Kind.VerdictResponse);
   }
