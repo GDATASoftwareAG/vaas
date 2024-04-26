@@ -21,6 +21,7 @@ CLIENT_ID = ENV.fetch('CLIENT_ID')
 CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
 TOKEN_URL = ENV.fetch('TOKEN_URL')
 VAAS_URL = ENV.fetch('VAAS_URL')
+VAAS_CLIENT_ID = ENV.fetch('VAAS_CLIENT_ID')
 USER_NAME = ENV.fetch('VAAS_USER_NAME')
 PASSWORD = ENV.fetch('VAAS_PASSWORD')
 
@@ -114,7 +115,7 @@ class VaasTest < Minitest::Test
 
       specify 'authenticate' do
         authenticator = VAAS::ResourceOwnerPasswordGrantAuthenticator.new(
-          "vaas-customer",
+          VAAS_CLIENT_ID,
           USER_NAME,
           PASSWORD,
           TOKEN_URL
