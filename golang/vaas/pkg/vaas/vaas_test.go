@@ -339,18 +339,16 @@ func TestVaas_ForStream_WithStreamFromUrl_RetunsMaliciousWithDetectionsAndMimeTy
 		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
 	}
 
-	if verdict.LibMagic.MimeType != "text/plain" {
-		t.Errorf("expected mime type to be text/plain, got %v", verdict.LibMagic.MimeType)
+	if verdict.MimeType != "text/plain" {
+		t.Errorf("expected mime type to be text/plain, got %v", verdict.MimeType)
 	}
 
-	if len(verdict.Detections) == 0 {
-		t.Errorf("expected detections, got none")
+	if verdict.Detection == "" {
+		t.Errorf("expected a detection, got empty string")
 	}
 
-	for _, detection := range verdict.Detections {
-		if detection.Virus == "EICAR_TEST_FILE" {
-			return
-		}
+	if verdict.Detection != "EICAR-Test-File" {
+		t.Errorf("detection has to be EICAR-Test-File, got %v", verdict.Detection)
 	}
 }
 
