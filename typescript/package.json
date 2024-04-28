@@ -46,7 +46,7 @@
     "isomorphic-ws": "5.0.0",
     "typescript-json-serializer": "6.0.1",
     "uuid": "9.0.1",
-    "ws": "8.16.0"
+    "ws": "8.17.0"
   },
   "scripts": {
     "build": "npx tsc",

@@ -9,8 +9,8 @@ dependencies:
     specifier: 20.12.7
     version: 20.12.7
   gdata-vaas:
-    specifier: ^6.2.4
-    version: 6.2.4
+    specifier: ^6.2.5
+    version: 6.2.5
   ts-node:
     specifier: ^10.9.2
     version: 10.9.2(@types/node@20.12.7)(typescript@5.4.5)
@@ -162,8 +162,8 @@ packages:
       mime-types: 2.1.35
     dev: false
 
-  /gdata-vaas@6.2.4:
-    resolution: {integrity: sha512-G5jG9hRY5TqxJoVMop2OpTNSKLXTItheilTuEfJf3IeJJxd59fv7wIgexzPXzOSAN7zQ+mICReyngw3+Kn2Lbw==}
+  /gdata-vaas@6.2.5:
+    resolution: {integrity: sha512-MglxxFmp0QHGbBBDP82EuJLBMB+SPoJylwNsj1kOwh8Za76zifLGCUaNdfWowprFIVmx2ItfwUouY2/kmvJeWw==}
     dependencies:
       '@types/uuid': 9.0.8
       '@types/ws': 8.5.10
@@ -208,8 +208,8 @@ packages:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
     dev: false
 
-  /reflect-metadata@0.1.13:
-    resolution: {integrity: sha512-Ts1Y/anZELhSsjMcU605fU9RE4Oi3p5ORujwbIKXfWa+0Zxs510Qrmrce5/Jowq3cHSZSJqBjypxmHarc+vEWg==}
+  /reflect-metadata@0.1.14:
+    resolution: {integrity: sha512-ZhYeb6nRaXCfhnndflDK8qI6ZQ/YcWZCISRAWICW9XYqMUwjZM9Z0DveWX/ABN01oxSHwVxKQmxeYZSsm0jh5A==}
     dev: false
 
   /ts-node@10.9.2(@types/node@20.12.7)(typescript@5.4.5):
@@ -250,7 +250,7 @@ packages:
   /typescript-json-serializer@6.0.1:
     resolution: {integrity: sha512-95UQOeV3V+WIx5+7dBZd6/pN+cQSsGXxIdDvPmYhkHYH6VrIgQ3DK+IM3ixKVjFwvch8LnWhIY3F/Zhp4bNfSA==}
     dependencies:
-      reflect-metadata: 0.1.13
+      reflect-metadata: 0.1.14
       tslib: 2.6.2
     dev: false
 
