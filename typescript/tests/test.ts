@@ -232,14 +232,14 @@ describe("Test verdict requests", function () {
     expect(verdict.sha256.toUpperCase()).to.equal(sha256);
   }).timeout(45000);
 
-  // it("returns Pup for AMTSO pup sample", async () => {
-  //   const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-  //   const sha256 =
-  //     "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
-  //   let verdict = await vaas.forSha256(sha256);
-  //   expect(verdict.verdict).to.equal("Pup");
-  //   expect(verdict.sha256).to.equal(sha256);
-  // });
+  it("returns Pup for AMTSO pup sample", async () => {
+    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const sha256 =
+      "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
+    let verdict = await vaas.forSha256(sha256);
+    expect(verdict.verdict).to.equal("Pup");
+    expect(verdict.sha256).to.equal(sha256);
+  });
 
   it('if a clean url is submitted, a verdict "clean" is expected', async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
@@ -264,9 +264,9 @@ describe("Test verdict requests", function () {
     stream.push(null);
     const verdict = await vaas.forStream(stream);
     expect(verdict.verdict).to.equal("Clean");
-    expect(verdict.detections).to.be.empty;
-    expect(verdict.libMagic?.file_type).to.equal("ASCII text, with no line terminators");
-    expect(verdict.libMagic?.mime_type).to.equal("text/plain");
+    expect(verdict.detection).to.be.undefined;
+    expect(verdict.file_type).to.equal("ASCII text, with no line terminators");
+    expect(verdict.mime_type).to.equal("text/plain");
   });
 
   it('if a EICAR stream is submitted, a verdict "malicious" is expected', async () => {
@@ -279,9 +279,9 @@ describe("Test verdict requests", function () {
     stream.push(null);
     const verdict = await vaas.forStream(stream);
     expect(verdict.verdict).to.equal("Malicious");
-    expect(verdict.detections).to.be.not.empty;
-    expect(verdict.libMagic?.file_type).to.equal("EICAR virus test files");
-    expect(verdict.libMagic?.mime_type).to.equal("text/plain");
+    expect(verdict.detection).to.be.not.empty;
+    expect(verdict.file_type).to.equal("EICAR virus test files");
+    expect(verdict.mime_type).to.equal("text/plain");
   });
 
   it('if a EICAR stream from an url is submitted, a response with verdict, libmagic & detections is expected', async () => {
@@ -292,9 +292,9 @@ describe("Test verdict requests", function () {
     );
     const verdict = await vaas.forStream(response.data);
     expect(verdict.verdict).to.equal("Malicious");
-    expect(verdict.detections).to.be.not.empty;
-    expect(verdict.libMagic?.file_type).to.equal("EICAR virus test files");
-    expect(verdict.libMagic?.mime_type).to.equal("text/plain");
+    expect(verdict.detection).to.be.not.empty;
+    expect(verdict.file_type).to.equal("EICAR virus test files");
+    expect(verdict.mime_type).to.equal("text/plain");
   });
 });
 
