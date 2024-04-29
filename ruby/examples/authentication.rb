@@ -5,7 +5,7 @@ require 'async'
 
 
 def main
-    client_id = "vaas-customer"
+    client_id = ENV.fetch("VAAS_CLIENT_ID")
     client_secret = ENV.fetch("CLIENT_SECRET")
     user_name = ENV.fetch("VAAS_USER_NAME")
     password = ENV.fetch("VAAS_PASSWORD")
