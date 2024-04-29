@@ -514,7 +514,6 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    @Disabled("Temporary disabled")
     public void forStream_WithEicarFile_ReturnsMaliciousVerdictWithDetections() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
