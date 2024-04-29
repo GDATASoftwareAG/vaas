@@ -130,20 +130,10 @@ For each request, the server sends a corresponding response. The response contai
     "url": "...", // Optional: Upload URL for the file in the case of an "Unknown" verdict
     "upload_token": "...", // Optional: Upload token for the file in the case of an "Unknown" verdict
     // optional: a list of detections
-    "detections": [
-        {
-            "engine":2,
-            "file_name":"/tmp/scan/051f699f-b21f-4d33-9cdd-d8b2f01e6118",
-            "virus":"EICAR-Test-File"
-        }
-    ],
+    "detection": "EICAR-Test-File",
     // optional: file and mime type information as classified by https://github.com/file/file
-    "lib_magic": {
-        {
-            "file_type":"EICAR virus test files",
-            "mime_type":"text/plain"
-        }
-    }
+    "file_type": "EICAR virus test files",
+    "mime_type": "text/plain"
 }
 ```
 
