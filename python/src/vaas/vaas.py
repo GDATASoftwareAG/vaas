@@ -99,8 +99,9 @@ def map_response(verdict_response):
         "Sha256": verdict_response.get("sha256"),
         "Guid": verdict_response.get("guid"),
         "Verdict": verdict_response.get("verdict"),
-        "LibMagic": verdict_response.get("lib_magic"),
-        "Detections": verdict_response.get("detections"),
+        "Detection": verdict_response.get("detection"),
+        "FileType": verdict_response.get("file_type"),
+        "MimeType": verdict_response.get("mime_type")
     }
 
 

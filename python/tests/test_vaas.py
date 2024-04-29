@@ -119,19 +119,19 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(verdict["Guid"].casefold(), guid)
             )
 
-    # async def test_for_sha256_returns_pup_for_amtso(self):
-    #     async with await create_and_connect() as vaas:
-    #         guid = str(uuid.uuid4())
-    #         verdict = await vaas.for_sha256(
-    #             "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
-    #             guid=guid
-    #         )
-    #         self.assertEqual(verdict["Verdict"], "Pup")
-    #         self.assertEqual(
-    #             verdict["Sha256"].casefold(),
-    #             "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad".casefold(),
-    #         )
-    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    async def test_for_sha256_returns_pup_for_amtso(self):
+        async with await create_and_connect() as vaas:
+            guid = str(uuid.uuid4())
+            verdict = await vaas.for_sha256(
+                "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
+                guid=guid
+            )
+            self.assertEqual(verdict["Verdict"], "Pup")
+            self.assertEqual(
+                verdict["Sha256"].casefold(),
+                "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad".casefold(),
+            )
+            self.assertEqual(verdict["Guid"].casefold(), guid)
 
     async def test_for_buffer_returns_malicious_for_eicar(self):
         async with await create_and_connect() as vaas:
@@ -249,9 +249,9 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
             guid = str(uuid.uuid4())
             verdict = await vaas.for_url("https://secure.eicar.org/eicar.com.txt", guid=guid)
             self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertIsNotNone(verdict["Detections"])
-            self.assertEqual(verdict["LibMagic"]['file_type'], "EICAR virus test files")
-            self.assertEqual(verdict["LibMagic"]['mime_type'], "text/plain")
+            self.assertIsNotNone(verdict["Detection"])
+            self.assertEqual(verdict['FileType'], "EICAR virus test files")
+            self.assertEqual(verdict['MimeType'], "text/plain")
 
 
 if __name__ == "__main__":
