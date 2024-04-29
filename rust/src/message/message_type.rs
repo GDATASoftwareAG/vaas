@@ -37,7 +37,10 @@ mod tests {
             "guid": "9dae843d-e947-41db-ad39-ec73704529ed",
             "verdict": "Clean",
             "url": null,
-            "upload_token": null
+            "upload_token": null,
+            "detection": "",
+            "file_type": "",
+            "mime_type": ""
         }
         "#
         .to_string();

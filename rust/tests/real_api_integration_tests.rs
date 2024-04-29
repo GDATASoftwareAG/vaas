@@ -4,7 +4,7 @@ use reqwest::Url;
 use std::convert::TryFrom;
 use std::ops::Deref;
 use vaas::auth::authenticators::{ClientCredentials, Password};
-use vaas::{message::Verdict, CancellationToken, Connection, LibMagic, Sha256, Vaas};
+use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
 async fn get_vaas_with_flags(use_cache: bool, use_hash_lookup: bool) -> Connection {
     let token_url: Url = dotenv::var("TOKEN_URL")
@@ -131,7 +131,8 @@ async fn from_http_response_stream_returns_malicious_verdict() {
 }
 
 #[tokio::test]
-async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malicious_verdict() {
+async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malicious_verdict_and_mimetype_and_detection(
+) {
     let result = reqwest::get("https://secure.eicar.org/eicar.com.txt").await;
     let vaas = get_vaas_with_flags(false, false).await;
 
@@ -142,6 +143,18 @@ async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malici
     let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
 
     assert_eq!(Verdict::Malicious, verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Some("text/plain"),
+        verdict.as_ref().unwrap().mime_type.as_deref()
+    );
+    assert_eq!(
+        Some("EICAR virus test files"),
+        verdict.as_ref().unwrap().file_type.as_deref()
+    );
+    assert_eq!(
+        Some("EICAR-Test-File"),
+        verdict.as_ref().unwrap().detection.as_deref()
+    );
 }
 
 #[tokio::test]
@@ -291,18 +304,13 @@ async fn for_file_single_malicious_file() {
 
     assert_eq!(Verdict::Malicious, verdict.verdict);
     assert_eq!(Sha256::try_from(&tmp_file).unwrap(), verdict.sha256);
-    let detections = verdict.detections.unwrap();
-    assert_eq!(2, detections[0].engine);
-    assert_eq!("EICAR-Test-File".to_string(), detections[0].virus);
-    assert_eq!(3, detections[1].engine);
-    assert_eq!("EICAR_TEST_FILE".to_string(), detections[1].virus);
+    assert_eq!("EICAR-Test-File".to_string(), verdict.detection.unwrap());
     assert_eq!(
-        Some(LibMagic {
-            file_type: "EICAR virus test files".to_string(),
-            mime_type: "text/plain".to_string()
-        }),
-        verdict.lib_magic
+        "EICAR virus test files".to_string(),
+        verdict.file_type.unwrap()
     );
+    assert_eq!("text/plain".to_string(), verdict.mime_type.unwrap());
+
     std::fs::remove_file(&tmp_file).unwrap();
 }
 
