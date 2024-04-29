@@ -9,6 +9,7 @@ class VerdictResponse extends BaseMessage
     public string $guid;
     public string $sha256;
     public ?string $upload_token;
-    public ?LibMagic $lib_magic;
-    public ?array $detections;
+    public ?string $file_type;
+    public ?string $mime_type;
+    public ?string $detection;
 }
