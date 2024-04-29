@@ -524,9 +524,9 @@ public class RealApiIntegrationTests {
         var vaas = this.getVaasWithCredentials();
         var verdict = vaas.forStream(inputStream, contentLength);
 
-        assertNotNull(verdict.getDetections());
+        assertNotNull(verdict.getDetection());
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertEquals("EICAR virus test files", verdict.getLibMagic().getFileType());
-        assertEquals("text/plain", verdict.getLibMagic().getMimeType());
+        assertEquals("EICAR virus test files", verdict.getFileType());
+        assertEquals("text/plain", verdict.getMimeType());
     }
 }
