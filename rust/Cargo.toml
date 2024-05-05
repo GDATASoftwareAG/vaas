@@ -8,7 +8,7 @@ description = "Check files and hashes for malicious content."
 readme = "Readme.md"
 keywords = ["malware", "anti-virus", "security"]
 categories = ["api-bindings"]
-homepage = "https://github.com/GDATASoftwareAG/vaas"
+repository = "https://github.com/GDATASoftwareAG/vaas"
 
 [dependencies]
 websockets = "0.3.0"
