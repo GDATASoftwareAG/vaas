@@ -12,19 +12,19 @@ homepage = "https://github.com/GDATASoftwareAG/vaas"
 
 [dependencies]
 websockets = "0.3.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-thiserror = "1.0"
+serde = { version = "1.0.200", features = ["derive"] }
+serde_json = "1.0.116"
+thiserror = "1.0.59"
 uuid = { version = "1.8", features = ["serde", "v4"] }
-reqwest = { version = "0.12", features = ["stream"] }
-regex = "1.10"
+reqwest = { version = "0.12.4", features = ["stream"] }
+regex = "1.10.4"
 tokio = { version = "1.37", features = ["sync", "fs"] }
-sha2 = "0.10"
-futures = "0.3"
-rand = "0.8"
-async-trait = "0.1"
+sha2 = "0.10.8"
+futures = "0.3.30"
+rand = "0.8.5"
+async-trait = "0.1.80"
 bytes = "1.6.0"
-tokio-util = "0.7"
+tokio-util = "0.7.11"
 futures-util = "0.3.30"
 tokio-stream = "0.1.15"
 
