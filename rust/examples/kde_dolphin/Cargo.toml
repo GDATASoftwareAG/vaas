@@ -9,10 +9,10 @@ build = "build.rs"
 publish = false
 
 [dependencies]
-slint = "1.5"
+slint = "1.5.1"
 vaas = { path = "../.."}
 tokio = { version = "1.37", features = ["rt", "macros", "rt-multi-thread"] }
-structopt = "0.3"
+structopt = "0.3.26"
 
 [build-dependencies]
-slint-build = "1.5"
+slint-build = "1.5.1"
