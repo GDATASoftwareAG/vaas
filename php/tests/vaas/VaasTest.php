@@ -4,15 +4,12 @@ namespace VaasTesting;
 
 require_once __DIR__ . "/vendor/autoload.php";
 
-use Amp\ByteStream\BufferedReader;
 use Amp\ByteStream\Payload;
 use Amp\ByteStream\ReadableResourceStream;
-use Amp\ByteStream\ReadableStream;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\StreamedContent;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Psr7\Stream;
 use JsonMapper_Exception;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
@@ -34,7 +31,6 @@ use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Sha256;
 use VaasSdk\VaasOptions;
-use WebSocket\BadOpcodeException;
 
 final class VaasTest extends TestCase
 {
@@ -424,21 +420,6 @@ final class VaasTest extends TestCase
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
 
         $invalidUrl = "https://";
-        $verdict = $vaas->ForUrl($invalidUrl);
-        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
-    }
-
-    /**
-     * @throws VaasAuthenticationException
-     * @throws TimeoutException
-     */
-    public function testForUrl_WithNull_ThrowsVaasClientException()
-    {
-        $vaas = $this->_getVaas();
-        $this->expectException(\InvalidArgumentException::class);
-        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-
-        $invalidUrl = null;
         $verdict = $vaas->ForUrl($invalidUrl);
         $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
     }

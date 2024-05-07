@@ -2,15 +2,13 @@
 
 namespace VaasSdk\Message;
 
-use Ramsey\Uuid\Rfc4122\UuidV4;
-
 class VerdictRequestForUrl extends BaseVerdictRequest
 {
     public string $url;
 
-    public function __construct(string $url, string $uuid = null, string $SessionId)
+    public function __construct(string $url, string $uuid = null)
     {
-        parent::__construct(Kind::VerdictRequestForUrl, $uuid, $SessionId);
+        parent::__construct(Kind::VerdictRequestForUrl, $uuid);
         $this->url = $url;
     }
 }

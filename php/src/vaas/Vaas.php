@@ -10,15 +10,12 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\StreamedContent;
 use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Psr7\Stream;
 use InvalidArgumentException;
 use JsonMapper_Exception;
-use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Exceptions\FileDoesNotExistException;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
-use VaasSdk\Exceptions\VaasClientException;
 use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\Message\Verdict;
@@ -30,7 +27,6 @@ use VaasSdk\VaasOptions;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use VaasSdk\Message\VaasVerdict;
-use WebSocket\BadOpcodeException;
 
 class Vaas
 {
@@ -92,7 +88,7 @@ class Vaas
     /**
      * Gets verdict by url
      *
-     * @param string|null $url url to get the verdict for
+     * @param string $url url to get the verdict for
      * @param string|null $uuid unique identifier
      *
      * @return VaasVerdict the verdict
@@ -100,9 +96,9 @@ class Vaas
      * @throws TimeoutException
      * @throws InvalidArgumentException
      */
-    public function ForUrl(?string $url, string $uuid = null): VaasVerdict
+    public function ForUrl(string $url, string $uuid = null): VaasVerdict
     {
-        if ($this->_logger != null) $this->_logger->debug("ForUrlWithFlags", ["URL:" => $url]);
+        $this->_logger->debug("ForUrlWithFlags", ["URL:" => $url]);
 
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
             throw new \InvalidArgumentException("Url is not valid");
@@ -211,31 +207,15 @@ class Vaas
         $request->use_hash_lookup = $this->_options->UseHashLookup;
         return $this->_vaasWebSocket->sendRequest($request);
     }
-
-    /**
-     * @return VerdictResponse
-     * @throws TimeoutException
-     *
-     */
+    
     private function _verdictResponseForUrl(string $url, string $uuid = null): VerdictResponse
     {
-        if ($this->_logger != null)
-            $this->_logger->debug("_verdictResponseForUrl");
+        $this->_logger->debug("_verdictResponseForUrl");
 
-        if (!isset($this->_vaasConnection)) {
-            throw new VaasInvalidStateException("connect() was not called");
-        }
-        $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
-
-        $request = new VerdictRequestForUrl($url, $uuid, $this->_vaasConnection->SessionId);
+        $request = new VerdictRequestForUrl($url, $uuid);
         $request->use_cache = $this->_options->UseCache;
         $request->use_hash_lookup = $this->_options->UseHashLookup;
-        $websocket->send(json_encode($request));
-
-        if ($this->_logger != null)
-            $this->_logger->debug("verdictResponse", ["VerdictResponse" => json_encode($request)]);
-
-        return $this->_waitForVerdict($request->guid);
+        return $this->_vaasWebSocket->sendRequest($request)->await();
     }
 
     private function _verdictResponseForStream(string $uuid = null): VerdictResponse
