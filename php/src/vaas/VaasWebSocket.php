@@ -4,9 +4,15 @@ namespace VaasSdk;
 
 use Amp\Future;
 use Amp\Websocket\Client\WebsocketConnection;
+use Error;
+use JsonMapper;
 use Ramsey\Uuid\Rfc4122\UuidV4;
+use VaasSdk\Message\AuthRequest;
+use VaasSdk\Message\AuthResponse;
+use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\BaseVerdictRequest;
-use VaasSdk\Message\VerdictResponse;
+use VaasSdk\Message\Kind;
+use WebSocket\Exception;
 use function Amp\async;
 use function Amp\Websocket\Client\connect;
 
@@ -14,9 +20,9 @@ class VaasWebSocket {
     private string $url;
     private AuthenticatorInterface $authenticator;
 
-    private ?Future $futureConnection;
+    private ?Future $futureConnection = null;
     private function getConnection(): WebsocketConnection { return $this->futureConnection->await(); }
-    private ?Future $futureSessionId;
+    private ?Future $futureSessionId = null;
     private function getSessionId(): string { return $this->futureSessionId->await(); }
 
 
@@ -25,7 +31,7 @@ class VaasWebSocket {
         $this->authenticator = $authenticator;
     }
 
-    public function sendRequest(BaseVerdictRequest $request, string $requestId = null): VerdictResponse {
+    public function sendRequest(BaseVerdictRequest $request, string $requestId = null): void {
         $this->connectAndAuthenticate()->await();
         $connection = $this->getConnection();
         $request->session_id = $this->getSessionId();
@@ -40,22 +46,24 @@ class VaasWebSocket {
 
     private function connectAndAuthenticate(): Future {
         if ($this->futureConnection == null) {
-            $this->futureConnection = async(static function($url) { connect($url); }, $this->url);
-            $this->futureSessionId = $this->futureConnection->map(static function($connection)  { return $this->authenticate($connection); });
+            $this->futureConnection = async(static function($url) { return connect($url); }, $this->url);
+            $this->futureSessionId = $this->futureConnection->map(function($connection)  { return $this->authenticate($connection, $this->authenticator); });
         }
         return $this->futureSessionId;
     }
 
-    private function authenticate($connection, $authenticator): void {
-        sendAuthRequest($connection, $authenticator);
+    private function authenticate($connection, $authenticator): string {
+        $this->sendAuthRequest($connection, $authenticator);
         foreach ($connection as $message) {
-            $parsedMessage = parseMessage($message);
+            $parsedMessage = $this->parseMessage($message);
             print_r($parsedMessage);
             if ($parsedMessage instanceof AuthResponse) {
                 print("sessionId " . $parsedMessage->session_id);
-                break;
+                return $parsedMessage->session_id;
             }
         }
+        // TODO: Use correct exception
+        throw new Exception();
     }
 
     private function sendAuthRequest($connection, $authenticator): void {
@@ -64,7 +72,7 @@ class VaasWebSocket {
         $connection->sendText(json_encode($authRequest));
     }
 
-    function parseMessage($message) {
+    private function parseMessage($message) {
         $jsonObject = json_decode($message->read());
         $baseMessage = (new JsonMapper())->map(
             $jsonObject,
