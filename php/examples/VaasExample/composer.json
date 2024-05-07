@@ -9,6 +9,7 @@
         }
     ],
     "require": {
-        "gdata/vaas": "@dev"
+        "gdata/vaas": "@dev",
+        "vlucas/phpdotenv": "^5.5"
     }
 }
