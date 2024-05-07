@@ -107,7 +107,6 @@ class VaasWebSocket
         $this->sendAuthRequest($connection, $authenticator);
         foreach ($connection as $message) {
             $parsedMessage = $this->parseMessage($message);
-            print_r($parsedMessage);
             if ($parsedMessage instanceof AuthResponse) {
                 // TODO: Log "authenticated with session id"
                 return $parsedMessage->session_id;
@@ -132,7 +131,6 @@ class VaasWebSocket
     {
         $jsonObject = json_decode($message->read());
         // TODO: Log debug
-        print_r($jsonObject);
         $baseMessage = (new JsonMapper())->map(
             $jsonObject,
             new BaseMessage()
