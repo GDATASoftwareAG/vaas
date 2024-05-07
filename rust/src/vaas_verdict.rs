@@ -15,8 +15,6 @@ pub struct VaasVerdict {
     pub sha256: Sha256,
     /// Verdict for the file
     pub verdict: Verdict,
-    /// Detection
-    pub detection: Option<String>,
     /// File type as classified by https://www.darwinsys.com/file/
     pub file_type: Option<String>,
     /// mime type as classified by https://www.darwinsys.com/file/
@@ -29,7 +27,6 @@ impl TryFrom<VerdictResponse> for VaasVerdict {
         Ok(Self {
             sha256: Sha256::try_from(verdict_response.sha256.as_str())?,
             verdict: Verdict::try_from(&verdict_response)?,
-            detection: verdict_response.detection,
             file_type: verdict_response.file_type,
             mime_type: verdict_response.mime_type,
         })
