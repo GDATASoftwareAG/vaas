@@ -38,6 +38,7 @@ class VaasWebSocket {
     public function sendRequest(BaseVerdictRequest $request, string $requestId = null): Future {
         $this->connectAndAuthenticate()->await();
         $connection = $this->getConnection();
+        $request->session_id = $this->getSessionId();
         if ($requestId == null) {
             $requestId = UuidV4::getFactory()->uuid4()->toString();
         }
