@@ -2,6 +2,7 @@
 
 namespace VaasSdk;
 
+use Amp\Future;
 use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Stream;
@@ -60,10 +61,11 @@ class Vaas
     /**
      */
     public function Connect(
-        string $token,
+        string          $token,
         ?VaasConnection $vaasConnection = null
-    ) {
-        
+    )
+    {
+
     }
 
     /**
@@ -81,14 +83,11 @@ class Vaas
         if ($this->_logger != null)
             $this->_logger->debug("ForSha256WithFlags", ["Sha256" => $hashString]);
 
-        $sha256 = Sha256::TryFromString($hashString);
-
-        return new VaasVerdict(
-            $this->_verdictResponseForSha256(
-                $sha256,
+        return
+            $this->ForSha256Async(
+                $hashString,
                 $uuid
-            )
-        );
+            )->await();
     }
 
     /**
@@ -119,16 +118,16 @@ class Vaas
     /**
      * Gets verdict by file
      *
-     * @param string $path   the path to get the verdict for
-     * @param bool   $upload should the file be uploaded if initial verdict is unknown
-     * @param string $uuid   unique identifier
-     * 
-     * @throws Exceptions\TimeoutException
+     * @param string $path the path to get the verdict for
+     * @param bool $upload should the file be uploaded if initial verdict is unknown
+     * @param string $uuid unique identifier
+     *
+     * @return VaasVerdict the verdict
      * @throws Exceptions\FileDoesNotExistException
      * @throws Exceptions\InvalidSha256Exception
      * @throws Exceptions\UploadFailedException
-     * 
-     * @return VaasVerdict the verdict
+     *
+     * @throws Exceptions\TimeoutException
      */
     public function ForFile(string $path, $upload = true, string $uuid = null): VaasVerdict
     {
@@ -139,7 +138,7 @@ class Vaas
         if ($this->_logger != null)
             $this->_logger->debug("Calculated Hash", ["Sha256" => $sha256]);
 
-        $verdictResponse = $this->_verdictResponseForSha256(
+        $verdictResponse = $this->ForSha256Async(
             $sha256,
             $uuid
         );
@@ -205,12 +204,14 @@ class Vaas
     }
 
     /**
-     * @param Sha256 $sha256
+     * @param string $hashString
      * @param string|null $uuid
-     * @return VerdictResponse
+     * @return Future<VaasVerdict>
+     * @throws InvalidSha256Exception
      */
-    private function _verdictResponseForSha256(Sha256 $sha256, string $uuid = null): VerdictResponse
+    public function ForSha256Async(string $hashString, string $uuid = null): Future
     {
+        $sha256 = Sha256::TryFromString($hashString);
         if ($this->_logger != null)
             $this->_logger->debug("_verdictResponseForSha256");
 
@@ -218,14 +219,15 @@ class Vaas
         $request->use_cache = $this->_options->UseCache;
         $request->use_hash_lookup = $this->_options->UseHashLookup;
         $future = $this->_vaasWebSocket->sendRequest($request);
-
-        return $future->await();
+        return $future->map(function ($verdictResponse) {
+            return new VaasVerdict($verdictResponse);
+        });
     }
 
     /**
-     * @throws TimeoutException
-     * 
      * @return VerdictResponse
+     * @throws TimeoutException
+     *
      */
     private function _verdictResponseForUrl(string $url, string $uuid = null): VerdictResponse
     {
@@ -281,7 +283,7 @@ class Vaas
      * Sets the timeout in seconds the websocket client can take for one receive
      *
      * @param int $timeoutInSeconds timeout for the websocket
-     * 
+     *
      * @return void
      */
     public function setWebsocketTimeOut(int $timeoutInSeconds): void
@@ -291,9 +293,9 @@ class Vaas
 
     /**
      * Sets the timeout in seconds for the loops were we wait for a verdict
-     * 
+     *
      * @param int $timeoutInSeconds timeout for the websocket
-     * 
+     *
      * @return Vaas
      */
     public function setWaitTimeoutInSeconds(int $timeoutInSeconds): self
@@ -306,7 +308,7 @@ class Vaas
      * Set the timeout for the httpclient (for the upload) in seconds
      *
      * @param int $UploadTimeoutInSeconds upload timeout
-     * 
+     *
      * @return Vaas
      */
     public function setUploadTimeout(int $UploadTimeoutInSeconds): self
