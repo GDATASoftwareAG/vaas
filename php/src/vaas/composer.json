@@ -19,7 +19,9 @@
         "netresearch/jsonmapper": "^4.4",
         "guzzlehttp/guzzle": "^7",
         "psr/log": "^1.1 || ^2.0 || ^3.0",
-        "league/oauth2-client": "^2.7"
+        "league/oauth2-client": "^2.7",
+        "amphp/amp": "^v3.0.1",
+        "amphp/websocket-client": "^v2.0.0"
     },
     "autoload": {
         "psr-4": {
