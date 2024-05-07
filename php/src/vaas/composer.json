@@ -21,7 +21,9 @@
         "psr/log": "^1.1 || ^2.0 || ^3.0",
         "league/oauth2-client": "^2.7",
         "amphp/amp": "^v3.0.1",
-        "amphp/websocket-client": "^v2.0.0"
+        "amphp/websocket-client": "^v2.0.0",
+        "amphp/http-client": "^5.1",
+        "amphp/file": "^3.1"
     },
     "autoload": {
         "psr-4": {

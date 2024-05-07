@@ -69,7 +69,9 @@ class VaasWebSocket
                 return connect($url);
             }, $this->url);
             $this->futureSessionId = $this->futureConnection->map(function ($connection) {
-                $connection->onClose($this->onClose);
+                $connection->onClose(function (int $clientId, WebsocketCloseInfo $closeInfo) {
+                    $this->onClose($clientId, $closeInfo);
+                });
                 return $this->authenticate($connection, $this->authenticator);
             });
             // TODO: private field?

@@ -5,6 +5,7 @@ namespace VaasSdk;
 use Amp\Future;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\HttpContent;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\StreamedContent;
@@ -125,30 +126,21 @@ class Vaas
      * @throws GuzzleException
      * @throws InvalidSha256Exception
      * @throws UploadFailedException
+     * @throws HttpException
      */
-    public function ForFile(string $path, $upload = true, string $uuid = null): VaasVerdict
+    public function ForFile(string $path, bool $upload = true, string $uuid = null): VaasVerdict
     {
         $this->_logger->debug("ForFileWithFlags", ["File" => $path]);
 
         $sha256 = Sha256::TryFromFile($path);
         $this->_logger->debug("Calculated Hash", ["Sha256" => $sha256]);
 
-        $verdictResponse = $this->ForSha256AsyncInternal(
-            $sha256,
-            $uuid
-        )->await();
+        $verdictResponse = $this->ForSha256AsyncInternal($sha256, $uuid)->await();
         if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
-            $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
-            $fileStream = fopen($path, 'r');
-            $response = $this->_httpClient->put($verdictResponse->url, [
-                'body' => $fileStream,
-                'timeout' => $this->_uploadTimeoutInSeconds,
-                'headers' => ["Authorization" => $verdictResponse->upload_token]
-            ]);
-            if ($response->getStatusCode() > 399) {
-                throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
-            }
-            $verdictResponse = $this->_vaasWebSocket->waitForVerdict($verdictResponse->guid)->await();
+            $stream = StreamedContent::fromFile($path);
+            $futureVerdictResponse = $this->_vaasWebSocket->waitForVerdict($verdictResponse->guid);
+            $this->UploadStream($stream, $verdictResponse->url, $verdictResponse->upload_token);
+            $verdictResponse = $futureVerdictResponse->await();
             return new VaasVerdict($verdictResponse);
         }
 
@@ -158,28 +150,18 @@ class Vaas
     /**
      * Gets verdict by stream
      *
-     * @param Stream $stream
+     * @param HttpContent $stream
      * @param string|null $uuid unique identifier
      *
      * @return VaasVerdict
-     * @throws BadOpcodeException
-     * @throws GuzzleException
+     * @throws HttpException
      * @throws JsonMapper_Exception
-     * @throws TimeoutException
      * @throws UploadFailedException
-     * @throws VaasClientException
-     * @throws VaasInvalidStateException
      * @throws VaasServerException
      */
-    public function ForStream(Stream $stream, string $uuid = null): VaasVerdict
+    public function ForStream(HttpContent $stream, string $uuid = null): VaasVerdict
     {
-        if ($uuid == null) {
-            $uuid = UuidV4::getFactory()->uuid4()->toString();
-        }
-
-        $verdictResponse = $this->_verdictResponseForStream(
-            $uuid
-        );
+        $verdictResponse = $this->_verdictResponseForStream($uuid);
 
         if ($verdictResponse->verdict != Verdict::UNKNOWN) {
             throw new VaasServerException("Server returned verdict without receiving content.");
@@ -222,8 +204,7 @@ class Vaas
     private function ForSha256AsyncInternal(string $hashString, string $uuid = null): Future
     {
         $sha256 = Sha256::TryFromString($hashString);
-        if ($this->_logger != null)
-            $this->_logger->debug("_verdictResponseForSha256");
+        $this->_logger->debug("_verdictResponseForSha256");
 
         $request = new VerdictRequest(strtolower($sha256), $uuid);
         $request->use_cache = $this->_options->UseCache;
@@ -309,9 +290,9 @@ class Vaas
     /**
      * @throws UploadFailedException|HttpException
      */
-    private function UploadStream(Stream $stream, string $url, string $uploadToken): void
+    private function UploadStream(HttpContent $stream, string $url, string $uploadToken): void
     {
-        $request = new Request($url, "PUT", body: StreamedContent::fromStream($stream));
+        $request = new Request($url, "PUT", body: $stream);
         $request->addHeader("Authorization", $uploadToken);
         $response = $this->_httpClient->request($request);
         if ($response->getStatus() > 399) {

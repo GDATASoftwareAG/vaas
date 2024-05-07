@@ -17,8 +17,8 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
 );
 
 $webSocket = new VaasWebSocket($url, $authenticator);
-$verdictResponse = $webSocket->sendRequest(new VerdictRequest("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2", null, ""));
 
+$verdictResponse = $webSocket->sendRequest(new VerdictRequest("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2", null, ""));
 print_r($verdictResponse->await());
 
 //while (true){
