@@ -8,7 +8,7 @@ pub struct VerdictRequest {
     pub kind: Kind,
     pub guid: String,
     pub session_id: String,
-    pub use_shed: bool,
+    pub use_hash_lookup: bool,
     pub use_cache: bool,
 }
 
@@ -20,7 +20,7 @@ impl VerdictRequest {
             kind: Kind::VerdictRequest,
             session_id,
             use_cache,
-            use_shed: use_hash_lookup,
+            use_hash_lookup,
         }
     }
 
