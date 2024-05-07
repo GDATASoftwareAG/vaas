@@ -35,17 +35,13 @@ class VaasWebSocket {
         $this->authenticator = $authenticator;
     }
 
-    public function sendRequest(BaseVerdictRequest $request, string $requestId = null): Future {
+    public function sendRequest(BaseVerdictRequest $request): Future {
         $this->connectAndAuthenticate()->await();
         $connection = $this->getConnection();
         $request->session_id = $this->getSessionId();
-        if ($requestId == null) {
-            $requestId = UuidV4::getFactory()->uuid4()->toString();
-        }
-        $request->guid = $requestId;
 
         $deferredResponse = new DeferredFuture();
-        $this->requests[$requestId] = $deferredResponse;
+        $this->requests[$request->guid] = $deferredResponse;
 
         $connection->sendText(json_encode($request));
 
