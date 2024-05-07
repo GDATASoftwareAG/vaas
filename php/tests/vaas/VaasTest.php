@@ -116,6 +116,7 @@ final class VaasTest extends TestCase
 
         $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), $this->getResourceOwnerPasswordAuthenticator());
         $verdict = $vaas->ForSha256(self::MALICIOUS_HASH, $uuid);
+        print_r($verdict);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
         $this->assertEquals($uuid, $verdict->Guid);
