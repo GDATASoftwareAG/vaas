@@ -3,26 +3,24 @@
 namespace VaasSdk;
 
 use Amp\Future;
-use GuzzleHttp\Client as HttpClient;
+use Amp\Http\Client\HttpClient;
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\HttpException;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\StreamedContent;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Psr7\Stream;
 use InvalidArgumentException;
-use JsonMapper;
 use JsonMapper_Exception;
 use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Exceptions\FileDoesNotExistException;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
-use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
-use VaasSdk\Exceptions\VaasConnectionClosedException;
 use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Exceptions\VaasServerException;
-use VaasSdk\Message\AuthResponse;
-use VaasSdk\Message\Error;
 use VaasSdk\Message\Verdict;
-use VaasSdk\Message\Kind;
 use VaasSdk\Message\VerdictRequest;
 use VaasSdk\Message\VerdictRequestForStream;
 use VaasSdk\Message\VerdictResponse;
@@ -30,7 +28,6 @@ use VaasSdk\Message\VerdictRequestForUrl;
 use VaasSdk\VaasOptions;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\VaasVerdict;
 use WebSocket\BadOpcodeException;
 
@@ -48,7 +45,7 @@ class Vaas
     public function __construct(?string $vaasUrl, ?LoggerInterface $logger = null, AuthenticatorInterface $authenticator, VaasOptions $options = new VaasOptions())
     {
         $this->_options = $options;
-        $this->_httpClient = new HttpClient();
+        $this->_httpClient = HttpClientBuilder::buildDefault();
         if ($logger != null)
             $this->_logger = $logger;
         else
@@ -194,9 +191,11 @@ class Vaas
             throw new JsonMapper_Exception("VerdictResponse missing URL for stream upload.");
         }
 
+        $futureVerdictResponse = $this->_vaasWebSocket->waitForVerdict($verdictResponse->guid);
+
         $this->UploadStream($stream, $verdictResponse->url, $verdictResponse->upload_token);
 
-        $verdictResponse = $this->_waitForVerdict($uuid);
+        $verdictResponse = $futureVerdictResponse->await();
 
         return new VaasVerdict($verdictResponse);
     }
@@ -258,33 +257,15 @@ class Vaas
         return $this->_waitForVerdict($request->guid);
     }
 
-    /**
-     * @throws JsonMapper_Exception
-     * @throws VaasClientException
-     * @throws TimeoutException
-     * @throws VaasServerException
-     * @throws BadOpcodeException
-     * @throws VaasInvalidStateException
-     */
     private function _verdictResponseForStream(string $uuid = null): VerdictResponse
     {
-        if ($this->_logger != null)
-            $this->_logger->debug("_verdictResponseForStream");
+        $this->_logger->debug("_verdictResponseForStream");
 
-        if (!isset($this->_vaasConnection)) {
-            throw new VaasInvalidStateException("connect() was not called");
-        }
-        $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
-
-        $request = new VerdictRequestForStream($this->_vaasConnection->SessionId, $uuid);
+        $request = new VerdictRequestForStream($uuid);
         $request->use_cache = $this->_options->UseCache;
         $request->use_hash_lookup = $this->_options->UseHashLookup;
-        $websocket->send(json_encode($request));
 
-        if ($this->_logger != null)
-            $this->_logger->debug("verdictResponse", ["VerdictResponse" => json_encode($request)]);
-
-        return $this->_waitForVerdict($request->guid);
+        return $this->_vaasWebSocket->sendRequest($request)->await();
     }
 
     /**
@@ -326,19 +307,15 @@ class Vaas
     }
 
     /**
-     * @throws GuzzleException
-     * @throws UploadFailedException
+     * @throws UploadFailedException|HttpException
      */
-    private function UploadStream(Stream $stream, string $url, string $uploadToken)
+    private function UploadStream(Stream $stream, string $url, string $uploadToken): void
     {
-        $response = $this->_httpClient->put($url, [
-            'body' => $stream,
-            'content-length' => $stream->getSize(),
-            'timeout' => $this->_uploadTimeoutInSeconds,
-            'headers' => ["Authorization" => $uploadToken]
-        ]);
-        if ($response->getStatusCode() > 399) {
-            throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+        $request = new Request($url, "PUT", body: StreamedContent::fromStream($stream));
+        $request->addHeader("Authorization", $uploadToken);
+        $response = $this->_httpClient->request($request);
+        if ($response->getStatus() > 399) {
+            throw new UploadFailedException($response->getReason(), $response->getStatus());
         }
     }
 }
