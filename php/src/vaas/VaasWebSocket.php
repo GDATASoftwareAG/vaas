@@ -7,7 +7,6 @@ use Amp\Future;
 use Amp\Websocket\Client\WebsocketConnection;
 use Error;
 use JsonMapper;
-use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Message\AuthRequest;
 use VaasSdk\Message\AuthResponse;
 use VaasSdk\Message\BaseMessage;
@@ -18,24 +17,36 @@ use WebSocket\Exception;
 use function Amp\async;
 use function Amp\Websocket\Client\connect;
 
-class VaasWebSocket {
+class VaasWebSocket
+{
     private string $url;
     private AuthenticatorInterface $authenticator;
 
     private ?Future $futureConnection = null;
-    private function getConnection(): WebsocketConnection { return $this->futureConnection->await(); }
+
+    private function getConnection(): WebsocketConnection
+    {
+        return $this->futureConnection->await();
+    }
+
     private ?Future $futureSessionId = null;
-    private function getSessionId(): string { return $this->futureSessionId->await(); }
+
+    private function getSessionId(): string
+    {
+        return $this->futureSessionId->await();
+    }
 
     /** @var $requests array<string, Future> */
     private array $requests = [];
 
-    public function __construct(string $url, AuthenticatorInterface $authenticator) {
+    public function __construct(string $url, AuthenticatorInterface $authenticator)
+    {
         $this->url = $url;
         $this->authenticator = $authenticator;
     }
 
-    public function sendRequest(BaseVerdictRequest $request): Future {
+    public function sendRequest(BaseVerdictRequest $request): Future
+    {
         $this->connectAndAuthenticate()->await();
         $connection = $this->getConnection();
         $request->session_id = $this->getSessionId();
@@ -50,17 +61,25 @@ class VaasWebSocket {
         // TODO: catch exception
     }
 
-    private function connectAndAuthenticate(): Future {
+    private function connectAndAuthenticate(): Future
+    {
         if ($this->futureConnection == null) {
-            $this->futureConnection = async(static function($url) { return connect($url); }, $this->url);
-            $this->futureSessionId = $this->futureConnection->map(function($connection)  { return $this->authenticate($connection, $this->authenticator); });
+            $this->futureConnection = async(static function ($url) {
+                return connect($url);
+            }, $this->url);
+            $this->futureSessionId = $this->futureConnection->map(function ($connection) {
+                return $this->authenticate($connection, $this->authenticator);
+            });
             // TODO: private field?
-            async(function () { $this->readMessages(); });
+            async(function () {
+                $this->readMessages();
+            });
         }
         return $this->futureSessionId;
     }
 
-    private function authenticate($connection, $authenticator): string {
+    private function authenticate($connection, $authenticator): string
+    {
         $this->sendAuthRequest($connection, $authenticator);
         foreach ($connection as $message) {
             $parsedMessage = $this->parseMessage($message);
@@ -74,13 +93,15 @@ class VaasWebSocket {
         throw new Exception();
     }
 
-    private function sendAuthRequest($connection, $authenticator): void {
+    private function sendAuthRequest($connection, $authenticator): void
+    {
         $token = $authenticator->getToken();
         $authRequest = new AuthRequest($token);
         $connection->sendText(json_encode($authRequest));
     }
 
-    private function parseMessage($message): BaseMessage {
+    private function parseMessage($message): BaseMessage
+    {
         $jsonObject = json_decode($message->read());
         // TODO: Log debug
         print_r($jsonObject);
@@ -109,7 +130,8 @@ class VaasWebSocket {
         throw new Error("TODO");
     }
 
-    private function readMessages(): void {
+    private function readMessages(): void
+    {
         foreach ($this->getConnection() as $message) {
             $parsedMessage = $this->parseMessage($message);
             print_r($parsedMessage);
@@ -126,8 +148,21 @@ class VaasWebSocket {
         }
     }
 
-    private function disconnect(): void {
+    private function disconnect(): void
+    {
         $this->futureSessionId = null;
         $this->futureConnection = null;
     }
+
+    /**
+     * @param string $requestId
+     * @return Future<VerdictResponse>
+     */
+    public function waitForVerdict(string $requestId): Future
+    {
+        $deferredResponse = new DeferredFuture();
+        $this->requests[$requestId] = $deferredResponse;
+        return $deferredResponse->getFuture();
+    }
+
 }

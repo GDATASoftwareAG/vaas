@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use JsonMapper;
 use JsonMapper_Exception;
 use Ramsey\Uuid\Rfc4122\UuidV4;
+use VaasSdk\Exceptions\FileDoesNotExistException;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
@@ -120,31 +121,27 @@ class Vaas
      *
      * @param string $path the path to get the verdict for
      * @param bool $upload should the file be uploaded if initial verdict is unknown
-     * @param string $uuid unique identifier
+     * @param string|null $uuid unique identifier
      *
      * @return VaasVerdict the verdict
-     * @throws Exceptions\FileDoesNotExistException
-     * @throws Exceptions\InvalidSha256Exception
-     * @throws Exceptions\UploadFailedException
-     *
-     * @throws Exceptions\TimeoutException
+     * @throws FileDoesNotExistException
+     * @throws GuzzleException
+     * @throws InvalidSha256Exception
+     * @throws UploadFailedException
      */
     public function ForFile(string $path, $upload = true, string $uuid = null): VaasVerdict
     {
-        if ($this->_logger != null)
-            $this->_logger->debug("ForFileWithFlags", ["File" => $path]);
+        $this->_logger->debug("ForFileWithFlags", ["File" => $path]);
 
         $sha256 = Sha256::TryFromFile($path);
-        if ($this->_logger != null)
-            $this->_logger->debug("Calculated Hash", ["Sha256" => $sha256]);
+        $this->_logger->debug("Calculated Hash", ["Sha256" => $sha256]);
 
-        $verdictResponse = $this->ForSha256Async(
+        $verdictResponse = $this->ForSha256AsyncInternal(
             $sha256,
             $uuid
-        );
+        )->await();
         if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
-            if ($this->_logger != null)
-                $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
+            $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
             $fileStream = fopen($path, 'r');
             $response = $this->_httpClient->put($verdictResponse->url, [
                 'body' => $fileStream,
@@ -154,7 +151,8 @@ class Vaas
             if ($response->getStatusCode() > 399) {
                 throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
             }
-            return new VaasVerdict($this->_waitForVerdict($verdictResponse->guid));
+            $verdictResponse = $this->_vaasWebSocket->waitForVerdict($verdictResponse->guid)->await();
+            return new VaasVerdict($verdictResponse);
         }
 
         return new VaasVerdict($verdictResponse);
@@ -211,6 +209,19 @@ class Vaas
      */
     public function ForSha256Async(string $hashString, string $uuid = null): Future
     {
+        return $this->ForSha256AsyncInternal($hashString, $uuid)->map(function ($verdictResponse) {
+            return new VaasVerdict($verdictResponse);
+        });
+    }
+
+    /**
+     * @param string $hashString
+     * @param string|null $uuid
+     * @return Future<VerdictResponse>
+     * @throws InvalidSha256Exception
+     */
+    private function ForSha256AsyncInternal(string $hashString, string $uuid = null): Future
+    {
         $sha256 = Sha256::TryFromString($hashString);
         if ($this->_logger != null)
             $this->_logger->debug("_verdictResponseForSha256");
@@ -218,10 +229,7 @@ class Vaas
         $request = new VerdictRequest(strtolower($sha256), $uuid);
         $request->use_cache = $this->_options->UseCache;
         $request->use_hash_lookup = $this->_options->UseHashLookup;
-        $future = $this->_vaasWebSocket->sendRequest($request);
-        return $future->map(function ($verdictResponse) {
-            return new VaasVerdict($verdictResponse);
-        });
+        return $this->_vaasWebSocket->sendRequest($request);
     }
 
     /**
