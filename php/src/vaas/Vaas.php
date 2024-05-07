@@ -10,14 +10,11 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\StreamedContent;
 use Amp\Websocket\WebsocketClosedException;
-use GuzzleHttp\Exception\GuzzleException;
 use InvalidArgumentException;
 use JsonMapper_Exception;
 use VaasSdk\Exceptions\FileDoesNotExistException;
 use VaasSdk\Exceptions\InvalidSha256Exception;
-use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
-use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Message\VerdictRequest;
@@ -33,7 +30,6 @@ class Vaas
 {
     private string $_vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de";
     private VaasWebSocket $_vaasWebSocket;
-    private int $_uploadTimeoutInSeconds = 600;
     private LoggerInterface $_logger;
     private HttpClient $_httpClient;
     private VaasOptions $_options;
@@ -62,18 +58,17 @@ class Vaas
      *
      * @return VaasVerdict the verdict
      * @throws InvalidSha256Exception
-     * @throws TimeoutException
+     * @throws WebsocketClosedException
      */
     public function ForSha256(string $hashString, string $uuid = null): VaasVerdict
     {
-        if ($this->_logger != null)
-            $this->_logger->debug("ForSha256WithFlags", ["Sha256" => $hashString]);
+        $this->_logger->debug("ForSha256WithFlags", ["Sha256" => $hashString]);
 
         return
-            $this->ForSha256Async(
+            new VaasVerdict($this->_verdictResponseForSha256(
                 $hashString,
                 $uuid
-            )->await();
+            )->await());
     }
 
     /**
@@ -83,22 +78,21 @@ class Vaas
      * @param string|null $uuid unique identifier
      *
      * @return VaasVerdict the verdict
-     *
-     * @throws TimeoutException
      * @throws InvalidArgumentException
+     * @throws WebsocketClosedException
      */
     public function ForUrl(string $url, string $uuid = null): VaasVerdict
     {
         $this->_logger->debug("ForUrlWithFlags", ["URL:" => $url]);
 
         if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            throw new \InvalidArgumentException("Url is not valid");
+            throw new InvalidArgumentException("Url is not valid");
         }
 
         return new VaasVerdict($this->_verdictResponseForUrl(
             $url,
             $uuid
-        ));
+        )->await());
     }
 
     /**
@@ -110,10 +104,10 @@ class Vaas
      *
      * @return VaasVerdict the verdict
      * @throws FileDoesNotExistException
-     * @throws GuzzleException
      * @throws InvalidSha256Exception
      * @throws UploadFailedException
      * @throws HttpException
+     * @throws WebsocketClosedException
      */
     public function ForFile(string $path, bool $upload = true, string $uuid = null): VaasVerdict
     {
@@ -122,7 +116,7 @@ class Vaas
         $sha256 = Sha256::TryFromFile($path);
         $this->_logger->debug("Calculated Hash", ["Sha256" => $sha256]);
 
-        $verdictResponse = $this->ForSha256AsyncInternal($sha256, $uuid)->await();
+        $verdictResponse = $this->_verdictResponseForSha256($sha256, $uuid)->await();
         if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
             $stream = StreamedContent::fromFile($path);
             $futureVerdictResponse = $this->_vaasWebSocket->waitForVerdict($verdictResponse->guid);
@@ -145,10 +139,11 @@ class Vaas
      * @throws JsonMapper_Exception
      * @throws UploadFailedException
      * @throws VaasServerException
+     * @throws WebsocketClosedException
      */
     public function ForStream(HttpContent $stream, string $uuid = null): VaasVerdict
     {
-        $verdictResponse = $this->_verdictResponseForStream($uuid);
+        $verdictResponse = $this->_verdictResponseForStream($uuid)->await();
 
         if ($verdictResponse->verdict != Verdict::UNKNOWN) {
             throw new VaasServerException("Server returned verdict without receiving content.");
@@ -172,26 +167,14 @@ class Vaas
     /**
      * @param string $hashString
      * @param string|null $uuid
-     * @return Future<VaasVerdict>
-     * @throws InvalidSha256Exception
-     */
-    public function ForSha256Async(string $hashString, string $uuid = null): Future
-    {
-        return $this->ForSha256AsyncInternal($hashString, $uuid)->map(function ($verdictResponse) {
-            return new VaasVerdict($verdictResponse);
-        });
-    }
-
-    /**
-     * @param string $hashString
-     * @param string|null $uuid
      * @return Future<VerdictResponse>
      * @throws InvalidSha256Exception
+     * @throws WebsocketClosedException
      */
-    private function ForSha256AsyncInternal(string $hashString, string $uuid = null): Future
+    private function _verdictResponseForSha256(string $hashString, string $uuid = null): Future
     {
-        $sha256 = Sha256::TryFromString($hashString);
         $this->_logger->debug("_verdictResponseForSha256");
+        $sha256 = Sha256::TryFromString($hashString);
 
         $request = new VerdictRequest(strtolower($sha256), $uuid);
         $request->use_cache = $this->_options->UseCache;
@@ -200,65 +183,34 @@ class Vaas
     }
 
     /**
+     * @param string $url
+     * @param string|null $uuid
+     * @return Future<VerdictResponse>
      * @throws WebsocketClosedException
      */
-    private function _verdictResponseForUrl(string $url, string $uuid = null): VerdictResponse
+    private function _verdictResponseForUrl(string $url, string $uuid = null): Future
     {
         $this->_logger->debug("_verdictResponseForUrl");
 
         $request = new VerdictRequestForUrl($url, $uuid);
         $request->use_cache = $this->_options->UseCache;
         $request->use_hash_lookup = $this->_options->UseHashLookup;
-        return $this->_vaasWebSocket->sendRequest($request)->await();
+        return $this->_vaasWebSocket->sendRequest($request);
     }
 
-    private function _verdictResponseForStream(string $uuid = null): VerdictResponse
+    /**
+     * @param string|null $uuid
+     * @return Future<VerdictResponse>
+     * @throws WebsocketClosedException
+     */
+    private function _verdictResponseForStream(string $uuid = null): Future
     {
         $this->_logger->debug("_verdictResponseForStream");
 
         $request = new VerdictRequestForStream($uuid);
         $request->use_cache = $this->_options->UseCache;
         $request->use_hash_lookup = $this->_options->UseHashLookup;
-
-        return $this->_vaasWebSocket->sendRequest($request)->await();
-    }
-
-    /**
-     * Sets the timeout in seconds the websocket client can take for one receive
-     *
-     * @param int $timeoutInSeconds timeout for the websocket
-     *
-     * @return void
-     */
-    public function setWebsocketTimeOut(int $timeoutInSeconds): void
-    {
-        $this->_vaasConnection->WebSocketClient->setTimeout($timeoutInSeconds);
-    }
-
-    /**
-     * Sets the timeout in seconds for the loops were we wait for a verdict
-     *
-     * @param int $timeoutInSeconds timeout for the websocket
-     *
-     * @return Vaas
-     */
-    public function setWaitTimeoutInSeconds(int $timeoutInSeconds): self
-    {
-        $this->_waitTimeoutInSeconds = $timeoutInSeconds;
-        return $this;
-    }
-
-    /**
-     * Set the timeout for the httpclient (for the upload) in seconds
-     *
-     * @param int $UploadTimeoutInSeconds upload timeout
-     *
-     * @return Vaas
-     */
-    public function setUploadTimeout(int $UploadTimeoutInSeconds): self
-    {
-        $this->_uploadTimeoutInSeconds = $UploadTimeoutInSeconds;
-        return $this;
+        return $this->_vaasWebSocket->sendRequest($request);
     }
 
     /**

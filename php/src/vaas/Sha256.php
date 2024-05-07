@@ -13,8 +13,10 @@ class Sha256
      * Gets Sha256 from file
      *
      * @param string $path the path of the file to hash
-     * 
+     *
      * @return Sha256
+     * @throws FileDoesNotExistException
+     * @throws InvalidSha256Exception
      */
     public static function TryFromFile(string $path): Sha256
     {
@@ -36,8 +38,9 @@ class Sha256
      * Gets Sha256 from string
      *
      * @param string $hashString the string to create the hash from
-     * 
+     *
      * @return Sha256
+     * @throws InvalidSha256Exception
      */
     public static function TryFromString(string $hashString): Sha256
     {
@@ -53,7 +56,7 @@ class Sha256
      * Validates a hash to be a valid sha256
      *
      * @param string $hash the string to validate
-     * 
+     *
      * @return bool returns true if sha256 is valid
      */
     public static function IsValid(string $hash): bool

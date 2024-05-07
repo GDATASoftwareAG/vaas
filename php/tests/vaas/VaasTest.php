@@ -114,7 +114,7 @@ final class VaasTest extends TestCase
     {
         $uuid = $this->getUuid();
 
-        $vaas = $this->_getVaas();
+        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), $this->getResourceOwnerPasswordAuthenticator());
         $verdict = $vaas->ForSha256(self::MALICIOUS_HASH, $uuid);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
@@ -397,7 +397,7 @@ final class VaasTest extends TestCase
 
         $invalidUrl = "https://";
         $verdict = $vaas->ForUrl($invalidUrl);
-        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
+        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict->value);
     }
 
     /**
@@ -412,7 +412,7 @@ final class VaasTest extends TestCase
 
         $invalidUrl = "https://upload.production.vaas.gdatasecurity.de/nocontenthere";
         $verdict = $vaas->ForUrl($invalidUrl);
-        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
+        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict->value);
     }
 
     /**

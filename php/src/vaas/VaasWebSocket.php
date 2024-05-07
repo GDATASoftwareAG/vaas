@@ -50,7 +50,10 @@ class VaasWebSocket
     }
 
     /**
-     * @throws WebsocketClosedException
+     * Send a verdict request to the server. Returns asynchronously the corresponding response, or an error.
+     * @param BaseVerdictRequest $request
+     * @return Future<VerdictResponse>
+     * @throws WebsocketClosedException If the connection is unexpectedly closed while sending the request
      */
     public function sendRequest(BaseVerdictRequest $request): Future
     {
@@ -93,9 +96,11 @@ class VaasWebSocket
     }
 
     /**
-     * @throws VaasAuthenticationException
+     * Authenticate towards the server.
+     * @return string The session id.
      * @throws VaasClientException
      * @throws JsonMapper_Exception
+     * @throws VaasAuthenticationException
      */
     private function authenticate($connection, $authenticator): string
     {
@@ -119,7 +124,8 @@ class VaasWebSocket
     }
 
     /**
-     * @throws \JsonMapper_Exception
+     * Parse a single message received from the server.
+     * @throws JsonMapper_Exception
      * @throws VaasClientException
      */
     private function parseMessage($message): BaseMessage
@@ -151,6 +157,11 @@ class VaasWebSocket
         throw new VaasClientException("Unknown websocket message");
     }
 
+    /**
+     * Continuously reads messages from the websocket. Returns when the websocket connection is shutdown, or has failed.
+     * @throws JsonMapper_Exception
+     * @throws VaasClientException
+     */
     private function readMessages(): void
     {
         foreach ($this->getConnection() as $message) {
@@ -179,6 +190,9 @@ class VaasWebSocket
         }
     }
 
+    /**
+     * Disconnect the current websocket session immediately.
+     */
     private function disconnect(): void
     {
         $this->futureSessionId = null;
@@ -187,6 +201,7 @@ class VaasWebSocket
     }
 
     /**
+     * Asynchronously waits for a verdict response with the given requestId. Returns the corresponding response.
      * @param string $requestId
      * @return Future<VerdictResponse>
      */
@@ -198,6 +213,10 @@ class VaasWebSocket
         return $deferredResponse->getFuture();
     }
 
+    /**
+     * Notify all currently pending futures that their request cannot be fulfilled due to an error.
+     * @param VaasClientException $e The error
+     */
     private function notifyFutures(VaasClientException $e): void
     {
         foreach ($this->requests as $response) {
