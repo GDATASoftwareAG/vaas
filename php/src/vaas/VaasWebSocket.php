@@ -5,6 +5,7 @@ namespace VaasSdk;
 use Amp\DeferredFuture;
 use Amp\Future;
 use Amp\Websocket\Client\WebsocketConnection;
+use Amp\Websocket\WebsocketCloseInfo;
 use Error;
 use JsonMapper;
 use VaasSdk\Message\AuthRequest;
@@ -68,6 +69,7 @@ class VaasWebSocket
                 return connect($url);
             }, $this->url);
             $this->futureSessionId = $this->futureConnection->map(function ($connection) {
+                $connection->onClose($this->onClose);
                 return $this->authenticate($connection, $this->authenticator);
             });
             // TODO: private field?
@@ -148,6 +150,11 @@ class VaasWebSocket
         }
     }
 
+    private function onClose(int $clientId, WebsocketCloseInfo $closeInfo): void
+    {
+        // TODO
+    }
+
     private function disconnect(): void
     {
         $this->futureSessionId = null;
@@ -160,9 +167,9 @@ class VaasWebSocket
      */
     public function waitForVerdict(string $requestId): Future
     {
+        // TODO: Throw if not connected/authenticated
         $deferredResponse = new DeferredFuture();
         $this->requests[$requestId] = $deferredResponse;
         return $deferredResponse->getFuture();
     }
-
 }
