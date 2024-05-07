@@ -2,6 +2,7 @@
 
 namespace VaasSdk;
 
+use Amp\DeferredFuture;
 use Amp\Future;
 use Amp\Websocket\Client\WebsocketConnection;
 use Error;
@@ -12,6 +13,7 @@ use VaasSdk\Message\AuthResponse;
 use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\BaseVerdictRequest;
 use VaasSdk\Message\Kind;
+use VaasSdk\Message\VerdictResponse;
 use WebSocket\Exception;
 use function Amp\async;
 use function Amp\Websocket\Client\connect;
@@ -25,13 +27,15 @@ class VaasWebSocket {
     private ?Future $futureSessionId = null;
     private function getSessionId(): string { return $this->futureSessionId->await(); }
 
+    /** @var $requests array<string, Future> */
+    private array $requests = [];
 
     public function __construct(string $url, AuthenticatorInterface $authenticator) {
         $this->url = $url;
         $this->authenticator = $authenticator;
     }
 
-    public function sendRequest(BaseVerdictRequest $request, string $requestId = null): void {
+    public function sendRequest(BaseVerdictRequest $request, string $requestId = null): Future {
         $this->connectAndAuthenticate()->await();
         $connection = $this->getConnection();
         $request->session_id = $this->getSessionId();
@@ -39,8 +43,14 @@ class VaasWebSocket {
             $requestId = UuidV4::getFactory()->uuid4()->toString();
         }
         $request->guid = $requestId;
-        // TODO: add request to dictionary requests<string, Future>
+
+        $deferredResponse = new DeferredFuture();
+        $this->requests[$requestId] = $deferredResponse;
+
         $connection->sendText(json_encode($request));
+
+        return $deferredResponse->getFuture();
+
         // TODO: catch exception
     }
 
@@ -48,6 +58,8 @@ class VaasWebSocket {
         if ($this->futureConnection == null) {
             $this->futureConnection = async(static function($url) { return connect($url); }, $this->url);
             $this->futureSessionId = $this->futureConnection->map(function($connection)  { return $this->authenticate($connection, $this->authenticator); });
+            // TODO: private field?
+            async(function () { $this->readMessages(); });
         }
         return $this->futureSessionId;
     }
@@ -58,7 +70,7 @@ class VaasWebSocket {
             $parsedMessage = $this->parseMessage($message);
             print_r($parsedMessage);
             if ($parsedMessage instanceof AuthResponse) {
-                print("sessionId " . $parsedMessage->session_id);
+                // TODO: Log "authenticated with session id"
                 return $parsedMessage->session_id;
             }
         }
@@ -72,8 +84,10 @@ class VaasWebSocket {
         $connection->sendText(json_encode($authRequest));
     }
 
-    private function parseMessage($message) {
+    private function parseMessage($message): BaseMessage {
         $jsonObject = json_decode($message->read());
+        // TODO: Log debug
+        print_r($jsonObject);
         $baseMessage = (new JsonMapper())->map(
             $jsonObject,
             new BaseMessage()
@@ -87,10 +101,33 @@ class VaasWebSocket {
             case Kind::Error:
                 return (new JsonMapper())->map(
                     $jsonObject,
-                    new \VaasSdk\Message\Error()
+                    new Message\Error()
+                );
+            case Kind::VerdictResponse:
+                return (new JsonMapper())->map(
+                    $jsonObject,
+                    new VerdictResponse()
                 );
         }
+        // TODO
         throw new Error("TODO");
+    }
+
+    private function readMessages(): void {
+        foreach ($this->getConnection() as $message) {
+            $parsedMessage = $this->parseMessage($message);
+            print_r($parsedMessage);
+            // TODO: Use requestId in all messages
+            $requestId = $parsedMessage->guid;
+            if (!key_exists($requestId, $this->requests)) {
+                // TODO: Log
+                continue;
+            }
+            $deferredResponse = $this->requests[$requestId];
+            unset($this->requests[$requestId]);
+            // TODO: Handle errors
+            $deferredResponse->complete($parsedMessage);
+        }
     }
 
     private function disconnect(): void {
