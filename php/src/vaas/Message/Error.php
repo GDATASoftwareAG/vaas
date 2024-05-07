@@ -6,6 +6,7 @@ class Error extends BaseMessage
 {
     public string $type;
     public string $requestId;
+    public string $guid;
     public string $text;
     public ?ProblemDetails $problem_details;
 

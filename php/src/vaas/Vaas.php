@@ -9,6 +9,7 @@ use Amp\Http\Client\HttpContent;
 use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\StreamedContent;
+use Amp\Websocket\WebsocketClosedException;
 use GuzzleHttp\Exception\GuzzleException;
 use InvalidArgumentException;
 use JsonMapper_Exception;
@@ -51,16 +52,6 @@ class Vaas
         if ($vaasUrl)
             $this->_vaasUrl = $vaasUrl;
         $this->_vaasWebSocket = new VaasWebSocket($this->_vaasUrl, $authenticator);
-    }
-
-    /**
-     */
-    public function Connect(
-        string          $token,
-        ?VaasConnection $vaasConnection = null
-    )
-    {
-
     }
 
     /**
@@ -207,7 +198,10 @@ class Vaas
         $request->use_hash_lookup = $this->_options->UseHashLookup;
         return $this->_vaasWebSocket->sendRequest($request);
     }
-    
+
+    /**
+     * @throws WebsocketClosedException
+     */
     private function _verdictResponseForUrl(string $url, string $uuid = null): VerdictResponse
     {
         $this->_logger->debug("_verdictResponseForUrl");
