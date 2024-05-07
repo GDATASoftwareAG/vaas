@@ -13,14 +13,14 @@ pub struct VerdictRequest {
 }
 
 impl VerdictRequest {
-    pub fn new(sha256: &Sha256, session_id: String, use_cache: bool, use_shed: bool) -> Self {
+    pub fn new(sha256: &Sha256, session_id: String, use_cache: bool, use_hash_lookup: bool) -> Self {
         Self {
             guid: uuid::Uuid::new_v4().to_string(),
             sha256: sha256.to_string(),
             kind: Kind::VerdictRequest,
             session_id,
             use_cache,
-            use_shed,
+            use_shed: use_hash_lookup,
         }
     }
 
