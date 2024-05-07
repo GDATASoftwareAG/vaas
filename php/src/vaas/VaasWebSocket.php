@@ -164,7 +164,6 @@ class VaasWebSocket
     {
         foreach ($this->getConnection() as $message) {
             $parsedMessage = $this->parseMessage($message);
-            print_r($parsedMessage);
             // TODO: Use requestId in all messages
             $requestId = $parsedMessage->guid;
             if (!key_exists($requestId, $this->requests)) {
