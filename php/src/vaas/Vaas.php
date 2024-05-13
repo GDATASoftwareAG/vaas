@@ -47,7 +47,7 @@ class Vaas
         $this->_logger->debug("Url: " . $vaasUrl);
         if ($vaasUrl)
             $this->_vaasUrl = $vaasUrl;
-        $this->_vaasWebSocket = new VaasWebSocket($this->_vaasUrl, $authenticator);
+        $this->_vaasWebSocket = new VaasWebSocket($this->_vaasUrl, $authenticator, $logger);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace VaasTesting;
 
 require_once __DIR__ . "/vendor/autoload.php";
+require_once "testSetUp.php";
 
 use Amp\ByteStream\Payload;
 use Amp\ByteStream\ReadableResourceStream;
@@ -22,10 +23,6 @@ use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
-use Monolog\Formatter\JsonFormatter;
-use Monolog\Handler\StreamHandler;
-use Psr\Log\LoggerInterface;
-use Monolog\Logger;
 use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Sha256;
@@ -67,28 +64,7 @@ final class VaasTest extends TestCase
 
     private function _getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
     {
-        return new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), $this->getClientCredentialsGrantAuthenticator(), new VaasOptions($useCache, $useHashLookup));
-    }
-
-    private function _getDebugLogger(): LoggerInterface
-    {
-        global $argv;
-        $monoLogger = new Logger("VaaS");
-
-        if (in_array("--debug", $argv) === true) {
-            $streamHandler = new StreamHandler(
-                STDOUT,
-                Logger::DEBUG
-            );
-        } else {
-            $streamHandler = new StreamHandler(
-                STDOUT,
-                Logger::INFO
-            );
-        }
-        $streamHandler->setFormatter(new JsonFormatter());
-        $monoLogger->pushHandler($streamHandler);
-        return $monoLogger;
+        return new Vaas($_ENV["VAAS_URL"], getDebugLogger(), $this->getClientCredentialsGrantAuthenticator(), new VaasOptions($useCache, $useHashLookup));
     }
 
     private function getClientCredentialsGrantAuthenticator(): ClientCredentialsGrantAuthenticator
@@ -114,7 +90,7 @@ final class VaasTest extends TestCase
     {
         $uuid = $this->getUuid();
 
-        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), $this->getResourceOwnerPasswordAuthenticator());
+        $vaas = new Vaas($_ENV["VAAS_URL"], getDebugLogger(), $this->getResourceOwnerPasswordAuthenticator());
         $verdict = $vaas->ForSha256(self::MALICIOUS_HASH, $uuid);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
@@ -126,7 +102,7 @@ final class VaasTest extends TestCase
     {
         $this->expectException(VaasAuthenticationException::class);
         $authenticator = new ClientCredentialsGrantAuthenticator("invalid", "invalid", $_ENV["TOKEN_URL"]);
-        $vaas = new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), $authenticator);
+        $vaas = new Vaas($_ENV["VAAS_URL"], getDebugLogger(), $authenticator);
         $vaas->ForSha256(self::MALICIOUS_HASH);
     }
 
@@ -397,7 +373,7 @@ final class VaasTest extends TestCase
 
         $invalidUrl = "https://";
         $verdict = $vaas->ForUrl($invalidUrl);
-        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict->value);
+        getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict->value);
     }
 
     /**
@@ -412,7 +388,7 @@ final class VaasTest extends TestCase
 
         $invalidUrl = "https://upload.production.vaas.gdatasecurity.de/nocontenthere";
         $verdict = $vaas->ForUrl($invalidUrl);
-        $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict->value);
+        getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict->value);
     }
 
     /**

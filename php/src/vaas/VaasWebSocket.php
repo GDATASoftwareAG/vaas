@@ -6,8 +6,11 @@ use Amp\DeferredFuture;
 use Amp\Future;
 use Amp\Websocket\Client\WebsocketConnection;
 use Amp\Websocket\WebsocketClosedException;
+use Amp\Websocket\WebsocketCloseInfo;
+use Closure;
 use JsonMapper;
 use JsonMapper_Exception;
+use Psr\Log\LoggerInterface;
 use Throwable;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
@@ -21,10 +24,13 @@ use VaasSdk\Message\VerdictResponse;
 use function Amp\async;
 use function Amp\Websocket\Client\connect;
 
+/** Provides a connection-free abstraction of the Websocket communication with the Vaas backend. */
 class VaasWebSocket
 {
     private string $url;
     private AuthenticatorInterface $authenticator;
+    private LoggerInterface $logger;
+    private Closure $connect;
 
     private ?Future $futureConnection = null;
 
@@ -43,10 +49,12 @@ class VaasWebSocket
     /** @var $requests array<string, Future> */
     private array $requests = [];
 
-    public function __construct(string $url, AuthenticatorInterface $authenticator)
+    public function __construct(string $url, AuthenticatorInterface $authenticator, LoggerInterface $logger, ?Closure $connect = null)
     {
         $this->url = $url;
         $this->authenticator = $authenticator;
+        $this->logger = $logger;
+        $this->connect = $connect ?? connect(...);
     }
 
     /**
@@ -61,54 +69,68 @@ class VaasWebSocket
         $connection = $this->getConnection();
         $request->session_id = $this->getSessionId();
 
-        $deferredResponse = new DeferredFuture();
-        $this->requests[$request->guid] = $deferredResponse;
+        $futureResponse = $this->waitForVerdict($request->guid);
 
         $connection->sendText(json_encode($request));
+        // TODO: catch WebsocketClosedException and retry?
 
-        return $deferredResponse->getFuture();
-
-        // TODO: catch exception
+        return $futureResponse;
     }
 
     private function connectAndAuthenticate(): Future
     {
         if ($this->futureConnection == null) {
-            $this->futureConnection = async(static function ($url) {
-                return connect($url);
+            $this->futureConnection = async(function ($url) {
+                $this->logger->debug("Connecting");
+                $connection = ($this->connect)($url);
+                $this->logger->debug("Connected");
+                return $connection;
             }, $this->url);
-            $this->futureSessionId = $this->futureConnection->map(function ($connection) {
+            $this->futureSessionId = $this->futureConnection->map(function (WebsocketConnection $connection) {
+                $connection->onClose(function (int $clientId, WebsocketCloseInfo $closeInfo) {
+                    $this->onClose($clientId, $closeInfo);
+                });
                 return $this->authenticate($connection, $this->authenticator);
             });
             // TODO: private field?
-            async(function () {
-                try {
-                    $this->readMessages();
-                    $this->notifyFutures(new VaasClientException("Server connection closed unexpectedly."));
-                } catch (Throwable $e) {
-                    $this->notifyFutures(new VaasClientException($e->getMessage()));
-                } finally {
-                    $this->disconnect();
-                }
-            });
+            $this->futureSessionId->map($this->readMessages(...));
+//            async(function () {
+//                try {
+//                    $this->readMessages();
+//                    // TODO: Ist das hier richtig? Throwen bringt hier nichts (?)
+////                    $this->failRequests(new VaasClientException("Server connection closed unexpectedly."));
+//                } catch (Throwable $e) {
+//                    // TODO: Ist das hier richtig? Throwen bringt hier nichts (?)
+////                    $this->failRequests(new VaasClientException($e->getMessage()));
+//                } finally {
+//                    $this->disconnect();
+//                }
+//            });
         }
         return $this->futureSessionId;
     }
 
+    private function onClose(int $clientId, WebsocketCloseInfo $closeInfo): void
+    {
+        // TODO
+    }
+
     /**
      * Authenticate towards the server.
+     * @param $connection
+     * @param $authenticator
      * @return string The session id.
-     * @throws VaasClientException
-     * @throws JsonMapper_Exception
      * @throws VaasAuthenticationException
+     * @throws VaasServerException
      */
     private function authenticate($connection, $authenticator): string
     {
+        $this->logger->debug("Authenticating");
         $this->sendAuthRequest($connection, $authenticator);
         foreach ($connection as $message) {
             $parsedMessage = $this->parseMessage($message);
             if ($parsedMessage instanceof AuthResponse) {
-                // TODO: Log "authenticated with session id"
+                $this->logger->debug("Authenticated with session ID " . $parsedMessage->session_id);
                 return $parsedMessage->session_id;
             }
         }
@@ -124,35 +146,37 @@ class VaasWebSocket
 
     /**
      * Parse a single message received from the server.
-     * @throws JsonMapper_Exception
-     * @throws VaasClientException
+     * @throws VaasServerException
      */
     private function parseMessage($message): BaseMessage
     {
         $jsonObject = json_decode($message->read());
-        // TODO: Log debug
-        $baseMessage = (new JsonMapper())->map(
-            $jsonObject,
-            new BaseMessage()
-        );
-        switch ($baseMessage->kind) {
-            case Kind::AuthResponse:
-                return (new JsonMapper())->map(
+        $this->logger->debug("JSON to parse: " . print_r($jsonObject, true));
+        try {
+            $baseMessage = (new JsonMapper())->map(
+                $jsonObject,
+                new BaseMessage()
+            );
+            $parsedMessage = match ($baseMessage->kind) {
+                Kind::AuthResponse => (new JsonMapper())->map(
                     $jsonObject,
                     new AuthResponse()
-                );
-            case Kind::Error:
-                return (new JsonMapper())->map(
+                ),
+                Kind::Error => (new JsonMapper())->map(
                     $jsonObject,
                     new Message\Error()
-                );
-            case Kind::VerdictResponse:
-                return (new JsonMapper())->map(
+                ),
+                Kind::VerdictResponse => (new JsonMapper())->map(
                     $jsonObject,
                     new VerdictResponse()
-                );
+                ),
+                default => throw new VaasServerException("Received unknown message kind"),
+            };
+            $this->logger->debug("Parsed message: " . print_r($parsedMessage, true));
+            return $parsedMessage;
+        } catch (JsonMapper_Exception $e) {
+            throw new VaasServerException("Error parsing received message: " . $e->getMessage());
         }
-        throw new VaasClientException("Unknown websocket message");
     }
 
     /**
@@ -167,7 +191,8 @@ class VaasWebSocket
             // TODO: Use requestId in all messages
             $requestId = $parsedMessage->guid;
             if (!key_exists($requestId, $this->requests)) {
-                // TODO: Log warning
+                // TODO: Template use
+                $this->logger->warning("Received response for unknown request id");
                 continue;
             }
             $deferredResponse = $this->requests[$requestId];
@@ -204,21 +229,22 @@ class VaasWebSocket
      */
     public function waitForVerdict(string $requestId): Future
     {
-        // TODO: Throw if not connected/authenticated
+        // TODO: Fail if not connected
         $deferredResponse = new DeferredFuture();
         $this->requests[$requestId] = $deferredResponse;
         return $deferredResponse->getFuture();
     }
 
     /**
-     * Notify all currently pending futures that their request cannot be fulfilled due to an error.
-     * @param VaasClientException $e The error
+     * Notify all currently pending requests that they cannot be fulfilled due to an irrecoverable connection error.
+     * @param Throwable $e The error
      */
-    private function notifyFutures(VaasClientException $e): void
+    private function failRequests(Throwable $e): void
     {
         foreach ($this->requests as $response) {
             $response->error($e);
         }
+        $this->requests = [];
     }
 
     private static function convertWebSocketErrorResponse(Message\Error $errorResponse): VaasClientException|VaasServerException
