@@ -8,6 +8,8 @@ require_once "testSetUp.php";
 use Amp\Pipeline\Queue;
 use Amp\Websocket\Client\WebsocketConnection;
 use Amp\Websocket\WebsocketMessage;
+use PHPUnit\Framework\MockObject\Exception;
+use PHPUnit\Framework\MockObject\Rule\AnyInvokedCount;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -27,7 +29,12 @@ final class VaasWebsocketTest extends TestCase
 {
     private LoggerInterface $logger;
     private WebsocketConnection $fakeWebsocketConnection;
+    private AnyInvokedCount $sendTextSpy;
+    private int $connectCounter = 0;
 
+    /**
+     * @throws Exception
+     */
     public function setUp(): void
     {
         setUpDotEnv();
@@ -37,7 +44,9 @@ final class VaasWebsocketTest extends TestCase
         $this->fakeWebsocketConnection = $ws;
         $messages = new Queue();
         $this->mockQueueIterator($ws, $messages);
-        $ws->method("sendText")->willReturnCallback(function (string $data) use ($messages) {
+        $ws
+            ->expects($this->sendTextSpy = $this->any())
+            ->method("sendText")->willReturnCallback(function (string $data) use ($messages) {
             $request = json_decode($data);
             $this->logger->debug("WebSocketClient::sendText " . print_r($request, true));
             switch (Kind::from($request->kind)) {
@@ -54,7 +63,6 @@ final class VaasWebsocketTest extends TestCase
                 default:
                     return;
             }
-//            $this->logger->debug("Responding " . print_r($response, true));
             $messages->pushAsync(createWebsocketMessage($response));
         });
     }
@@ -66,6 +74,18 @@ final class VaasWebsocketTest extends TestCase
         $response = $ws->sendRequest($this->getVerdictRequest())->await();
 
         $this->assertEquals(Verdict::MALICIOUS, $response->verdict);
+    }
+
+    public function test_sendRequest_ifConnected_usesExistingConnectionAndAutentication(): void
+    {
+        $ws = $this->getVaasWebsocket();
+        $response = $ws->sendRequest($this->getVerdictRequest())->await();
+
+        $response = $ws->sendRequest($this->getVerdictRequest())->await();
+
+        $this->assertSame(Verdict::MALICIOUS, $response->verdict);
+        $this->assertSame(1, $this->connectCounter);
+        $this->assertSame(3, $this->sendTextSpy->numberOfInvocations());
     }
 
 //    public function test_sendRequest(): void
@@ -97,6 +117,7 @@ final class VaasWebsocketTest extends TestCase
 
     private function connect(string $url): WebsocketConnection
     {
+        $this->connectCounter++;
         return $this->fakeWebsocketConnection;
     }
 
