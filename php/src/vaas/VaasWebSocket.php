@@ -86,14 +86,13 @@ class VaasWebSocket
                 $this->logger->debug("Connected");
                 return $connection;
             }, $this->url);
-            $this->futureSessionId = $this->futureConnection->map(function (WebsocketConnection $connection) {
-                $connection->onClose(function (int $clientId, WebsocketCloseInfo $closeInfo) {
-                    $this->onClose($clientId, $closeInfo);
-                });
-                return $this->authenticate($connection, $this->authenticator);
+            $connection = $this->futureConnection->await();
+            $connection->onClose(function (int $clientId, WebsocketCloseInfo $closeInfo) {
+                $this->onClose($clientId, $closeInfo);
             });
-            // TODO: private field?
-            $this->futureSessionId->map($this->readMessages(...));
+            // TODO: private field
+            $futureReadMessages = async($this->readMessages(...));
+            $this->futureSessionId = async(fn () => $this->authenticate($connection, $this->authenticator));
 //            async(function () {
 //                try {
 //                    $this->readMessages();
@@ -126,15 +125,15 @@ class VaasWebSocket
     private function authenticate($connection, $authenticator): string
     {
         $this->logger->debug("Authenticating");
+        $futureVerdictResponse = $this->waitForVerdict(AuthResponse::class);
         $this->sendAuthRequest($connection, $authenticator);
-        foreach ($connection as $message) {
-            $parsedMessage = $this->parseMessage($message);
-            if ($parsedMessage instanceof AuthResponse) {
-                $this->logger->debug("Authenticated with session ID " . $parsedMessage->session_id);
-                return $parsedMessage->session_id;
-            }
+        $verdictResponse = $futureVerdictResponse->await();
+        if (!$verdictResponse->success) {
+            throw new VaasAuthenticationException("Authentication failed");
         }
-        throw new VaasAuthenticationException("Authentication failed");
+        $sessionId = $verdictResponse->session_id;
+        $this->logger->debug("Authenticated with session ID " . $sessionId);
+        return $sessionId;
     }
 
     private function sendAuthRequest($connection, $authenticator): void
@@ -189,7 +188,7 @@ class VaasWebSocket
         foreach ($this->getConnection() as $message) {
             $parsedMessage = $this->parseMessage($message);
             // TODO: Use requestId in all messages
-            $requestId = $parsedMessage->guid;
+            $requestId = $parsedMessage instanceof AuthResponse ? AuthResponse::class : $parsedMessage->guid;
             if (!key_exists($requestId, $this->requests)) {
                 // TODO: Template use
                 $this->logger->warning("Received response for unknown request id");
@@ -197,6 +196,7 @@ class VaasWebSocket
             }
             $deferredResponse = $this->requests[$requestId];
             switch ($parsedMessage->kind) {
+                case Kind::AuthResponse:
                 case Kind::VerdictResponse:
                     $deferredResponse->complete($parsedMessage);
                     break;

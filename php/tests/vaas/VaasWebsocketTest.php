@@ -178,6 +178,7 @@ final class VaasWebsocketTest extends TestCase
         return $iteratorMock;
     }
 
+    // Inspired by https://stackoverflow.com/questions/15907249/how-can-i-mock-a-class-that-implements-the-iterator-interface-using-phpunit
     /**
      * Setup methods required to mock an iterator
      *
@@ -204,9 +205,7 @@ final class VaasWebsocketTest extends TestCase
             ->will(
                 $this->returnCallback(
                     function () use ($iterator) {
-                        $this->logger->debug("current() waiting");
                         $current = $iterator->current();
-                        $this->logger->debug("current() got value");
                         return $current;
                     }
                 )
