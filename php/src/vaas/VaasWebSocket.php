@@ -60,39 +60,47 @@ class VaasWebSocket
     /**
      * Send a verdict request to the server. Returns asynchronously the corresponding response, or an error.
      * @param BaseVerdictRequest $request
-     * @return Future<VerdictResponse>
      * @throws WebsocketClosedException If the connection is unexpectedly closed while sending the request
+     * @return Future<VerdictResponse>
      */
+    // TODO: Document future can error with VaasAuthenticationException, TimeoutException
     public function sendRequest(BaseVerdictRequest $request): Future
     {
-        $this->connectAndAuthenticate()->await();
+        try {
+            $this->connectAndAuthenticate()->await();
+        }
+        catch (VaasAuthenticationException $exception) {
+            return Future::error($exception);
+        }
+
         $connection = $this->getConnection();
         $request->session_id = $this->getSessionId();
 
         $futureResponse = $this->waitForVerdict($request->guid);
 
         $connection->sendText(json_encode($request));
-        // TODO: catch WebsocketClosedException and retry?
+        // TODO: catch WebsocketClosedException and retry
 
         return $futureResponse;
     }
 
     private function connectAndAuthenticate(): Future
     {
-        if ($this->futureConnection == null) {
+        if ($this->futureSessionId == null) {
             $this->futureConnection = async(function ($url) {
                 $this->logger->debug("Connecting");
                 $connection = ($this->connect)($url);
                 $this->logger->debug("Connected");
                 return $connection;
             }, $this->url);
-            $connection = $this->futureConnection->await();
-            $connection->onClose(function (int $clientId, WebsocketCloseInfo $closeInfo) {
-                $this->onClose($clientId, $closeInfo);
+            $this->futureSessionId = $this->futureConnection->map(function ($connection) {
+                // TODO: private field
+                $futureReadMessages = async($this->readMessages(...));
+                $connection->onClose(function (int $clientId, WebsocketCloseInfo $closeInfo) {
+                    $this->onClose($clientId, $closeInfo);
+                });
+                return $this->authenticate($connection, $this->authenticator);
             });
-            // TODO: private field
-            $futureReadMessages = async($this->readMessages(...));
-            $this->futureSessionId = async(fn () => $this->authenticate($connection, $this->authenticator));
 //            async(function () {
 //                try {
 //                    $this->readMessages();
@@ -185,6 +193,7 @@ class VaasWebSocket
      */
     private function readMessages(): void
     {
+        $this->logger->debug("Reading messages from websocket");
         foreach ($this->getConnection() as $message) {
             $parsedMessage = $this->parseMessage($message);
             // TODO: Use requestId in all messages
@@ -210,6 +219,7 @@ class VaasWebSocket
             // Only delete from pending after having it completed/errored, in case the switch above fails
             unset($this->requests[$requestId]);
         }
+        $this->logger->debug("Read all messages from websocket");
     }
 
     /**
