@@ -1,8 +1,6 @@
 package de.gdata.vaasexample;
 
-import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
-import de.gdata.vaas.Vaas;
-import de.gdata.vaas.VaasConfig;
+import de.gdata.vaas.*;
 import de.gdata.vaas.messages.VerdictRequestAttributes;
 
 import java.net.URI;
@@ -10,19 +8,31 @@ import java.nio.file.Path;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        var clientId = getenv("CLIENT_ID");
-        var clientSecret = getenv("CLIENT_SECRET");
+        // Either set CLIENT_ID & CLIENT_SECRET or alternatively VAAS_USER_NAME and VAAS_PASSWORD
+        var clientId = System.getenv("CLIENT_ID");
+        var clientSecret = System.getenv("CLIENT_SECRET");
+        var userName = System.getenv("VAAS_USER_NAME");
+        var password = System.getenv("VAAS_PASSWORD");
         var scanPath = getenv("SCAN_PATH");
         var tokenUrl = System.getenv("TOKEN_URL");
         if (tokenUrl == null) {
-            tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token";
+            tokenUrl = "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
         }
         var vaasUrl = System.getenv("VAAS_URL");
         if (vaasUrl == null) {
-            vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de";
-        } 
+            vaasUrl = "wss://gateway.staging.vaas.gdatasecurity.de";
+        }
 
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, new URI(tokenUrl));
+        IAuthenticator authenticator;
+        if (clientId == null) {
+            if (userName == null) {
+                throw new IllegalStateException("Either CLIENT_ID or VAAS_USER_NAME must be set");
+            }
+            authenticator = new ResourceOwnerPasswordGrantAuthenticator("vaas-customer", userName, password, new URI(tokenUrl));
+        } else {
+            authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, new URI(tokenUrl));
+        }
+
         var config = new VaasConfig(
                 new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
