@@ -29,7 +29,7 @@ public class IntegrationTests
     }
 
     [Fact]
-    public async void ConnectWithWrongCredentialsThrowsVaasAuthenticationException()
+    public async Task ConnectWithWrongCredentialsThrowsVaasAuthenticationException()
     {
         var services = GetServices(new Dictionary<string, string>()
         {
@@ -47,7 +47,7 @@ public class IntegrationTests
     }
 
     [Fact]
-    public async void FromSha256SingleMaliciousHash()
+    public async Task FromSha256SingleMaliciousHash()
     {
         var vaas = await AuthenticateWithCredentials();
         var verdict = await vaas.ForSha256Async(
@@ -58,7 +58,7 @@ public class IntegrationTests
     }
 
     [Fact]
-    public async void FromSha256SingleCleanHash()
+    public async Task FromSha256SingleCleanHash()
     {
         var vaas = await AuthenticateWithCredentials();
         var verdict = await vaas.ForSha256Async(
@@ -69,7 +69,7 @@ public class IntegrationTests
     }
 
     [Fact(Skip = "Remove Skip to test keepalive")]
-    public async void FromSha256_WorksAfter40s()
+    public async Task FromSha256_WorksAfter40s()
     {
         var vaas = await AuthenticateWithCredentials();
         const string guid = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
@@ -83,7 +83,7 @@ public class IntegrationTests
     }
 
     [Fact]
-    public async void FromSha256SingleUnknownHash()
+    public async Task FromSha256SingleUnknownHash()
     {
         var vaas = await AuthenticateWithCredentials();
         var verdict = await vaas.ForSha256Async(
@@ -94,7 +94,7 @@ public class IntegrationTests
     }
 
     [Fact]
-    public async void From256ListMultipleHashes()
+    public async Task From256ListMultipleHashes()
     {
         var myList = new List<string>
         {
@@ -149,7 +149,7 @@ public class IntegrationTests
     }
 
     // [Fact]
-    // public async void FromSha256_ReturnsPup_ForAmtsoSample()
+    // public async Task FromSha256_ReturnsPup_ForAmtsoSample()
     // {
     //     var vaas = await AuthenticateWithCredentials();
     //     var actual = await vaas.ForSha256Async(
