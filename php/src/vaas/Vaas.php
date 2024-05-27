@@ -48,7 +48,7 @@ class Vaas
     private string $_vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de";
     private VaasConnection $_vaasConnection;
     private int $_waitTimeoutInSeconds = 600;
-    private int $_uploadTimeoutInSeconds = 60;
+    private int $_uploadTimeoutInSeconds = 600;
     private LoggerInterface $_logger;
     private HttpClient $_httpClient;
     private VaasOptions $_options;
