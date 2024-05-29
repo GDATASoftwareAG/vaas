@@ -65,7 +65,7 @@ jobs:
       - name: set up Golang
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.2
+          go-version-file: golang/vaas/go.mod
           check-latest: true
           cache: true
           cache-dependency-path: golang/vaas/go.sum
