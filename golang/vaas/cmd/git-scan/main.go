@@ -43,7 +43,7 @@ func main() {
 		log.Fatal("either password or client_secret must be set")
 	}
 
-	if usernameExists && (!passwordExsits || !clientIdExists) {
+	if usernameExists && (!passwordExists || !clientIdExists) {
 		log.Fatal("when using the username, the password and client_id must be set")
 	}
 
