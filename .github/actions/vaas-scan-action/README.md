@@ -1,6 +1,6 @@
 # vaas-scan-action
 
-This is a github aciton with that one can scan changes in pull-requests with the G DATA product Verdict-as-a-Service (VaaS). VaaS is an Antivirus in the cloud, that can be utilized by a simple api.
+This is a github action with that one can scan changes in pull-requests with the G DATA product Verdict-as-a-Service (VaaS). VaaS is an Antivirus in the cloud, that can be utilized by a simple api.
 
 ## preconditions
 
