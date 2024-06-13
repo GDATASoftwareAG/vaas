@@ -14,7 +14,15 @@ inputs:
     default: ""
   VAAS_CLIENT_SECRET:
     description: "Client secret of your vaas credentials"
-    required: true
+    required: false
+    default: ""
+  VAAS_USERNAME:
+    description: "Username of your vaas credentials"
+    required: false
+    default: ""
+  VAAS_PASSWORD:
+    description: "Password of your vaas credentials"
+    required: false
     default: ""
   REMOTE:
     description: "the origin name"
