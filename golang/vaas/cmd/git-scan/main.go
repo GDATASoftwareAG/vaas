@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
+	vaas_authenticator "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
@@ -30,14 +30,23 @@ func main() {
 	}
 	log.Println("targetBranch:", targetBranch)
 
-	clientID, exists := os.LookupEnv("VAAS_CLIENT_ID")
-	if !exists {
-		log.Fatal("no Client ID set")
+	clientID, clientIdExists := os.LookupEnv("VAAS_CLIENT_ID")
+	username, usernameExists := os.LookupEnv("VAAS_USERAME")
+	password, passwordExsits := os.LookupEnv("VAAS_PASSWORD")
+	clientSecret, clientSecretExists := os.LookupEnv("VAAS_CLIENT_SECRET")
+
+	if !clientIdExists {
+		log.Fatal("no client_id set")
+
 	}
-	clientSecret, exists := os.LookupEnv("VAAS_CLIENT_SECRET")
-	if !exists {
-		log.Fatal("no Client Secret set")
+	if clientIdExists && (!passwordExsits && !clientSecretExists) {
+		log.Fatal("either password or client_secret must be set")
 	}
+
+	if usernameExists && (!passwordExsits || !clientIdExists) {
+		log.Fatal("when using the username, the password and client_id must be set")
+	}
+
 	vaasUrl, exists := os.LookupEnv("VAAS_URL")
 	if !exists {
 		vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de/"
@@ -74,7 +83,13 @@ func main() {
 		log.Println("no changed files found in diff")
 		os.Exit(0)
 	}
-	authenticator := authenticator.New(clientID, clientSecret, tokenUrl)
+
+	var authenticator vaas_authenticator.Authenticator
+	if usernameExists {
+		authenticator = vaas_authenticator.NewWithResourceOwnerPassword(username, password, clientID, tokenUrl)
+	} else {
+		authenticator = vaas_authenticator.New(clientID, clientSecret, tokenUrl)
+	}
 
 	vaas := vaas.New(options.DefaultOptions(), vaasUrl)
 	ctx, webSocketCancel := context.WithCancel(context.Background())
