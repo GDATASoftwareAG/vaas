@@ -32,7 +32,7 @@ func main() {
 
 	clientID, clientIdExists := os.LookupEnv("VAAS_CLIENT_ID")
 	username, usernameExists := os.LookupEnv("VAAS_USERAME")
-	password, passwordExsits := os.LookupEnv("VAAS_PASSWORD")
+	password, passwordExists := os.LookupEnv("VAAS_PASSWORD")
 	clientSecret, clientSecretExists := os.LookupEnv("VAAS_CLIENT_SECRET")
 
 	if !clientIdExists {
