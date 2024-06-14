@@ -3,6 +3,9 @@ on:
   push:
     tags:
       - "git-scan*"
+    paths:
+      - "golang/vaas/**"
+      - ".github/workflows/ci-git-scan.yaml"
 
 jobs:
   build-git-scan:
@@ -12,6 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Scan for Viruses
+        uses: ./.github/actions/vaas-scan-action
+        with:
+          VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
+          VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

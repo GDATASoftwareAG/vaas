@@ -38,7 +38,7 @@ runs:
         VAAS_CLIENT_SECRET: ${{ inputs.VAAS_CLIENT_SECRET }}
         VAAS_USERNAME: ${{ inputs.VAAS_USERNAME }}
         VAAS_PASSWORD: ${{ inputs.VAAS_PASSWORD }}
-      uses: docker://ghcr.io/gdatasoftwareag/vaas/git-scan:4
+      uses: docker://ghcr.io/gdatasoftwareag/vaas/git-scan:4.3.0
       if: github.event_name == 'pull_request'
       with:
         entrypoint: /bin/bash
