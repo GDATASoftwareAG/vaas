@@ -4,7 +4,7 @@ This is a github action with that one can scan changes in pull-requests with the
 
 ## preconditions
 
-Before you can use this action, you need to aquire credentials. Please find more Information on the [Verdict-as-a-Service product page](https://www.gdata.de/business/security-services/verdict-as-a-service). If you want to test VaaS on your own, you can get credentials on our [registration page](https://vaas.gdata.de/login)
+Before you can use this action, you need to aquire credentials. Please find more Information on the [Verdict-as-a-Service product page](https://www.gdata.de/business/security-services/verdict-as-a-service). If you want to test VaaS on your own, you can get credentials on our [registration page](https://vaas.gdata.de/)
 
 ## usage
 
