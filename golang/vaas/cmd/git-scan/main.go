@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	vaas_authenticator "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
@@ -30,21 +31,10 @@ func main() {
 	}
 	log.Println("targetBranch:", targetBranch)
 
-	clientID, clientIdExists := os.LookupEnv("VAAS_CLIENT_ID")
-	username, usernameExists := os.LookupEnv("VAAS_USERAME")
-	password, passwordExists := os.LookupEnv("VAAS_PASSWORD")
-	clientSecret, clientSecretExists := os.LookupEnv("VAAS_CLIENT_SECRET")
-
-	if !clientIdExists {
-		log.Fatal("no client_id set")
-
-	}
-	if clientIdExists && (!passwordExists && !clientSecretExists) {
-		log.Fatal("either password or client_secret must be set")
-	}
-
-	if usernameExists && (!passwordExists || !clientIdExists) {
-		log.Fatal("when using the username, the password and client_id must be set")
+	vaasAuthenticator, credentialsError := getAuthenticator(
+		os.Getenv("VAAS_CLIENT_ID"), os.Getenv("VAAS_CLIENT_SECRET"), os.Getenv("VAAS_USERAME"), os.Getenv("VAAS_PASSWORD"))
+	if credentialsError != nil {
+		log.Fatal(credentialsError)
 	}
 
 	vaasUrl, exists := os.LookupEnv("VAAS_URL")
@@ -52,11 +42,6 @@ func main() {
 		vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de/"
 	}
 	log.Println("vaas url:", vaasUrl)
-	tokenUrl, exists := os.LookupEnv("VAAS_TOKEN_URL")
-	if !exists {
-		tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
-	}
-	log.Println("token url:", tokenUrl)
 
 	gitRevParseCommand := exec.Command("git", "rev-parse", "--show-toplevel")
 	rootDirectoryBytes, err := gitRevParseCommand.CombinedOutput()
@@ -84,16 +69,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	var authenticator vaas_authenticator.Authenticator
-	if usernameExists {
-		authenticator = vaas_authenticator.NewWithResourceOwnerPassword(username, password, clientID, tokenUrl)
-	} else {
-		authenticator = vaas_authenticator.New(clientID, clientSecret, tokenUrl)
-	}
-
 	vaas := vaas.New(options.DefaultOptions(), vaasUrl)
 	ctx, webSocketCancel := context.WithCancel(context.Background())
-	termChan, err := vaas.Connect(ctx, authenticator)
+	termChan, err := vaas.Connect(ctx, vaasAuthenticator)
 	if err != nil {
 		log.Fatal("vaas connect error: ", err)
 	}
@@ -126,4 +104,25 @@ func main() {
 	if maliciousFileFound {
 		os.Exit(1)
 	}
+}
+
+func getAuthenticator(clientId, clientSecret, username, password string) (vaasAuthenticator authenticator.Authenticator, credentialsError error) {
+	tokenUrl, exists := os.LookupEnv("VAAS_TOKEN_URL")
+	if !exists {
+		tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+	}
+	log.Println("token url:", tokenUrl)
+
+	if (clientId != "" && clientSecret != "") || (username != "" && password != "") {
+		if username != "" && password != "" {
+			vaasAuthenticator = authenticator.NewWithResourceOwnerPassword(username, password, "vaas-github-actions", tokenUrl)
+		} else {
+			vaasAuthenticator = authenticator.New(clientId, clientSecret, tokenUrl)
+		}
+
+		return
+
+	}
+	return nil, errors.New("you either need VAAS_CLIENT_ID and VAAS_CLIENT_SECRET or VAAS_USERAME and VAAS_PASSWORD")
+
 }

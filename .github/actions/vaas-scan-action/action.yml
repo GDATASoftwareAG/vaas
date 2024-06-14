@@ -10,7 +10,7 @@ inputs:
     default: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
   VAAS_CLIENT_ID:
     description: "Client ID of your vaas credentials"
-    required: true
+    required: false
     default: ""
   VAAS_CLIENT_SECRET:
     description: "Client secret of your vaas credentials"

@@ -11,15 +11,15 @@ Before you can use this action, you need to aquire credentials. Please find more
 ```yaml
 - uses: actions/vaas-scan-action
   with:
-    # You need either a CLIENT_ID, USERNAME and PASSWORD or a CLIENT_ID and a CLIENT_SECRET
+    # You either need VAAS_CLIENT_ID (get in contact with us) or a VAAS_USERNAME (use the self registration (trial))
     # The CLIENT_ID is the only mendatory variable
     VAAS_CLIENT_ID: "some-id"
+    # A CLIENT_SECRET is only required when you got in contact with us
+    VAAS_CLIENT_SECRET: "some-secret"
     # The USERNAME can be optained on our registration page
     VAAS_USERNAME: "some-username"
     # The PASSWORD can be optained on our registration page
     VAAS_PASSWORD: "some-password"
-    # A CLIENT_SECRET is only required when you got in contact with us
-    VAAS_CLIENT_SECRET: "some-secret"
     # You can point the VAAS_URL to a self-hosted version of VaaS. If you need that, please get in contact with us.
     VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de/"
     # This is the token-endpoint of VaaS. For self-hosted versions, you need to change this url too.
@@ -33,7 +33,6 @@ Before you can use this action, you need to aquire credentials. Please find more
 ```yaml
 - uses: actions/vaas-scan-action
   with:
-    VAAS_CLIENT_ID: "some-id"
     VAAS_USERNAME: "some-username"
     VAAS_PASSWORD: "some-password"
 ```
