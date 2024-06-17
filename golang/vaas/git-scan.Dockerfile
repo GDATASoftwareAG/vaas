@@ -1,4 +1,4 @@
-FROM ubuntu:22.04 as runner
+FROM ubuntu:24.04 as runner
 
 RUN apt update && apt install -y git
 WORKDIR /app
