@@ -71,11 +71,11 @@ jobs:
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v4
         name: install pnpm
         id: pnpm-install
         with:
-          version: 8
+          version: 9
           run_install: false
 
       - uses: actions/setup-node@v4
