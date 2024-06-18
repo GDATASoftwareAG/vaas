@@ -2,7 +2,7 @@ name: Delete old container images
 
 on:
   schedule:
-    - cron: "15 * * * *" # run hourly
+    - cron: "15 */12 * * *" # run hourly
   push:
     branches:
       - "*"
