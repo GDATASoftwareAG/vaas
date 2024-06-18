@@ -1,4 +1,4 @@
-import WebSocket from "isomorphic-ws";
+import WebSocket from "@d-fischer/isomorphic-ws";
 import * as sha256 from "fast-sha256";
 import { Kind, Message } from "./messages/message";
 import { AuthenticationResponse } from "./messages/authentication_response";
@@ -46,7 +46,7 @@ export interface VerdictPromise {
 }
 
 export type VaasConnection = {
-  ws: WebSocket;
+  ws: WebSocket.WebSocket;
   sessionId?: string;
 };
 
@@ -64,7 +64,7 @@ export class Vaas {
   defaultTimeoutStreamReq: number = 100_000;
   debug = false;
 
-  constructor(private webSocketFactory = (url: string) => new WebSocket(url)) {
+  constructor(private webSocketFactory = (url: string) => new WebSocket.WebSocket(url)) {
     this.verdictPromises = new Map<string, VerdictPromise>();
   }
 
@@ -264,7 +264,7 @@ export class Vaas {
               this.verdictPromises.delete(guid);
               resolve(
                 new VaasVerdict(verdictResponse.sha256, verdictResponse.verdict, verdictResponse.detection, verdictResponse.file_type, verdictResponse.mime_type),
-                );
+              );
             },
             reject: (reason) => reject(reason),
           });
@@ -437,10 +437,10 @@ export class Vaas {
     if (!ws) {
       throw new VaasInvalidStateError("connect() was not called");
     }
-    if (ws.readyState === WebSocket.CONNECTING) {
+    if (ws.readyState === WebSocket.WebSocket.CONNECTING) {
       throw new VaasInvalidStateError("connect() was not awaited");
     }
-    if (ws.readyState !== WebSocket.OPEN) {
+    if (ws.readyState !== WebSocket.WebSocket.OPEN) {
       throw new VaasConnectionClosedError(this.closeEvent);
     }
     return ws;

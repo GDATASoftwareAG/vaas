@@ -4,7 +4,7 @@ import * as dotenv from "dotenv";
 import { Vaas } from "../src/Vaas";
 import * as randomBytes from "random-bytes";
 import { CancellationToken } from "../src/CancellationToken";
-import WebSocket from "isomorphic-ws";
+import WebSocket from "@d-fischer/isomorphic-ws";
 import * as sha256 from "fast-sha256";
 import {
   VaasAuthenticationError,
@@ -306,12 +306,12 @@ describe("Vaas", async () => {
     ["forFileList", [[randomFile]]],
   ];
 
-  let webSocket: WebSocket;
+  let webSocket: WebSocket.WebSocket;
   let vaas: Vaas;
 
   beforeEach(() => {
     webSocket = {
-      readyState: WebSocket.CONNECTING as number,
+      readyState: WebSocket.WebSocket.CONNECTING as number,
       onopen: () => { },
       onclose: () => { },
       onmessage: () => { },
@@ -332,7 +332,7 @@ describe("Vaas", async () => {
 
       it("throws if connect() was not awaited", async () => {
         vaas.connect("token", VAAS_URL);
-        (webSocket as any).readyState = WebSocket.CONNECTING;
+        (webSocket as any).readyState = WebSocket.WebSocket.CONNECTING;
 
         await expect((vaas as any)[method](...params)).to.be.rejectedWith(
           VaasInvalidStateError,
@@ -342,7 +342,7 @@ describe("Vaas", async () => {
 
       it("throws not authenticated if connect() was not awaited", async () => {
         vaas.connect("token", VAAS_URL);
-        (webSocket as any).readyState = WebSocket.OPEN;
+        (webSocket as any).readyState = WebSocket.WebSocket.OPEN;
 
         await expect((vaas as any)[method](...params)).to.be.rejectedWith(
           VaasInvalidStateError,
