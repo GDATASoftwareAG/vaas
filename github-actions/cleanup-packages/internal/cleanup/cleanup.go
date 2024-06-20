@@ -48,7 +48,7 @@ func getVersionsOlderThan2Month(context context.Context, client *github.Client, 
 			&github.PackageListOptions{
 				ListOptions: github.ListOptions{
 					Page:    nextPage,
-					PerPage: 10,
+					PerPage: 100,
 				},
 				PackageType: &packageType,
 				State:       &packageState,
@@ -104,7 +104,7 @@ func getContainerPackages(context context.Context, client *github.Client, nameRe
 			context, gdataOrganisation, &github.PackageListOptions{
 				PackageType: &packageType,
 				ListOptions: github.ListOptions{
-					PerPage: 5,
+					PerPage: 100,
 					Page:    nextPage,
 				},
 			})
