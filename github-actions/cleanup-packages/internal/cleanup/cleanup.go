@@ -14,7 +14,7 @@ const gdataOrganisation = "GDATASoftwareAG"
 
 var packageType = "container"
 var globalNameRegex, _ = regexp.Compile(`(gdscanserver|scanclient|vaas/.+)$`)
-var globalTagsNotToDelete, _ = regexp.Compile(`(latest|[0-9]*\.[0-9]*\.[0-9]*|[0-9]*)$`)
+var globalTagsNotToDelete, _ = regexp.Compile(`(latest|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+)$`)
 var nowTime = time.Now()
 
 // Cleanup the main method of this lib
