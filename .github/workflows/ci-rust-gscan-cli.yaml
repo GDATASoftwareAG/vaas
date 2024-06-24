@@ -44,13 +44,15 @@ jobs:
           EXTRA_FILES: "Readme.md"
           UPLOAD_MODE: none
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
+      - name: release
+        uses: svenstaro/upload-release-action@v2
+        id: attach_to_release
         with:
-          name: gscan-cli
-          path: |
-            ${{ steps.build.outputs.BUILT_ARCHIVE }}
-            ${{ steps.build.outputs.BUILT_CHECKSUM }}              
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ steps.build.outputs.BUILT_ARCHIVE }}
+          asset_name: gscan
+          tag: ${{ github.ref }}
+          overwrite: true                       
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
