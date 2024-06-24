@@ -1,0 +1,72 @@
+name: vaas-rust-ci
+on:
+  push:
+    branches:
+      - main
+      - rust_example_1_0_0
+    paths:
+      - "rust/example/gdscan/**"
+      - ".github/workflows/ci-rust-gscan-cli.yaml"
+    tags:
+      - "rs*"
+  pull_request:
+    branches:
+      - main
+      - rust_example_1_0_0
+    paths:
+      - "rust/example/gdscan/**"
+      - ".github/workflows/ci-rust-gscan-cli.yaml"
+  release:
+    types: [created]
+
+# env:
+#   CLIENT_ID: ${{ secrets.CLIENT_ID }}
+#   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+#   VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+#   TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+#   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
+#   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
+#   VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
+
+jobs:
+  release:
+    name: release ${{ matrix.target }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-pc-windows-gnu, x86_64-unknown-linux-musl]
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for Viruses
+        uses: ./.github/actions/vaas-scan-action
+        with:
+          VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
+          VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
+
+      - uses: actions/checkout@master
+      - name: Compile and release
+        uses: rust-build/rust-build.action@v1.4.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          RUSTTARGET: ${{ matrix.target }}
+          EXTRA_FILES: "Readme.md"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Binary
+          path: |
+            ${{ steps.compile.outputs.BUILT_ARCHIVE }}
+            ${{ steps.compile.outputs.BUILT_CHECKSUM }}              
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
