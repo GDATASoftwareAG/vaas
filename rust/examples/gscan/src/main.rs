@@ -1,7 +1,10 @@
 use clap::{crate_authors, crate_description, crate_name, crate_version, Arg, ArgAction, Command};
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
-use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
+use vaas::{
+    auth::authenticators::ClientCredentials, error::VResult, CancellationToken, Connection, Vaas,
+    VaasVerdict,
+};
 
 #[tokio::main]
 async fn main() -> VResult<()> {
@@ -58,10 +61,11 @@ async fn main() -> VResult<()> {
     let client_id = matches.get_one::<String>("client_id").unwrap();
     let client_secret = matches.get_one::<String>("client_secret").unwrap();
 
-    let token = Vaas::get_token(client_id, client_secret).await?;
+    let authenticator = ClientCredentials::new(client_id.to_owned(), client_secret.to_owned());
+    let vaas_connection = Vaas::builder(authenticator).build()?.connect().await?;
 
-    let file_verdicts = scan_files(&files, &token).await?;
-    let url_verdicts = scan_urls(&urls, &token).await?;
+    let file_verdicts = scan_files(&files, &vaas_connection).await?;
+    let url_verdicts = scan_urls(&urls, &vaas_connection).await?;
 
     file_verdicts.iter().for_each(|(f, v)| {
         println!(
@@ -90,12 +94,10 @@ async fn main() -> VResult<()> {
 
 async fn scan_files<'a>(
     files: &'a [PathBuf],
-    token: &str,
+    vaas_connection: &Connection,
 ) -> VResult<Vec<(&'a PathBuf, VResult<VaasVerdict>)>> {
-    let vaas = Vaas::builder(token.into()).build()?.connect().await?;
-
     let ct = CancellationToken::from_minutes(1);
-    let verdicts = vaas.for_file_list(files, &ct).await;
+    let verdicts = vaas_connection.for_file_list(files, &ct).await;
     let results = files.iter().zip(verdicts).collect();
 
     Ok(results)
@@ -103,14 +105,12 @@ async fn scan_files<'a>(
 
 async fn scan_urls(
     urls: &[Url],
-    token: &str,
+    vaas_connection: &Connection,
 ) -> VResult<HashMap<Url, Result<VaasVerdict, vaas::error::Error>>> {
-    let vaas = Vaas::builder(token.into()).build()?.connect().await?;
-
     let ct = CancellationToken::from_minutes(1);
     let mut verdicts = HashMap::new();
     for url in urls {
-        let verdict = vaas.for_url(url, &ct).await;
+        let verdict = vaas_connection.for_url(url, &ct).await;
         verdicts.insert(url.to_owned(), verdict);
     }
 
