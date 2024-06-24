@@ -48,7 +48,8 @@ jobs:
           VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
 
       - uses: actions/checkout@master
-      - name: Compile and release
+      - name: build
+        id: build
         uses: rust-build/rust-build.action@v1.4.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,8 +64,8 @@ jobs:
         with:
           name: Binary
           path: |
-            ${{ steps.compile.outputs.BUILT_ARCHIVE }}
-            ${{ steps.compile.outputs.BUILT_CHECKSUM }}              
+            ${{ steps.build.outputs.BUILT_ARCHIVE }}
+            ${{ steps.build.outputs.BUILT_CHECKSUM }}              
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
