@@ -18,7 +18,7 @@ async fn main() -> VResult<()> {
                 .long("files")
                 .required_unless_present("urls")
                 .action(ArgAction::Append)
-                .help("List of files to scan spearated by whitepace"),
+                .help("List of files to scan separated by whitepace"),
         )
         .arg(
             Arg::new("urls")
@@ -26,7 +26,7 @@ async fn main() -> VResult<()> {
                 .long("urls")
                 .action(ArgAction::Append)
                 .required_unless_present("files")
-                .help("List of urls to scan spearated by whitepace"),
+                .help("List of urls to scan separated by whitepace"),
         )
         .arg(
             Arg::new("client_id")
