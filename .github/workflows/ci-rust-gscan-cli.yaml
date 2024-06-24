@@ -56,6 +56,7 @@ jobs:
           SRC_DIR: rust/examples/gscan
           RUSTTARGET: ${{ matrix.target }}
           EXTRA_FILES: "Readme.md"
+          UPLOAD_MODE: none
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
