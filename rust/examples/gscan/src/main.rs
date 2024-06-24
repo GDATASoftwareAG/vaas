@@ -1,14 +1,14 @@
-use clap::{Arg, ArgAction, Command};
+use clap::{crate_authors, crate_description, crate_name, crate_version, Arg, ArgAction, Command};
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
 
 #[tokio::main]
 async fn main() -> VResult<()> {
-    let matches = Command::new("GDATA command line scanner")
-        .version("0.1.0")
-        .author("GDATA CyberDefense AG")
-        .about("Scan files for malicious content")
+    let matches = Command::new(crate_name!())
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about(crate_description!())
         .arg(
             Arg::new("files")
                 .short('f')
