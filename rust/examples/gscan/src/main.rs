@@ -67,29 +67,29 @@ async fn main() -> VResult<()> {
     let file_verdicts = scan_files(&files, &vaas_connection).await?;
     let url_verdicts = scan_urls(&urls, &vaas_connection).await?;
 
-    file_verdicts.iter().for_each(|(f, v)| {
-        println!(
-            "File: {:?} -> {}",
-            f,
-            match v {
-                Ok(v) => v.verdict.to_string(),
-                Err(e) => e.to_string(),
-            }
-        )
-    });
+    file_verdicts
+        .iter()
+        .for_each(|(f, v)| print_verdicts(f.display().to_string(), v));
 
-    url_verdicts.iter().for_each(|(u, v)| {
-        println!(
-            "Url: {:?} -> {}",
-            u.to_string(),
-            match v {
-                Ok(v) => v.verdict.to_string(),
-                Err(e) => e.to_string(),
-            }
-        )
-    });
+    url_verdicts.iter().for_each(|(u, v)| print_verdicts(u, v));
 
     Ok(())
+}
+
+fn print_verdicts<I: AsRef<str>>(i: I, v: &VResult<VaasVerdict>) {
+    print!("{} -> ", i.as_ref());
+    match v {
+        Ok(v) => {
+            print!("{}", v.verdict);
+            if let Some(detection) = &v.detection {
+                print!(" {}", detection);
+            }
+            println!();
+        }
+        Err(e) => {
+            println!("{}", e.to_string());
+        }
+    };
 }
 
 async fn scan_files<'a>(
