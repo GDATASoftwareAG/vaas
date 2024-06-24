@@ -53,6 +53,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          SRC_DIR: rust/examples/gscan
           RUSTTARGET: ${{ matrix.target }}
           EXTRA_FILES: "Readme.md"
 
