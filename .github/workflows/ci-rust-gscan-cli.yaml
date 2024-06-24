@@ -44,7 +44,12 @@ jobs:
           EXTRA_FILES: "Readme.md"
           UPLOAD_MODE: none
 
-      - name: release
+      - name: Github Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build.outputs.BUILT_ARCHIVE }}       
+
+      - name: Attach file to release
         uses: svenstaro/upload-release-action@v2
         id: attach_to_release
         with:
