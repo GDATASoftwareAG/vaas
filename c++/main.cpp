@@ -21,7 +21,7 @@ public:
     }
 
     std::string getAccessToken() {
-        std::lock_guard<std::mutex> lock(mtx);
+        std::lock_guard lock(mtx);
 
         auto now = std::chrono::system_clock::now();
         if (now < tokenExpiry) {
@@ -31,7 +31,7 @@ public:
         CURLcode res;
         curl_easy_reset(curl);
 
-        struct curl_slist* headers = nullptr;
+        curl_slist* headers = nullptr;
         headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
 
         std::string postFields = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret;
@@ -61,6 +61,13 @@ public:
             throw std::runtime_error("Failed to parse JSON response: " + errs);
         }
 
+        if (jsonResponse.isMember("error")) {
+            auto errorMsg = jsonResponse.isMember("error_description")
+                                ? jsonResponse.get("error_description", NULL)
+                                : jsonResponse.get("error", NULL);
+            throw std::runtime_error(errorMsg.asString());
+        }
+
         accessToken = jsonResponse["access_token"].asString();
         int expiresIn = jsonResponse["expires_in"].asInt();
         tokenExpiry = now + std::chrono::seconds(expiresIn);
@@ -80,16 +87,27 @@ private:
     std::mutex mtx;
 
     static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-        ((std::string*)userp)->append((char*)contents, size * nmemb);
+        static_cast<std::string*>(userp)->append(static_cast<char*>(contents), size * nmemb);
         return size * nmemb;
     }
 };
 
 int main() {
     try {
-        OIDCClient client("https://example.com/token", "client_id", "client_secret");
+        auto tokenUrl = std::getenv("TOKEN_URL")
+                            ? std::getenv("TOKEN_URL")
+                            : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
+        auto clientId = std::getenv("CLIENT_ID")
+                            ? std::getenv("CLIENT_ID")
+                            : throw std::runtime_error("CLIENT_ID must be set");
+        auto clientSecret = std::getenv("CLIENT_SECRET")
+                                ? std::getenv("CLIENT_SECRET")
+                                : throw std::runtime_error("CLIENT_SECRET must be set");
+        OIDCClient client(tokenUrl, clientId, clientSecret);
         std::string token = client.getAccessToken();
         std::cout << "Access Token: " << token << std::endl;
+        std::string tokenAgain = client.getAccessToken();
+        std::cout << "Access Token (again - reused): " << tokenAgain << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
