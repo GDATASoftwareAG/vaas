@@ -1,0 +1,8 @@
+{
+  "dependencies": [
+    "curl",
+    "jsoncpp"
+  ],
+  "version": "0.0.0",
+  "name": "oidc-client-example"
+}
