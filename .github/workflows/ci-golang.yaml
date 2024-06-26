@@ -7,7 +7,7 @@ on:
       - "golang/vaas/**"
       - ".github/workflows/ci-golang.yaml"
     tags:
-      - 'golang/vaas/v[0-9]+\.[0-9]+\.[0-9]+.*'
+      - 'golang\/vaas\/v[0-9]+\.[0-9]+\.[0-9]+.*'
   pull_request:
     branches:
       - main
