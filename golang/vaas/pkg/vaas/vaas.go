@@ -367,12 +367,14 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 
 // ForStream sends an analysis request for a file stream to the Vaas server and returns the verdict.
 // The analysis can be canceled using the provided context.
+// ContentLength should either be non-zero or the stream must be seekable.
 //
 // Example usage:
 //
 //	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
 //	ctx := context.Background()
-//	verdict, err := vaasClient.ForStream(ctx, stream)
+//	contentLength := 1234
+//	verdict, err := vaasClient.ForStream(ctx, stream, contentLength)
 //	if err != nil {
 //	    log.Fatalf("Failed to get verdict: %v", err)
 //	}
