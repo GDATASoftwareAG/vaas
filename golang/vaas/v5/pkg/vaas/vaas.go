@@ -17,10 +17,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/internal/hash"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/internal/hash"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/authenticator"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/messages"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/options"
 	"github.com/Noooste/websocket"
 )
 

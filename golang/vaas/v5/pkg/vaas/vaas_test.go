@@ -18,9 +18,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/authenticator"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/messages"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/options"
 )
 
 type testFixture struct {

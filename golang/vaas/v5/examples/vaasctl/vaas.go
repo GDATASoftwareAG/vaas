@@ -11,10 +11,9 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
-
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/authenticator"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/vaas"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v5/pkg/options"
 )
 
 var sha256Check = flag.Bool("s", false, "sha256")
