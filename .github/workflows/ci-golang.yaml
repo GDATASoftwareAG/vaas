@@ -104,7 +104,7 @@ jobs:
 
       - name: publish module
         if: startsWith(github.ref, 'refs/tags/')
-        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas-go@v${GITHUB_REF#refs/tags/go/}
+        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas-go@v$RELEASE_VERSION
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
