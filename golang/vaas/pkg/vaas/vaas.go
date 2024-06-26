@@ -52,6 +52,10 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
+var (
+	ErrUnsupportedReader = errors.New("unsupported reader")
+)
+
 // vaas provides the implementation of the Vaas interface.
 type vaas struct {
 	logger              *log.Logger
@@ -542,22 +546,17 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 		// Here can add support for various io.Reader, which are not supported by the http package.
 		if req.ContentLength == 0 {
 			switch t := file.(type) {
-			case *os.File:
-				var info os.FileInfo
-				if info, err = t.Stat(); err != nil {
-					return err
-				}
-				req.ContentLength = info.Size()
-			case io.ReadCloser:
-				if s, ok := file.(io.Seeker); ok {
-					if size, err := s.Seek(0, io.SeekEnd); err == nil {
-						if _, err = s.Seek(0, io.SeekStart); err == nil {
-							req.ContentLength = size
-						}
+			case io.Seeker:
+				var size int64
+				if size, err = t.Seek(0, io.SeekEnd); err == nil {
+					if _, err = t.Seek(0, io.SeekStart); err == nil {
+						req.ContentLength = size
+						break
 					}
 				}
+				return err
 			default:
-				return fmt.Errorf("unsupported reader (%T), can not determine content length", file)
+				return ErrUnsupportedReader
 			}
 		}
 	}

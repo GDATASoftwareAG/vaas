@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -319,6 +320,24 @@ func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
 
 	if verdict.Verdict != msg.Malicious {
 		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
+	}
+}
+
+func TestVaas_ForStream_WithStreamFromUrlZeroContentLength(t *testing.T) {
+	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
+
+	fixture := new(testFixture)
+	VaasClient := fixture.setUp(t)
+	defer fixture.tearDown(t)
+
+	_, err := VaasClient.ForStream(context.Background(), response.Body, 0)
+
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrUnsupportedReader) {
+		t.Fatalf("expected error %v, got %v", ErrUnsupportedReader, err)
 	}
 }
 
