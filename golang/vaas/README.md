@@ -1,7 +1,7 @@
 [![vaas-golang-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-golang.yaml)
 [![Vulnerability Check](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/vulncheck-golang.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/GDATASoftwareAG/vaas/golang/vaas/.svg)](https://pkg.go.dev/github.com/GDATASoftwareAG/vaas/golang/vaas/)
-[![Go Report Card](https://goreportcard.com/badge/github.com/GDATASoftwareAG/vaas/golang/vaas)](https://goreportcard.com/report/github.com/GDATASoftwareAG/vaas/golang/vaas)
+[![Go Reference](https://pkg.go.dev/badge/github.com/GDATASoftwareAG/vaas-go/.svg)](https://pkg.go.dev/github.com/GDATASoftwareAG/vaas-go/)
+[![Go Report Card](https://goreportcard.com/badge/github.com/GDATASoftwareAG/vaas-go)](https://goreportcard.com/report/github.com/GDATASoftwareAG/vaas-go)
 
 # Go VaaS Client
 
@@ -52,15 +52,15 @@ Retrieves the verdict for the given file URL from the G DATA VaaS API. `ctx` is 
 ### Installation
 
 ```sh
-go get github.com/GDATASoftwareAG/vaas/golang/vaas
+go get github.com/GDATASoftwareAG/vaas-go
 ```
 
 ### Import
 
 ```go
 import (
-      "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
-      "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
+      "github.com/GDATASoftwareAG/vaas-go/pkg/authenticator"
+      "github.com/GDATASoftwareAG/vaas-go/pkg/vaas"
 )
 ```
 

@@ -59,7 +59,7 @@ import (
 	"net/url"
 	"time"
 
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
+	msg "github.com/GDATASoftwareAG/vaas-go/pkg/messages"
 )
 
 // Authenticator represents the interface for obtaining an authentication token using client credentials.
