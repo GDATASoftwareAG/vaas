@@ -160,10 +160,24 @@ class Vaas
             if ($this->_logger != null)
                 $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
             $fileStream = fopen($path, 'r');
+            // TODO: Upload blocks, call ping every 5s
             $response = $this->_httpClient->put($verdictResponse->url, [
                 'body' => $fileStream,
                 'timeout' => $this->_uploadTimeoutInSeconds,
-                'headers' => ["Authorization" => $verdictResponse->upload_token]
+                'headers' => ["Authorization" => $verdictResponse->upload_token],
+                'progress' => fn (
+                    $downloadTotal,
+                    $downloadedBytes,
+                    $uploadTotal,
+                    $uploadedBytes
+                ) =>
+                $this->_logger->warning(sprintf(
+                    "%d %d %d %d",
+                    $downloadTotal,
+                    $downloadedBytes,
+                    $uploadTotal,
+                    $uploadedBytes
+                ))
             ]);
             if ($response->getStatusCode() > 399) {
                 throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
