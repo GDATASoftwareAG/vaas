@@ -18,12 +18,12 @@ java {
 }
 
 dependencies {
-    implementation 'org.testng:testng:7.10.2'
     implementation 'org.projectlombok:lombok:1.18.32'
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.java-websocket:Java-WebSocket:1.5.6'
     implementation 'org.jetbrains:annotations:24.1.0'
     implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+    testImplementation 'org.testng:testng:7.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
