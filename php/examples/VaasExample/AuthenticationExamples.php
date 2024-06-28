@@ -33,15 +33,8 @@ else{
 }
 
 $vaas = new Vaas(
-    getenv("VAAS_URL")
+    getenv("VAAS_URL"), null, $authenticator
 );
-
-try {
-    $vaas->Connect($authenticator->getToken());
-} catch (VaasAuthenticationException $e) {
-    fwrite(STDERR, "Authentication failed: " . $e->getMessage() . "\n");
-    exit(1);
-}
 
 // Get verdict for an eicar hash
 try {
@@ -51,6 +44,9 @@ try {
     exit(1);
 } catch (TimeoutException $e) {
     fwrite(STDERR, "Timeout: " . $e->getMessage() . "\n");
+    exit(1);
+} catch (VaasAuthenticationException $e) {
+    fwrite(STDERR, "Authentication failed: " . $e->getMessage() . "\n");
     exit(1);
 }
 fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");

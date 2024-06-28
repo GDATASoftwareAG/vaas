@@ -12,4 +12,9 @@ class VerdictResponse extends BaseMessage
     public ?string $file_type;
     public ?string $mime_type;
     public ?string $detection;
+
+    public function __construct()
+    {
+        $this->kind = Kind::VerdictResponse;
+    }
 }

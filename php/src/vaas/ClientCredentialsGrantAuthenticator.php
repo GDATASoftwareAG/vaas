@@ -6,7 +6,7 @@ use GuzzleHttp\Client as HttpClient;
 use GuzzleHttp\Exception\ClientException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 
-class ClientCredentialsGrantAuthenticator
+class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
 {
     private string $_clientId;
     private string $_clientSecret;

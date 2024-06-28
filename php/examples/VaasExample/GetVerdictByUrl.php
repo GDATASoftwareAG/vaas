@@ -13,9 +13,8 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
     getenv("TOKEN_URL") ?? "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 );
 $vaas = new Vaas(
-    getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de"
+    getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de", null, $authenticator
 );
-$vaas->Connect($authenticator->getToken());
 
 // EICAR
 $vaasVerdict = $vaas->ForUrl("https://secure.eicar.org/eicar.com");
