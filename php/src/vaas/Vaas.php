@@ -2,12 +2,10 @@
 
 namespace VaasSdk;
 
-use GuzzleHttp\Client as HttpClient;
-use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Psr7\Stream;
 use InvalidArgumentException;
 use JsonMapper;
 use JsonMapper_Exception;
+use phpDocumentor\Reflection\Types\Resource_;
 use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
@@ -28,9 +26,13 @@ use VaasSdk\Message\VerdictRequestForUrl;
 use VaasSdk\VaasOptions;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use React\EventLoop\Loop;
 use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\VaasVerdict;
 use WebSocket\BadOpcodeException;
+use React\Stream\ReadableResourceStream;
+use WebSocket\Message\Close;
+use WebSocket\Message\Ping;
 
 class Vaas
 {
@@ -39,15 +41,15 @@ class Vaas
     private int $_waitTimeoutInSeconds = 600;
     private int $_uploadTimeoutInSeconds = 600;
     private LoggerInterface $_logger;
-    private HttpClient $_httpClient;
     private VaasOptions $_options;
+    private \React\Http\Browser $_httpClient;
 
     /**
      */
     public function __construct(?string $vaasUrl, ?LoggerInterface $logger = null, VaasOptions $options = new VaasOptions())
     {
         $this->_options = $options;
-        $this->_httpClient = new HttpClient();
+        $this->_httpClient = new \React\Http\Browser(null, Loop::get());
         if ($logger != null)
             $this->_logger = $logger;
         else
@@ -145,6 +147,12 @@ class Vaas
      */
     public function ForFile(string $path, $upload = true, string $uuid = null): VaasVerdict
     {
+        function human_filesize($bytes, $decimals = 2) {
+            $sz = 'BKMGTP';
+            $factor = floor((strlen($bytes) - 1) / 3);
+            return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$sz[$factor];
+        }
+
         if ($this->_logger != null)
             $this->_logger->debug("ForFileWithFlags", ["File" => $path]);
 
@@ -159,29 +167,39 @@ class Vaas
         if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
             if ($this->_logger != null)
                 $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
-            $fileStream = fopen($path, 'r');
-            // TODO: Upload blocks, call ping every 5s
-            $response = $this->_httpClient->put($verdictResponse->url, [
-                'body' => $fileStream,
-                'timeout' => $this->_uploadTimeoutInSeconds,
-                'headers' => ["Authorization" => $verdictResponse->upload_token],
-                'progress' => fn (
-                    $downloadTotal,
-                    $downloadedBytes,
-                    $uploadTotal,
-                    $uploadedBytes
-                ) =>
-                $this->_logger->warning(sprintf(
-                    "%d %d %d %d",
-                    $downloadTotal,
-                    $downloadedBytes,
-                    $uploadTotal,
-                    $uploadedBytes
-                ))
-            ]);
-            if ($response->getStatusCode() > 399) {
-                throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
-            }
+
+            $loop = Loop::get();
+            $fileStream = new ReadableResourceStream(\fopen($path, 'r'), $loop);
+            $fileSize = \filesize($path);
+            $fileStream->on('data', function () {
+                $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
+                $websocket->ping();
+            });
+
+            $loop->addTimer($this->_uploadTimeoutInSeconds, function () use ($loop) {
+                $loop->stop();
+                throw new VaasClientException("Upload too to long.");
+            });
+
+            $this->_httpClient->put(
+                $verdictResponse->url, 
+                ["Authorization" => $verdictResponse->upload_token, "Content-Length" => "$fileSize"],
+                $fileStream
+            )->then(function ($response) {
+                echo "ready\n";
+                if ($response->getStatusCode() > 399) {
+                    throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+                }
+            })->catch(function ($e) {
+                echo "error".$e->getMessage()."\n";
+                throw new UploadFailedException($e->getMessage(), 999);
+            })->finally(function () use ($loop) {
+                echo "finally\n";
+                $loop->stop();
+            });
+
+            $loop->run();
+
             return new VaasVerdict($this->_waitForVerdict($verdictResponse->guid));
         }
 
@@ -204,7 +222,7 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    public function ForStream(Stream $stream, string $uuid = null): VaasVerdict
+    public function ForStream(Resource_ $stream, string $uuid = null): VaasVerdict
     {
         if ($uuid == null) {
             $uuid = UuidV4::getFactory()->uuid4()->toString();
@@ -263,6 +281,14 @@ class Vaas
             }
 
             if ($result != null) {
+                if ($result instanceof Ping) {
+                    $websocket->pong();
+                    continue;
+                }
+                if ($result instanceof Close) {
+                    throw new VaasServerException("Connection closed");
+                }
+                $result = $result->getContent();
                 if ($this->_logger != null)
                     $this->_logger->debug("Result", json_decode($result, true));
                 $genericObject = \json_decode($result);
@@ -331,6 +357,14 @@ class Vaas
                 $websocket->ping();
             }
             if ($result != null) {
+                if ($result instanceof Ping) {
+                    $websocket->pong();
+                    continue;
+                }
+                if ($result instanceof Close) {
+                    throw new VaasServerException("Connection closed");
+                }
+                $result = $result->getContent();
                 if ($this->_logger != null)
                     $this->_logger->debug("Result", json_decode($result, true));
                 $resultObject = json_decode($result);
@@ -366,7 +400,6 @@ class Vaas
                     return $verdictResponse;
                 }
             }
-            sleep(1);
         }
     }
 
@@ -511,16 +544,20 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    private function UploadStream(Stream $stream, string $url, string $uploadToken)
+    private function UploadStream(Resource_ $stream, string $url, string $uploadToken)
     {
-        $response = $this->_httpClient->put($url, [
-            'body' => $stream,
-            'content-length' => $stream->getSize(),
-            'timeout' => $this->_uploadTimeoutInSeconds,
-            'headers' => ["Authorization" => $uploadToken]
-        ]);
-        if ($response->getStatusCode() > 399) {
-            throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
-        }
+        $resourceStream = new ReadableResourceStream($stream);
+        $this->_httpClient->put(
+            $url,
+            [
+                "content-length" => 512,
+                "Authorization" => $uploadToken,
+            ],
+            $resourceStream
+        )->then(function ($response) {
+            if ($response->getStatusCode() > 399) {
+                throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+            }
+        });
     }
 }
