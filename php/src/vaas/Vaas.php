@@ -27,10 +27,12 @@ use VaasSdk\VaasOptions;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use React\EventLoop\Loop;
+use React\Http\Message\ResponseException;
 use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\VaasVerdict;
 use WebSocket\BadOpcodeException;
 use React\Stream\ReadableResourceStream;
+use React\Stream\ReadableStreamInterface;
 use WebSocket\Message\Close;
 use WebSocket\Message\Ping;
 
@@ -186,15 +188,15 @@ class Vaas
                 ["Authorization" => $verdictResponse->upload_token, "Content-Length" => "$fileSize"],
                 $fileStream
             )->then(function ($response) {
-                echo "ready\n";
                 if ($response->getStatusCode() > 399) {
                     throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
                 }
             })->catch(function ($e) {
-                echo "error".$e->getMessage()."\n";
-                throw new UploadFailedException($e->getMessage(), 999);
+                if ($e instanceof ResponseException) {
+                    throw new UploadFailedException($e->getMessage(), $e->getCode());
+                }
+                throw new VaasClientException($e->getMessage());
             })->finally(function () use ($loop) {
-                echo "finally\n";
                 $loop->stop();
             });
 
@@ -209,7 +211,7 @@ class Vaas
     /**
      * Gets verdict by stream
      *
-     * @param string $path   the path to get the verdict for
+     * @param ReadableStreamInterface $stream   the path to get the verdict for
      * @param bool   $upload should the file be uploaded if initial verdict is unknown
      * @param string $uuid   unique identifier
      * 
@@ -222,7 +224,7 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    public function ForStream(Resource_ $stream, string $uuid = null): VaasVerdict
+    public function ForStream(ReadableStreamInterface $stream, string $uuid = null, int $size = 0): VaasVerdict
     {
         if ($uuid == null) {
             $uuid = UuidV4::getFactory()->uuid4()->toString();
@@ -242,7 +244,7 @@ class Vaas
             throw new JsonMapper_Exception("VerdictResponse missing URL for stream upload.");
         }
 
-        $this->UploadStream($stream, $verdictResponse->url, $verdictResponse->upload_token);
+        $this->UploadStream($stream, $verdictResponse->url, $verdictResponse->upload_token, $size);
 
         $verdictResponse = $this->_waitForVerdict($uuid);
 
@@ -544,16 +546,15 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    private function UploadStream(Resource_ $stream, string $url, string $uploadToken)
+    private function UploadStream(ReadableStreamInterface $stream, string $url, string $uploadToken, int $fileSize)
     {
-        $resourceStream = new ReadableResourceStream($stream);
         $this->_httpClient->put(
             $url,
             [
-                "content-length" => 512,
+                "Content-Length" => $fileSize,
                 "Authorization" => $uploadToken,
             ],
-            $resourceStream
+            $stream
         )->then(function ($response) {
             if ($response->getStatusCode() > 399) {
                 throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
