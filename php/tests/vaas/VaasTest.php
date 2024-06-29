@@ -68,6 +68,18 @@ final class VaasTest extends TestCase
         return new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), new VaasOptions($useCache, $useHashLookup));
     }
 
+        private function _getDebugVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
+    {
+        $monoLogger = new Logger("VaaS");
+        $streamHandler = new StreamHandler(
+            STDOUT,
+            Logger::DEBUG
+        );
+        $streamHandler->setFormatter(new JsonFormatter());
+        $monoLogger->pushHandler($streamHandler);
+        return new Vaas($_ENV["VAAS_URL"], $monoLogger, new VaasOptions($useCache, $useHashLookup));
+    }
+
     private function _getDebugLogger(): LoggerInterface
     {
         global $argv;
@@ -344,7 +356,7 @@ final class VaasTest extends TestCase
         fwrite($tmp, random_bytes(64 * 1024 * 1024));
         \fseek($tmp, 0);
         
-        $vaas = $this->_getVaas();
+        $vaas = $this->_getDebugVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
         $verdict = $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true);
 
