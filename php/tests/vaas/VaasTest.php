@@ -18,10 +18,13 @@ use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\StreamHandler;
+use Monolog\Level;
 use Psr\Log\LoggerInterface;
 use Monolog\Logger;
+use Psr\Log\LogLevel;
 use Ramsey\Uuid\Generator\RandomBytesGenerator;
 use Ramsey\Uuid\Rfc4122\UuidV4;
+use React\EventLoop\Loop;
 use React\Http\Io\HttpBodyStream;
 use React\Stream\ReadableResourceStream;
 use React\Stream\ReadableStreamInterface;
@@ -77,7 +80,7 @@ final class VaasTest extends TestCase
         $monoLogger = new Logger("VaaS");
         $streamHandler = new StreamHandler(
             STDOUT,
-            Logger::DEBUG
+            Level::Debug
         );
         $streamHandler->setFormatter(new JsonFormatter());
         $monoLogger->pushHandler($streamHandler);
@@ -609,6 +612,5 @@ final class VaasTest extends TestCase
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
         $this->assertEquals("text/plain", $verdict->MimeType);
         $this->assertNotEmpty($verdict->Detection);
-        
     }
 }

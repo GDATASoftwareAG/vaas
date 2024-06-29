@@ -174,7 +174,7 @@ class Vaas
                 $websocket->ping();
             });
 
-            LOOP::addTimer($this->_uploadTimeoutInSeconds, function () {
+            $timeoutTimer = LOOP::addTimer($this->_uploadTimeoutInSeconds, function () {
                 throw new VaasClientException("Upload too to long.");
             });
 
@@ -189,6 +189,8 @@ class Vaas
                     throw new UploadFailedException($e->getMessage(), $e->getCode());
                 }
                 throw new VaasClientException($e->getMessage());
+            } finally {
+                Loop::cancelTimer($timeoutTimer);
             }
             if ($response->getStatusCode() > 399) {
                 throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
@@ -547,7 +549,7 @@ class Vaas
             $websocket->ping();
         });
 
-        LOOP::addTimer($this->_uploadTimeoutInSeconds, function () {
+        $timeoutTimer = LOOP::addTimer($this->_uploadTimeoutInSeconds, function () {
             throw new VaasClientException("Upload too to long.");
         });
 
@@ -564,6 +566,8 @@ class Vaas
                     throw new UploadFailedException($e->getMessage(), $e->getCode());
                 }
                 throw new VaasClientException($e->getMessage());
+        } finally {
+            Loop::cancelTimer($timeoutTimer);
         }
         if ($response->getStatusCode() > 399) {
             throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
