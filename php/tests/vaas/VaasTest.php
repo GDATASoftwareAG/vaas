@@ -339,6 +339,18 @@ final class VaasTest extends TestCase
         fclose($tmp);
     }
 
+    public function testForRandom64MbFile_GetsCleanRespponse(): void {
+        $tmp = tmpfile();
+        fwrite($tmp, random_bytes(64 * 1024 * 1024));
+        \fseek($tmp, 0);
+        
+        $vaas = $this->_getVaas();
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $verdict = $vaas->ForFile(stream_get_meta_data($tmp)['uri'], true);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+    }
+
     public function testForEmptyFile_GetsCleanResponse(): void
     {
         $uuid = $this->getUuid();

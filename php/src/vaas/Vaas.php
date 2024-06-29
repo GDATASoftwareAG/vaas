@@ -149,12 +149,6 @@ class Vaas
      */
     public function ForFile(string $path, $upload = true, string $uuid = null): VaasVerdict
     {
-        function human_filesize($bytes, $decimals = 2) {
-            $sz = 'BKMGTP';
-            $factor = floor((strlen($bytes) - 1) / 3);
-            return sprintf("%.{$decimals}f", $bytes / pow(1024, $factor)) . @$sz[$factor];
-        }
-
         if ($this->_logger != null)
             $this->_logger->debug("ForFileWithFlags", ["File" => $path]);
 
@@ -171,7 +165,7 @@ class Vaas
                 $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
 
             $loop = Loop::get();
-            $fileStream = new ReadableResourceStream(\fopen($path, 'r'), $loop);
+            $fileStream = new ReadableResourceStream(\fopen($path, 'r'), $loop, 1024 * 1024);
             $fileSize = \filesize($path);
             $fileStream->on('data', function () {
                 $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
