@@ -167,7 +167,9 @@ class Vaas
             $loop = Loop::get();
             $fileStream = new ReadableResourceStream(\fopen($path, 'r'), $loop, 1024 * 1024);
             $fileSize = \filesize($path);
-            $fileStream->on('data', function () {
+            $startTime = time();
+            $fileStream->on('data', function () use($startTime){
+                $this->_logger->debug("elapsed time: " . (time() - $startTime));
                 $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
                 $websocket->ping();
             });
