@@ -5,7 +5,6 @@ namespace VaasSdk;
 use InvalidArgumentException;
 use JsonMapper;
 use JsonMapper_Exception;
-use phpDocumentor\Reflection\Types\Resource_;
 use Ramsey\Uuid\Rfc4122\UuidV4;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
@@ -35,6 +34,8 @@ use React\Stream\ReadableResourceStream;
 use React\Stream\ReadableStreamInterface;
 use WebSocket\Message\Close;
 use WebSocket\Message\Ping;
+
+use function React\Async\await;
 
 class Vaas
 {
@@ -164,8 +165,7 @@ class Vaas
             if ($this->_logger != null)
                 $this->_logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
 
-            $loop = Loop::get();
-            $fileStream = new ReadableResourceStream(\fopen($path, 'r'), $loop, 1024 * 1024);
+            $fileStream = new ReadableResourceStream(\fopen($path, 'r'), LOOP::get(), 1024 * 1024);
             $fileSize = \filesize($path);
             $startTime = time();
             $fileStream->on('data', function () use($startTime){
@@ -174,30 +174,26 @@ class Vaas
                 $websocket->ping();
             });
 
-            $loop->addTimer($this->_uploadTimeoutInSeconds, function () use ($loop) {
-                $loop->stop();
+            LOOP::addTimer($this->_uploadTimeoutInSeconds, function () {
                 throw new VaasClientException("Upload too to long.");
             });
 
-            $this->_httpClient->put(
-                $verdictResponse->url, 
-                ["Authorization" => $verdictResponse->upload_token, "Content-Length" => "$fileSize"],
-                $fileStream
-            )->then(function ($response) {
-                if ($response->getStatusCode() > 399) {
-                    throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
-                }
-            })->catch(function ($e) {
+            try {
+                $response = await($this->_httpClient->requestStreaming('PUT', 
+                    $verdictResponse->url, 
+                    ["Authorization" => $verdictResponse->upload_token, "Content-Length" => "$fileSize"],
+                    $fileStream
+                ));
+            } catch (\Exception $e) {
                 if ($e instanceof ResponseException) {
                     throw new UploadFailedException($e->getMessage(), $e->getCode());
                 }
                 throw new VaasClientException($e->getMessage());
-            })->finally(function () use ($loop) {
-                $loop->stop();
-            });
-
-            $loop->run();
-
+            }
+            if ($response->getStatusCode() > 399) {
+                throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+            }
+            
             return new VaasVerdict($this->_waitForVerdict($verdictResponse->guid));
         }
 
@@ -544,17 +540,33 @@ class Vaas
      */
     private function UploadStream(ReadableStreamInterface $stream, string $url, string $uploadToken, int $fileSize)
     {
-        $this->_httpClient->put(
-            $url,
-            [
-                "Content-Length" => $fileSize,
-                "Authorization" => $uploadToken,
-            ],
-            $stream
-        )->then(function ($response) {
-            if ($response->getStatusCode() > 399) {
-                throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
-            }
+        $startTime = time();
+        $stream->on('data', function () use($startTime){
+            $this->_logger->debug("elapsed time: " . (time() - $startTime));
+            $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
+            $websocket->ping();
         });
+
+        LOOP::addTimer($this->_uploadTimeoutInSeconds, function () {
+            throw new VaasClientException("Upload too to long.");
+        });
+
+        try {
+            $response = await($this->_httpClient->requestStreaming('PUT', $url,
+                [
+                    "Content-Length" => $fileSize,
+                    "Authorization" => $uploadToken,
+                ],
+                $stream
+            ));
+        } catch (\Exception $e) {
+                if ($e instanceof ResponseException) {
+                    throw new UploadFailedException($e->getMessage(), $e->getCode());
+                }
+                throw new VaasClientException($e->getMessage());
+        }
+        if ($response->getStatusCode() > 399) {
+            throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+        }
     }
 }
