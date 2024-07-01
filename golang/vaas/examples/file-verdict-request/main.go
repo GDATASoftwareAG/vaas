@@ -12,9 +12,8 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
-
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
 )
 
 func main() {
@@ -44,10 +43,11 @@ func main() {
 	})
 
 	// Create a context with a cancellation function
-	ctx, webSocketCancel := context.WithCancel(context.Background())
+	connectCtx, webSocketCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer webSocketCancel()
 
 	// Establish a WebSocket connection to the VaaS server
-	termChan, err := vaasClient.Connect(ctx, auth)
+	termChan, err := vaasClient.Connect(connectCtx, auth)
 	if err != nil {
 		log.Fatalf("failed to connect to VaaS %s", err.Error())
 	}
@@ -63,8 +63,11 @@ func main() {
 	}
 	fmt.Println(result.Verdict)
 
-	// Cancel the WebSocket connection
-	webSocketCancel()
+	// Close the WebSocket connection
+	err = vaasClient.Close()
+	if err != nil {
+		log.Fatalf("failed to close VaaS connection %s", err.Error())
+	}
 
 	// Wait for the WebSocket to terminate and handle any errors
 	if err = <-termChan; err != nil {

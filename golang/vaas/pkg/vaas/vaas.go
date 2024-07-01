@@ -29,7 +29,8 @@ import (
 // The Connect() function has to be called before any other requests are made.
 // Please refer to the individual function comments for more details on their usage and behavior.
 type Vaas interface {
-	Connect(ctx context.Context, auth authenticator.Authenticator) (termChan <-chan error, err error)
+	io.Closer
+	Connect(ctx context.Context, auth authenticator.Authenticator) (errorChan <-chan error, err error)
 	ForUrl(ctx context.Context, uri string) (msg.VaasVerdict, error)
 	ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error)
 	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
@@ -59,6 +60,7 @@ var (
 // vaas provides the implementation of the Vaas interface.
 type vaas struct {
 	logger              *log.Logger
+	termChan            chan bool
 	websocketConnection *websocket.Conn
 	openRequests        map[string]chan msg.VerdictResponse
 	requestChannel      chan msg.VerdictRequest
@@ -98,27 +100,37 @@ func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 	return client
 }
 
-// Connect opens a websocket connection to the VAAS Server, which is kept open until the context.Context expires.
-// The termChan indicates when a connection was closed. In the case of an unexpected close, an error is written to the channel.
+// Close terminates the websocket connection.
+func (v *vaas) Close() (err error) {
+	if err = v.websocketConnection.Close(); err != nil && v.options.EnableLogs {
+		v.logger.Printf("Failed to close web socket: %v", err)
+	}
+
+	return
+}
+
+// Connect opens a websocket connection to the VAAS Server. Use Close() to terminate the connection.
+// The errorChan indicates when a connection was closed. In the case of an unexpected close, an error is written to the channel.
 //
 // Example usage:
 //
 //	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
 //	ctx := context.Background()
 //	auth := authenticator.NewClientCredentialsGrantAuthenticator("client_id", "client_secret")
-//	termChan, err := vaasClient.Connect(ctx, auth)
+//	errorChan, err := vaasClient.Connect(ctx, auth)
+//	defer vaasClient.Close()
 //	if err != nil {
 //	    log.Fatalf("Failed to connect to VaaS: %v", err)
 //	}
-func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (termChan <-chan error, err error) {
+func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (errorChan <-chan error, err error) {
 	if err = v.authenticate(ctx, auth); err != nil {
 		return nil, err
 	}
 
-	go v.sendRequests(ctx)
-	termChan = v.listenWebSocket(ctx)
+	errorChan = v.listenWebSocket()
+	go v.sendRequests()
 
-	return termChan, nil
+	return errorChan, nil
 }
 
 // ForSha256 sends an analysis request for a file identified by its SHA256 hash to the Vaas server and returns the verdict.
@@ -579,10 +591,10 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 	return nil
 }
 
-func (v *vaas) sendRequests(ctx context.Context) {
+func (v *vaas) sendRequests() {
 	for {
 		select {
-		case <-ctx.Done():
+		case <-v.termChan:
 			return
 		case request := <-v.requestChannel:
 			if err := v.websocketConnection.WriteJSON(request); err != nil {
@@ -595,7 +607,7 @@ func (v *vaas) sendRequests(ctx context.Context) {
 	}
 }
 
-func (v *vaas) runPingTicker(ctx context.Context) {
+func (v *vaas) runPingTicker() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		if v.options.EnableLogs {
@@ -623,87 +635,76 @@ func (v *vaas) runPingTicker(ctx context.Context) {
 				}
 				return
 			}
-		case <-ctx.Done():
+		case <-v.termChan:
 			return
 		}
 	}
 }
 
-func (v *vaas) listenWebSocket(ctx context.Context) chan error {
-	termChan := make(chan error, 1)
-	listenCtx, listenCancel := context.WithCancel(ctx)
+func (v *vaas) listenWebSocket() <-chan error {
+	errorChan := make(chan error, 1)
+	v.termChan = make(chan bool)
 
-	go func() {
-		<-listenCtx.Done()
-		if err := v.websocketConnection.Close(); err != nil && v.options.EnableLogs {
-			v.logger.Printf("Failed to close web socket: %v", err)
-		}
-		close(termChan)
-	}()
+	go v.runPingTicker()
 
-	go v.runPingTicker(ctx)
+	go func(errorChan chan<- error) {
+		defer close(errorChan)
+		defer close(v.termChan)
 
-	go func() {
-		defer listenCancel()
+		var verdictResponse msg.VerdictResponse
+		for {
+			err := v.websocketConnection.ReadJSON(&verdictResponse)
+			if err == nil {
+				v.openRequestsMutex.Lock()
+				requestChan, exists := v.openRequests[verdictResponse.GUID]
+				v.openRequestsMutex.Unlock()
 
-		v.readWebSocket(termChan)
-	}()
+				if exists {
+					requestChan <- verdictResponse
+				} else {
+					if v.options.EnableLogs {
+						v.logger.Printf("Received response for missing map entry - sha256: %s, guid: %s", verdictResponse.Sha256, verdictResponse.GUID)
+					}
+				}
+				continue
+			}
 
-	return termChan
-}
-
-func (v *vaas) readWebSocket(termChan chan<- error) {
-	var verdictResponse msg.VerdictResponse
-	for {
-		err := v.websocketConnection.ReadJSON(&verdictResponse)
-		if err == nil {
-			v.openRequestsMutex.Lock()
-			requestChan, exists := v.openRequests[verdictResponse.GUID]
-			v.openRequestsMutex.Unlock()
-
-			if exists {
-				requestChan <- verdictResponse
-			} else {
-				if v.options.EnableLogs {
-					v.logger.Printf("Received response for missing map entry - sha256: %s, guid: %s", verdictResponse.Sha256, verdictResponse.GUID)
+			var closeErr *websocket.CloseError
+			// If websocket was shutdown by the server
+			if errors.As(err, &closeErr) {
+				switch closeErr.Code {
+				case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
+					if v.options.EnableLogs {
+						v.logger.Printf("Websocket shutdown - %d: %s", closeErr.Code, closeErr.Text)
+					}
+					return
+				default:
+					errorChan <- fmt.Errorf("unexpected shutdown of websocket - %w", closeErr)
+					return
 				}
 			}
-			continue
-		}
-
-		var closeErr *websocket.CloseError
-		// If websocket was shutdown by the server
-		if errors.As(err, &closeErr) {
-			switch closeErr.Code {
-			case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
+			// This error occurs when the context is canceled and we call close() on the websocket connection.
+			if errors.Is(err, net.ErrClosed) {
 				if v.options.EnableLogs {
-					v.logger.Printf("Websocket shutdown - %d: %s", closeErr.Code, closeErr.Text)
+					v.logger.Printf("Websocket connection was closed")
 				}
 				return
-			default:
-				termChan <- fmt.Errorf("unexpected shutdown of websocket - %w", closeErr)
-				return
 			}
-		}
-		// This error occurs when the context is canceled and we call close() on the websocket connection.
-		if errors.Is(err, net.ErrClosed) {
+			// This error occurs if whe JSON response could not be parsed by the websocket.
+			if err == io.ErrUnexpectedEOF {
+				if v.options.EnableLogs {
+					v.logger.Printf("Temporarily failed to read from websocket: %v", err)
+				}
+				continue
+			}
+			// We don't know what happened here, help...
 			if v.options.EnableLogs {
-				v.logger.Printf("Websocket connection was closed")
+				v.logger.Printf("Permanently failed to read from websocket: %v", err)
 			}
+			errorChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
 			return
 		}
-		// This error occurs if whe JSON response could not be parsed by the websocket.
-		if err == io.ErrUnexpectedEOF {
-			if v.options.EnableLogs {
-				v.logger.Printf("Temporarily failed to read from websocket: %v", err)
-			}
-			continue
-		}
-		// We don't know what happened here, help...
-		if v.options.EnableLogs {
-			v.logger.Printf("Permanently failed to read from websocket: %v", err)
-		}
-		termChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
-		return
-	}
+	}(errorChan)
+
+	return errorChan
 }
