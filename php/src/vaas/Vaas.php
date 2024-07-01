@@ -180,7 +180,7 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    public function ForStream(ReadableStreamInterface $stream, string $uuid = null, int $size = 0): VaasVerdict
+    public function ForStream(ReadableStreamInterface $stream, int $size = 0, string $uuid = null): VaasVerdict
     {
         $this->_logger->debug("uuid: ".var_export($uuid, true));
         $uuid = $uuid !== null ? $uuid : UuidV4::getFactory()->uuid4()->toString();
@@ -489,18 +489,6 @@ class Vaas
      */
     private function UploadStream(ReadableStreamInterface $fileStream, string $url, string $uploadToken, int $fileSize)
     {
-        // $startTime = time();
-        // $lastTimestamp = time();
-        // $fileStream->on('data', function () use(&$lastTimestamp, $startTime) {
-        //     $timeElapsedSinceLastTimestamp = time() - $lastTimestamp;
-        //     $timeElapsed = time() - $startTime;
-        //     if ($timeElapsedSinceLastTimestamp >= 5) {
-        //         $lastTimestamp = time();
-        //         $this->_logger->debug("elapsed time: " . $timeElapsed);
-        //         $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
-        //         $websocket->ping();
-        //     }
-        // });
         $times = 0;
         $pingTimer = Loop::addPeriodicTimer(5, function () use(&$times) {
             $this->_logger->debug("pinging " . $times++);
