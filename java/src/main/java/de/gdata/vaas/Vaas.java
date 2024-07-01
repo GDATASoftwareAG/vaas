@@ -653,11 +653,13 @@ public class Vaas implements AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() throws Exception {
         try {
             this.disconnect();
         } catch (Exception e) {
-            //ignored
+            // ignored
         }
     }
+
+
 }
