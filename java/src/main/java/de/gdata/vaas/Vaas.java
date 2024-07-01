@@ -7,7 +7,6 @@ import lombok.NonNull;
 import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Closeable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -24,7 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class Vaas implements Closeable{
+public class Vaas implements AutoCloseable {
     private static final int connectionRetryDelayInMs = 1000;
     private static final int connectionTimeoutInMs = 10000;
 
@@ -657,7 +656,7 @@ public class Vaas implements Closeable{
     public void close() throws IOException {
         try {
             this.disconnect();
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             throwAsUnchecked(e);
         }
     }
