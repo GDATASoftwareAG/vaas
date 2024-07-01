@@ -1,10 +1,11 @@
-<phpunit>
+<phpunit bootstrap="vendor/autoload.php">
   <testsuites>
     <testsuite name="VaasTesting" >
       <file>Sha256Test.php</file>
       <file>VaasTest.php</file>
       <file>ProtocolTest.php</file>
       <file>ClientCredentialsGrantAuthenticatorTest.php</file>
+      <file>ChunkedStringStreamer.php</file>
     </testsuite>
   </testsuites>
 </phpunit>

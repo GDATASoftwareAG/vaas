@@ -2,8 +2,6 @@
 
 namespace VaasTesting;
 
-require_once __DIR__ . "/vendor/autoload.php";
-
 use PHPUnit\Framework\TestCase;
 use VaasSdk\Sha256;
 use VaasSdk\Exceptions\InvalidSha256Exception;
