@@ -555,7 +555,7 @@ final class VaasTest extends TestCase
      * * @throws VaasInvalidStateException
      * * @throws VaasAuthenticationException
      */
-    public function testForStream_WithCleanDelayedfor10Seconds_ReturnsClean()
+    public function testForStream_WithCleanDelayedfor11Seconds_ReturnsClean()
     {
         $randomString = $this->random_strings(11000);
         $stream = new ThroughStream();
