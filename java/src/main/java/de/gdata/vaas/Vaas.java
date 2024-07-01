@@ -657,7 +657,7 @@ public class Vaas implements AutoCloseable {
         try {
             this.disconnect();
         } catch (Exception e) {
-            throwAsUnchecked(e);
+            //ignored
         }
     }
 }
