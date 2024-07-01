@@ -5,7 +5,6 @@
       <file>VaasTest.php</file>
       <file>ProtocolTest.php</file>
       <file>ClientCredentialsGrantAuthenticatorTest.php</file>
-      <file>ChunkedStringStreamer.php</file>
     </testsuite>
   </testsuites>
 </phpunit>
