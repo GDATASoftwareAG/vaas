@@ -495,12 +495,9 @@ class Vaas
             $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
             $websocket->ping();
         });
-        $timeoutTimer = LOOP::addTimer($this->_uploadTimeoutInSeconds, function () {
-            throw new VaasClientException("Upload too to long.");
-        });
 
         try {
-            $response = await($this->_httpClient->requestStreaming('PUT', $url,
+            $response = await($this->_httpClient->withTimeout($this->_uploadTimeoutInSeconds)->requestStreaming('PUT', $url,
                 [
                     "Content-Length" => $fileSize,
                     "Authorization" => $uploadToken,
@@ -513,7 +510,6 @@ class Vaas
                 }
                 throw new VaasClientException($e->getMessage());
         } finally {
-            Loop::cancelTimer($timeoutTimer);
             Loop::cancelTimer($pingTimer);
         }
         if ($response->getStatusCode() > 399) {
