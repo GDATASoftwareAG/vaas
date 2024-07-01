@@ -2,12 +2,9 @@
 
 namespace VaasTesting;
 
-require_once __DIR__ . "/vendor/autoload.php";
-
 use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
-use Mockery;
 use VaasSdk\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 
