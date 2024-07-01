@@ -7,6 +7,7 @@ import lombok.NonNull;
 import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Closeable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -23,7 +24,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class Vaas {
+public class Vaas implements Closeable{
     private static final int connectionRetryDelayInMs = 1000;
     private static final int connectionTimeoutInMs = 10000;
 
@@ -650,5 +651,14 @@ public class Vaas {
     @SuppressWarnings("unchecked")
     private static <E extends Throwable> void throwAsUnchecked(Exception exception) throws E {
         throw (E) exception;
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            this.disconnect();
+        } catch (InterruptedException e) {
+            throwAsUnchecked(e);
+        }
     }
 }
