@@ -5,7 +5,7 @@ namespace VaasTesting;
 use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
-use VaasSdk\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 
 final class ClientCredentialsGrantAuthenticatorTest extends TestCase

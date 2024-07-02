@@ -497,7 +497,9 @@ class Vaas
         });
 
         try {
-            $response = await($this->_httpClient->withTimeout($this->_uploadTimeoutInSeconds)->requestStreaming('PUT', $url,
+            $response = await($this->_httpClient
+                ->withTimeout($this->_uploadTimeoutInSeconds)
+                ->requestStreaming('PUT', $url,
                 [
                     "Content-Length" => $fileSize,
                     "Authorization" => $uploadToken,

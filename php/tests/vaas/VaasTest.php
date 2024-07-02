@@ -5,13 +5,13 @@ namespace VaasTesting;
 use JsonMapper_Exception;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
-use VaasSdk\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Authentication\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\UploadFailedException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
 use VaasSdk\Exceptions\VaasServerException;
-use VaasSdk\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Exception;
@@ -538,7 +538,7 @@ final class VaasTest extends TestCase
         $this->assertInstanceOf(ReadableStreamInterface::class, $body);
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        /** @var ReadableStreamInterface $body */
+        assert($body instanceof ReadableStreamInterface);
         $verdict = $vaas->ForStream($body, $size);
         $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
     }
@@ -577,7 +577,7 @@ final class VaasTest extends TestCase
         try {
             $vaas = $this->_getVaas(false, false, $monoLogger);
             $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-            /** @var ReadableStreamInterface $body */
+            assert($stream instanceof ReadableStreamInterface);
             $verdict = $vaas->ForStream($stream, 11000);
         } catch(Exception $e) {
             throw $e;
@@ -612,12 +612,11 @@ final class VaasTest extends TestCase
         $httpClient = new \React\Http\Browser();
         $response = await($httpClient->requestStreaming('GET', self::MALICIOUS_URL));
         $body = $response->getBody();
-        $size = $body->getSize();
         $this->assertInstanceOf(ReadableStreamInterface::class, $body);
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        /** @var ReadableStreamInterface $body */
-        $verdict = $vaas->ForStream($body, $size);
+        assert($body instanceof ReadableStreamInterface);
+        $verdict = $vaas->ForStream($body, 68);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
     }
@@ -632,7 +631,7 @@ final class VaasTest extends TestCase
 
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        /** @var ReadableStreamInterface $body */
+        assert($body instanceof ReadableStreamInterface);
         $verdict = $vaas->ForStream($body, $size);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);

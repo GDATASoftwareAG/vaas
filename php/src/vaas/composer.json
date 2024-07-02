@@ -18,10 +18,10 @@
         "textalk/websocket": "^1.6 || ^1.5",
         "netresearch/jsonmapper": "^4.4",
         "psr/log": "^1.1 || ^2.0 || ^3.0",
-        "league/oauth2-client": "^2.7",
         "react/event-loop": "^1.5",
         "react/http": "^1.10",
-        "react/async": "^4.3"
+        "react/async": "^4.3",
+        "react/promise-stream": "^1.7"
     },
     "autoload": {
         "psr-4": {
