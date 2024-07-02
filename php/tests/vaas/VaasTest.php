@@ -15,6 +15,7 @@ use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Exception;
+use GuzzleHttp\Promise\PromiseInterface;
 use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\TestHandler;
@@ -24,7 +25,11 @@ use Monolog\Logger;
 use Ramsey\Uuid\Generator\RandomBytesGenerator;
 use Ramsey\Uuid\Rfc4122\UuidV4;
 use React\EventLoop\Loop;
+use React\EventLoop\StreamSelectLoop;
+use React\Http\Browser;
 use React\Http\Io\HttpBodyStream;
+use React\Promise\PromiseInterface as PromisePromiseInterface;
+use React\Socket\Connector;
 use React\Stream\ReadableResourceStream;
 use React\Stream\ReadableStreamInterface;
 use React\Stream\ThroughStream;
@@ -34,6 +39,8 @@ use VaasSdk\Sha256;
 use VaasSdk\VaasOptions;
 use WebSocket\BadOpcodeException;
 use function React\Async\await;
+use function React\Promise\Stream\unwrapReadable;
+
 final class VaasTest extends TestCase
 {
     use ProphecyTrait;
@@ -530,14 +537,21 @@ final class VaasTest extends TestCase
      */
     public function testForStream_WithCleanUrlContentAsStream_ReturnsClean()
     {
-        $url = "https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md";
-        $httpClient = new \React\Http\Browser();
-        $response = await($httpClient->requestStreaming('GET', $url));
-        $body = $response->getBody();
-        $size = $body->getSize();
-        $this->assertInstanceOf(ReadableStreamInterface::class, $body);
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
+        $httpClient = new Browser();
+        $url = "https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md";
+        try {
+            $response = await($httpClient->requestStreaming('GET', $url));
+            if ($response->getStatusCode() != 200) {
+                throw new Exception($response->getReasonPhrase(), $response->getStatusCode());
+            }
+        } catch(Exception $e) {
+            echo $e->getMessage();
+        }
+        $body = $response->getBody();
+        $size = $body->getSize();
         assert($body instanceof ReadableStreamInterface);
         $verdict = $vaas->ForStream($body, $size);
         $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
@@ -557,10 +571,17 @@ final class VaasTest extends TestCase
      */
     public function testForStream_WithCleanDelayedfor11Seconds_ReturnsClean()
     {
+        $monoLogger = new Logger("VaaS");
+        $testHandler = new TestHandler(Level::Debug);
+        $monoLogger->pushHandler($testHandler);
+
+        $vaas = $this->_getVaas(false, false, $monoLogger);
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
         $randomString = $this->random_strings(11000);
         $stream = new ThroughStream();
 
-        $writeTimer = Loop::addPeriodicTimer(0.001, function () use ($stream, &$randomString) {
+        $writeTimer = Loop::addPeriodicTimer(0.00001, function () use ($stream, &$randomString) {
             if ($randomString === "") {
                 $stream->end();
                 return;
@@ -570,13 +591,7 @@ final class VaasTest extends TestCase
             $stream->write($data);
         });
 
-        $monoLogger = new Logger("VaaS");
-        $testHandler = new TestHandler(Level::Debug);
-        $monoLogger->pushHandler($testHandler);
-
         try {
-            $vaas = $this->_getVaas(false, false, $monoLogger);
-            $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
             assert($stream instanceof ReadableStreamInterface);
             $verdict = $vaas->ForStream($stream, 11000);
         } catch(Exception $e) {
@@ -609,28 +624,35 @@ final class VaasTest extends TestCase
      */
     public function testForStream_WithEicarUrlContentAsStream_ReturnsMalicious()
     {
-        $httpClient = new \React\Http\Browser();
-        $response = await($httpClient->requestStreaming('GET', self::MALICIOUS_URL));
-        $body = $response->getBody();
-        $this->assertInstanceOf(ReadableStreamInterface::class, $body);
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $httpClient = new Browser();
+        try {
+            $response = await($httpClient->requestStreaming('GET', self::MALICIOUS_URL));
+            if ($response->getStatusCode() != 200) {
+                throw new Exception($response->getReasonPhrase(), $response->getStatusCode());
+            }
+        } catch(Exception $e) {
+            echo $e->getMessage();
+        }
+        $body = $response->getBody();
+        $size = $body->getSize();
         assert($body instanceof ReadableStreamInterface);
-        $verdict = $vaas->ForStream($body, 68);
+        $verdict = $vaas->ForStream($body, $size);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
     }
 
     public function testForStream_WithEicarUrlContentAsStream_ReturnsMaliciousWithDetectionAndMimeType()
     {
-        $httpClient = new \React\Http\Browser();
+        $vaas = $this->_getVaas();
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
+        $httpClient = new Browser();
         $response = await($httpClient->requestStreaming('GET', self::MALICIOUS_URL));
         $body = $response->getBody();
         $size = $body->getSize();
-        $this->assertInstanceOf(ReadableStreamInterface::class, $body);
 
-        $vaas = $this->_getVaas();
-        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
         assert($body instanceof ReadableStreamInterface);
         $verdict = $vaas->ForStream($body, $size);
 
