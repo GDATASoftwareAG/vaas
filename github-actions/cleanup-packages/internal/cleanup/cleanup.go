@@ -7,14 +7,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v60/github"
+	"github.com/google/go-github/v62/github"
 )
 
 const gdataOrganisation = "GDATASoftwareAG"
 
 var packageType = "container"
 var globalNameRegex, _ = regexp.Compile(`(gdscanserver|scanclient|vaas/.+)$`)
-var globalTagsNotToDelete, _ = regexp.Compile(`(latest|[0-9]*\.[0-9]*\.[0-9]*|[0-9]*)$`)
+var globalTagsNotToDelete, _ = regexp.Compile(`(latest|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+)$`)
 var nowTime = time.Now()
 
 // Cleanup the main method of this lib
@@ -48,7 +48,7 @@ func getVersionsOlderThan2Month(context context.Context, client *github.Client, 
 			&github.PackageListOptions{
 				ListOptions: github.ListOptions{
 					Page:    nextPage,
-					PerPage: 10,
+					PerPage: 100,
 				},
 				PackageType: &packageType,
 				State:       &packageState,
@@ -104,7 +104,7 @@ func getContainerPackages(context context.Context, client *github.Client, nameRe
 			context, gdataOrganisation, &github.PackageListOptions{
 				PackageType: &packageType,
 				ListOptions: github.ListOptions{
-					PerPage: 5,
+					PerPage: 100,
 					Page:    nextPage,
 				},
 			})

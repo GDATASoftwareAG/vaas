@@ -1,4 +1,4 @@
-import WebSocket from "isomorphic-ws";
+import WebSocket from "@d-fischer/isomorphic-ws";
 
 /** Connection was closed with error. */
 export class VaasConnectionClosedError extends Error {

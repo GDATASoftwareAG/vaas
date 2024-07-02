@@ -1,3 +1,4 @@
 {
     "mochaExplorer.configFile": "/workspaces/vaas/typescript/test-explorer-mocharc.yml",
+    "git.openRepositoryInParentFolders": "always",
 }

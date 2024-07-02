@@ -23,7 +23,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class Vaas {
+public class Vaas implements AutoCloseable {
     private static final int connectionRetryDelayInMs = 1000;
     private static final int connectionTimeoutInMs = 10000;
 
@@ -651,4 +651,15 @@ public class Vaas {
     private static <E extends Throwable> void throwAsUnchecked(Exception exception) throws E {
         throw (E) exception;
     }
+
+    @Override
+    public void close() throws Exception {
+        try {
+            this.disconnect();
+        } catch (Exception e) {
+            // ignored
+        }
+    }
+
+
 }

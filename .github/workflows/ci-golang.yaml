@@ -7,7 +7,7 @@ on:
       - "golang/vaas/**"
       - ".github/workflows/ci-golang.yaml"
     tags:
-      - "go*"
+      - "golang/vaas/v*.*.*"
   pull_request:
     branches:
       - main
@@ -40,8 +40,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Scan for Viruses
+        uses: ./.github/actions/vaas-scan-action
+        with:
+          VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
+          VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
+
       - name: set staging environment
-        if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/go') && endsWith(github.ref, '-beta')))
+        if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-beta')))
         run: |
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
@@ -52,7 +58,7 @@ jobs:
           echo "VAAS_PASSWORD=${{ secrets.STAGING_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: set develop environment
-        if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags/go') && endsWith(github.ref, '-alpha')))
+        if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-alpha')))
         run: |
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
@@ -65,7 +71,7 @@ jobs:
       - name: set up Golang
         uses: actions/setup-go@v5
         with:
-          go-version: 1.22.2
+          go-version-file: golang/vaas/go.mod
           check-latest: true
           cache: true
           cache-dependency-path: golang/vaas/go.sum
@@ -73,8 +79,8 @@ jobs:
         run: go test ./...
         working-directory: golang/vaas/
       - name: publish module
-        if: startsWith(github.ref, 'refs/tags/go')
-        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@go${GITHUB_REF#refs/tags/go}
+        if: startsWith(github.ref, 'refs/tags')
+        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/golang/vaas/}
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
@@ -121,7 +127,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.22.2
+          go-version-file: golang/vaas/go.mod
           check-latest: true
           cache: true
           cache-dependency-path: golang/vaas/go.sum

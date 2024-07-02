@@ -41,6 +41,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Scan for Viruses
+        uses: ./.github/actions/vaas-scan-action
+        with:
+          VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
+          VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.1" # Not needed with a .ruby-version file
@@ -66,7 +73,7 @@ jobs:
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
-          echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV          
+          echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/rb')

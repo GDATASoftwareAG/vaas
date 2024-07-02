@@ -25,23 +25,12 @@ use VaasSdk\Message\VerdictRequest;
 use VaasSdk\Message\VerdictRequestForStream;
 use VaasSdk\Message\VerdictResponse;
 use VaasSdk\Message\VerdictRequestForUrl;
+use VaasSdk\VaasOptions;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\VaasVerdict;
 use WebSocket\BadOpcodeException;
-
-class VaasOptions
-{
-    public bool $UseCache = \true;
-    public bool $UseHashLookup = \true;
-
-    public function __construct(bool $useCache = \true, bool $useHashLookup = \true)
-    {
-        $this->UseCache = $useCache;
-        $this->UseHashLookup = $useHashLookup;
-    }
-}
 
 class Vaas
 {

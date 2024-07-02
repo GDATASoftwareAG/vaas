@@ -82,19 +82,19 @@ public class RealApiIntegrationTests {
                 .equalsIgnoreCase(verdict.getSha256()));
     }
 
-    // @Test
-    // public void fromSha256SinglePupHash() throws Exception {
-    // var vaas = this.getVaasWithCredentials();
-    // var sha256 = new
-    // Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
+    @Test
+    public void fromSha256SinglePupHash() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        var sha256 = new
+        Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
 
-    // var verdict = vaas.forSha256(sha256);
-    // vaas.disconnect();
+        var verdict = vaas.forSha256(sha256);
+        vaas.disconnect();
 
-    // assertEquals(Verdict.PUP, verdict.getVerdict());
-    // assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
-    // .equalsIgnoreCase(verdict.getSha256()));
-    // }
+        assertEquals(Verdict.PUP, verdict.getVerdict());
+        assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
+        .equalsIgnoreCase(verdict.getSha256()));
+    }
 
     @Test
     @Tag("ErrorLogProducer")
@@ -298,6 +298,16 @@ public class RealApiIntegrationTests {
     public void forSha256_ThrowsConnectionClosed() throws Exception {
         var vaas = this.getVaasWithCredentials();
         vaas.disconnect();
+        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
+        assertThrows(VaasConnectionClosedException.class, () -> {
+            vaas.forSha256(sha256);
+        });
+    }
+
+    @Test
+    public void forSha256_VaasCloses() throws Exception {
+        var vaas = this.getVaasWithCredentials();
+        vaas.close();
         var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         assertThrows(VaasConnectionClosedException.class, () -> {
             vaas.forSha256(sha256);
