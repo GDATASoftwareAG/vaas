@@ -2,11 +2,6 @@
 
 namespace VaasTesting;
 
-require_once __DIR__ . "/vendor/autoload.php";
-
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
-use GuzzleHttp\Psr7\Stream;
 use JsonMapper_Exception;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
@@ -19,17 +14,26 @@ use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
+use Exception;
 use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\StreamHandler;
+use Monolog\Handler\TestHandler;
+use Monolog\Level;
 use Psr\Log\LoggerInterface;
 use Monolog\Logger;
+use Ramsey\Uuid\Generator\RandomBytesGenerator;
 use Ramsey\Uuid\Rfc4122\UuidV4;
+use React\EventLoop\Loop;
+use React\Http\Io\HttpBodyStream;
+use React\Stream\ReadableResourceStream;
+use React\Stream\ReadableStreamInterface;
+use React\Stream\ThroughStream;
 use VaasSdk\Exceptions\VaasInvalidStateException;
 use VaasSdk\Message\Verdict;
 use VaasSdk\Sha256;
 use VaasSdk\VaasOptions;
 use WebSocket\BadOpcodeException;
-
+use function React\Async\await;
 final class VaasTest extends TestCase
 {
     use ProphecyTrait;
@@ -64,9 +68,9 @@ final class VaasTest extends TestCase
         }
     }
 
-    private function _getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
+    private function _getVaas(bool $useCache = false, bool $useHashLookup = true, LoggerInterface $logger = null): Vaas
     {
-        return new Vaas($_ENV["VAAS_URL"], $this->_getDebugLogger(), new VaasOptions($useCache, $useHashLookup));
+        return new Vaas($_ENV["VAAS_URL"], $logger != null ? $logger : $this->_getDebugLogger(), new VaasOptions($useCache, $useHashLookup));
     }
 
     private function _getDebugLogger(): LoggerInterface
@@ -77,12 +81,12 @@ final class VaasTest extends TestCase
         if (in_array("--debug", $argv) === true) {
             $streamHandler = new StreamHandler(
                 STDOUT,
-                Logger::DEBUG
+                Level::Debug
             );
         } else {
             $streamHandler = new StreamHandler(
                 STDOUT,
-                Logger::INFO
+                Level::Info
             );
         }
         $streamHandler->setFormatter(new JsonFormatter());
@@ -458,11 +462,9 @@ final class VaasTest extends TestCase
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
         $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}\$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!\$H+H*";
-        $stream = fopen(sprintf('data://text/plain,%s', $eicar), 'r');
-        rewind($stream);
-        $eicarStream = new Stream($stream);
+        $body = new HttpBodyStream(new ReadableResourceStream(fopen(sprintf('data://text/plain,%s', $eicar), 'r')), strlen($eicar));
 
-        $verdict = $vaas->ForStream($eicarStream);
+        $verdict = $vaas->ForStream($body, strlen($eicar));
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
     }
@@ -480,14 +482,13 @@ final class VaasTest extends TestCase
      */
     public function testForStream_WithEicarString_ReturnsMalicious()
     {
-        $vaas = $this->_getVaas();
+        $vaas = $this->_getVaas(false, false);
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}\$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!\$H+H*";
-        $stream = fopen(sprintf('data://text/plain,%s', $eicar), 'r');
-        rewind($stream);
-        $eicarStream = new Stream($stream);
+        $eicar = 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*';
 
-        $verdict = $vaas->ForStream($eicarStream);
+        $body = new HttpBodyStream(new ReadableResourceStream(fopen(sprintf('data://text/plain,%s', $eicar), 'r')), strlen($eicar));
+
+        $verdict = $vaas->ForStream($body, strlen($eicar));
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
     }
@@ -507,12 +508,10 @@ final class VaasTest extends TestCase
     {
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $clean = "I am a clean string";
-        $stream = fopen(sprintf('data://text/plain,%s', $clean), 'r');
-        rewind($stream);
-        $eicarStream = new Stream($stream);
+        $clean = str_replace("\0", "", (new RandomBytesGenerator())->generate(64));
+        $stream = new ReadableResourceStream(fopen(sprintf('data://text/plain,%s', $clean), 'r'));
 
-        $verdict = $vaas->ForStream($eicarStream);
+        $verdict = $vaas->ForStream($stream, strlen($clean));
 
         $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
     }
@@ -531,15 +530,16 @@ final class VaasTest extends TestCase
      */
     public function testForStream_WithCleanUrlContentAsStream_ReturnsClean()
     {
+        $url = "https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md";
+        $httpClient = new \React\Http\Browser();
+        $response = await($httpClient->requestStreaming('GET', $url));
+        $body = $response->getBody();
+        $size = $body->getSize();
+        $this->assertInstanceOf(ReadableStreamInterface::class, $body);
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $url = "https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md";
-        $httpClient = new Client();
-        $response = $httpClient->get($url);
-        $stream = new Stream($response->getBody()->detach());
-
-        $verdict = $vaas->ForStream($stream);
-
+        /** @var ReadableStreamInterface $body */
+        $verdict = $vaas->ForStream($body, $size);
         $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
     }
 
@@ -555,31 +555,102 @@ final class VaasTest extends TestCase
      * * @throws VaasInvalidStateException
      * * @throws VaasAuthenticationException
      */
+    public function testForStream_WithCleanDelayedfor11Seconds_ReturnsClean()
+    {
+        $randomString = $this->random_strings(11000);
+        $stream = new ThroughStream();
+
+        $writeTimer = Loop::addPeriodicTimer(0.001, function () use ($stream, &$randomString) {
+            if ($randomString === "") {
+                $stream->end();
+                return;
+            }
+            $data = substr($randomString, 0, 1);
+            $randomString = substr($randomString, 1);
+            $stream->write($data);
+        });
+
+        $monoLogger = new Logger("VaaS");
+        $testHandler = new TestHandler(Level::Debug);
+        $monoLogger->pushHandler($testHandler);
+
+        try {
+            $vaas = $this->_getVaas(false, false, $monoLogger);
+            $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+            /** @var ReadableStreamInterface $body */
+            $verdict = $vaas->ForStream($stream, 11000);
+        } catch(Exception $e) {
+            throw $e;
+        } finally {
+            Loop::cancelTimer($writeTimer);
+        }
+
+        $pingCount = 0;
+        foreach($testHandler->getRecords() as $record) {
+            if (stristr($record->message, "pinging") !== false)
+                $pingCount++;
+        };
+        $this->assertEquals(2, $pingCount);
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+    }
+
+
+    /**
+     * @throws GuzzleException
+     * @throws JsonMapper_Exception
+     * * @throws VaasClientException
+     * * @throws VaasServerException
+     * * @throws TimeoutException
+     * * @throws UploadFailedException
+     * * @throws GuzzleException
+     * * @throws BadOpcodeException
+     * * @throws VaasInvalidStateException
+     * * @throws VaasAuthenticationException
+     */
     public function testForStream_WithEicarUrlContentAsStream_ReturnsMalicious()
     {
+        $httpClient = new \React\Http\Browser();
+        $response = await($httpClient->requestStreaming('GET', self::MALICIOUS_URL));
+        $body = $response->getBody();
+        $size = $body->getSize();
+        $this->assertInstanceOf(ReadableStreamInterface::class, $body);
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $httpClient = new Client();
-        $response = $httpClient->get(self::MALICIOUS_URL);
-        $stream = new Stream($response->getBody()->detach());
-
-        $verdict = $vaas->ForStream($stream);
+        /** @var ReadableStreamInterface $body */
+        $verdict = $vaas->ForStream($body, $size);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
     }
 
     public function testForStream_WithEicarUrlContentAsStream_ReturnsMaliciousWithDetectionAndMimeType()
     {
+        $httpClient = new \React\Http\Browser();
+        $response = await($httpClient->requestStreaming('GET', self::MALICIOUS_URL));
+        $body = $response->getBody();
+        $size = $body->getSize();
+        $this->assertInstanceOf(ReadableStreamInterface::class, $body);
+
         $vaas = $this->_getVaas();
         $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
-        $httpClient = new Client();
-        $response = $httpClient->get(self::MALICIOUS_URL);
-        $stream = new Stream($response->getBody()->detach());
-
-        $verdict = $vaas->ForStream($stream);
+        /** @var ReadableStreamInterface $body */
+        $verdict = $vaas->ForStream($body, $size);
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
         $this->assertEquals("text/plain", $verdict->MimeType);
         $this->assertNotEmpty($verdict->Detection);
+    }
+
+    function random_strings($length_of_string) {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $characters_length = strlen($characters);
+        $random_string = '';
+
+        // Generate random characters until the string reaches desired length
+        for ($i = 0; $i < $length_of_string; $i++) {
+            $random_index = random_int(0, $characters_length - 1);
+            $random_string .= $characters[$random_index];
+        }
+
+        return $random_string;
     }
 }
