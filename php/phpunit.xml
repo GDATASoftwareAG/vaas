@@ -1,6 +1,7 @@
 <phpunit>
   <testsuites>
     <testsuite name="VaasTesting">
+      <file>tests/vaas/StreamsInLoopTest.php</file>
       <file>tests/vaas/Sha256Test.php</file>
       <file>tests/vaas/VaasTest.php</file>
       <file>tests/vaas/ProtocolTest.php</file>

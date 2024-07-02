@@ -2,7 +2,7 @@
 
 namespace VaasExamples;
 
-use VaasSdk\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Vaas;
 
 include_once("./vendor/autoload.php");
