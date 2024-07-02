@@ -3,7 +3,13 @@
 namespace VaasSdk\Authentication;
 
 use Exception;
+use React\EventLoop\Loop;
+use React\EventLoop\LoopInterface;
+use React\EventLoop\StreamSelectLoop;
 use React\Http\Browser;
+use React\Socket\Connector;
+use React\Socket\DnsConnector;
+use React\Socket\TcpConnector;
 use React\Stream\ReadableStreamInterface;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 
@@ -25,6 +31,9 @@ class OAuth2TokenReceiver {
         string $tokenEndpoint, string $clientId, string $clientSecret = "",
         string $username = "", string $password = "", Browser $browser = new Browser())
     {
+        $loop = new StreamSelectLoop();
+        $connector = new Connector([], $loop);
+        $this->_browser = new Browser($connector, $loop);
         $this->_browser = $browser;
         $this->_tokenEndpoint = $tokenEndpoint;
         $this->_clientId = $clientId;
