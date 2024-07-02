@@ -2,8 +2,6 @@
 
 namespace VaasSdk\Authentication;
 
-use VaasSdk\Exceptions\VaasAuthenticationException;
-
 class ClientCredentialsGrantAuthenticator
 {
     private OAuth2TokenReceiver $_tokenReceiver;
