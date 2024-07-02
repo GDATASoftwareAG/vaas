@@ -15,7 +15,6 @@ use VaasSdk\Exceptions\VaasServerException;
 use VaasSdk\Vaas;
 use Dotenv\Dotenv;
 use Exception;
-use GuzzleHttp\Promise\PromiseInterface;
 use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\TestHandler;
@@ -25,11 +24,8 @@ use Monolog\Logger;
 use Ramsey\Uuid\Generator\RandomBytesGenerator;
 use Ramsey\Uuid\Rfc4122\UuidV4;
 use React\EventLoop\Loop;
-use React\EventLoop\StreamSelectLoop;
 use React\Http\Browser;
 use React\Http\Io\HttpBodyStream;
-use React\Promise\PromiseInterface as PromisePromiseInterface;
-use React\Socket\Connector;
 use React\Stream\ReadableResourceStream;
 use React\Stream\ReadableStreamInterface;
 use React\Stream\ThroughStream;
@@ -39,7 +35,6 @@ use VaasSdk\Sha256;
 use VaasSdk\VaasOptions;
 use WebSocket\BadOpcodeException;
 use function React\Async\await;
-use function React\Promise\Stream\unwrapReadable;
 
 final class VaasTest extends TestCase
 {
@@ -581,7 +576,7 @@ final class VaasTest extends TestCase
         $randomString = $this->random_strings(11000);
         $stream = new ThroughStream();
 
-        $writeTimer = Loop::addPeriodicTimer(0.00001, function () use ($stream, &$randomString) {
+        $writeTimer = Loop::addPeriodicTimer(0.001, function () use ($stream, &$randomString) {
             if ($randomString === "") {
                 $stream->end();
                 return;
@@ -661,7 +656,7 @@ final class VaasTest extends TestCase
         $this->assertNotEmpty($verdict->Detection);
     }
 
-    function random_strings($length_of_string) {
+    static function random_strings($length_of_string) {
         $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $characters_length = strlen($characters);
         $random_string = '';

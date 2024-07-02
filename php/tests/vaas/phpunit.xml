@@ -1,6 +1,7 @@
 <phpunit bootstrap="vendor/autoload.php">
   <testsuites>
     <testsuite name="VaasTesting" >
+      <file>StreamsInLoopTest.php</file>
       <file>Sha256Test.php</file>
       <file>VaasTest.php</file>
       <file>ProtocolTest.php</file>
