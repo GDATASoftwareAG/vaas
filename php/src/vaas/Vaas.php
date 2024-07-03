@@ -2,6 +2,14 @@
 
 namespace VaasSdk;
 
+use Amp\ByteStream\ReadableResourceStream;
+use Amp\ByteStream\ReadableStream;
+use Amp\Http\Client\HttpClient;
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\HttpException;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\StreamedContent;
+use Amp\TimeoutCancellation;
 use InvalidArgumentException;
 use JsonMapper;
 use JsonMapper_Exception;
@@ -25,18 +33,12 @@ use VaasSdk\Message\VerdictRequestForUrl;
 use VaasSdk\VaasOptions;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use React\EventLoop\Loop;
-use React\Http\Browser;
-use React\Http\Message\ResponseException;
+use Revolt\EventLoop;
 use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\VaasVerdict;
 use WebSocket\BadOpcodeException;
-use React\Stream\ReadableResourceStream;
-use React\Stream\ReadableStreamInterface;
 use WebSocket\Message\Close;
 use WebSocket\Message\Ping;
-
-use function React\Async\await;
 
 class Vaas
 {
@@ -46,14 +48,14 @@ class Vaas
     private int $_uploadTimeoutInSeconds = 600;
     private LoggerInterface $_logger;
     private VaasOptions $_options;
-    private Browser $_httpClient;
+    private HttpClient $_httpClient;
 
     /**
      */
     public function __construct(?string $vaasUrl, ?LoggerInterface $logger = new NullLogger(), VaasOptions $options = new VaasOptions())
     {
         $this->_options = $options;
-        $this->_httpClient = new Browser();
+        $this->_httpClient = HttpClientBuilder::buildDefault();
         $this->_logger = $logger;
         $this->_logger->debug("Url: " . $vaasUrl);
         if ($vaasUrl)
@@ -168,7 +170,7 @@ class Vaas
     /**
      * Gets verdict by stream
      *
-     * @param ReadableStreamInterface $stream   the path to get the verdict for
+     * @param ReadableStream $stream   the path to get the verdict for
      * @param bool   $upload should the file be uploaded if initial verdict is unknown
      * @param string $uuid   unique identifier
      * 
@@ -181,7 +183,7 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    public function ForStream(ReadableStreamInterface $stream, int $size = 0, string $uuid = null): VaasVerdict
+    public function ForStream(ReadableStream $stream, int $size = 0, string $uuid = null): VaasVerdict
     {
         $this->_logger->debug("uuid: ".var_export($uuid, true));
         $uuid = $uuid !== null ? $uuid : UuidV4::getFactory()->uuid4()->toString();
@@ -488,33 +490,34 @@ class Vaas
      * @throws GuzzleException
      * @throws UploadFailedException
      */
-    private function UploadStream(ReadableStreamInterface $fileStream, string $url, string $uploadToken, int $fileSize)
+    private function UploadStream(ReadableStream $fileStream, string $url, string $uploadToken, int $fileSize)
     {
         $times = 0;
-        $pingTimer = Loop::addPeriodicTimer(5, function () use(&$times) {
+        $pingTimer = EventLoop::repeat(5, function () use(&$times) {
             $this->_logger->debug("pinging " . $times++);
             $websocket = $this->_vaasConnection->GetAuthenticatedWebsocket();
             $websocket->ping();
         });
 
         try {
-            $response = await($this->_httpClient->withTimeout($this->_uploadTimeoutInSeconds)->requestStreaming('PUT', $url,
-                [
-                    "Content-Length" => $fileSize,
-                    "Authorization" => $uploadToken,
-                ],
-                $fileStream
-            ));
-            if ($response->getStatusCode() > 399) {
-                throw new UploadFailedException($response->getReasonPhrase(), $response->getStatusCode());
+            $request = new Request($url, 'PUT');
+            $request->setTransferTimeout($this->_uploadTimeoutInSeconds);
+            $request->setBody(StreamedContent::fromStream($fileStream, $fileSize));
+            $request->addHeader("Content-Length", $fileSize);
+            $request->addHeader("Authorization", $uploadToken);
+
+            $response = $this->_httpClient->request($request, new TimeoutCancellation($this->_uploadTimeoutInSeconds));
+            if ($response->getStatus() > 399) {
+                $reason = $response->getBody()->buffer();
+                throw new UploadFailedException($reason, $response->getStatus());
             }
         } catch (\Exception $e) {
-                if ($e instanceof ResponseException) {
+                if ($e instanceof HttpException) {
                     throw new UploadFailedException($e->getMessage(), $e->getCode());
                 }
                 throw new VaasClientException($e->getMessage());
         } finally {
-            Loop::cancelTimer($pingTimer);
+            EventLoop::cancel($pingTimer);
         }
     }
 }

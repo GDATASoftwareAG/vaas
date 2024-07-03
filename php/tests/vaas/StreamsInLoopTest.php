@@ -2,38 +2,29 @@
 
 namespace VaasTesting;
 
+use Amp\Http\Client\HttpClientBuilder;
+use Amp\Http\Client\Request as ClientRequest;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
-use React\EventLoop\Loop;
-use React\Http\Browser;
-use React\Stream\ReadableResourceStream;
-use React\Stream\ReadableStreamInterface;
-use React\Stream\ThroughStream;
-use React\Stream\Util;
-use React\Stream\WritableResourceStream;
-
-use function React\Async\await;
-use function React\Promise\Stream\buffer;
 
 final class StreamsInLoopTest extends TestCase
 {
     use ProphecyTrait;
 
-    public function testLoopUnexpectedConsumesStreamWithBrowser() {
-        $browser1 = new Browser();
-        $browser2 = new Browser();
+    public function testLoopUnexpectedConsumesStreamWithAmphp() {
+        $browser1 = HttpClientBuilder::buildDefault();
+        $browser2 = HttpClientBuilder::buildDefault();
 
-        $response1 = await($browser1->requestStreaming("GET", "https://secure.eicar.org/eicar.com.txt"));
-        $body1 = $response1->getBody();
-        $this->assertEquals(true, $body1->isReadable());
-        assert($body1 instanceof ReadableStreamInterface);
-        $body1->pause();
+        $response1 = $browser1->request(new ClientRequest("https://secure.eicar.org/eicar.com.txt", "GET"));
+        $bodyStream1 = $response1->getBody();
+        $this->assertTrue($bodyStream1->isReadable());
 
-        $response2 = await($browser2->requestStreaming("GET", "https://secure.eicar.org/eicar.com"));
-        $this->assertEquals(false, $body1->isReadable());
-        $body2 = $response2->getBody();
-        $this->assertEquals(true, $body2->isReadable());
+        $response2 = $browser2->request(new ClientRequest("https://secure.eicar.org/eicar.com", "GET"));
+        $bodyStream2 = $response2->getBody();
+        $this->assertTrue($bodyStream1->isReadable());
     }
+
+
 
     static function random_strings($length_of_string) {
         $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
