@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/google/go-github/v62/github"
@@ -32,15 +31,12 @@ func Cleanup(client *github.Client) {
 		deleted := 0
 		for version := range versions {
 			deleted++
-			log.Printf(
-				"deleting package %v with versions %v created %v updates %v",
-				pack.GetName(), strings.Join(version.Metadata.Container.Tags, "|"),
-				version.CreatedAt.Time, version.UpdatedAt.Time)
 			client.Organizations.PackageDeleteVersion(ctx, gdataOrganisation, packageType, pack.GetName(), *version.ID)
 		}
 		if deleted == 0 {
 			log.Println("no versions older than 2 month for package ", pack.GetName())
 		}
+		log.Printf("Deleted %d Versions for package", deleted)
 	}
 	log.Printf("Deletion took %s", time.Since(start))
 }
