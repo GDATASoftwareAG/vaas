@@ -26,8 +26,10 @@ final class StreamsInLoopTest extends TestCase
         $response1 = await($browser1->requestStreaming("GET", "https://secure.eicar.org/eicar.com.txt"));
         $body1 = $response1->getBody();
         $this->assertEquals(true, $body1->isReadable());
+        assert($body1 instanceof ReadableStreamInterface);
+        $body1->pause();
 
-        $response2 = await($browser2->requestStreaming("GET", "https://secure.eicar.org/eicar.com.txt"));
+        $response2 = await($browser2->requestStreaming("GET", "https://secure.eicar.org/eicar.com"));
         $this->assertEquals(false, $body1->isReadable());
         $body2 = $response2->getBody();
         $this->assertEquals(true, $body2->isReadable());
