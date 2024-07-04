@@ -22,10 +22,14 @@ int main() {
         const auto report = vaas.forFile(fileToScan);
         std::cout << report << std::endl;
     } catch (const vaas::VaasException& e) {
+        // Some issue talking to VaaS, retry later
         std::cerr << "VaaS Error: " << e.what() << std::endl;
-        // Retry
     } catch (const vaas::AuthenticationException& e) {
+        // We need to check our credentials before trying again
         std::cerr << "Authentication error - check your credentials: " << e.what() << std::endl;
+    } catch (const std::runtime_error& e) {
+        // Other error (filesystem, critical init failure - retry with care)
+        std::cerr << "Problem: " << e.what() << std::endl;
     }
     return 0;
 }
