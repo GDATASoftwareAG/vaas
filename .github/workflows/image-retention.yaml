@@ -5,6 +5,7 @@ on:
     - cron: "15 */12 * * *" # run hourly
   push:
     branches:
+      - "*"
       - "!main" # excludes main
     paths:
       - "github-actions/cleanup-packages/**"
