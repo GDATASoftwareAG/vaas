@@ -35,16 +35,24 @@ env:
   VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
 
 jobs:
-  build-golang:
+  virus-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
         with:
           VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
           VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
+  build-golang:
+    runs-on: ubuntu-latest
+    container:
+      image: golang:latest
+    strategy:
+      matrix:
+        version-directory: ["./", "v2/"]
+    steps:
+      - uses: actions/checkout@v4
 
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-beta')))
@@ -68,19 +76,9 @@ jobs:
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
-      - name: set up Golang
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: golang/vaas/go.mod
-          check-latest: true
-          cache: true
-          cache-dependency-path: golang/vaas/go.sum
       - name: run tests
         run: go test ./...
-        working-directory: golang/vaas/
-      - name: publish module
-        if: startsWith(github.ref, 'refs/tags')
-        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/golang/vaas/}
+        working-directory: golang/vaas/${{ matrix.version-directory }}
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
@@ -123,20 +121,19 @@ jobs:
 
   vulncheck:
     runs-on: ubuntu-latest
+    container:
+      image: golang:latest
+    strategy:
+      matrix:
+        version-directory: [".", "v2"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: golang/vaas/go.mod
-          check-latest: true
-          cache: true
-          cache-dependency-path: golang/vaas/go.sum
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
         shell: bash
-      - name: Run govulncheck
 
-        run: govulncheck ./...
+      - name: Run govulncheck
+        run: govulncheck ./${{ matrix.version-directory }}...
         working-directory: golang/vaas/
         shell: bash
 
@@ -146,3 +143,10 @@ jobs:
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
           overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: publish module
+        if: startsWith(github.ref, 'refs/tags')
+        run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/golang/vaas/}
