@@ -10,17 +10,20 @@
 #include <filesystem>
 #include <utility>
 
+namespace vaas {
+
 /// An AuthenticationException indicates that the credentials are incorrect. Manual intervention may be required.
-class AuthenticationException : public std::exception {
+class AuthenticationException final : public std::runtime_error {
 public:
-    explicit AuthenticationException(const std::string& message);
+    using std::runtime_error::runtime_error;
 };
 
 /// A VaasException indicates that an I/O error occured while communicating with the VaaS service. The client may retry at a later time.
-class VaasException : public std::exception {
-public:
-    explicit VaasException(const std::string& message);
+class VaasException final : public std::runtime_error {
+    using std::runtime_error::runtime_error;
 };
+
+}
 
 namespace vaas_internals {
 
@@ -59,7 +62,7 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
     if (const CURLcode res = curl_easy_perform(curl); res != CURLE_OK) {
-        throw VaasException("CURL request failed: " + std::string(curl_easy_strerror(res)));
+        throw vaas::VaasException("CURL request failed: " + std::string(curl_easy_strerror(res)));
     }
 
     long response_code;
@@ -71,7 +74,7 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     const std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
     if (!response.empty()) {
         if (!reader->parse(response.c_str(), response.c_str() + response.size(), &jsonResponse, &errs)) {
-            throw VaasException("Failed to parse JSON response: " + errs);
+            throw vaas::VaasException("Failed to parse JSON response: " + errs);
         }
     }
 
@@ -79,6 +82,8 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
 }
 
 }
+
+namespace vaas {
 
 /// The OIDCClient is responsible for obtaining OAuth tokens from an identity provider. These are used to authenticate against the VaaS API.
 class OIDCClient {
@@ -264,12 +269,12 @@ private:
         Json::Value jsonResponse;
 
         if (const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse); response_code != 201) {
-            throw std::runtime_error("Unexpected HTTP response code " + std::to_string(response_code));
+            throw VaasException("Unexpected HTTP response code " + std::to_string(response_code));
         }
 
         curl_header* location_header;
         if (const CURLHcode err = curl_easy_header(curl, "Location", 0, CURLH_HEADER, -1, &location_header); err != CURLHE_OK) {
-            throw std::runtime_error("No location header found for 201 response");
+            throw VaasException("No location header found for 201 response");
         }
         const auto location = std::string(location_header->value);
         return serverEndpoint + location;
@@ -290,7 +295,7 @@ private:
             const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
 
             if (!(response_code == 200 || response_code == 202)) {
-                throw std::runtime_error("Unexpected HTTP response code " + std::to_string(response_code));
+                throw VaasException("Unexpected HTTP response code " + std::to_string(response_code));
             }
 
             if (response_code == 200) {
@@ -299,4 +304,6 @@ private:
         }
     }
 };
+
+}
 #endif //VAAS_H
