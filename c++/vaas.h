@@ -10,6 +10,18 @@
 #include <filesystem>
 #include <utility>
 
+/// An AuthenticationException indicates that the credentials are incorrect. Manual intervention may be required.
+class AuthenticationException : public std::exception {
+public:
+    explicit AuthenticationException(const std::string& message);
+};
+
+/// A VaasException indicates that an I/O error occured while communicating with the VaaS service. The client may retry at a later time.
+class VaasException : public std::exception {
+public:
+    explicit VaasException(const std::string& message);
+};
+
 namespace vaas_internals {
 
 class CurlHeaders {
@@ -28,7 +40,7 @@ public:
         headers = curl_slist_append(headers, data);
     }
 
-    curl_slist* raw() {
+    [[nodiscard]] curl_slist* raw() const {
         return headers;
     }
 
@@ -36,36 +48,31 @@ private:
     curl_slist* headers = nullptr;
 };
 
-static size_t WriteAppendToString(void* contents, size_t size, size_t nmemb, void* userp) {
+static size_t writeAppendToString(void* contents, const size_t size, const size_t nmemb, void* userp) {
     static_cast<std::string*>(userp)->append(static_cast<char*>(contents), size * nmemb);
     return size * nmemb;
 }
 
-static long GetServerResponse(CURL* curl, Json::Value& jsonResponse) {
+static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     std::string response;
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::WriteAppendToString);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::writeAppendToString);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-    CURLcode res = curl_easy_perform(curl);
-
-    if (res != CURLE_OK) {
-        throw std::runtime_error("CURL request failed: " + std::string(curl_easy_strerror(res)));
+    if (const CURLcode res = curl_easy_perform(curl); res != CURLE_OK) {
+        throw VaasException("CURL request failed: " + std::string(curl_easy_strerror(res)));
     }
 
     long response_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
 
-    Json::CharReaderBuilder readerBuilder;
+    const Json::CharReaderBuilder readerBuilder;
     std::string errs;
 
-    std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
+    const std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
     if (!response.empty()) {
         if (!reader->parse(response.c_str(), response.c_str() + response.size(), &jsonResponse, &errs)) {
-            throw std::runtime_error("Failed to parse JSON response: " + errs);
+            throw VaasException("Failed to parse JSON response: " + errs);
         }
-    } else {
-        // TODO
-        std::cout << "got empty reply from server " << std::endl;
     }
 
     return response_code;
@@ -73,6 +80,7 @@ static long GetServerResponse(CURL* curl, Json::Value& jsonResponse) {
 
 }
 
+/// The OIDCClient is responsible for obtaining OAuth tokens from an identity provider. These are used to authenticate against the VaaS API.
 class OIDCClient {
 public:
     OIDCClient(std::string tokenEndpoint, std::string clientId, std::string clientSecret)
@@ -88,9 +96,12 @@ public:
         }
     }
 
+    /// <summary>
+    /// Retrieve a new access token from the identity provider, or return a cached token that is still valid.
+    /// </summary>
     std::string getAccessToken() {
         std::lock_guard lock(mtx);
-        auto now = std::chrono::system_clock::now();
+        const auto now = std::chrono::system_clock::now();
         if (now < tokenExpiry) {
             return accessToken;
         }
@@ -100,28 +111,28 @@ public:
         vaas_internals::CurlHeaders headers;
         headers.append("Content-Type: application/x-www-form-urlencoded");
 
-        std::string postFields = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret;
+        const std::string postFields = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret;
 
         curl_easy_setopt(curl, CURLOPT_URL, tokenEndpoint.c_str());
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw());
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postFields.c_str());
 
         Json::Value jsonResponse;
-        auto response_code = vaas_internals::GetServerResponse(curl, jsonResponse);
+        const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
 
         if (!(response_code == 200 || response_code == 401)) {
-            throw std::runtime_error("Server replied with unexpected HTTP response code " + response_code);
+            throw AuthenticationException("Server replied with unexpected HTTP response code " + std::to_string(response_code));
         }
 
         if (jsonResponse.isMember("error") || response_code != 200) {
-            auto errorMsg = jsonResponse.isMember("error_description")
-                                ? jsonResponse.get("error_description", "")
-                                : jsonResponse.get("error", "unknown error");
-            throw std::runtime_error(errorMsg.asString());
+            const auto errorMsg = jsonResponse.isMember("error_description")
+                                      ? jsonResponse.get("error_description", "")
+                                      : jsonResponse.get("error", "unknown error");
+            throw AuthenticationException(errorMsg.asString());
         }
 
         accessToken = jsonResponse["access_token"].asString();
-        int expiresIn = jsonResponse["expires_in"].asInt();
+        const int expiresIn = jsonResponse["expires_in"].asInt();
         tokenExpiry = now + std::chrono::seconds(expiresIn);
 
         return accessToken;
@@ -139,6 +150,48 @@ private:
     std::mutex mtx;
 };
 
+/// VaasReport contains an analysis report for a file, such as verdict information.
+class VaasReport {
+    std::string sha256;
+
+    enum Verdict {
+        Clean = 0,
+        Malicious,
+        Pup,
+        Unknown
+    };
+
+    Verdict verdict;
+
+    static std::string verdictToString(const Verdict verdict) {
+        // Keep in same order as enum declaration
+        static const std::string ENUM_STRINGS[] = {"Clean", "Malicious", "Pup", "Unknown"};
+        return ENUM_STRINGS[verdict];
+    }
+
+protected:
+    friend class Vaas;
+    friend std::ostream& operator<<(std::ostream& os, const VaasReport& report);
+
+    explicit VaasReport(const Json::Value& raw) {
+        sha256 = raw.get("sha256", "NULL").as<std::string>();
+        const auto verdictRaw = raw.get("verdict", "NULL").as<std::string>();
+        verdict = Unknown;
+        if (verdictRaw == "Clean")
+            verdict = Clean;
+        if (verdictRaw == "Malicious")
+            verdict = Malicious;
+        if (verdictRaw == "Pup")
+            verdict = Pup;
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VaasReport& report) {
+    os << "sha256: " << report.sha256 << " verdict " << VaasReport::verdictToString(report.verdict);
+    return os;
+}
+
+/// Vaas talks to the VaaS service and provides reports for files or streams.
 class Vaas {
 public:
     Vaas(std::string serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId, const std::string& clientSecret)
@@ -154,45 +207,31 @@ public:
         }
     }
 
-    void forFile(const std::filesystem::path& filePath) {
+    /// <summary>
+    /// Open the provided filepath and send it to VaaS for analysis. Returns the report of the anaylzed file.
+    /// </summary>
+    VaasReport forFile(const std::filesystem::path& filePath) {
         const auto size = file_size(filePath);
         std::ifstream stream(filePath);
-        forStream(stream, size);
+        return forStream(stream, size);
     }
 
-    void forStream(std::ifstream& stream, size_t fileSize) {
-        auto token = authenticator.getAccessToken();
-
-        curl_easy_reset(curl);
-
-        vaas_internals::CurlHeaders headers;
-        headers.append("Content-Type: application/octet-stream");
-
-        auto url = serverEndpoint.append("/files");
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw());
-        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
-        curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str());
-        curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
-        curl_easy_setopt(curl, CURLOPT_READDATA, &stream);
-        curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, fileSize);
-        curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
-
-        Json::Value jsonResponse;
-        auto response_code = vaas_internals::GetServerResponse(curl, jsonResponse);
-
-        std::cout << response_code << std::endl;
-        std::cout << jsonResponse << std::endl;
+    /// <summary>
+    /// Use the provided ifstream and send it to VaaS for analysis. Returns the report of the anaylzed file.
+    /// </summary>
+    VaasReport forStream(std::ifstream& stream, const size_t fileSize) {
+        const auto resultUrl = upload(stream, fileSize);
+        return pollReport(resultUrl);
     }
 
 private:
-    std::string serverEndpoint;
+    const std::string serverEndpoint;
     OIDCClient authenticator;
 
     CURL* curl;
     std::mutex mtx;
 
-    static size_t read_callback(char* ptr, size_t size, size_t nmemb, void* userp) {
+    static size_t readCallback(char* ptr, const size_t size, const size_t nmemb, void* userp) {
         auto* currentFile = static_cast<std::ifstream*>(userp);
         if (currentFile->eof()) {
             return 0;
@@ -202,6 +241,62 @@ private:
         }
         currentFile->read(ptr, static_cast<std::streamsize>(size * nmemb));
         return currentFile->gcount();
+    }
+
+    std::string upload(std::ifstream& stream, const size_t fileSize) {
+        const auto token = authenticator.getAccessToken();
+
+        curl_easy_reset(curl);
+
+        vaas_internals::CurlHeaders headers;
+        headers.append("Content-Type: application/octet-stream");
+
+        const auto url = serverEndpoint + "/files";
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw());
+        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
+        curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str());
+        curl_easy_setopt(curl, CURLOPT_READFUNCTION, readCallback);
+        curl_easy_setopt(curl, CURLOPT_READDATA, &stream);
+        curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, fileSize);
+        curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+
+        Json::Value jsonResponse;
+
+        if (const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse); response_code != 201) {
+            throw std::runtime_error("Unexpected HTTP response code " + std::to_string(response_code));
+        }
+
+        curl_header* location_header;
+        if (const CURLHcode err = curl_easy_header(curl, "Location", 0, CURLH_HEADER, -1, &location_header); err != CURLHE_OK) {
+            throw std::runtime_error("No location header found for 201 response");
+        }
+        const auto location = std::string(location_header->value);
+        return serverEndpoint + location;
+    }
+
+    VaasReport pollReport(const std::string& fileUrl) {
+        while (true) {
+            auto token = authenticator.getAccessToken();
+
+            curl_easy_reset(curl);
+
+            std::string reportUrl = fileUrl + "/report";
+            curl_easy_setopt(curl, CURLOPT_URL, reportUrl.c_str());
+            curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
+            curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str());
+
+            Json::Value jsonResponse;
+            const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
+
+            if (!(response_code == 200 || response_code == 202)) {
+                throw std::runtime_error("Unexpected HTTP response code " + std::to_string(response_code));
+            }
+
+            if (response_code == 200) {
+                return VaasReport(jsonResponse);
+            }
+        }
     }
 };
 #endif //VAAS_H

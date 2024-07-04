@@ -4,48 +4,25 @@
 
 int main() {
     try {
-        auto vaasUrl = std::getenv("VAAS_URL")
-                           ? std::getenv("VAAS_URL")
-                           : "http://localhost:42175";
-        auto tokenUrl = std::getenv("TOKEN_URL")
-                            ? std::getenv("TOKEN_URL")
-                            : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
-        auto clientId = std::getenv("CLIENT_ID")
-                            ? std::getenv("CLIENT_ID")
-                            : throw std::runtime_error("CLIENT_ID must be set");
-        auto clientSecret = std::getenv("CLIENT_SECRET")
-                                ? std::getenv("CLIENT_SECRET")
-                                : throw std::runtime_error("CLIENT_SECRET must be set");
+        const auto vaasUrl = std::getenv("VAAS_URL")
+                                 ? std::getenv("VAAS_URL")
+                                 // TODO: Public API endpoint URLs?
+                                 : "http://localhost:41049";
+        const auto tokenUrl = std::getenv("TOKEN_URL")
+                                  ? std::getenv("TOKEN_URL")
+                                  : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
+        const auto clientId = std::getenv("CLIENT_ID")
+                                  ? std::getenv("CLIENT_ID")
+                                  : throw std::runtime_error("CLIENT_ID must be set");
+        const auto clientSecret = std::getenv("CLIENT_SECRET")
+                                      ? std::getenv("CLIENT_SECRET")
+                                      : throw std::runtime_error("CLIENT_SECRET must be set");
+        const auto fileToScan = std::getenv("SCAN_PATH") ? std::getenv("SCAN_PATH") : throw std::runtime_error("SCAN_PATH (a file to scan) must be set");
         Vaas vaas(vaasUrl, tokenUrl, clientId, clientSecret);
-        vaas.forFile("/home/max/eicar.com.txt");
+        const auto report = vaas.forFile(fileToScan);
+        std::cout << report << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
-    return 0;
-}
-
-int mainOld() {
-    try {
-        auto vaasUrl = std::getenv("VAAS_URL")
-                           ? std::getenv("VAAS_URL")
-                           : "http://localhost:42175";
-        auto tokenUrl = std::getenv("TOKEN_URL")
-                            ? std::getenv("TOKEN_URL")
-                            : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
-        auto clientId = std::getenv("CLIENT_ID")
-                            ? std::getenv("CLIENT_ID")
-                            : throw std::runtime_error("CLIENT_ID must be set");
-        auto clientSecret = std::getenv("CLIENT_SECRET")
-                                ? std::getenv("CLIENT_SECRET")
-                                : throw std::runtime_error("CLIENT_SECRET must be set");
-        OIDCClient client(tokenUrl, clientId, clientSecret);
-        std::string token = client.getAccessToken();
-        std::cout << "Access Token: " << token << std::endl;
-        std::string tokenAgain = client.getAccessToken();
-        std::cout << "Access Token (again - reused): " << tokenAgain << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
-
     return 0;
 }
