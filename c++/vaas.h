@@ -144,9 +144,9 @@ public:
     }
 
 private:
-    std::string tokenEndpoint;
-    std::string clientId;
-    std::string clientSecret;
+    const std::string tokenEndpoint;
+    const std::string clientId;
+    const std::string clientSecret;
 
     std::string accessToken;
     std::chrono::system_clock::time_point tokenExpiry = std::chrono::system_clock::time_point::min();
@@ -157,7 +157,7 @@ private:
 
 /// VaasReport contains an analysis report for a file, such as verdict information.
 class VaasReport {
-    std::string sha256;
+    const std::string sha256;
 
     enum Verdict {
         Clean = 0,
@@ -168,7 +168,7 @@ class VaasReport {
 
     Verdict verdict;
 
-    static std::string verdictToString(const Verdict verdict) {
+    static std::string verdictToString(const Verdict verdict) noexcept {
         // Keep in same order as enum declaration
         static const std::string ENUM_STRINGS[] = {"Clean", "Malicious", "Pup", "Unknown"};
         return ENUM_STRINGS[verdict];
@@ -178,8 +178,8 @@ protected:
     friend class Vaas;
     friend std::ostream& operator<<(std::ostream& os, const VaasReport& report);
 
-    explicit VaasReport(const Json::Value& raw) {
-        sha256 = raw.get("sha256", "NULL").as<std::string>();
+    explicit VaasReport(const Json::Value& raw) :
+        sha256{raw.get("sha256", "NULL").as<std::string>()} {
         const auto verdictRaw = raw.get("verdict", "NULL").as<std::string>();
         verdict = Unknown;
         if (verdictRaw == "Clean")
