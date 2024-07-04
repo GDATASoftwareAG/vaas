@@ -27,9 +27,9 @@ _Verdict-as-a-Service_ (VaaS) is a service that provides a platform for scanning
 
 It gives you as a developer functions to talk to G DATA VaaS. It wraps away the complexity of the API into basic functions.
 
-### Connect(ctx context.Context, auth authenticator.Authenticator) (termChan <-chan error, err error)
+### Connect(ctx context.Context, auth authenticator.Authenticator) (errorChan <-chan error, err error)
 
-Connect opens a websocket connection to the VAAS Server, which is kept open until the context.Context expires. The termChan indicates when a connection was closed. In the case of an unexpected close, an error is written to the channel.
+Connect opens a websocket connection to the VAAS Server. Use Close() to terminate the connection. The errorChan indicates when a connection was closed. In the case of an unexpected close, an error is written to the channel.
 
 ### ForSha256(ctx context.Context, sha256 string) (messages.VaasVerdict, error)
 
@@ -104,10 +104,11 @@ vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{
 ctx, webSocketCancel := context.WithCancel(context.Background())
 
 // Establish a WebSocket connection to the VaaS server
-termChan, err := vaasClient.Connect(ctx, auth)
+errorChan, err := vaasClient.Connect(ctx, auth)
 if err != nil {
       log.Fatalf("failed to connect to VaaS %s", err.Error())
 }
+defer vaasClient.Close()
 
 // Create a context with a timeout for the analysis
 analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)

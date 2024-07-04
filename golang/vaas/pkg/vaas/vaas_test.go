@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
@@ -24,8 +25,8 @@ import (
 )
 
 type testFixture struct {
-	cancel   context.CancelFunc
-	termChan <-chan error
+	vaasClient Vaas
+	errorChan  <-chan error
 }
 
 func (tf *testFixture) setUp(t *testing.T) Vaas {
@@ -54,26 +55,31 @@ func (tf *testFixture) setUp(t *testing.T) Vaas {
 		UseHashLookup: true,
 		UseCache:      false,
 	}
-	vaasClient := New(testingOptions, vaasURL)
+	tf.vaasClient = New(testingOptions, vaasURL)
 
-	var ctx context.Context
-	ctx, tf.cancel = context.WithCancel(context.Background())
+	ctx, ctxCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer ctxCancel()
 
 	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
 
-	termChan, err := vaasClient.Connect(ctx, auth)
+	errorChan, err := tf.vaasClient.Connect(ctx, auth)
 	if err != nil {
 		t.Fatalf("Failed to connect - %v", err)
 	}
-	tf.termChan = termChan
+	tf.errorChan = errorChan
 
-	return vaasClient
+	return tf.vaasClient
 }
 
 func (tf *testFixture) tearDown(t *testing.T) {
-	tf.cancel()
-	if err := <-tf.termChan; err != nil {
-		t.Errorf("Error during close of websocket - %v", err)
+	go func() {
+		if err := <-tf.errorChan; err != nil {
+			t.Errorf("Error during close of websocket - %v", err)
+		}
+	}()
+
+	if err := tf.vaasClient.Close(); err != nil {
+		t.Fatalf("Failed to close vaas client - %v", err)
 	}
 }
 
