@@ -186,7 +186,7 @@ class Vaas
     public function ForStream(ReadableStream $stream, int $size = 0, string $uuid = null): VaasVerdict
     {
         $this->_logger->debug("uuid: ".var_export($uuid, true));
-        $uuid = $uuid !== null ? $uuid : UuidV4::getFactory()->uuid4()->toString();
+        $uuid = $uuid ?? UuidV4::getFactory()->uuid4()->toString();
         $this->_logger->debug("uuid: ".var_export($uuid, true));
         $verdictResponse = $this->_verdictResponseForStream($uuid);
 
