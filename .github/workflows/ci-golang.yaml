@@ -35,18 +35,23 @@ env:
   VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
 
 jobs:
-  build-golang:
+  virus-scan:
     runs-on: ubuntu-latest
-    container:
-      image: golang:latest
     steps:
-      - uses: actions/checkout@v4
-
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
         with:
           VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
           VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
+  build-golang:
+    runs-on: ubuntu-latest
+    container:
+      image: golang:latest
+    strategy:
+      matrix:
+        version-directory: ["./", "v2/"]
+    steps:
+      - uses: actions/checkout@v4
 
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-beta')))
@@ -72,7 +77,7 @@ jobs:
 
       - name: run tests
         run: go test ./...
-        working-directory: golang/vaas/
+        working-directory: golang/vaas/${{ matrix.version-directory }}
       - name: publish module
         if: startsWith(github.ref, 'refs/tags')
         run: GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/golang/vaas/}
@@ -120,14 +125,17 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: golang:latest
+    strategy:
+      matrix:
+        version-directory: [".", "v2"]
     steps:
       - uses: actions/checkout@v4
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
         shell: bash
-      - name: Run govulncheck
 
-        run: govulncheck ./...
+      - name: Run govulncheck
+        run: govulncheck ./${{ matrix.version-directory }}...
         working-directory: golang/vaas/
         shell: bash
 
