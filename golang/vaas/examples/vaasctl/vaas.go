@@ -12,8 +12,9 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/vaas"
+
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/options"
 )
 
 var sha256Check = flag.Bool("s", false, "sha256")
@@ -42,10 +43,9 @@ func main() {
 		UseCache:      false,
 		EnableLogs:    false,
 	})
-	connectCtx, webSocketCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer webSocketCancel()
+	ctx, webSocketCancel := context.WithCancel(context.Background())
 
-	termChan, err := vaasClient.Connect(connectCtx, auth)
+	termChan, err := vaasClient.Connect(ctx, auth)
 	if err != nil {
 		log.Fatalf("failed to connect to VaaS %s", err.Error())
 	}
@@ -74,9 +74,7 @@ func main() {
 		}
 	}
 
-	if err = vaasClient.Close(); err != nil {
-		log.Printf("unable to close VaasClient - %v", err)
-	}
+	webSocketCancel()
 	if err = <-termChan; err != nil {
 		log.Printf("Websocket shutdown with an error - %v", err)
 	}

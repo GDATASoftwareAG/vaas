@@ -37,8 +37,6 @@ env:
 jobs:
   build-golang:
     runs-on: ubuntu-latest
-    container:
-      image: golang:latest
     steps:
       - uses: actions/checkout@v4
 
@@ -70,6 +68,13 @@ jobs:
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
+      - name: set up Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: golang/vaas/go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: golang/vaas/go.sum
       - name: run tests
         run: go test ./...
         working-directory: golang/vaas/
@@ -118,10 +123,14 @@ jobs:
 
   vulncheck:
     runs-on: ubuntu-latest
-    container:
-      image: golang:latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: golang/vaas/go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: golang/vaas/go.sum
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
         shell: bash
