@@ -6,7 +6,7 @@ use League\OAuth2\Client\Provider\GenericProvider;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 
-class ResourceOwnerPasswordGrantAuthenticator {
+class ResourceOwnerPasswordGrantAuthenticator implements AuthenticatorInterface {
     private string $clientId;
     private string $userName;
     private string $password;
@@ -24,7 +24,7 @@ class ResourceOwnerPasswordGrantAuthenticator {
     /**
      * @throws VaasAuthenticationException
      */
-    public function getToken() {
+    public function getToken(): string {
         $provider = new GenericProvider([
             'clientId'                => $this->clientId,
             'urlAuthorize'            => $this->tokenEndpoint,
