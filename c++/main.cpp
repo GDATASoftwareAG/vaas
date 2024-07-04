@@ -18,11 +18,14 @@ int main() {
                                       ? std::getenv("CLIENT_SECRET")
                                       : throw std::runtime_error("CLIENT_SECRET must be set");
         const auto fileToScan = std::getenv("SCAN_PATH") ? std::getenv("SCAN_PATH") : throw std::runtime_error("SCAN_PATH (a file to scan) must be set");
-        Vaas vaas(vaasUrl, tokenUrl, clientId, clientSecret);
+        vaas::Vaas vaas(vaasUrl, tokenUrl, clientId, clientSecret);
         const auto report = vaas.forFile(fileToScan);
         std::cout << report << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+    } catch (const vaas::VaasException& e) {
+        std::cerr << "VaaS Error: " << e.what() << std::endl;
+        // Retry
+    } catch (const vaas::AuthenticationException& e) {
+        std::cerr << "Authentication error - check your credentials: " << e.what() << std::endl;
     }
     return 0;
 }
