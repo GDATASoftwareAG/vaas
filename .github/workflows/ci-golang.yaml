@@ -38,6 +38,7 @@ jobs:
   virus-scan:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
         with:
