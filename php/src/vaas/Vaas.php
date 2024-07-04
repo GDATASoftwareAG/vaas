@@ -68,7 +68,7 @@ class Vaas
         string $token,
         ?VaasConnection $vaasConnection = null
     ) {
-        $this->_vaasConnection = isset($vaasConnection) ? $vaasConnection :  new VaasConnection($this->_vaasUrl);
+        $this->_vaasConnection = $vaasConnection ?? new VaasConnection($this->_vaasUrl);
         $webSocket = $this->_vaasConnection->GetConnectedWebsocket();
 
         $authRequest = new AuthRequest($token);
