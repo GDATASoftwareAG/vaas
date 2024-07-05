@@ -50,7 +50,7 @@ class OAuth2TokenReceiver {
         }
     }
 
-    public function GetToken() {
+    public function getToken() {
         try {
             $request = new Request($this->_tokenEndpoint, 'POST');
             $request->addHeader('Content-Type', 'application/x-www-form-urlencoded');
