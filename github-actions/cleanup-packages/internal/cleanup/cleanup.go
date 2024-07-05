@@ -23,9 +23,6 @@ func Cleanup(client *github.Client) {
 
 	packageList := getContainerPackages(ctx, client, globalNameRegex)
 	for _, pack := range packageList {
-		if pack.GetName() != "vaas/scanner" {
-			continue
-		}
 		println("checking versions for package ", pack.GetName())
 		versions := getVersionsOlderThan2Month(ctx, client, pack.Name)
 		deleted := 0
