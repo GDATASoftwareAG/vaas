@@ -7,6 +7,17 @@ use Amp\Http\Client\Request as ClientRequest;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 
+/**
+ * This test is just for making sure that streams are not just randomly consumed
+ * it was the behaviour of reactphp so I wanted to make sure the same thing does not 
+ * happen with amphp
+ * 
+ * With reactphp the stream was basically consumed at some point because it 
+ * began consuming it internally the moment data came in.
+ * 
+ * So when requesting a stream and then doing some time "intensive" stuff before
+ * putting the stream to a post request lead to the stream already been closed.
+**/
 final class StreamsInLoopTest extends TestCase
 {
     use ProphecyTrait;
@@ -22,21 +33,5 @@ final class StreamsInLoopTest extends TestCase
         $response2 = $browser2->request(new ClientRequest("https://secure.eicar.org/eicar.com", "GET"));
         $bodyStream2 = $response2->getBody();
         $this->assertTrue($bodyStream1->isReadable());
-    }
-
-
-
-    static function random_strings($length_of_string) {
-        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        $characters_length = strlen($characters);
-        $random_string = '';
-
-        // Generate random characters until the string reaches desired length
-        for ($i = 0; $i < $length_of_string; $i++) {
-            $random_index = random_int(0, $characters_length - 1);
-            $random_string .= $characters[$random_index];
-        }
-
-        return $random_string;
     }
 }
