@@ -1,20 +1,20 @@
 #ifndef VAAS_H
 #define VAAS_H
-#include <curl/curl.h>
-#include <json/json.h>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <mutex>
 #include <chrono>
+#include <curl/curl.h>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <json/json.h>
+#include <mutex>
+#include <string>
 #include <utility>
 
 namespace vaas {
 
 /// An AuthenticationException indicates that the credentials are incorrect. Manual intervention may be required.
 class AuthenticationException final : public std::runtime_error {
-public:
+  public:
     using std::runtime_error::runtime_error;
 };
 
@@ -23,12 +23,12 @@ class VaasException final : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-}
+} // namespace vaas
 
 namespace vaas_internals {
 
 class CurlHeaders {
-public:
+  public:
     CurlHeaders() = default;
     CurlHeaders(const CurlHeaders&) = delete;
 
@@ -47,7 +47,7 @@ public:
         return headers;
     }
 
-private:
+  private:
     curl_slist* headers = nullptr;
 };
 
@@ -61,12 +61,15 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::writeAppendToString);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
 
-    if (const CURLcode res = curl_easy_perform(curl); res != CURLE_OK) {
+    const CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
         throw vaas::VaasException("CURL request failed: " + std::string(curl_easy_strerror(res)));
     }
 
     long response_code;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+    // TODO if !(200 <= response_code < 300)
 
     const Json::CharReaderBuilder readerBuilder;
     std::string errs;
@@ -81,13 +84,13 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     return response_code;
 }
 
-}
+} // namespace vaas_internals
 
 namespace vaas {
 
 /// The OIDCClient is responsible for obtaining OAuth tokens from an identity provider. These are used to authenticate against the VaaS API.
 class OIDCClient {
-public:
+  public:
     OIDCClient(std::string tokenEndpoint, std::string clientId, std::string clientSecret)
         : tokenEndpoint(std::move(tokenEndpoint)), clientId(std::move(clientId)), clientSecret(std::move(clientSecret)), curl(curl_easy_init()) {
         if (!curl) {
@@ -143,7 +146,7 @@ public:
         return accessToken;
     }
 
-private:
+  private:
     const std::string tokenEndpoint;
     const std::string clientId;
     const std::string clientSecret;
@@ -174,12 +177,11 @@ class VaasReport {
         return ENUM_STRINGS[verdict];
     }
 
-protected:
+  protected:
     friend class Vaas;
     friend std::ostream& operator<<(std::ostream& os, const VaasReport& report);
 
-    explicit VaasReport(const Json::Value& raw) :
-        sha256{raw.get("sha256", "NULL").as<std::string>()} {
+    explicit VaasReport(const Json::Value& raw) : sha256{raw.get("sha256", "NULL").as<std::string>()} {
         const auto verdictRaw = raw.get("verdict", "NULL").as<std::string>();
         verdict = Unknown;
         if (verdictRaw == "Clean")
@@ -192,13 +194,13 @@ protected:
 };
 
 inline std::ostream& operator<<(std::ostream& os, const VaasReport& report) {
-    os << "sha256: " << report.sha256 << " verdict " << VaasReport::verdictToString(report.verdict);
+    os << "sha256: " << report.sha256 << " verdict: " << VaasReport::verdictToString(report.verdict);
     return os;
 }
 
 /// Vaas talks to the VaaS service and provides reports for files or streams.
 class Vaas {
-public:
+  public:
     Vaas(std::string serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId, const std::string& clientSecret)
         : serverEndpoint(std::move(serverEndpoint)), authenticator(tokenEndpoint, clientId, clientSecret), curl(curl_easy_init()) {
         if (!curl) {
@@ -229,7 +231,7 @@ public:
         return pollReport(resultUrl);
     }
 
-private:
+  private:
     const std::string serverEndpoint;
     OIDCClient authenticator;
 
@@ -251,6 +253,7 @@ private:
     std::string upload(std::ifstream& stream, const size_t fileSize) {
         const auto token = authenticator.getAccessToken();
 
+        // TODO: Check if connection is kept alive
         curl_easy_reset(curl);
 
         vaas_internals::CurlHeaders headers;
@@ -305,5 +308,5 @@ private:
     }
 };
 
-}
-#endif //VAAS_H
+} // namespace vaas
+#endif // VAAS_H

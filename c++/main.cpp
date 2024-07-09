@@ -2,12 +2,16 @@
 #include <iostream>
 #include <string>
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[0] << " [PATH]..." << std::endl;
+        exit(1);
+    }
+
     try {
         const auto vaasUrl = std::getenv("VAAS_URL")
                                  ? std::getenv("VAAS_URL")
-                                 // TODO: Public API endpoint URLs?
-                                 : "http://localhost:41049";
+                                 : "https://upload.staging.vaas.gdatasecurity.de";
         const auto tokenUrl = std::getenv("TOKEN_URL")
                                   ? std::getenv("TOKEN_URL")
                                   : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
@@ -17,13 +21,15 @@ int main() {
         const auto clientSecret = std::getenv("CLIENT_SECRET")
                                       ? std::getenv("CLIENT_SECRET")
                                       : throw std::runtime_error("CLIENT_SECRET must be set");
-        const auto fileToScan = std::getenv("SCAN_PATH") ? std::getenv("SCAN_PATH") : throw std::runtime_error("SCAN_PATH (a file to scan) must be set");
+
+        // TODO: Iterate
+        const auto fileToScan = argv[1];
         vaas::Vaas vaas(vaasUrl, tokenUrl, clientId, clientSecret);
         const auto report = vaas.forFile(fileToScan);
         std::cout << report << std::endl;
     } catch (const vaas::VaasException& e) {
         // Some issue talking to VaaS, retry later
-        std::cerr << "VaaS Error: " << e.what() << std::endl;
+        std::cerr << "VaaS error: " << e.what() << std::endl;
     } catch (const vaas::AuthenticationException& e) {
         // We need to check our credentials before trying again
         std::cerr << "Authentication error - check your credentials: " << e.what() << std::endl;
