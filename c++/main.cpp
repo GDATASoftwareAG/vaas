@@ -1,4 +1,5 @@
 #include "vaas.h"
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -8,25 +9,37 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    try {
-        const auto vaasUrl = std::getenv("VAAS_URL")
-                                 ? std::getenv("VAAS_URL")
-                                 : "https://upload.staging.vaas.gdatasecurity.de";
-        const auto tokenUrl = std::getenv("TOKEN_URL")
-                                  ? std::getenv("TOKEN_URL")
-                                  : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
-        const auto clientId = std::getenv("CLIENT_ID")
-                                  ? std::getenv("CLIENT_ID")
-                                  : throw std::runtime_error("CLIENT_ID must be set");
-        const auto clientSecret = std::getenv("CLIENT_SECRET")
-                                      ? std::getenv("CLIENT_SECRET")
-                                      : throw std::runtime_error("CLIENT_SECRET must be set");
+    const auto vaasUrl = std::getenv("VAAS_URL")
+                             ? std::getenv("VAAS_URL")
+                             : "https://upload.staging.vaas.gdatasecurity.de";
+    const auto tokenUrl = std::getenv("TOKEN_URL")
+                              ? std::getenv("TOKEN_URL")
+                              : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
+    const auto clientId = std::getenv("CLIENT_ID")
+                              ? std::getenv("CLIENT_ID")
+                              : throw std::runtime_error("CLIENT_ID must be set");
+    const auto clientSecret = std::getenv("CLIENT_SECRET")
+                                  ? std::getenv("CLIENT_SECRET")
+                                  : throw std::runtime_error("CLIENT_SECRET must be set");
 
-        // TODO: Iterate
-        const auto fileToScan = argv[1];
+    try {
         vaas::Vaas vaas(vaasUrl, tokenUrl, clientId, clientSecret);
-        const auto report = vaas.forFile(fileToScan);
-        std::cout << report << std::endl;
+
+        for (int i = 1; i < argc; ++i) {
+            std::filesystem::path fileOrDirectory(argv[i]);
+
+            if (std::filesystem::is_directory(fileOrDirectory)) {
+                for (const auto& entry : std::filesystem::recursive_directory_iterator(fileOrDirectory)) {
+                    if (entry.is_regular_file()) {
+                        const auto report = vaas.forFile(entry);
+                        std::cout << entry << " " << report << std::endl;
+                    }
+                }
+            } else {
+                const auto report = vaas.forFile(fileOrDirectory);
+                std::cout << fileOrDirectory << " " << report << std::endl;
+            }
+        }
     } catch (const vaas::VaasException& e) {
         // Some issue talking to VaaS, retry later
         std::cerr << "VaaS error: " << e.what() << std::endl;
