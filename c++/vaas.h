@@ -7,6 +7,7 @@
 #include <iostream>
 #include <json/json.h>
 #include <mutex>
+#include <openssl/evp.h>
 #include <string>
 #include <utility>
 
@@ -82,7 +83,7 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     vaas_internals::ensureCurlOk(curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code));
 
     if (response_code < 200 || response_code >= 300) {
-        throw vaas::VaasException("Server replied with unexpected HTTP response code " + std::to_string(response_code));
+        return response_code;
     }
 
     const Json::CharReaderBuilder readerBuilder;
@@ -96,6 +97,76 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     }
 
     return response_code;
+}
+
+std::string bytesToHex(const std::vector<unsigned char>& bytes) {
+    static const char hexDigits[] = "0123456789abcdef";
+    std::string hexStr;
+    hexStr.reserve(bytes.size() * 2);
+
+    for (unsigned char byte : bytes) {
+        hexStr.push_back(hexDigits[byte >> 4]);
+        hexStr.push_back(hexDigits[byte & 0x0F]);
+    }
+
+    return hexStr;
+}
+
+std::string calculateSHA256(const std::filesystem::path& filePath) {
+    // Open the file in binary mode
+    std::ifstream file(filePath, std::ios::binary);
+    if (!file) {
+        throw std::runtime_error("Cannot open file: " + filePath.string());
+    }
+
+    // Create a SHA256 context using the EVP interface
+    EVP_MD_CTX* context = EVP_MD_CTX_new();
+    if (context == nullptr) {
+        throw std::runtime_error("Failed to create EVP_MD_CTX");
+    }
+    if (EVP_DigestInit_ex(context, EVP_sha256(), nullptr) != 1) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to initialize SHA256 context");
+    }
+
+    // Read the file in chunks and update the digest
+    const std::size_t bufferSize = 4096;
+    char buffer[bufferSize];
+    while (file.read(buffer, bufferSize)) {
+        if (EVP_DigestUpdate(context, buffer, file.gcount()) != 1) {
+            EVP_MD_CTX_free(context);
+            throw std::runtime_error("Failed to update SHA256 digest");
+        }
+    }
+
+    // Process the last partial buffer, if any
+    if (file.gcount() > 0) {
+        if (EVP_DigestUpdate(context, buffer, file.gcount()) != 1) {
+            EVP_MD_CTX_free(context);
+            throw std::runtime_error("Failed to update SHA256 digest");
+        }
+    }
+
+    // Finalize the SHA256 hash
+    std::vector<unsigned char> hash(EVP_MD_size(EVP_sha256()));
+    unsigned int length;
+    if (EVP_DigestFinal_ex(context, hash.data(), &length) != 1) {
+        EVP_MD_CTX_free(context);
+        throw std::runtime_error("Failed to finalize SHA256 digest");
+    }
+    EVP_MD_CTX_free(context);
+
+    return bytesToHex(hash);
+}
+
+std::string getLastSegmentOfUrl(const std::string& url) {
+    size_t lastSlashPos = url.find_last_of('/');
+
+    if (lastSlashPos != std::string::npos) {
+        return url.substr(lastSlashPos + 1);
+    }
+
+    return url;
 }
 
 } // namespace vaas_internals
@@ -122,7 +193,7 @@ class OIDCClient {
     /// Retrieve a new access token from the identity provider, or return a cached token that is still valid.
     /// </summary>
     std::string getAccessToken() {
-        std::lock_guard lock(mtx);
+        std::lock_guard<std::mutex> lock(mtx);
         const auto now = std::chrono::system_clock::now();
         if (now < tokenExpiry) {
             return accessToken;
@@ -205,6 +276,9 @@ class VaasReport {
         if (verdictRaw == "Pup")
             verdict = Pup;
     }
+
+    explicit VaasReport(const std::string& sha256, Verdict verdict)
+        : sha256{sha256}, verdict{verdict} {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const VaasReport& report) {
@@ -232,6 +306,11 @@ class Vaas {
     /// Open the provided filepath and send it to VaaS for analysis. Returns the report of the anaylzed file.
     /// </summary>
     VaasReport forFile(const std::filesystem::path& filePath) {
+        const auto sha256 = vaas_internals::calculateSHA256(filePath);
+        const auto report = forHash(sha256);
+        if (report.verdict != VaasReport::Verdict::Unknown) {
+            return report;
+        }
         const auto size = file_size(filePath);
         std::ifstream stream(filePath);
         return forStream(stream, size);
@@ -241,9 +320,40 @@ class Vaas {
     /// Use the provided ifstream and send it to VaaS for analysis. Returns the report of the anaylzed file.
     /// </summary>
     VaasReport forStream(std::ifstream& stream, const size_t fileSize) {
-        // TODO: Check hash first
         const auto resultUrl = upload(stream, fileSize);
-        return pollReport(resultUrl);
+        const auto sha256 = vaas_internals::getLastSegmentOfUrl(resultUrl);
+        return forHash(sha256);
+    }
+
+    /// <summary>
+    /// Returns the report for the given hash.
+    /// </summary>
+    VaasReport forHash(const std::string& sha256) {
+        while (true) {
+            auto token = authenticator.getAccessToken();
+
+            vaas_internals::resetCurl(curl);
+
+            std::string reportUrl = serverEndpoint + "/files/" + sha256 + "/report";
+            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_URL, reportUrl.c_str()));
+            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER));
+            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str()));
+
+            Json::Value jsonResponse;
+            const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
+
+            if (response_code == 404) {
+                return VaasReport(sha256, VaasReport::Verdict::Unknown);
+            }
+
+            if (!(response_code == 200 || response_code == 202)) {
+                throw VaasException("Unexpected HTTP response code " + std::to_string(response_code));
+            }
+
+            if (response_code == 200) {
+                return VaasReport(jsonResponse);
+            }
+        }
     }
 
   private:
@@ -291,35 +401,12 @@ class Vaas {
         }
 
         curl_header* location_header;
-        if (const CURLHcode err = curl_easy_header(curl, "Location", 0, CURLH_HEADER, -1, &location_header); err != CURLHE_OK) {
+        const CURLHcode err = curl_easy_header(curl, "Location", 0, CURLH_HEADER, -1, &location_header);
+        if (err != CURLHE_OK) {
             throw VaasException("No location header found for 201 response");
         }
         const auto location = std::string(location_header->value);
         return serverEndpoint + location;
-    }
-
-    VaasReport pollReport(const std::string& fileUrl) {
-        while (true) {
-            auto token = authenticator.getAccessToken();
-
-            vaas_internals::resetCurl(curl);
-
-            std::string reportUrl = fileUrl + "/report";
-            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_URL, reportUrl.c_str()));
-            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER));
-            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str()));
-
-            Json::Value jsonResponse;
-            const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
-
-            if (!(response_code == 200 || response_code == 202)) {
-                throw VaasException("Unexpected HTTP response code " + std::to_string(response_code));
-            }
-
-            if (response_code == 200) {
-                return VaasReport(jsonResponse);
-            }
-        }
     }
 };
 

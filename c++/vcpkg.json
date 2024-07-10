@@ -6,7 +6,8 @@
         "http2"
       ]
     },
-    "jsoncpp"
+    "jsoncpp",
+    "openssl"
   ],
   "version": "0.0.0",
   "name": "vaas"
