@@ -58,10 +58,17 @@ func (cleanup *Cleanup) Run(context context.Context) {
 		deleted := 0
 		for version := range versions {
 			deleted++
-			log.Printf(
-				"deleting package %v with versions %v created %v updates %v",
-				pack.GetName(), strings.Join(version.Metadata.Container.Tags, "|"),
-				version.CreatedAt.Time, version.UpdatedAt.Time)
+			if len(version.Metadata.Container.Tags) > 0 {
+				log.Printf(
+					"deleting package %v with versions %v created %v updates %v",
+					pack.GetName(), strings.Join(version.Metadata.Container.Tags, "|"),
+					version.CreatedAt.Time, version.UpdatedAt.Time)
+			} else {
+				log.Printf(
+					"deleting package %v with digest %v created %v updates %v",
+					pack.GetName(), version.Name, version.CreatedAt.Time, version.UpdatedAt.Time)
+			}
+
 			cleanup.githubClient.Organizations.PackageDeleteVersion(context, gdataOrganisation, packageType, pack.GetName(), *version.ID)
 		}
 		if deleted == 0 {
