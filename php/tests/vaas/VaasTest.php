@@ -485,7 +485,6 @@ final class VaasTest extends TestCase
      * @throws UploadFailedException
      * @throws TimeoutException
      * @throws BadOpcodeException
-     * @throws GuzzleException
      * @throws VaasAuthenticationException
      * @throws VaasInvalidStateException
      */
@@ -508,7 +507,6 @@ final class VaasTest extends TestCase
      * @throws VaasServerException
      * @throws TimeoutException
      * @throws UploadFailedException
-     * @throws GuzzleException
      * @throws BadOpcodeException
      * @throws VaasInvalidStateException
      * @throws VaasAuthenticationException
@@ -526,16 +524,14 @@ final class VaasTest extends TestCase
     }
 
     /**
-     * @throws GuzzleException
      * @throws JsonMapper_Exception
-     * * @throws VaasClientException
-     * * @throws VaasServerException
-     * * @throws TimeoutException
-     * * @throws UploadFailedException
-     * * @throws GuzzleException
-     * * @throws BadOpcodeException
-     * * @throws VaasInvalidStateException
-     * * @throws VaasAuthenticationException
+     * @throws VaasClientException
+     * @throws VaasServerException
+     * @throws TimeoutException
+     * @throws UploadFailedException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     * @throws VaasAuthenticationException
      */
     public function testForStream_WithCleanUrlContentAsStream_ReturnsClean()
     {
@@ -559,16 +555,14 @@ final class VaasTest extends TestCase
     }
 
     /**
-     * @throws GuzzleException
      * @throws JsonMapper_Exception
-     * * @throws VaasClientException
-     * * @throws VaasServerException
-     * * @throws TimeoutException
-     * * @throws UploadFailedException
-     * * @throws GuzzleException
-     * * @throws BadOpcodeException
-     * * @throws VaasInvalidStateException
-     * * @throws VaasAuthenticationException
+     * @throws VaasClientException
+     * @throws VaasServerException
+     * @throws TimeoutException
+     * @throws UploadFailedException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     * @throws VaasAuthenticationException
      */
     public function testForStream_WithCleanDelayedfor11Seconds_ReturnsClean()
     {
@@ -610,16 +604,14 @@ final class VaasTest extends TestCase
     }
 
     /**
-     * @throws GuzzleException
      * @throws JsonMapper_Exception
-     * * @throws VaasClientException
-     * * @throws VaasServerException
-     * * @throws TimeoutException
-     * * @throws UploadFailedException
-     * * @throws GuzzleException
-     * * @throws BadOpcodeException
-     * * @throws VaasInvalidStateException
-     * * @throws VaasAuthenticationException
+     * @throws VaasClientException
+     * @throws VaasServerException
+     * @throws TimeoutException
+     * @throws UploadFailedException
+     * @throws BadOpcodeException
+     * @throws VaasInvalidStateException
+     * @throws VaasAuthenticationException
      */
     public function testForStream_WithEicarUrlContentAsStream_ReturnsMalicious()
     {

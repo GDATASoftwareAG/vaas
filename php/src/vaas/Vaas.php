@@ -180,7 +180,6 @@ class Vaas
      * @throws VaasServerException
      * @throws BadOpcodeException
      * @throws VaasInvalidStateException
-     * @throws GuzzleException
      * @throws UploadFailedException
      */
     public function ForStream(ReadableStream $stream, int $size = 0, string $uuid = null): VaasVerdict
@@ -487,10 +486,17 @@ class Vaas
     }
 
     /**
-     * @throws GuzzleException
-     * @throws UploadFailedException
+     * Uploads a file stream to a specified URL using a given upload token and file size.
+     *
+     * @param ReadableStream $fileStream The file stream to upload.
+     * @param string $url The URL to upload the file to.
+     * @param string $uploadToken The upload token to authenticate the upload.
+     * @param int $fileSize The size of the file being uploaded.
+     * @throws UploadFailedException If the upload fails.
+     * @throws VaasClientException If there is an error with the Vaas client.
+     * @return void
      */
-    private function UploadStream(ReadableStream $fileStream, string $url, string $uploadToken, int $fileSize)
+    private function UploadStream(ReadableStream $fileStream, string $url, string $uploadToken, int $fileSize): void
     {
         $times = 0;
         $pingTimer = EventLoop::repeat(5, function () use(&$times) {
