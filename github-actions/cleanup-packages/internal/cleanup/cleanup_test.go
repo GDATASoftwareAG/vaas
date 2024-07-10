@@ -12,6 +12,13 @@ func TestMatch_Inputgdscanserver_ShouldMatches(t *testing.T) {
 	}
 }
 
+func TestMatch_Inputgdscanserver_ShouldNotMatch(t *testing.T) {
+	name := "foobar/gdscanserver"
+	if match(globalNameRegex, &name) {
+		t.Errorf("Name %v should have matched", name)
+	}
+}
+
 func TestMatch_Inputgdscanserver1_ShouldNotMatches(t *testing.T) {
 	name := "gdscanserver1"
 	if match(globalNameRegex, &name) {
@@ -53,7 +60,7 @@ func TestDateCompare_CreatedAndUpdatedAreTheSameAndOlderThan2Month_ShouldReturnT
 func TestDateCompare_CreatedAndUpdatedAreTheSameAndNotOlderThan2Month_ShouldReturnFalse(t *testing.T) {
 	created := time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC)
 	updated := time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC)
-	if !isNewestDateOlderThan2Month(&testNowTime, &created, &updated) {
+	if isNewestDateOlderThan2Month(&testNowTime, &created, &updated) {
 		t.Error("created and updated are not older than 2 month so it should be false")
 	}
 }
@@ -61,7 +68,7 @@ func TestDateCompare_CreatedAndUpdatedAreTheSameAndNotOlderThan2Month_ShouldRetu
 func TestDateCompare_UpdatedIsYoungerAndNotOlderThan2Month_ShouldReturnFalse(t *testing.T) {
 	created := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
 	updated := time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC)
-	if !isNewestDateOlderThan2Month(&testNowTime, &created, &updated) {
+	if isNewestDateOlderThan2Month(&testNowTime, &created, &updated) {
 		t.Error("updated is not older than 2 month so it should be false")
 	}
 }
@@ -69,7 +76,7 @@ func TestDateCompare_UpdatedIsYoungerAndNotOlderThan2Month_ShouldReturnFalse(t *
 func TestDateCompare_CreatedIsYoungerAndNotOlderThan2Month_ShouldReturnFalse(t *testing.T) {
 	created := time.Date(2023, 5, 1, 0, 0, 0, 0, time.UTC)
 	updated := time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)
-	if !isNewestDateOlderThan2Month(&testNowTime, &created, &updated) {
+	if isNewestDateOlderThan2Month(&testNowTime, &created, &updated) {
 		t.Error("created is not older than 2 month so it should be false")
 	}
 }

@@ -18,8 +18,6 @@ import (
 const gdataOrganisation = "GDATASoftwareAG"
 
 var packageType = "container"
-
-// var globalNameRegex, _ = regexp.Compile(`^(gdscanserver|scanclient|vaas/.+)$`)
 var globalNameRegex, _ = regexp.Compile(`^(gdscanserver|scanclient|vaas/.+)$`)
 var globalTagsNotToDelete, _ = regexp.Compile(`^(latest|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+|[0-9]+)$`)
 var nowTime = time.Now()
@@ -60,6 +58,10 @@ func (cleanup *cleanup) Run(context context.Context) {
 		if deleted == 0 {
 			log.Println("no versions older than 2 month for package ", pack.GetName())
 		}
+		if deleted == 0 {
+			log.Println("no versions older than 2 month for package ", pack.GetName())
+		}
+		log.Printf("Deleted %d Versions for package", deleted)
 	}
 	log.Printf("Deletion took %s", time.Since(start))
 }

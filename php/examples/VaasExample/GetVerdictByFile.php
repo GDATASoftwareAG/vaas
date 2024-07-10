@@ -2,7 +2,7 @@
 
 namespace VaasExamples;
 
-use VaasSdk\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Vaas;
 
 include_once("./vendor/autoload.php");
@@ -10,7 +10,7 @@ include_once("./vendor/autoload.php");
 $authenticator = new ClientCredentialsGrantAuthenticator(
     getenv("CLIENT_ID"),
     getenv("CLIENT_SECRET"),
-    getenv("TOKEN_URL") ?? "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+    getenv("TOKEN_URL") ?: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 );
 
 $vaas = new Vaas(

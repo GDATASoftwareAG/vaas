@@ -7,6 +7,10 @@ on:
     branches:
       - "*"
       - "!main" # excludes main
+    paths:
+      - "github-actions/cleanup-packages/**"
+      - ".github/workflows/image-retention.yaml"
+  workflow_dispatch:
 
 jobs:
   cleanup-packages:

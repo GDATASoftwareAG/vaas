@@ -14,7 +14,12 @@ class VaasConnection
     public function __construct(string $url, Client $WebSocketClient = null)
     {
         if (!isset($WebSocketClient))
-            $this->WebSocketClient = new Client($url);
+            $this->WebSocketClient = new Client($url, [
+                "filter" => [
+                    'text', 'binary', 'ping'
+                ],
+                "return_obj" => true
+            ]);
         else 
             $this->WebSocketClient = $WebSocketClient;
         $this->WebSocketClient->ping();
