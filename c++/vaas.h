@@ -27,6 +27,22 @@ class VaasException final : public std::runtime_error {
 
 namespace vaas_internals {
 
+// TODO: Move to settings block
+static const char* USER_AGENT = "C++ SDK 0.1.0";
+
+static void ensureCurlOk(CURLcode code) {
+    if (code != CURLE_OK) {
+        throw vaas::VaasException("CURL request failed: " + std::string(curl_easy_strerror(code)));
+    }
+}
+
+static void resetCurl(CURL* curl) {
+    curl_easy_reset(curl);
+    ensureCurlOk(curl_easy_setopt(curl, CURLOPT_USERAGENT, vaas_internals::USER_AGENT));
+    // TODO: Use setting from settings block
+    // ensureCurlOk(curl_easy_setopt(curl, CURLOPT_VERBOSE, 1));
+}
+
 class CurlHeaders {
   public:
     CurlHeaders() = default;
@@ -126,8 +142,8 @@ class OIDCClient {
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postFields.c_str());
 
         Json::Value jsonResponse;
-        const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
 
+        const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
         if (!(response_code == 200 || response_code == 401)) {
             throw AuthenticationException("Server replied with unexpected HTTP response code " + std::to_string(response_code));
         }
@@ -202,7 +218,7 @@ inline std::ostream& operator<<(std::ostream& os, const VaasReport& report) {
 class Vaas {
   public:
     Vaas(std::string serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId, const std::string& clientSecret)
-        : serverEndpoint(std::move(serverEndpoint)), authenticator(tokenEndpoint, clientId, clientSecret), curl(curl_easy_init()) {
+        : serverEndpoint(serverEndpoint), authenticator(tokenEndpoint, clientId, clientSecret), curl(curl_easy_init()) {
         if (!curl) {
             throw std::runtime_error("Failed to initialize CURL");
         }
@@ -227,6 +243,7 @@ class Vaas {
     /// Use the provided ifstream and send it to VaaS for analysis. Returns the report of the anaylzed file.
     /// </summary>
     VaasReport forStream(std::ifstream& stream, const size_t fileSize) {
+        // TODO: Check hash first
         const auto resultUrl = upload(stream, fileSize);
         return pollReport(resultUrl);
     }
@@ -253,8 +270,7 @@ class Vaas {
     std::string upload(std::ifstream& stream, const size_t fileSize) {
         const auto token = authenticator.getAccessToken();
 
-        // TODO: Check if connection is kept alive
-        curl_easy_reset(curl);
+        vaas_internals::resetCurl(curl);
 
         vaas_internals::CurlHeaders headers;
         headers.append("Content-Type: application/octet-stream");
@@ -270,8 +286,9 @@ class Vaas {
         curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
 
         Json::Value jsonResponse;
+        const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
 
-        if (const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse); response_code != 201) {
+        if (response_code != 201) {
             throw VaasException("Unexpected HTTP response code " + std::to_string(response_code));
         }
 
@@ -287,7 +304,7 @@ class Vaas {
         while (true) {
             auto token = authenticator.getAccessToken();
 
-            curl_easy_reset(curl);
+            vaas_internals::resetCurl(curl);
 
             std::string reportUrl = fileUrl + "/report";
             curl_easy_setopt(curl, CURLOPT_URL, reportUrl.c_str());
