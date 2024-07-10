@@ -22,24 +22,33 @@ var globalNameRegex, _ = regexp.Compile(`^(gdscanserver|scanclient|vaas/.+)$`)
 var globalTagsNotToDelete, _ = regexp.Compile(`^(latest|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+|[0-9]+)$`)
 var nowTime = time.Now()
 
-type cleanup struct {
+// Cleanup represents a cleanup operation for packages.
+type Cleanup struct {
 	githubClient     *github.Client
 	dockerClient     *client.Client
 	authToken        string
 	registryUsername string
 }
 
-func NewCleanup(githubClient *github.Client, dockerClient *client.Client, authToken string, registryUsername string) *cleanup {
-	cleanup := cleanup{
+// NewCleanup creates a new instance of the Cleanup struct.
+// It takes in a GitHub client, a Docker client, an authentication token, and a registry username.
+// It returns a Cleanup struct initialized with the provided values.
+func NewCleanup(githubClient *github.Client, dockerClient *client.Client, authToken string, registryUsername string) Cleanup {
+	cleanup := Cleanup{
 		githubClient:     githubClient,
 		dockerClient:     dockerClient,
 		authToken:        authToken,
 		registryUsername: registryUsername,
 	}
-	return &cleanup
+	return cleanup
 }
 
-func (cleanup *cleanup) Run(context context.Context) {
+// Run executes the cleanup process for container packages.
+// It retrieves the list of container packages and checks their versions.
+// If a version is older than 2 months, it is deleted using the GitHub API.
+// The method logs the details of the deleted versions and the total number of deleted versions for each package.
+// Finally, it logs the total time taken for the deletion process.
+func (cleanup *Cleanup) Run(context context.Context) {
 	start := time.Now()
 
 	packageList := cleanup.getContainerPackages(context, globalNameRegex)
@@ -66,7 +75,7 @@ func (cleanup *cleanup) Run(context context.Context) {
 	log.Printf("Deletion took %s", time.Since(start))
 }
 
-func (cleanup *cleanup) getVersionsOlderThan2Month(context context.Context, name *string) <-chan *github.PackageVersion {
+func (cleanup *Cleanup) getVersionsOlderThan2Month(context context.Context, name *string) <-chan *github.PackageVersion {
 	ch := make(chan *github.PackageVersion)
 	run := true
 	nextPage := 1
@@ -164,7 +173,7 @@ func isDependencyOfAVersionNotToDelete(version *github.PackageVersion, versionsN
 	return false
 }
 
-func (cleanup *cleanup) getVersionsNotToDeleteDependencies(packageName string, versionsWithTagsNotToDelete []*github.PackageVersion) (dependencies []string, err error) {
+func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, versionsWithTagsNotToDelete []*github.PackageVersion) (dependencies []string, err error) {
 	for _, version := range versionsWithTagsNotToDelete {
 		imageRef := "ghcr.io/" + strings.ToLower(gdataOrganisation) + "/" + packageName + ":" + version.Metadata.Container.Tags[0]
 
@@ -181,9 +190,8 @@ func (cleanup *cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 		if error != nil {
 			log.Println(error)
 			return nil, error
-		} else {
-			defer imagePullCloser.Close()
 		}
+		defer imagePullCloser.Close()
 		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageRef)
 		if error != nil {
 			log.Println(error)
@@ -214,7 +222,7 @@ func isNewestDateOlderThan2Month(now *time.Time, created *time.Time, updated *ti
 	return compareTime.Before(*now)
 }
 
-func (cleanup *cleanup) getContainerPackages(context context.Context, nameRegex *regexp.Regexp) (packageList []*github.Package) {
+func (cleanup *Cleanup) getContainerPackages(context context.Context, nameRegex *regexp.Regexp) (packageList []*github.Package) {
 	run := true
 	nextPage := 0
 	for run {
