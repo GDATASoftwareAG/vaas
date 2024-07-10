@@ -2,8 +2,6 @@
 
 namespace VaasTesting;
 
-require_once __DIR__ . "/vendor/autoload.php";
-
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Psr\Log\NullLogger;
@@ -27,7 +25,7 @@ final class ProtocolTest extends TestCase
         $fakeWebsocket->method('isConnected')
             ->willReturn(true);
         $fakeWebsocket->method('receive')
-            ->willReturn('{"kind": "AuthResponse", "success": false}');
+            ->willReturn(new \WebSocket\Message\Text('{"kind": "AuthResponse", "success": false}'));
         $vaasConnection = new VaasConnection("", $fakeWebsocket);
 
         (new Vaas("url"))->Connect("invalid", $vaasConnection);
@@ -43,7 +41,7 @@ final class ProtocolTest extends TestCase
         $fakeWebsocket->method('isConnected')
             ->willReturn(true, true, false);
         $fakeWebsocket->method('receive')
-            ->willReturn('{"kind": "AuthResponse", "success": true, "session_id": "id"}');
+            ->willReturn(new \WebSocket\Message\Text('{"kind": "AuthResponse", "success": true, "session_id": "id"}'));
         $vaasConnection = new VaasConnection("", $fakeWebsocket);
 
         $vaas = new Vaas("url", new NullLogger());

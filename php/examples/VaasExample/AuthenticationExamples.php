@@ -2,7 +2,7 @@
 
 namespace VaasExamples;
 
-use VaasSdk\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\TimeoutException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
