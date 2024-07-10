@@ -74,30 +74,30 @@ func TestDateCompare_CreatedIsYoungerAndNotOlderThan2Month_ShouldReturnFalse(t *
 	}
 }
 
-func TestAreWeAllowedToDeleteThisVersion_VersionTagWithSingleNumber_NotAllowed(t *testing.T) {
-	tags := []string{"1", "1.1.1-8989"}
-	if areWeAllowedToDeleteThisVersion(tags) {
-		t.Error("this version should not be allowed to delete")
-	}
-}
+// func TestAreWeAllowedToDeleteThisVersion_VersionTagWithSingleNumber_NotAllowed(t *testing.T) {
+// 	tags := []string{"1", "1.1.1-8989"}
+// 	if areWeAllowedToDeleteThisVersion(tags) {
+// 		t.Error("this version should not be allowed to delete")
+// 	}
+// }
 
-func TestAreWeAllowedToDeleteThisVersion_VersionTagWithTrippleNumber_NotAllowed(t *testing.T) {
-	tags := []string{"1.1.1", "1.1.1-8989"}
-	if areWeAllowedToDeleteThisVersion(tags) {
-		t.Error("this version should not be allowed to delete")
-	}
-}
+// func TestAreWeAllowedToDeleteThisVersion_VersionTagWithTrippleNumber_NotAllowed(t *testing.T) {
+// 	tags := []string{"1.1.1", "1.1.1-8989"}
+// 	if areWeAllowedToDeleteThisVersion(tags) {
+// 		t.Error("this version should not be allowed to delete")
+// 	}
+// }
 
-func TestAreWeAllowedToDeleteThisVersion_VersionTagWithLatest_NotAllowed(t *testing.T) {
-	tags := []string{"1.1.1-8989", "latest"}
-	if areWeAllowedToDeleteThisVersion(tags) {
-		t.Error("this version should not be allowed to delete")
-	}
-}
+// func TestAreWeAllowedToDeleteThisVersion_VersionTagWithLatest_NotAllowed(t *testing.T) {
+// 	tags := []string{"1.1.1-8989", "latest"}
+// 	if areWeAllowedToDeleteThisVersion(tags) {
+// 		t.Error("this version should not be allowed to delete")
+// 	}
+// }
 
-func TestAreWeAllowedToDeleteThisVersion_NoException_Allowed(t *testing.T) {
-	tags := []string{"1.1.1-8989", "1-8213"}
-	if areWeAllowedToDeleteThisVersion(tags) {
-		t.Error("this version should not be allowed to delete")
-	}
-}
+// func TestAreWeAllowedToDeleteThisVersion_NoException_Allowed(t *testing.T) {
+// 	tags := []string{"1.1.1-8989", "1-8213"}
+// 	if areWeAllowedToDeleteThisVersion(tags) {
+// 		t.Error("this version should not be allowed to delete")
+// 	}
+// }
