@@ -137,7 +137,11 @@ func (cleanup *cleanup) getVersionsOlderThan2Month(context context.Context, name
 			ch <- packVersion
 		}
 
-		var versionsNotToDeleteDependencies = cleanup.getVersionsNotToDeleteDependencies(*name, versionsWithTagsNotToDelete)
+		versionsNotToDeleteDependencies, error := cleanup.getVersionsNotToDeleteDependencies(*name, versionsWithTagsNotToDelete)
+		if error != nil {
+			log.Println(error)
+			return
+		}
 		for _, packVersion := range packageVersionsWithoutTags {
 			if !isNewestDateOlderThan2Month(&nowTime, &packVersion.CreatedAt.Time, &packVersion.UpdatedAt.Time) {
 				continue
@@ -160,7 +164,7 @@ func isDependencyOfAVersionNotToDelete(version *github.PackageVersion, versionsN
 	return false
 }
 
-func (cleanup *cleanup) getVersionsNotToDeleteDependencies(packageName string, versionsWithTagsNotToDelete []*github.PackageVersion) (dependencies []string) {
+func (cleanup *cleanup) getVersionsNotToDeleteDependencies(packageName string, versionsWithTagsNotToDelete []*github.PackageVersion) (dependencies []string, err error) {
 	for _, version := range versionsWithTagsNotToDelete {
 		imageRef := "ghcr.io/" + strings.ToLower(gdataOrganisation) + "/" + packageName + ":" + version.Metadata.Container.Tags[0]
 
@@ -176,10 +180,15 @@ func (cleanup *cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 		})
 		if error != nil {
 			log.Println(error)
+			return nil, error
 		} else {
 			defer imagePullCloser.Close()
 		}
-		imageHistory, _ := cleanup.dockerClient.ImageHistory(context.Background(), imageRef)
+		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageRef)
+		if error != nil {
+			log.Println(error)
+			return nil, error
+		}
 		for _, layer := range imageHistory {
 			dependencies = append(dependencies, layer.ID)
 		}
