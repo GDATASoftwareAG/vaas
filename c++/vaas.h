@@ -12,6 +12,9 @@
 
 namespace vaas {
 
+static const char* USER_AGENT = "C++ SDK 0.1.0";
+const long CURL_VERBOSE = 0;
+
 /// An AuthenticationException indicates that the credentials are incorrect. Manual intervention may be required.
 class AuthenticationException final : public std::runtime_error {
   public:
@@ -27,9 +30,6 @@ class VaasException final : public std::runtime_error {
 
 namespace vaas_internals {
 
-// TODO: Move to settings block
-static const char* USER_AGENT = "C++ SDK 0.1.0";
-
 static void ensureCurlOk(CURLcode code) {
     if (code != CURLE_OK) {
         throw vaas::VaasException("CURL request failed: " + std::string(curl_easy_strerror(code)));
@@ -38,9 +38,8 @@ static void ensureCurlOk(CURLcode code) {
 
 static void resetCurl(CURL* curl) {
     curl_easy_reset(curl);
-    ensureCurlOk(curl_easy_setopt(curl, CURLOPT_USERAGENT, vaas_internals::USER_AGENT));
-    // TODO: Use setting from settings block
-    // ensureCurlOk(curl_easy_setopt(curl, CURLOPT_VERBOSE, 1));
+    ensureCurlOk(curl_easy_setopt(curl, CURLOPT_USERAGENT, vaas::USER_AGENT));
+    ensureCurlOk(curl_easy_setopt(curl, CURLOPT_VERBOSE, vaas::CURL_VERBOSE));
 }
 
 class CurlHeaders {
@@ -74,18 +73,17 @@ static size_t writeAppendToString(void* contents, const size_t size, const size_
 
 static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     std::string response;
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::writeAppendToString);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::writeAppendToString));
+    vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
 
-    const CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        throw vaas::VaasException("CURL request failed: " + std::string(curl_easy_strerror(res)));
-    }
+    vaas_internals::ensureCurlOk(curl_easy_perform(curl));
 
     long response_code;
-    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+    vaas_internals::ensureCurlOk(curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code));
 
-    // TODO if !(200 <= response_code < 300)
+    if (response_code < 200 || response_code >= 300) {
+        throw vaas::VaasException("Server replied with unexpected HTTP response code " + std::to_string(response_code));
+    }
 
     const Json::CharReaderBuilder readerBuilder;
     std::string errs;
@@ -137,9 +135,9 @@ class OIDCClient {
 
         const std::string postFields = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret;
 
-        curl_easy_setopt(curl, CURLOPT_URL, tokenEndpoint.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postFields.c_str());
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_URL, tokenEndpoint.c_str()));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw()));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postFields.c_str()));
 
         Json::Value jsonResponse;
 
@@ -276,14 +274,14 @@ class Vaas {
         headers.append("Content-Type: application/octet-stream");
 
         const auto url = serverEndpoint + "/files";
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw());
-        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
-        curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str());
-        curl_easy_setopt(curl, CURLOPT_READFUNCTION, readCallback);
-        curl_easy_setopt(curl, CURLOPT_READDATA, &stream);
-        curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, fileSize);
-        curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_URL, url.c_str()));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw()));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str()));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_READFUNCTION, readCallback));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_READDATA, &stream));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, fileSize));
+        vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L));
 
         Json::Value jsonResponse;
         const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
@@ -307,9 +305,9 @@ class Vaas {
             vaas_internals::resetCurl(curl);
 
             std::string reportUrl = fileUrl + "/report";
-            curl_easy_setopt(curl, CURLOPT_URL, reportUrl.c_str());
-            curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER);
-            curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str());
+            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_URL, reportUrl.c_str()));
+            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BEARER));
+            vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_XOAUTH2_BEARER, token.c_str()));
 
             Json::Value jsonResponse;
             const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
