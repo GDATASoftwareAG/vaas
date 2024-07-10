@@ -33,14 +33,14 @@ type Cleanup struct {
 // NewCleanup creates a new instance of the Cleanup struct.
 // It takes in a GitHub client, a Docker client, an authentication token, and a registry username.
 // It returns a Cleanup struct initialized with the provided values.
-func NewCleanup(githubClient *github.Client, dockerClient *client.Client, authToken string, registryUsername string) Cleanup {
+func NewCleanup(githubClient *github.Client, dockerClient *client.Client, authToken string, registryUsername string) *Cleanup {
 	cleanup := Cleanup{
 		githubClient:     githubClient,
 		dockerClient:     dockerClient,
 		authToken:        authToken,
 		registryUsername: registryUsername,
 	}
-	return cleanup
+	return &cleanup
 }
 
 // Run executes the cleanup process for container packages.
