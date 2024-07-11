@@ -1,0 +1,14 @@
+{
+  "dependencies": [
+    {
+      "name": "curl",
+      "features": [
+        "http2"
+      ]
+    },
+    "jsoncpp",
+    "openssl"
+  ],
+  "version": "0.0.0",
+  "name": "vaas"
+}
