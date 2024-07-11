@@ -195,13 +195,13 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 			RegistryAuth: authConfigEncoded,
 		})
 		if error != nil {
-			log.Println(error)
+			log.Println("ImagePull: " + error.Error())
 			return nil, error
 		}
 		defer imagePullCloser.Close()
 		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageRef)
 		if error != nil {
-			log.Println(error)
+			log.Println("ImageHistory: " + error.Error())
 			return nil, error
 		}
 		for _, layer := range imageHistory {
