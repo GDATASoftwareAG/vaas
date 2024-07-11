@@ -198,7 +198,7 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 			log.Println("ImagePull: " + error.Error())
 			return nil, error
 		}
-		defer imagePullCloser.Close()
+		imagePullCloser.Close()
 		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageRef)
 		if error != nil {
 			log.Println("ImageHistory: " + error.Error())
@@ -207,6 +207,13 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 		for _, layer := range imageHistory {
 			dependencies = append(dependencies, layer.ID)
 		}
+	}
+	for _, version := range versionsWithTagsNotToDelete {
+		imageRef := "ghcr.io/" + strings.ToLower(gdataOrganisation) + "/" + packageName + ":" + version.Metadata.Container.Tags[0]
+		cleanup.dockerClient.ImageRemove(context.Background(), imageRef, image.RemoveOptions{
+			PruneChildren: true,
+			Force:         true,
+		})
 	}
 	return
 }
