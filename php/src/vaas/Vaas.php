@@ -507,9 +507,9 @@ class Vaas
 
         try {
             $request = new Request($url, 'PUT');
+            $request->setProtocolVersions(["1.1"]);
             $request->setTransferTimeout($this->_uploadTimeoutInSeconds);
             $request->setBody(StreamedContent::fromStream($fileStream, $fileSize));
-            $request->addHeader("Content-Length", $fileSize);
             $request->addHeader("Authorization", $uploadToken);
 
             $response = $this->_httpClient->request($request, new TimeoutCancellation($this->_uploadTimeoutInSeconds));

@@ -271,6 +271,21 @@ final class VaasTest extends TestCase
         $this->assertEqualsIgnoringCase($unknownHash3, $verdict3->Sha256);
     }
 
+    public function testRandomFileOfSpecificSize_GetsCleanResponse(): void
+    {
+        $uuid = $this->getUuid();
+
+        $sha256 = Sha256::TryFromFile(__DIR__."/upload_test");
+
+        $vaas = $this->_getVaas();
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+        $verdict = $vaas->ForFile(__DIR__."/upload_test", true, $uuid);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+        $this->assertEquals($uuid, $verdict->Guid);
+        $this->assertEqualsIgnoringCase($sha256, $verdict->Sha256);
+    }
+
     public function testForFileWithFlagsCleanFile_GetsCleanResponse(): void
     {
         $uuid = $this->getUuid();
