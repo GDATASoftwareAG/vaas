@@ -27,6 +27,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 
 public class Vaas implements AutoCloseable {
@@ -59,16 +60,11 @@ public class Vaas implements AutoCloseable {
 
         var httpClientBuilder = HttpClient.newBuilder();
 
-        if (config.ignoreTlsErrors) {
-            var logger = Logger.getLogger(this.getClass().getName());
-            try {
-                SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, new TrustManager[] { UnsafeX509ExtendedTrustManager.getInstance() }, null);
-                httpClientBuilder.sslContext(sslContext);
-            } catch (NoSuchAlgorithmException | KeyManagementException e) {
-                logger.log(Level.SEVERE, "Unable to init SSLContext", e);
-            }
+        var sslContext = SSLContextFactory.create(config.ignoreTlsErrors);
+        if (sslContext != null) {
+            httpClientBuilder.sslContext(sslContext);
         }
+
         httpClient = httpClientBuilder.build();
     }
 

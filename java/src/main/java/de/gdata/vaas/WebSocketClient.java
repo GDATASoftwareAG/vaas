@@ -46,18 +46,13 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     public WebSocketClient(VaasConfig config, String token) {
         super(config.getUrl());
-        if (config.ignoreTlsErrors) {
-            var logger = Logger.getLogger(this.getClass().getName());
-            try {
-                SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, new TrustManager[] { UnsafeX509ExtendedTrustManager.getInstance() }, null);
 
-                SSLSocketFactory factory = sslContext.getSocketFactory();
-                this.setSocketFactory(factory);
-            } catch (NoSuchAlgorithmException | KeyManagementException e) {
-                logger.log(Level.SEVERE, "Unable to init SSLContext", e);
-            }
+        var sslContext = SSLContextFactory.create(config.ignoreTlsErrors);
+        if (sslContext != null) {
+            SSLSocketFactory factory = sslContext.getSocketFactory();
+            this.setSocketFactory(factory);
         }
+
         this.token = token;
     }
 
