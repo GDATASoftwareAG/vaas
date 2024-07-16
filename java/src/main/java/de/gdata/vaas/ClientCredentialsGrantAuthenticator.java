@@ -27,18 +27,26 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
     @NonNull
     private final URI tokenEndpoint;
 
-    private static final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient;
 
-
-    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, @NotNull URI tokenEndpoint) {
+    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, @NotNull URI tokenEndpoint, boolean ignoreTlsErrors) {
         this.tokenEndpoint = tokenEndpoint;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+
+        var httpClientBuilder = HttpClient.newBuilder();
+
+        var sslContext = SSLContextFactory.create(ignoreTlsErrors);
+        if (sslContext != null) {
+            httpClientBuilder.sslContext(sslContext);
+        }
+
+        httpClient = httpClientBuilder.build();
     }
 
     public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret)
             throws URISyntaxException {
-        this(clientId, clientSecret, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
+        this(clientId, clientSecret, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"), false);
     }
 
     private String encodeValue(String value) throws UnsupportedEncodingException {

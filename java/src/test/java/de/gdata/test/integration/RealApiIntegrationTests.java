@@ -48,7 +48,7 @@ public class RealApiIntegrationTests {
         var clientId = dotenv.get("CLIENT_ID");
         var clientSecret = dotenv.get("CLIENT_SECRET");
         var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl, true);
         var token = authenticator.getToken();
 
         assertNotNull(token);
@@ -63,7 +63,7 @@ public class RealApiIntegrationTests {
         var username = dotenv.get("VAAS_USER_NAME");
         var password = dotenv.get("VAAS_PASSWORD");
         var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
-        var authenticator = new ResourceOwnerPasswordGrantAuthenticator(clientId, username, password, tokenUrl);
+        var authenticator = new ResourceOwnerPasswordGrantAuthenticator(clientId, username, password, tokenUrl, true);
         var token = authenticator.getToken();
 
         assertNotNull(token);
@@ -108,7 +108,7 @@ public class RealApiIntegrationTests {
         var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
         var vaasUrl = dotenv.get("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl, true);
         var client = new Vaas(config, authenticator);
         assertThrows(Exception.class, client::connect);
     }
@@ -324,7 +324,7 @@ public class RealApiIntegrationTests {
         var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
         var vaasUrl = dotenv.get("VAAS_URL");
 
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl, true);
         var config = new VaasConfig(new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
@@ -516,7 +516,7 @@ public class RealApiIntegrationTests {
         var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
         var vaasUrl = dotenv.get("VAAS_URL");
 
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl, true);
         var config = new VaasConfig(new URI(vaasUrl));
         var client = new Vaas(config, authenticator);
         client.connect();

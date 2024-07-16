@@ -28,18 +28,27 @@ public class ResourceOwnerPasswordGrantAuthenticator implements IAuthenticator {
     @NonNull
     private final URI tokenEndpoint;
 
-    private static final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient;
 
-    public ResourceOwnerPasswordGrantAuthenticator(String clientId, String username, String password, @NotNull URI tokenEndpoint) {
+    public ResourceOwnerPasswordGrantAuthenticator(String clientId, String username, String password, @NotNull URI tokenEndpoint, boolean ignoreTlsErrors) {
         this.tokenEndpoint = tokenEndpoint;
         this.clientId = clientId;
         this.username = username;
         this.password = password;
+
+        var httpClientBuilder = HttpClient.newBuilder();
+
+        var sslContext = SSLContextFactory.create(ignoreTlsErrors);
+        if (sslContext != null) {
+            httpClientBuilder.sslContext(sslContext);
+        }
+
+        httpClient = httpClientBuilder.build();
     }
 
     public ResourceOwnerPasswordGrantAuthenticator(String clientId, String username, String password)
             throws URISyntaxException {
-        this(clientId, username, password, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
+        this(clientId, username, password, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"), false);
     }
 
     private String encodeValue(String value) throws UnsupportedEncodingException {

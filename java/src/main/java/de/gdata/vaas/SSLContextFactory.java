@@ -12,7 +12,7 @@ public class SSLContextFactory {
     public static SSLContext create(boolean ignoreTlsErrors) {
         var logger = Logger.getLogger(SSLContextFactory.class.getName());
         try {
-            if (ignoreTlsErrors) {
+            if (!ignoreTlsErrors) {
                 return SSLContext.getDefault();
             }
 
