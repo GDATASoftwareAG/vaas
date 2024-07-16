@@ -23,6 +23,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -58,14 +60,13 @@ public class Vaas implements AutoCloseable {
         var httpClientBuilder = HttpClient.newBuilder();
 
         if (config.ignoreTlsErrors) {
+            var logger = Logger.getLogger(Vaas.class.getName());
             try {
                 SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, new TrustManager[] { UnsafeX509ExtendedTrustManager.getInstance() }, null);
+                sslContext.init(null, new TrustManager[]{UnsafeX509ExtendedTrustManager.getInstance()}, null);
                 httpClientBuilder.sslContext(sslContext);
-            } catch (NoSuchAlgorithmException ignored) {
-                // TODO: throw?
-            } catch (KeyManagementException ignored) {
-                // TODO: throw?
+            } catch (NoSuchAlgorithmException | KeyManagementException e) {
+                logger.log(Level.SEVERE, "Unable to init SSLContext", e);
             }
         }
         httpClient = httpClientBuilder.build();

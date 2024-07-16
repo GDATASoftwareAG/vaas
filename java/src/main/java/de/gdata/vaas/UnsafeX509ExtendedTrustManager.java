@@ -1,3 +1,5 @@
+package de.gdata.vaas;
+
 import java.net.Socket;
 import java.security.cert.X509Certificate;
 
