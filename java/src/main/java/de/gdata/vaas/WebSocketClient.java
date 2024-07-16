@@ -10,12 +10,20 @@ import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.nio.ByteBuffer;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
 
 public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
@@ -38,6 +46,18 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     public WebSocketClient(VaasConfig config, String token) {
         super(config.getUrl());
+        if (config.ignoreTlsErrors) {
+            var logger = Logger.getLogger(this.getClass().getName());
+            try {
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, new TrustManager[] { UnsafeX509ExtendedTrustManager.getInstance() }, null);
+
+                SSLSocketFactory factory = sslContext.getSocketFactory();
+                this.setSocketFactory(factory);
+            } catch (NoSuchAlgorithmException | KeyManagementException e) {
+                logger.log(Level.SEVERE, "Unable to init SSLContext", e);
+            }
+        }
         this.token = token;
     }
 

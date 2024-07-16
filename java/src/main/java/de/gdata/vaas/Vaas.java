@@ -60,10 +60,10 @@ public class Vaas implements AutoCloseable {
         var httpClientBuilder = HttpClient.newBuilder();
 
         if (config.ignoreTlsErrors) {
-            var logger = Logger.getLogger(Vaas.class.getName());
+            var logger = Logger.getLogger(this.getClass().getName());
             try {
                 SSLContext sslContext = SSLContext.getInstance("TLS");
-                sslContext.init(null, new TrustManager[]{UnsafeX509ExtendedTrustManager.getInstance()}, null);
+                sslContext.init(null, new TrustManager[] { UnsafeX509ExtendedTrustManager.getInstance() }, null);
                 httpClientBuilder.sslContext(sslContext);
             } catch (NoSuchAlgorithmException | KeyManagementException e) {
                 logger.log(Level.SEVERE, "Unable to init SSLContext", e);
