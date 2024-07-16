@@ -13,6 +13,8 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.*;
 
 public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
@@ -31,20 +33,8 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     @Getter
     private String sessionId = null;
 
-    private Thread pingThread;
-
-    private void pingThread() {
-        try {
-            while (true) {
-                Thread.sleep(20000);
-                try {
-                    this.sendPing();
-                } catch (WebsocketNotConnectedException ignored) {
-                }
-            }
-        } catch (InterruptedException ignored) {
-        }
-    }
+    private static final Timer timer = new Timer();
+    private TimerTask pingTask;
 
     public WebSocketClient(VaasConfig config, String token) {
         super(config.getUrl());
@@ -119,8 +109,21 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshakeData) {
-        pingThread = new Thread(this::pingThread);
-        this.pingThread.start();
+        pingTask = new TimerTask() {
+            @Override
+            public void run() {
+                ping();
+            }
+        };
+
+        timer.scheduleAtFixedRate(pingTask, 20000, 20000);
+    }
+
+    public void ping() {
+        try {
+            this.sendPing();
+        } catch (WebsocketNotConnectedException ignored) {
+        }
     }
 
     @Override
@@ -132,13 +135,9 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
                 response.completeExceptionally(new VaasConnectionClosedException());
             }
         }
-
-        if (this.pingThread != null) {
-            this.pingThread.interrupt();
-            try {
-                this.pingThread.join();
-            } catch (InterruptedException ignored) {
-            }
+        if (pingTask != null) {
+            pingTask.cancel();
+            pingTask = null;
         }
     }
 
