@@ -16,11 +16,11 @@ public class VaasConfig {
 
     @Getter
     @Setter
-    private int PullDelayMs;
+    Duration defaultTimeout = Duration.ofMinutes(10);
 
     @Getter
     @Setter
-    Duration defaultTimeout = Duration.ofMinutes(10);
+    boolean ignoreTlsErrors = false;
 
     public VaasConfig() throws URISyntaxException {
         this(
@@ -29,7 +29,6 @@ public class VaasConfig {
 
     public VaasConfig(URI url) {
         this.url = url;
-        this.PullDelayMs = 100;
     }
 
     public VaasConfig(URI url, Duration timeout) {

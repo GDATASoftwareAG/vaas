@@ -16,12 +16,16 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.nio.file.Path;
+import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 
 public class Vaas implements AutoCloseable {
     private static final int connectionRetryDelayInMs = 1000;
@@ -38,13 +42,11 @@ public class Vaas implements AutoCloseable {
     @Getter
     @NonNull
     private final IAuthenticator authenticator;
-    private final HttpClient httpClient = HttpClient.newBuilder().build();
+    private final HttpClient httpClient;
     private WebSocketClient client;
 
     public Vaas(@NonNull VaasConfig config, @NonNull IAuthenticator authenticator) {
-        this.config = config;
-        this.authenticator = authenticator;
-        this.options = new VaasOptions();
+        this(config, authenticator, new VaasOptions());
     }
 
     public Vaas(VaasConfig config, IAuthenticator authenticator,
@@ -52,6 +54,21 @@ public class Vaas implements AutoCloseable {
         this.config = config;
         this.authenticator = authenticator;
         this.options = options;
+
+        var httpClientBuilder = HttpClient.newBuilder();
+
+        if (config.ignoreTlsErrors) {
+            try {
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, new TrustManager[] { UnsafeX509ExtendedTrustManager.getInstance() }, null);
+                httpClientBuilder.sslContext(sslContext);
+            } catch (NoSuchAlgorithmException ignored) {
+                // TODO: throw?
+            } catch (KeyManagementException ignored) {
+                // TODO: throw?
+            }
+        }
+        httpClient = httpClientBuilder.build();
     }
 
     /**
@@ -111,7 +128,8 @@ public class Vaas implements AutoCloseable {
      * @throws TimeoutException              if the request times out
      */
     public VaasVerdict forUrl(URL url) throws VaasInvalidStateException, VaasConnectionClosedException,
-            ExecutionException, InterruptedException, TimeoutException, VaasClientException, VaasServerException, URISyntaxException {
+            ExecutionException, InterruptedException, TimeoutException, VaasClientException, VaasServerException,
+            URISyntaxException {
         return this.forUrl(url, UUID.randomUUID(), null);
     }
 
@@ -660,6 +678,5 @@ public class Vaas implements AutoCloseable {
             // ignored
         }
     }
-
 
 }
