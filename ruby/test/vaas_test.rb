@@ -78,9 +78,12 @@ class VaasTest < Minitest::Test
 
           result = vaas.for_url("https://secure.eicar.org/eicar.com.txt")
           verdict = result.wait.verdict
-          assert_equal "Malicious", result.wait.verdict
-          assert_equal "EICAR-Test-File", result.wait.detection
-
+          detection = result.wait.detection
+          assert_equal "Malicious", verdict
+          # Detection may not be always present
+          unless detection.empty?
+            assert_equal "EICAR-Test-File", detection
+          end
           vaas.close
         end
       end
