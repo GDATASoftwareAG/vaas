@@ -247,16 +247,15 @@ public class Vaas : IDisposable, IVaas
 
     public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken, ForSha256Options? options = null)
     {
-        var url = _options.Url;
-        var authority = _options.Url.Authority.Replace("gateway", "upload");
-        var scheme = url.Scheme == "wss" ? "https" : "http";
-        url = new Uri($"{scheme}://{authority}/verdicts/sha256/{sha256}");
-
-        var responseMessage = await GetAsync(url, cancellationToken);
-
-        EnsureSuccess(responseMessage);
-
-        var verdictResponse = await DeserializeResponse<VerdictResponse>(responseMessage, cancellationToken);
+        var verdictResponse = await ForRequestAsync(
+            new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
+            {
+                UseCache = _options.UseCache,
+                UseShed = _options.UseHashLookup,
+                VerdictRequestAttributes = null
+            });
+        if (!verdictResponse.IsValid)
+            throw new JsonException("VerdictResponse is not valid");
         return new VaasVerdict(verdictResponse);
     }
 
