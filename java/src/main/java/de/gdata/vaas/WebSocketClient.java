@@ -33,7 +33,8 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     @Getter
     private String sessionId = null;
 
-    private final Timer timer = new Timer();
+    private static final Timer timer = new Timer(true);
+    private TimerTask pingTask;
 
     public WebSocketClient(VaasConfig config, String token) {
         super(config.getUrl());
@@ -108,14 +109,14 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshakeData) {
-        var pingTask = new TimerTask() {
+        this.pingTask = new TimerTask() {
             @Override
             public void run() {
                 ping();
             }
         };
 
-        this.timer.scheduleAtFixedRate(pingTask, 20000, 20000);
+        timer.scheduleAtFixedRate(this.pingTask, 20000, 20000);
     }
 
     public void ping() {
@@ -134,8 +135,9 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
                 response.completeExceptionally(new VaasConnectionClosedException());
             }
         }
-        if (this.timer != null) {
-            this.timer.cancel();
+        if (this.pingTask != null) {
+            this.pingTask.cancel();
+            this.pingTask = null;
         }
     }
 
