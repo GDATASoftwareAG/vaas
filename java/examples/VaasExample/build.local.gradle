@@ -1,0 +1,33 @@
+plugins {
+    id 'java'
+}
+
+group 'de.gdata.vaasexample'
+version '1.0-SNAPSHOT'
+
+repositories {
+    maven {
+        url 'file://workspaces/vaas/java/build/repos'
+    }
+    mavenCentral()
+}
+ 
+dependencies {
+    implementation 'org.slf4j:slf4j-nop:2.0.13'
+    implementation 'de.gdata:vaas:8-future'
+}
+
+task fileScan(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.Main'
+}
+
+task urlScan(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.UrlScan'
+}
+
+task authentication(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.Authentication'
+}
