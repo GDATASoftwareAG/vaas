@@ -1,0 +1,16 @@
+#### Base Image
+FROM ubuntu:22.04
+
+RUN apt-get update -qq && \
+    # install dependencies
+    apt-get install -y --no-install-recommends git ca-certificates curl zip unzip tar build-essential cmake make pkg-config libssl3 libssl-dev linux-libc-dev && \
+    # install vcpkg
+    cd /usr/local && \
+    git clone https://github.com/microsoft/vcpkg.git && \
+    cd vcpkg && ./bootstrap-vcpkg.sh
+
+ENV VCPKG_ROOT="/usr/local/vcpkg/"
+ENV PATH="$VCPKG_ROOT:$PATH"
+    
+
+ENTRYPOINT ["/bin/bash"]

@@ -1,0 +1,56 @@
+name: vaas-cpp-toolchain-ci
+on:
+  push:
+    tags:
+      - "cpp-toolchain*"
+    paths:
+      - "cpp/Dockerfile.build"
+      - ".github/workflows/ci-cpp-toolchain.yaml"
+
+jobs:
+  cpp-toolchain:
+    name: Build & Push C++ toolchain
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            cpp/Dockerfile.build
+          sparse-checkout-cone-mode: false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: set version
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/cpp-toolchain}" >> $GITHUB_ENV
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/gdatasoftwareag/vaas/cpp-toolchain
+          tags: |
+            type=semver,pattern={{version}},value=${{ env.RELEASE_VERSION }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_VERSION }}
+            type=semver,pattern={{major}},value=${{ env.RELEASE_VERSION }}
+          flavor: |
+            latest=auto
+
+      - name: login to ghcr.io/gdatasoftwareag
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_USERNAME }}
+          password: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: "cpp/"
+          file: "cpp/Dockerfile.build"
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
