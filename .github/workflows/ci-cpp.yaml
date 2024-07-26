@@ -75,9 +75,7 @@ jobs:
             ${{ env.XDG_CACHE_HOME }}/vcpkg/archives
             ${{ env.LOCALAPPDATA }}\vcpkg\archives
             ${{ env.APPDATA }}\vcpkg\archives
-          key: ${{ runner.os }}-${{ env.BUILD_TYPE }}-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('./vcpkg.json')}}
-          restore-keys: |
-            ${{ runner.os }}-${{ env.BUILD_TYPE }}
+          key: cpp-${{ hashFiles('**/CMakeLists.txt', './vcpkg.json', './vcpkg-configuration.json') }}
 
       - name: Build C++ SDK
         run: |
