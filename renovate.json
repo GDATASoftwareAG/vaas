@@ -10,20 +10,24 @@
     {
       "groupName": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}",
       "commitMessagePrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
-      "extends": [
-        "group:allNonMajor"
+      "additionalBranchPrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
+      "matchUpdateTypes": [
+        "patch",
+        "minor",
+        "digest"
       ],
-      "matchPaths": [
+      "matchFileNames": [
         "*/**"
       ]
     },
     {
       "groupName": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}",
       "commitMessagePrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
+      "additionalBranchPrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
       "matchUpdateTypes": [
         "major"
       ],
-      "matchPaths": [
+      "matchFileNames": [
         "*/**"
       ]
     }
