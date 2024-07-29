@@ -8,8 +8,8 @@
   ],
   "packageRules": [
     {
-      "commitMessagePrefix": "{{baseDir}}: ",
-      "additionalBranchPrefix": "{{baseDir}}/",
+      "commitMessagePrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
+      "additionalBranchPrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}/",
       "matchUpdateTypes": [
         "patch",
         "minor",
@@ -20,8 +20,8 @@
       ]
     },
     {
-      "commitMessagePrefix": "{{baseDir}}: ",
-      "additionalBranchPrefix": "{{baseDir}}/",
+      "commitMessagePrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
+      "additionalBranchPrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}/",
       "matchUpdateTypes": [
         "major"
       ],
