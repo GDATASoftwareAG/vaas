@@ -19,7 +19,6 @@
         "psr/log": "^1.1 || ^2.0 || ^3.0",
         "amphp/http-client": "^5.1",
         "amphp/websocket-client": "^2.0",
-        "illuminate/container": "^11.18",
         "amphp/amp": "^3.0",
         "amphp/cache": "^2.0"
     },
