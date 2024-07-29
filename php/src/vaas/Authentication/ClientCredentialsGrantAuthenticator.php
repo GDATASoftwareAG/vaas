@@ -2,8 +2,7 @@
 
 namespace VaasSdk\Authentication;
 
-class ClientCredentialsGrantAuthenticator
-{
+class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface {
     private OAuth2TokenReceiver $_tokenReceiver;
     public function __construct(
         string $clientId,
@@ -13,8 +12,7 @@ class ClientCredentialsGrantAuthenticator
         $this->_tokenReceiver = new OAuth2TokenReceiver($tokenEndpoint, $clientId, $clientSecret);
     }
 
-    public function getToken(): string
-    {
+    public function getToken(): string {
         return $this->_tokenReceiver->GetToken();
     }
 }

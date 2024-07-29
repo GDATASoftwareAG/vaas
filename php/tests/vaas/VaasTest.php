@@ -3,7 +3,6 @@
 namespace VaasTesting;
 
 use Amp\ByteStream\Pipe;
-use Amp\ByteStream\WritableBuffer;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
