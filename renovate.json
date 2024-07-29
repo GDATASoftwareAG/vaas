@@ -1,61 +1,30 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "ignorePaths": [
+    "assets",
+    ".vscode",
+    "backend",
+    "protocol"
+  ],
   "packageRules": [
     {
-      "groupName": "rust",
-      "matchPaths": [
-        "rust/**"
-      ]
-    },
-    {
-      "groupName": "typescript",
-      "matchPaths": [
-        "typescript/**"
+      "groupName": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}",
+      "commitMessagePrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
+      "extends": [
+        "group:allNonMajor"
       ],
-      "excludePackageNames": [
-        "chai"
+      "matchPaths": [
+        "**"
       ]
     },
     {
-      "groupName": "ruby",
+      "groupName": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}",
+      "commitMessagePrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
+      "matchUpdateTypes": [
+        "major"
+      ],
       "matchPaths": [
-        "ruby/**"
-      ]
-    },
-    {
-      "groupName": "python",
-      "matchPaths": [
-        "python/**"
-      ]
-    },
-    {
-      "groupName": "php",
-      "matchPaths": [
-        "php/**"
-      ]
-    },
-    {
-      "groupName": "java",
-      "matchPaths": [
-        "java/**"
-      ]
-    },
-    {
-      "groupName": "dotnet",
-      "matchPaths": [
-        "dotnet/**"
-      ]
-    },
-    {
-      "groupName": "cicd",
-      "matchPaths": [
-        ".github/workflows/**"
-      ]
-    },
-    {
-      "groupName": "golang",
-      "matchPaths": [
-        "golang/vaas/**"
+        "**"
       ]
     }
   ]
