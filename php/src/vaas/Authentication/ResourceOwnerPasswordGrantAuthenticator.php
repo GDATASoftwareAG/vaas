@@ -5,7 +5,7 @@ namespace VaasSdk\Authentication;
 use VaasSdk\Authentication\OAuth2TokenReceiver;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 
-class ResourceOwnerPasswordGrantAuthenticator {
+class ResourceOwnerPasswordGrantAuthenticator implements AuthenticatorInterface {
     private OAuth2TokenReceiver $_tokenReceiver;
 
     public function __construct($clientId, $userName, $password, $tokenEndpoint) {
@@ -15,7 +15,7 @@ class ResourceOwnerPasswordGrantAuthenticator {
     /**
      * @throws VaasAuthenticationException
      */
-    public function getToken() {
+    public function getToken(): string {
         return $this->_tokenReceiver->GetToken();
     }
 }
