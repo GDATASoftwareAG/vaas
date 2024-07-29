@@ -32,6 +32,8 @@ use function Amp\Websocket\Client\connect;
 class VaasConnection
 {
     public string $SessionId;
+    private Future $connection;
+    private int $waitTimeoutInSeconds = 600;
 
     private WebsocketConnection $WebSocketClient;
     private int $waitTimeoutInSeconds = 600;
