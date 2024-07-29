@@ -14,7 +14,7 @@
         "group:allNonMajor"
       ],
       "matchPaths": [
-        "**"
+        "*/**"
       ]
     },
     {
@@ -24,7 +24,7 @@
         "major"
       ],
       "matchPaths": [
-        "**"
+        "*/**"
       ]
     }
   ]
