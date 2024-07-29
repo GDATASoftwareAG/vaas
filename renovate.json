@@ -6,6 +6,8 @@
     "backend",
     "protocol"
   ],
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
   "packageRules": [
     {
       "commitMessagePrefix": "{{{ replace '(.*?)\\/.*' '$1' packageFileDir}}}: ",
