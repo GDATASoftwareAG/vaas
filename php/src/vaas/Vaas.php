@@ -12,7 +12,6 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\StreamedContent;
 use Amp\TimeoutCancellation;
-use Illuminate\Container\Container;
 use InvalidArgumentException;
 use JsonMapper_Exception;
 use Ramsey\Uuid\Rfc4122\UuidV4;
@@ -110,7 +109,6 @@ class Vaas
         if (!isset($this->httpClient)) {
             $this->httpClient = HttpClientBuilder::buildDefault();
         }
-
         return $this;
     }
 
