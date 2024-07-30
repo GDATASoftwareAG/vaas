@@ -73,9 +73,7 @@ class VaasConnection
             $this->WebSocketClient = connect($this->url);
         }
         async(function() {
-            while(true) {
-                $this->handleResponse();
-            }
+            $this->handleResponse();
         });
         if (isset($this->authenticator)) {
             $this->Connect();
@@ -168,7 +166,7 @@ class VaasConnection
             if ($message == null) continue;
             if (!$message->isText()) continue;
             $messageText = $message->read();
-            if ($messageText == null) continue;
+            if ($messageText == null) throw new VaasConnectionClosedException();
 
             $this->logger->debug("Result", json_decode($messageText, true));
             $resultObject = json_decode($messageText);
