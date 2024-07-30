@@ -72,7 +72,11 @@ class VaasConnection
         if (!isset($this->WebSocketClient)) {
             $this->WebSocketClient = connect($this->url);
         }
-        async(fn() => $this->Loop());
+        async(function() {
+            while(true) {
+                $this->handleResponse();
+            }
+        });
         if (isset($this->authenticator)) {
             $this->Connect();
         }
@@ -155,14 +159,6 @@ class VaasConnection
 
     public function setTimeout(int $timeoutInSeconds): void {
         $this->waitTimeoutInSeconds = $timeoutInSeconds;
-    }
-
-    private function Loop(): void {
-        try  {
-            $this->handleResponse();
-        } finally {
-            async(fn() => $this->Loop());
-        }
     }
 
     private function handleResponse(): void {
