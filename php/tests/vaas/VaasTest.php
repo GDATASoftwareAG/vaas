@@ -35,6 +35,7 @@ use VaasSdk\VaasOptions;
 use WebSocket\BadOpcodeException;
 
 use function Amp\ByteStream\Internal\tryToCreateReadableStreamFromResource;
+use function Amp\delay;
 
 final class VaasTest extends TestCase
 {
@@ -169,6 +170,24 @@ final class VaasTest extends TestCase
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
         $this->assertEquals($uuid, $verdict->Guid);
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
+    }
+
+    public function test60SecondsWaitAfterConnect_DoesNotLoseConnection(): void
+    {
+        $this->markTestSkipped("this test should not run in ci");
+        $uuid = $this->getUuid();
+        $cleanSha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+
+        $vaas = $this->_getVaas();
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
+        delay(60);
+
+        $verdict = $vaas->ForSha256($cleanSha256, $uuid);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+        $this->assertEquals($uuid, $verdict->Guid);
+        $this->assertEqualsIgnoringCase($cleanSha256, $verdict->Sha256);
     }
 
     public function testForSha256CleanSha256_GetsCleanResponse(): void

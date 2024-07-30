@@ -25,6 +25,7 @@ use VaasSdk\Message\Error;
 use VaasSdk\Message\Kind;
 use VaasSdk\Message\VerdictResponse;
 
+use function Amp\async;
 use function Amp\Websocket\Client\connect;
 
 class VaasConnection
@@ -71,7 +72,7 @@ class VaasConnection
         if (!isset($this->WebSocketClient)) {
             $this->WebSocketClient = connect($this->url);
         }
-        EventLoop::defer(fn() => $this->Loop());
+        async(fn() => $this->Loop());
         if (isset($this->authenticator)) {
             $this->Connect();
         }
@@ -160,7 +161,7 @@ class VaasConnection
         try  {
             $this->handleResponse();
         } finally {
-            EventLoop::defer(fn() => $this->Loop());
+            async(fn() => $this->Loop());
         }
     }
 

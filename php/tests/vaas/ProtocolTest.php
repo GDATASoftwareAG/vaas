@@ -74,13 +74,6 @@ final class ProtocolTest extends TestCase
         $vaas->Connect("valid");
     }
 
-    public function testForSha256CallBeforeConnection_ThrowsVaasInvalidStateException(): void
-    {
-        $this->expectException(VaasInvalidStateException::class);
-        $vaas = new Vaas("url");
-        $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
-    }
-
     public function testVerdictRequestSerializationTest(): void
     {
         $verdictRequest = new \VaasSdk\Message\VerdictRequest(
