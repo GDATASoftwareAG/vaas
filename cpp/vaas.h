@@ -74,13 +74,13 @@ static size_t writeAppendToString(void* contents, const size_t size, const size_
 
 static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     std::string response;
-    vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::writeAppendToString));
-    vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
+    ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::writeAppendToString));
+    ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
 
-    vaas_internals::ensureCurlOk(curl_easy_perform(curl));
+    ensureCurlOk(curl_easy_perform(curl));
 
     long response_code;
-    vaas_internals::ensureCurlOk(curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code));
+    ensureCurlOk(curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code));
 
     if (response_code < 200 || response_code >= 300) {
         return response_code;
@@ -177,10 +177,18 @@ namespace vaas {
 class OIDCClient {
   public:
     OIDCClient(std::string tokenEndpoint, std::string clientId, std::string clientSecret)
-        : tokenEndpoint(std::move(tokenEndpoint)), clientId(std::move(clientId)), clientSecret(std::move(clientSecret)), curl(curl_easy_init()) {
+        : tokenEndpoint(std::move(tokenEndpoint)), clientId(std::move(clientId)),
+          clientSecret(std::move(clientSecret)), curl(curl_easy_init()) {
         if (!curl) {
             throw std::runtime_error("Failed to initialize CURL");
         }
+    }
+
+    OIDCClient(OIDCClient&& other) noexcept
+        : tokenEndpoint(std::move(tokenEndpoint)), clientId(std::move(clientId)),
+          clientSecret(std::move(clientSecret)),
+          curl(other.curl) {
+        other.curl = nullptr;
     }
 
     ~OIDCClient() {
@@ -204,7 +212,8 @@ class OIDCClient {
         vaas_internals::CurlHeaders headers;
         headers.append("Content-Type: application/x-www-form-urlencoded");
 
-        const std::string postFields = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" + clientSecret;
+        const std::string postFields = "grant_type=client_credentials&client_id=" + clientId + "&client_secret=" +
+                                       clientSecret;
 
         vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_URL, tokenEndpoint.c_str()));
         vaas_internals::ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers.raw()));
@@ -214,7 +223,8 @@ class OIDCClient {
 
         const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
         if (!(response_code == 200 || response_code == 401)) {
-            throw AuthenticationException("Server replied with unexpected HTTP response code " + std::to_string(response_code));
+            throw AuthenticationException(
+                "Server replied with unexpected HTTP response code " + std::to_string(response_code));
         }
 
         if (jsonResponse.isMember("error") || response_code != 200) {
@@ -245,6 +255,7 @@ class OIDCClient {
 
 /// VaasReport contains an analysis report for a file, such as verdict information.
 class VaasReport {
+  public:
     const std::string sha256;
 
     enum Verdict {
@@ -278,7 +289,8 @@ class VaasReport {
     }
 
     explicit VaasReport(const std::string& sha256, Verdict verdict)
-        : sha256{sha256}, verdict{verdict} {}
+        : sha256{sha256}, verdict{verdict} {
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const VaasReport& report) {
@@ -289,11 +301,20 @@ inline std::ostream& operator<<(std::ostream& os, const VaasReport& report) {
 /// Vaas talks to the VaaS service and provides reports for files or streams.
 class Vaas {
   public:
-    Vaas(std::string serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId, const std::string& clientSecret)
-        : serverEndpoint(serverEndpoint), authenticator(tokenEndpoint, clientId, clientSecret), curl(curl_easy_init()) {
+    Vaas(const std::string& serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId,
+         const std::string& clientSecret)
+        : serverEndpoint(serverEndpoint), authenticator(tokenEndpoint, clientId, clientSecret),
+          curl(curl_easy_init()) {
         if (!curl) {
             throw std::runtime_error("Failed to initialize CURL");
         }
+    }
+
+    Vaas(Vaas&& other) noexcept
+        : serverEndpoint(std::move(other.serverEndpoint)), // Can't actually move because it's const
+          authenticator(std::move(other.authenticator)),
+          curl(other.curl) {
+        other.curl = nullptr;
     }
 
     ~Vaas() {
