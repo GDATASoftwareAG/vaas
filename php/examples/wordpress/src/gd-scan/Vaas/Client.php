@@ -2,6 +2,8 @@
 
 namespace WpGdScan\Vaas;
 
+use VaasSdk\Vaas;
+
 class Client
 {
     public function scanSingleFile(string $fileName): void
@@ -9,7 +11,10 @@ class Client
         file_put_contents(\plugin_dir_path(__FILE__) . "/log", "Filename: $fileName\n", FILE_APPEND);
 
         file_put_contents(\plugin_dir_path(__FILE__) . "/log", "Try to get Verdict: $fileName\n", FILE_APPEND);
-        if ((new \VaasSdk\Vaas("Token"))->ForFile($fileName) == \VaasSdk\Message\Verdict::MALICIOUS) {
+        $vaas = (new Vaas())
+            ->build();
+        $vaas->Connect("Token");
+        if ($vaas->ForFile($fileName) == \VaasSdk\Message\Verdict::MALICIOUS) {
             file_put_contents(
                 \plugin_dir_path(__FILE__) . "/log",
                 \VaasSdk\Message\Verdict::MALICIOUS . ": $fileName\n",
