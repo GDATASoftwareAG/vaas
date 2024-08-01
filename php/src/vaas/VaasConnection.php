@@ -3,6 +3,7 @@
 namespace VaasSdk;
 
 use Amp\Cache\LocalCache;
+use Amp\DeferredCancellation;
 use Amp\DeferredFuture;
 use Amp\Future;
 use Amp\Websocket\Client\WebsocketConnection;
@@ -38,9 +39,19 @@ class VaasConnection
     private AuthenticatorInterface $authenticator;
     private LocalCache $responses;
     private LoggerInterface $logger;
+    private ?Future $loop;
+    private ?DeferredCancellation $cancellation;
 
     public function __construct() {
         $this->responses = new LocalCache();
+        $this->cancellation = new DeferredCancellation();
+    }
+
+    public function close(): void {
+        if ($this->cancellation != null) {
+            $this->cancellation->cancel();
+        }
+        $this->loop->ignore();
     }
 
     public function WithAuthenticator(AuthenticatorInterface $authenticator): VaasConnection {
@@ -72,7 +83,7 @@ class VaasConnection
         if (!isset($this->WebSocketClient)) {
             $this->WebSocketClient = connect($this->url);
         }
-        async(function() {
+        $this->loop = async(function() {
             $this->handleResponse();
         });
         if (isset($this->authenticator)) {
@@ -162,10 +173,10 @@ class VaasConnection
     private function handleResponse(): void {
         $mapper = new JsonMapper();
         $connection = $this->GetConnectedWebsocket();
-        while ($message = $connection->receive()) {
+        while ($message = $connection->receive($this->cancellation->getCancellation())) {
             if ($message == null) continue;
             if (!$message->isText()) continue;
-            $messageText = $message->read();
+            $messageText = $message->read($this->cancellation->getCancellation());
             if ($messageText == null) throw new VaasConnectionClosedException();
 
             $this->logger->debug("Result", json_decode($messageText, true));
