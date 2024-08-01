@@ -40,16 +40,16 @@ class VaasConnection
     private LocalCache $responses;
     private LoggerInterface $logger;
     private ?Future $loop;
-    private ?DeferredCancellation $cancellation;
+    private ?DeferredCancellation $loopCancellation;
 
     public function __construct() {
         $this->responses = new LocalCache();
-        $this->cancellation = new DeferredCancellation();
+        $this->loopCancellation = new DeferredCancellation();
     }
 
     public function close(): void {
-        if ($this->cancellation != null) {
-            $this->cancellation->cancel();
+        if ($this->loopCancellation != null) {
+            $this->loopCancellation->cancel();
         }
         $this->loop->ignore();
     }
@@ -173,10 +173,10 @@ class VaasConnection
     private function handleResponse(): void {
         $mapper = new JsonMapper();
         $connection = $this->GetConnectedWebsocket();
-        while ($message = $connection->receive($this->cancellation->getCancellation())) {
+        while ($message = $connection->receive($this->loopCancellation->getCancellation())) {
             if ($message == null) continue;
             if (!$message->isText()) continue;
-            $messageText = $message->read($this->cancellation->getCancellation());
+            $messageText = $message->read($this->loopCancellation->getCancellation());
             if ($messageText == null) throw new VaasConnectionClosedException();
 
             $this->logger->debug("Result", json_decode($messageText, true));
