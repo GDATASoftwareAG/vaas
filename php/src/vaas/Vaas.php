@@ -42,6 +42,12 @@ class Vaas
     private ?LoggerInterface $logger;
     private ?string $vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de";
 
+    public function __destruct() {
+        if (isset($this->vaasConnection)) {
+            $this->vaasConnection->close();
+        }
+    }
+
     public function WithOptions(VaasOptions $options): self
     {
         $this->options = $options;
@@ -93,7 +99,7 @@ class Vaas
             $this->vaasConnection = (new VaasConnection())
                 ->WithUrl($this->vaasUrl)
                 ->WithLogger($this->logger)
-                ->build();   
+                ->build();    
         }
         if (!isset($this->options)) {
             $this->options = new VaasOptions();
@@ -101,6 +107,7 @@ class Vaas
         if (!isset($this->httpClient)) {
             $this->httpClient = HttpClientBuilder::buildDefault();
         }
+
         return $this;
     }
 
