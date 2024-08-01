@@ -139,6 +139,13 @@ final class VaasTest extends TestCase
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
     }
 
+    public function testForCallingTheConnectFunctionWithoutBuildOrGivenConnection_ThrowsInvalidStateException(): void
+    {
+        $this->expectException(VaasInvalidStateException::class);
+        $vaas = new Vaas();
+        $vaas->Connect("");
+    }
+
     public function testForConnectingWithInvalidToken_ThrowsVaasAccessDeniedException()
     {
         $this->expectException(VaasAuthenticationException::class);
