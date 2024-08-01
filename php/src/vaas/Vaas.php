@@ -106,7 +106,6 @@ class Vaas
         if (!isset($this->httpClient)) {
             $this->httpClient = HttpClientBuilder::buildDefault();
         }
-
         return $this;
     }
 
