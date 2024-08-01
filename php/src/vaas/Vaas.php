@@ -113,6 +113,9 @@ class Vaas
     }
 
     public function Connect(string $token = "") {
+        if (!isset($this->vaasConnection)) {
+            throw new VaasInvalidStateException("No VaasConnection given and build() was not called");
+        }
         $this->vaasConnection->Connect($token);
     }
 
