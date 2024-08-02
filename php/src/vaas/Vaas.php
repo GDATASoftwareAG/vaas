@@ -4,6 +4,7 @@ namespace VaasSdk;
 
 use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\ReadableStream;
+use Amp\DeferredCancellation;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
@@ -498,6 +499,7 @@ class Vaas
      */
     private function UploadStream(ReadableStream $fileStream, string $url, string $uploadToken, int $fileSize): void
     {
+        $cancellation = new DeferredCancellation();
         $times = 0;
         $pingTimer = EventLoop::repeat(5, function () use(&$times) {
             $this->_logger->debug("pinging " . $times++);
@@ -513,9 +515,10 @@ class Vaas
             $request->addHeader("Content-Length", $fileSize);
             $request->addHeader("Authorization", $uploadToken);
 
-            $response = $this->_httpClient->request($request, new TimeoutCancellation($this->_uploadTimeoutInSeconds));
+            $response = $this->_httpClient->request(
+                $request, new TimeoutCancellation($this->_uploadTimeoutInSeconds), $cancellation->getCancellation());
             if ($response->getStatus() > 399) {
-                $reason = $response->getBody()->buffer();
+                $reason = $response->getBody()->buffer($cancellation->getCancellation());
                 throw new UploadFailedException($reason, $response->getStatus());
             }
         } catch (\Exception $e) {
@@ -525,6 +528,7 @@ class Vaas
                 throw new VaasClientException($e->getMessage());
         } finally {
             EventLoop::cancel($pingTimer);
+            $cancellation->cancel();
         }
     }
 }
