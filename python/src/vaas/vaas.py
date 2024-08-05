@@ -5,7 +5,7 @@ import hashlib
 import json
 import time
 import uuid
-from typing import Optional
+from typing import Optional, TypedDict, Literal
 import asyncio
 from asyncio import Future
 import ssl
@@ -55,6 +55,22 @@ class VaasOptions:
         self.use_cache = True
         self.use_hash_lookup = True
 
+class VaasVerdict(TypedDict):
+    Sha256: str
+    "The SHA256 hash of the file"
+
+    Guid: str
+
+    Verdict: Literal["Clean", "Malicious", "Unknown", "Pup"]
+    
+    Detection: Optional[str]
+    "Name of the detected malware if found"
+    
+    FileType: Optional[str]
+    "The file type of the file"
+
+    MimeType: Optional[str]
+    "The mime type of the file"
 
 def hash_file(filename):
     """Return sha256 hash for file"""
@@ -94,7 +110,7 @@ def problem_details_to_error(problem_details):
     return VaasServerError(details)
 
 
-def map_response(verdict_response):
+def map_response(verdict_response) -> VaasVerdict:
     return {
         "Sha256": verdict_response.get("sha256"),
         "Guid": verdict_response.get("guid"),
@@ -175,7 +191,7 @@ class Vaas:
     async def __aexit__(self, exc_type, exc, traceback):
         await self.close()
 
-    async def for_sha256(self, sha256, verdict_request_attributes=None, guid=None):
+    async def for_sha256(self, sha256, verdict_request_attributes=None, guid=None) -> VaasVerdict:
         """Returns the verdict for a SHA256 checksum"""
         verdict_response = await self.__for_sha256(
             sha256, verdict_request_attributes, guid
@@ -272,7 +288,7 @@ class Vaas:
         except Exception as error:
             raise VaasConnectionClosedError(error) from error
 
-    async def for_buffer(self, buffer, verdict_request_attributes=None, guid=None):
+    async def for_buffer(self, buffer, verdict_request_attributes=None, guid=None) -> VaasVerdict:
         """Returns the verdict for a buffer"""
 
         loop = asyncio.get_running_loop()
@@ -307,7 +323,7 @@ class Vaas:
         self.tracing.trace_upload_request(time.time() - start, buffer_len)
         return verdict_response
 
-    async def for_stream(self, asyncBufferedReader, len, verdict_request_attributes=None, guid=None):
+    async def for_stream(self, asyncBufferedReader, len, verdict_request_attributes=None, guid=None) -> VaasVerdict:
         """Returns the verdict for a file"""
 
         verdict_response = await self.__for_stream(
@@ -339,7 +355,7 @@ class Vaas:
 
         return map_response(verdict_response)
 
-    async def for_file(self, path, verdict_request_attributes=None, guid=None):
+    async def for_file(self, path, verdict_request_attributes=None, guid=None) -> VaasVerdict:
         """Returns the verdict for a file"""
 
         loop = asyncio.get_running_loop()
@@ -376,7 +392,7 @@ class Vaas:
             self.tracing.trace_upload_timeout(content_length)
             raise VaasTimeoutError() from ex
 
-    async def for_url(self, url, verdict_request_attributes=None, guid=None):
+    async def for_url(self, url, verdict_request_attributes=None, guid=None) -> VaasVerdict:
         """Returns the verdict for a file from an url"""
         if verdict_request_attributes is not None and not isinstance(
             verdict_request_attributes, dict
