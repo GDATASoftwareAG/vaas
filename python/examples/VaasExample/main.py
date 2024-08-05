@@ -25,6 +25,16 @@ async def main():
         verdict = await vaas.for_file(path)
         print(f"{verdict['Sha256']} is detected as {verdict['Verdict']}")
 
+        # The scan functions will return the following dict:
+        # {
+        #     "Sha256": "<Sha256>",
+        #     "Guid": "<Guid>",
+        #     "Verdict": <"Clean"|"Malicious"|"Unknown"|"Pup">,
+        #     "Detection": "<Name of the detected malware if found>",
+        #     "FileType": "<FileType>",
+        #     "MimeType": "<MimeType>"
+        # }
+
 
 if __name__ == "__main__":
     loop = asyncio.new_event_loop()

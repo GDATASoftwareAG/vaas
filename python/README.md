@@ -20,6 +20,26 @@ If you want to request if a file behind a URL is safe, you can specify the URL a
 
 You can also ask for a file itself. You will still get the benefit of a fast verdict via Sha256 because the SDK will do that for you first. But additionally, if we don't know the file, the file will get uploaded and (automatically) analyzed by us.
 
+## What do the Verdicts look like
+
+The verdicts are simple. They are either
+- `Clean`: The scanners didn't find anything malicious.
+- `Malicious`: The scanners found something malicious.
+- `Unknown`: We don't know the file hash yet. A scan is then performed for each except `for_sha256` function.
+- `Pup`: Potentially Unwanted Program (Adware, Spyware, etc.)
+
+The scan functions will return the following dict:
+```python
+{
+    "Sha256": "<Sha256>",
+    "Guid": "<Guid>",
+    "Verdict": <"Clean"|"Malicious"|"Unknown"|"Pup">,
+    "Detection": "<Name of the detected malware>",
+    "FileType": "<FileType>",
+    "MimeType": "<MimeType>"
+}
+```
+
 ## How to use
 
 ### Installation
