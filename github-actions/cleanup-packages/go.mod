@@ -1,6 +1,6 @@
 module GDATACyberDefense/cleanup-packages
 
-go 1.22.2
+go 1.22
 
 require (
 	github.com/docker/docker v27.1.1+incompatible
