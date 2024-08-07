@@ -8,7 +8,7 @@ import (
 
 	"github.com/docker/docker/client"
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
-	"github.com/google/go-github/v62/github"
+	"github.com/google/go-github/v63/github"
 )
 
 func main() {

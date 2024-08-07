@@ -5,7 +5,6 @@ go 1.22.2
 require (
 	github.com/docker/docker v27.1.1+incompatible
 	github.com/gofri/go-github-ratelimit v1.1.0
-	github.com/google/go-github/v62 v62.0.0
 	github.com/google/go-github/v63 v63.0.0
 )
 
@@ -32,7 +31,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
