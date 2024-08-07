@@ -199,8 +199,13 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 			return nil, error
 		}
 		defer imagePullCloser.Close()
-
-		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageRef)
+		inspect, _, error := cleanup.dockerClient.ImageInspectWithRaw(context.Background(), imageRef)
+		if error != nil {
+			log.Println("ImageInspect: " + error.Error())
+			return nil, error
+		}
+		imageId := inspect.ID
+		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageId)
 		if error != nil {
 			log.Println("ImageHistory: " + error.Error())
 			return nil, error
@@ -208,10 +213,8 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 		for _, layer := range imageHistory {
 			dependencies = append(dependencies, layer.ID)
 		}
-	}
-	for _, version := range versionsWithTagsNotToDelete {
-		imageRef := "ghcr.io/" + strings.ToLower(gdataOrganisation) + "/" + packageName + ":" + version.Metadata.Container.Tags[0]
-		cleanup.dockerClient.ImageRemove(context.Background(), imageRef, image.RemoveOptions{
+		// remove locally
+		cleanup.dockerClient.ImageRemove(context.Background(), imageId, image.RemoveOptions{
 			PruneChildren: true,
 			Force:         true,
 		})
