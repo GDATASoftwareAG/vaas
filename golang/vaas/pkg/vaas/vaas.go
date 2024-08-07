@@ -653,8 +653,9 @@ func (v *vaas) listenWebSocket(ctx context.Context) chan error {
 }
 
 func (v *vaas) readWebSocket(termChan chan<- error) {
-	var verdictResponse msg.VerdictResponse
 	for {
+		var verdictResponse msg.VerdictResponse
+
 		err := v.websocketConnection.ReadJSON(&verdictResponse)
 		if err == nil {
 			v.openRequestsMutex.Lock()

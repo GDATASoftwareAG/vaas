@@ -34,14 +34,22 @@ func main() {
 	if !exists {
 		log.Fatal("no Client Secret set")
 	}
+	tokenEndpoint, exists := os.LookupEnv("TOKEN_URL")
+	if !exists {
+		tokenEndpoint = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+	}
+	vaasURL, exists := os.LookupEnv("VAAS_URL")
+	if !exists {
+		vaasURL = "wss://gateway.production.vaas.gdatasecurity.de"
+	}
 
-	auth := authenticator.NewWithDefaultTokenEndpoint(clientID, clientSecret)
+	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
 
-	vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{
+	vaasClient := vaas.New(options.VaasOptions{
 		UseHashLookup: true,
 		UseCache:      false,
 		EnableLogs:    false,
-	})
+	}, vaasURL)
 	connectCtx, webSocketCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer webSocketCancel()
 
@@ -100,7 +108,7 @@ func checkFile(ctx context.Context, fileList []string, vaasClient vaas.Vaas) err
 		}
 
 		for _, result := range results {
-			fmt.Println(result.Sha256, result.Verdict)
+			fmt.Println(result.Sha256, result.Verdict, result.Detection)
 		}
 	}
 	return nil
