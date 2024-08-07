@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"log"
 	"regexp"
 	"strings"
@@ -198,14 +199,21 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 			log.Println("ImagePull: " + error.Error())
 			return nil, error
 		}
+		bytes, error := io.ReadAll(imagePullCloser)
+		if error != nil {
+			log.Println("Read Image Pull Response: " + error.Error())
+			return nil, error
+		}
+		log.Println(string(bytes))
+
 		defer imagePullCloser.Close()
 		inspect, _, error := cleanup.dockerClient.ImageInspectWithRaw(context.Background(), imageRef)
 		if error != nil {
 			log.Println("ImageInspect: " + error.Error())
 			return nil, error
 		}
-		imageId := inspect.ID
-		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageId)
+		imageID := inspect.ID
+		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageID)
 		if error != nil {
 			log.Println("ImageHistory: " + error.Error())
 			return nil, error
@@ -214,7 +222,7 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 			dependencies = append(dependencies, layer.ID)
 		}
 		// remove locally
-		cleanup.dockerClient.ImageRemove(context.Background(), imageId, image.RemoveOptions{
+		cleanup.dockerClient.ImageRemove(context.Background(), imageID, image.RemoveOptions{
 			PruneChildren: true,
 			Force:         true,
 		})
