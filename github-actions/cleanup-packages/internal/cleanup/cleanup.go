@@ -201,10 +201,10 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 		}
 		bytes, error := io.ReadAll(imagePullCloser)
 		if error != nil {
-			log.Println("Read Image Pull Response: " + error.Error())
+			log.Println("Image Pull Response Error: " + error.Error())
 			return nil, error
 		}
-		log.Println(string(bytes))
+		log.Println("Image Pull Response" + string(bytes))
 
 		defer imagePullCloser.Close()
 		inspect, _, error := cleanup.dockerClient.ImageInspectWithRaw(context.Background(), imageRef)
