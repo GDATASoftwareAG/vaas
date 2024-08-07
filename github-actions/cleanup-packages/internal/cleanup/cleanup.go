@@ -198,7 +198,8 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 			log.Println("ImagePull: " + error.Error())
 			return nil, error
 		}
-		imagePullCloser.Close()
+		defer imagePullCloser.Close()
+
 		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageRef)
 		if error != nil {
 			log.Println("ImageHistory: " + error.Error())
