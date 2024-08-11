@@ -13,7 +13,7 @@ repositories {
 }
  
 dependencies {
-    implementation 'org.slf4j:slf4j-nop:2.0.13'
+    implementation 'org.slf4j:slf4j-nop:2.0.16'
     implementation 'de.gdata:vaas:8.2.5'
 }
 
