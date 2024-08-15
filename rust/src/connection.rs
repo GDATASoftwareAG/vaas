@@ -11,7 +11,7 @@ use crate::vaas_verdict::VaasVerdict;
 use crate::CancellationToken;
 use bytes::Bytes;
 use futures::future::join_all;
-use reqwest::{Body, Url};
+use reqwest::{Body, Url, Version};
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -406,6 +406,7 @@ async fn upload_file(
     let client = reqwest::Client::new();
     let response = client
         .put(upload_url.deref())
+        .version(Version::HTTP_11)
         .body(body)
         .header("Authorization", auth_token)
         .header("Content-Length", body_len)
@@ -429,6 +430,7 @@ where
     let body = Body::wrap_stream(stream);
     let response = client
         .put(upload_url.deref())
+        .version(Version::HTTP_11)
         .body(body)
         .header("Authorization", auth_token)
         .header("Content-Length", content_length)
