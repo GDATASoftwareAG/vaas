@@ -166,8 +166,8 @@ module VAAS
         task.with_timeout(@timeout) do
           token = message['upload_token']
           url = message['url']
-
-          client = Async::HTTP::Internet.new
+          endpoint = Async::HTTP::Endpoint.parse(url)
+          client = Async::HTTP::Client.new(endpoint, protocol: Async::HTTP::Protocol::HTTP1)
 
           header = [['authorization', token]]
           body = Protocol::HTTP::Body::File.open(File.join(path))
