@@ -5,6 +5,7 @@ package vaas
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"strings"
@@ -576,8 +577,17 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 	}
 
 	req.Header.Add("Authorization", token)
+	log.Println(req.Proto)
+	log.Println(req.ProtoMajor)
+	log.Println(req.ProtoMinor)
 
-	httpResponse, err := http.DefaultClient.Do(req)
+	client := http.Client{
+		Transport: &http.Transport{
+			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+		},
+	}
+	httpResponse, err := client.Do(req)
+	log.Println(httpResponse.Proto)
 	if err != nil {
 		return err
 	}

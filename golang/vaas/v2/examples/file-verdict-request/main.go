@@ -21,6 +21,7 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load environment - %v", err)
 	}
+	log.Printf(os.LookupEnv("CLIENT_ID"))
 
 	// Retrieve the Client ID and Client Secret from environment variables
 	clientID, exists := os.LookupEnv("CLIENT_ID")
@@ -31,16 +32,24 @@ func main() {
 	if !exists {
 		log.Fatal("no Client Secret set")
 	}
+	tokenEndpoint, exists := os.LookupEnv("TOKEN_URL")
+	if !exists {
+		tokenEndpoint = "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
+	}
+	vaasUrl, exists := os.LookupEnv("VAAS_URL")
+	if !exists {
+		tokenEndpoint = "wss://gateway.staging.vaas.gdatasecurity.de"
+	}
 
 	// Create a new authenticator with the provided Client ID and Client Secret
-	auth := authenticator.NewWithDefaultTokenEndpoint(clientID, clientSecret)
+	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
 
 	// Create a new VaaS client with default options
-	vaasClient := vaas.NewWithDefaultEndpoint(options.VaasOptions{
+	vaasClient := vaas.New(options.VaasOptions{
 		UseHashLookup: true,
 		UseCache:      false,
 		EnableLogs:    false,
-	})
+	}, vaasUrl)
 
 	// Create a context with a cancellation function
 	connectCtx, webSocketCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -57,7 +66,7 @@ func main() {
 	defer analysisCancel()
 
 	// Request a verdict for a specific file (replace "path-to-your-file" with the actual file path)
-	result, err := vaasClient.ForFile(analysisCtx, "path-to-your-file")
+	result, err := vaasClient.ForFile(analysisCtx, "1GB.testfile")
 	if err != nil {
 		log.Fatal(err)
 	}
