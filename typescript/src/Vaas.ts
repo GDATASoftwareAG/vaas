@@ -22,6 +22,8 @@ import { VaasVerdict } from "./messages/vaas_verdict";
 import { VerdictRequestForUrl } from "./messages/verdict_request_for_url";
 import { VerdictRequestForStream } from "./messages/verdict_request_for_stream";
 import { Readable } from "stream";
+import http from 'http';
+import https from 'https';
 
 const VAAS_URL = "wss://gateway.production.vaas.gdatasecurity.de";
 const defaultSerializer = new JsonSerializer();
@@ -397,6 +399,10 @@ export class Vaas {
         },
         maxBodyLength: contentLength,
       });
+
+      instance.defaults.httpAgent = new http.Agent({ keepAlive: true });
+      instance.defaults.httpsAgent = new https.Agent({ keepAlive: true });
+
       await instance
         .put("/", input)
         .then((response) => resolve(response))
