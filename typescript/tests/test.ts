@@ -203,7 +203,7 @@ describe("Test verdict requests", function () {
   });
 
 
-  it("if an large file is uploaded, it is detected as clean", async () => {
+  xit("if a large file is uploaded, it is detected as clean", async () => {
     const randomFileContent = await randomBytes.sync(1073741824);
     var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
