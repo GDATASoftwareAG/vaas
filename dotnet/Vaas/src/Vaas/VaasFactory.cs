@@ -1,4 +1,3 @@
-using System;
 using System.Net.Http;
 using Vaas.Authentication;
 
