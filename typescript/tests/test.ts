@@ -202,6 +202,16 @@ describe("Test verdict requests", function () {
     expect(verdict.sha256).to.equal(fileSha256);
   });
 
+
+  it("if an large file is uploaded, it is detected as clean", async () => {
+    const randomFileContent = await randomBytes.sync(1073741824);
+    var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
+    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const verdict = await vaas.forFile(randomFileContent);
+    expect(verdict.verdict).to.equal("Clean");
+    expect(verdict.sha256).to.equal(fileSha256);
+  });
+
   it("if we request the same guid twice, both calls return a result", async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
     const sha256 =
