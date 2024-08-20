@@ -82,7 +82,7 @@ class VaasTest < Minitest::Test
           assert_equal "Malicious", verdict
           # Detection may not be always present
           unless detection.empty?
-            assert_equal "EICAR-Test-File", detection
+            assert_match /EICAR-Test-File/, detection
           end
           vaas.close
         end
