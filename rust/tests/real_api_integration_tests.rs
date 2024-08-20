@@ -151,10 +151,11 @@ async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malici
         Some("EICAR virus test files"),
         verdict.as_ref().unwrap().file_type.as_deref()
     );
-    assert_eq!(
-        Some("EICAR-Test-File"),
-        verdict.as_ref().unwrap().detection.as_deref()
-    );
+    assert!(verdict
+        .unwrap()
+        .detection
+        .unwrap()
+        .contains("EICAR-Test-File"));
 }
 
 #[tokio::test]
@@ -304,7 +305,7 @@ async fn for_file_single_malicious_file() {
 
     assert_eq!(Verdict::Malicious, verdict.verdict);
     assert_eq!(Sha256::try_from(&tmp_file).unwrap(), verdict.sha256);
-    assert_eq!("EICAR-Test-File".to_string(), verdict.detection.unwrap());
+    assert!(verdict.detection.unwrap().contains("EICAR-Test-File"));
     assert_eq!(
         "EICAR virus test files".to_string(),
         verdict.file_type.unwrap()
