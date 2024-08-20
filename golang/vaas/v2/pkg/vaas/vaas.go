@@ -577,9 +577,6 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 	}
 
 	req.Header.Add("Authorization", token)
-	log.Println(req.Proto)
-	log.Println(req.ProtoMajor)
-	log.Println(req.ProtoMinor)
 
 	client := http.Client{
 		Transport: &http.Transport{
@@ -587,7 +584,7 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 		},
 	}
 	httpResponse, err := client.Do(req)
-	log.Println(httpResponse.Proto)
+
 	if err != nil {
 		return err
 	}
