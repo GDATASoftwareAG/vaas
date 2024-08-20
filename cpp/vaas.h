@@ -76,6 +76,7 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     std::string response;
     ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, vaas_internals::writeAppendToString));
     ensureCurlOk(curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response));
+    ensureCurlOk(curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1));
 
     ensureCurlOk(curl_easy_perform(curl));
 
