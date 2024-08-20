@@ -11,7 +11,7 @@ use crate::vaas_verdict::VaasVerdict;
 use crate::CancellationToken;
 use bytes::Bytes;
 use futures::future::join_all;
-use reqwest::{Body, Url};
+use reqwest::{Body, Url, Version};
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -401,17 +401,9 @@ async fn upload_file(
     upload_url: UploadUrl,
     auth_token: &str,
 ) -> VResult<reqwest::Response> {
-    let body = tokio::fs::read(&file).await?;
-    let body_len = body.len();
-    let client = reqwest::Client::new();
-    let response = client
-        .put(upload_url.deref())
-        .body(body)
-        .header("Authorization", auth_token)
-        .header("Content-Length", body_len)
-        .send()
-        .await?;
-    Ok(response)
+    let body = tokio::fs::File::open(&file).await?;
+    let content_length = body.metadata().await?.len() as usize;
+    upload_internal(body, content_length, upload_url, auth_token).await
 }
 
 async fn upload_stream<S>(
@@ -425,10 +417,20 @@ where
     S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
     Bytes: From<S::Ok>,
 {
-    let client = reqwest::Client::new();
     let body = Body::wrap_stream(stream);
+    upload_internal(body, content_length, upload_url, auth_token).await
+}
+
+async fn upload_internal<T: Into<Body>>(
+    body: T,
+    content_length: usize,
+    upload_url: UploadUrl,
+    auth_token: &str,
+) -> VResult<reqwest::Response> {
+    let client = reqwest::Client::new();
     let response = client
         .put(upload_url.deref())
+        .version(Version::HTTP_11)
         .body(body)
         .header("Authorization", auth_token)
         .header("Content-Length", content_length)
