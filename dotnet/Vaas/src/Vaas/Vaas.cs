@@ -216,7 +216,7 @@ public class Vaas : IDisposable, IVaas
 
         var response = WaitForResponseAsync(verdictResponse.Guid);
         await UploadStream(stream, verdictResponse.Url, verdictResponse.UploadToken, cancellationToken);
-        
+
         return new VaasVerdict(await response);
     }
     
@@ -224,6 +224,8 @@ public class Vaas : IDisposable, IVaas
     {
         using var requestContent = new StreamContent(stream);
         using var requestMessage = new HttpRequestMessage(HttpMethod.Put, url);
+        requestMessage.Version = HttpVersion.Version11;
+        requestMessage.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
         requestMessage.Content = requestContent;
         requestMessage.Headers.Authorization = new AuthenticationHeaderValue(token);
 
@@ -326,34 +328,15 @@ public class Vaas : IDisposable, IVaas
         }
 
         var response = WaitForResponseAsync(verdictResponse.Guid);
-        await UploadFile(path, verdictResponse.Url, verdictResponse.UploadToken);
+        await UploadFile(path, verdictResponse.Url, verdictResponse.UploadToken, cancellationToken);
 
         return new VaasVerdict(await response);
     }
 
-    private async Task UploadFile(string path, string url, string token)
+    private async Task UploadFile(string path, string url, string token, CancellationToken cancellationToken)
     {
         await using var fileStream = File.OpenRead(path);
-        using var streamContent = new StreamContent(fileStream);
-        using var request = new HttpRequestMessage(HttpMethod.Put, url);
-
-        request.Headers.Authorization = new AuthenticationHeaderValue(token);
-        request.Content = streamContent;
-        var httpResponse = await _uploadHttpClient.SendAsync(request);
-
-        if (!httpResponse.IsSuccessStatusCode)
-        {
-            var body = await httpResponse.Content.ReadAsStringAsync();
-            try
-            {
-                var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(body);
-                throw ProblemDetailsToException(problemDetails);
-            }
-            catch (Exception)
-            {
-                throw new VaasServerException("Server did not return ProblemDetails");
-            }
-        }
+        await UploadStream(fileStream, url, token, cancellationToken);
     }
 
     public async Task<List<VaasVerdict>> ForSha256ListAsync(IEnumerable<string> sha256List, CancellationToken cancellationToken)
