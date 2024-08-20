@@ -543,33 +543,23 @@ public class Vaas implements AutoCloseable {
 
     private CompletableFuture<Void> uploadFile(Path file, String url, String authToken)
             throws IOException, URISyntaxException {
-
-        var builder = HttpRequest
-                .newBuilder(new URI(url))
-                .header("Authorization", authToken)
-                .version(Version.HTTP_1_1)
-                .PUT(HttpRequest.BodyPublishers.ofFile(file));
-        var request = builder.build();
-
-        var futureResponse = this.httpClient
-                .sendAsync(request, HttpResponse.BodyHandlers.ofString());
-
-        return futureResponse.thenAccept(response -> {
-            if (response.statusCode() != 200) {
-                throwAsUnchecked(new IOException(
-                        "Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: "
-                                + response.body()));
-            }
-        });
+        var bodyPublisher = HttpRequest.BodyPublishers.ofFile(file);
+        return uploadInternal(bodyPublisher, url, authToken);
     }
 
     private CompletableFuture<Void> uploadStream(InputStream stream, long contentLength, String url, String authToken)
             throws URISyntaxException {
         var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(() -> stream), contentLength);
+        return uploadInternal(bodyPublisher, url, authToken);
+    }
+
+    private CompletableFuture<Void> uploadInternal(HttpRequest.BodyPublisher body, String url, String authToken)
+            throws URISyntaxException {
         var request = HttpRequest
                 .newBuilder(new URI(url))
                 .header("Authorization", authToken)
-                .PUT(bodyPublisher)
+                .version(Version.HTTP_1_1)
+                .PUT(body)
                 .build();
 
         var futureResponse = this.httpClient
