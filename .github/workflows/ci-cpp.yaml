@@ -1,10 +1,16 @@
 name: vaas-cpp-ci
 on:
   push:
+    branches:
+      - main
     paths:
       - "cpp/**"
       - ".github/workflows/ci-cpp.yaml"
+    tags:
+      - "cpp*"
   pull_request:
+    branches:
+    - main
     paths:
       - "cpp/**"
       - ".github/workflows/ci-cpp.yaml"
