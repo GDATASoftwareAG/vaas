@@ -31,16 +31,24 @@ public class ForSha256Options
 public interface IVaas
 {
     Task Connect(CancellationToken cancellationToken);
+
     Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null);
-    
+
     /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
     /// <exception cref="VaasServerException">The server encountered an internal error.</exception>
     /// <exception cref="T:System.Threading.Tasks.TaskCanceledException">The request failed due to timeout.</exception>
-    Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken, ForSha256Options? options = null);
-    
+    Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
+        ForSha256Options? options = null);
+
     Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null);
+
+    Task<VaasVerdict> ForStreamAsync(
+        Stream stream,
+        CancellationToken cancellationToken,
+        Dictionary<string, string>? verdictRequestAttributes = null
+    );
 }
 
 public class Vaas : IDisposable, IVaas
@@ -51,6 +59,7 @@ public class Vaas : IDisposable, IVaas
     private WebsocketClient AuthenticatedClient => GetAuthenticatedWebSocket();
 
     private readonly HttpClient _httpClient;
+
     // Uploads use a custom token instead of the identity provider token
     // TODO: Use the identity provider token for uploads
     private readonly HttpClient _uploadHttpClient = new();
@@ -76,8 +85,10 @@ public class Vaas : IDisposable, IVaas
     }
 
     private const string ProductName = "VaaS_C#_SDK";
-    private static string ProductVersion => Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
-    
+
+    private static string ProductVersion =>
+        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
+
     public async Task Connect(CancellationToken cancellationToken)
     {
         string token;
@@ -91,9 +102,11 @@ public class Vaas : IDisposable, IVaas
             {
                 EnsureSuccess(e.StatusCode.Value);
             }
+
             // How can this happen?
             throw new VaasClientException("Unknown authentication error", e);
         }
+
         _client = new WebsocketClient(_options.Url, WebsocketClientFactory);
         _client.ReconnectTimeout = null;
         _client.MessageReceived.Subscribe(HandleResponseMessage);
@@ -108,7 +121,7 @@ public class Vaas : IDisposable, IVaas
 
     private void HandleResponseMessage(ResponseMessage msg)
     {
-        if (msg.MessageType != WebSocketMessageType.Text) return;
+        if (msg.MessageType != WebSocketMessageType.Text || msg.Text == null) return;
         var message = JsonSerializer.Deserialize<Message>(msg.Text);
         TaskCompletionSource<VerdictResponse>? tcs;
         switch (message?.Kind)
@@ -123,6 +136,7 @@ public class Vaas : IDisposable, IVaas
                 }
                 else
                     AuthenticatedErrorOccured = true;
+
                 break;
 
             case "VerdictResponse":
@@ -132,14 +146,16 @@ public class Vaas : IDisposable, IVaas
                 {
                     return;
                 }
+
                 if (!_verdictResponses.TryRemove(verdictResponse.Guid, out tcs))
                 {
                     // Error: Server sent guid we are not waiting for, ignore it
                     return;
                 }
+
                 tcs.SetResult(verdictResponse);
                 break;
-            
+
             case "Error":
                 var webSocketErrorResponse = JsonSerializer.Deserialize<WebSocketErrorMessage>(msg.Text);
                 var requestId = webSocketErrorResponse?.RequestId;
@@ -147,6 +163,7 @@ public class Vaas : IDisposable, IVaas
                 {
                     return;
                 }
+
                 var problemDetails = webSocketErrorResponse?.ProblemDetails;
                 tcs.SetException(ProblemDetailsToException(problemDetails));
                 break;
@@ -156,9 +173,9 @@ public class Vaas : IDisposable, IVaas
     private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) => problemDetails?.Type switch
     {
         "VaasClientException" => new VaasClientException(problemDetails.Detail),
-        _=> new VaasServerException(problemDetails?.Detail)
+        _ => new VaasServerException(problemDetails?.Detail)
     };
-    
+
     private async Task Authenticate(string token)
     {
         var authenticationRequest = new AuthenticationRequest(token);
@@ -172,14 +189,16 @@ public class Vaas : IDisposable, IVaas
         }
     }
 
-    public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken, Dictionary<string, string>? verdictRequestAttributes = null)
+    public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
+        Dictionary<string, string>? verdictRequestAttributes = null)
     {
-        var verdictResponse = await ForUrlRequestAsync(new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
-        {
-            UseCache = _options.UseCache,
-            UseShed = _options.UseHashLookup,
-            VerdictRequestAttributes = verdictRequestAttributes
-        });
+        var verdictResponse = await ForUrlRequestAsync(
+            new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
+            {
+                UseCache = _options.UseCache,
+                UseShed = _options.UseHashLookup,
+                VerdictRequestAttributes = verdictRequestAttributes
+            });
         return new VaasVerdict(verdictResponse);
     }
 
@@ -219,7 +238,7 @@ public class Vaas : IDisposable, IVaas
 
         return new VaasVerdict(await response);
     }
-    
+
     private async Task UploadStream(Stream stream, string url, string token, CancellationToken cancellationToken)
     {
         using var requestContent = new StreamContent(stream);
@@ -247,7 +266,8 @@ public class Vaas : IDisposable, IVaas
         }
     }
 
-    public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken, ForSha256Options? options = null)
+    public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
+        ForSha256Options? options = null)
     {
         var verdictResponse = await ForRequestAsync(
             new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
@@ -260,26 +280,7 @@ public class Vaas : IDisposable, IVaas
             throw new JsonException("VerdictResponse is not valid");
         return new VaasVerdict(verdictResponse);
     }
-
-    private Task<HttpResponseMessage> GetAsync(Uri url, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return _httpClient.GetAsync(url, cancellationToken);
-        }
-        catch (HttpRequestException e)
-        {
-            // TODO: Parse ProblemDetails once implemented in server
-            throw new VaasServerException("Server-side error", e);
-        }
-    } 
     
-    private static void EnsureSuccess(HttpResponseMessage responseMessage)
-    {
-        // TODO: Parse ProblemDetails once implemented in server
-        EnsureSuccess(responseMessage.StatusCode);
-    }
-
     private static void EnsureSuccess(HttpStatusCode status)
     {
         switch ((int)status)
@@ -293,20 +294,6 @@ public class Vaas : IDisposable, IVaas
         }
     }
 
-    private static async Task<T> DeserializeResponse<T>(HttpResponseMessage responseMessage, CancellationToken cancellationToken)
-    {
-        var contentStream = await responseMessage.Content.ReadAsStreamAsync(cancellationToken);
-        try
-        {
-            return JsonSerializer.Deserialize<T>(contentStream) ?? throw
-                new VaasServerException("Server returned 'null'");
-        }
-        catch (Exception e) when (e is JsonException or ArgumentException)
-        {
-            throw new VaasServerException("Server-side error", e);
-        }
-    }
-    
     public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken, Dictionary<string, string>? verdictRequestAttributes = null)
     {
         var sha256 = Sha256CheckSum(path);
@@ -339,14 +326,18 @@ public class Vaas : IDisposable, IVaas
         await UploadStream(fileStream, url, token, cancellationToken);
     }
 
-    public async Task<List<VaasVerdict>> ForSha256ListAsync(IEnumerable<string> sha256List, CancellationToken cancellationToken)
+    public async Task<List<VaasVerdict>> ForSha256ListAsync(IEnumerable<string> sha256List,
+        CancellationToken cancellationToken)
     {
-        return (await Task.WhenAll(sha256List.Select(async sha256 => await ForSha256Async(new ChecksumSha256(sha256), cancellationToken)))).ToList();
+        return (await Task.WhenAll(sha256List.Select(async sha256 =>
+            await ForSha256Async(new ChecksumSha256(sha256), cancellationToken)))).ToList();
     }
 
-    public async Task<List<VaasVerdict>> ForFileListAsync(IEnumerable<string> fileList, CancellationToken cancellationToken)
+    public async Task<List<VaasVerdict>> ForFileListAsync(IEnumerable<string> fileList,
+        CancellationToken cancellationToken)
     {
-        return (await Task.WhenAll(fileList.Select(async filePath => await ForFileAsync(filePath, cancellationToken)))).ToList();
+        return (await Task.WhenAll(fileList.Select(async filePath => await ForFileAsync(filePath, cancellationToken))))
+            .ToList();
     }
 
     private async Task<VerdictResponse> ForRequestAsync(VerdictRequest verdictRequest)
@@ -356,7 +347,7 @@ public class Vaas : IDisposable, IVaas
 
         return await WaitForResponseAsync(verdictRequest.Guid);
     }
-    
+
     private async Task<VerdictResponse> ForStreamRequestAsync(VerdictRequestForStream verdictRequest)
     {
         var jsonString = JsonSerializer.Serialize(verdictRequest);

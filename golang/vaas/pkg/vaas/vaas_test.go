@@ -366,8 +366,8 @@ func TestVaas_ForStream_WithStreamFromUrl_RetunsMaliciousWithDetectionsAndMimeTy
 		t.Errorf("expected a detection, got empty string")
 	}
 
-	if verdict.Detection != "EICAR-Test-File" {
-		t.Errorf("detection has to be EICAR-Test-File, got %v", verdict.Detection)
+	if verdict.Detection != "EICAR-Test-File#462103" {
+		t.Errorf("detection has to be EICAR-Test-File#462103, got %v", verdict.Detection)
 	}
 }
 

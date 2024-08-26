@@ -66,7 +66,7 @@ func main() {
 	defer analysisCancel()
 
 	// Request a verdict for a specific file (replace "path-to-your-file" with the actual file path)
-	result, err := vaasClient.ForFile(analysisCtx, "1GB.testfile")
+	result, err := vaasClient.ForFile(analysisCtx, "path-to-your-file")
 	if err != nil {
 		log.Fatal(err)
 	}
