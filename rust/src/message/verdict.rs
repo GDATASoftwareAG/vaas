@@ -13,9 +13,15 @@ pub enum Verdict {
     /// No malicious content found.
     Clean,
     /// Malicious content found.
-    Malicious(String),
+    Malicious {
+        /// Name of the first detected malware in the sample
+        detection: String,
+    },
     /// Potentially unwanted content found.
-    Pup(String),
+    Pup {
+        /// Name of the first dected pup in the sample
+        detection: String,
+    },
     /// Unknown if clean or malicious.
     Unknown {
         /// Pre-signed URL to submit a file for further analysis to get a `Clean` or `Malicious` verdict.
@@ -38,18 +44,18 @@ impl TryFrom<&VerdictResponse> for Verdict {
     fn try_from(value: &VerdictResponse) -> Result<Self, Self::Error> {
         match value.verdict.as_str() {
             "Clean" => Ok(Verdict::Clean),
-            "Malicious" => Ok(Verdict::Malicious(
-                value
+            "Malicious" => Ok(Verdict::Malicious {
+                detection: value
                     .detection
                     .to_owned()
                     .unwrap_or(String::from("Generic.Malware")),
-            )),
-            "Pup" => Ok(Verdict::Pup(
-                value
+            }),
+            "Pup" => Ok(Verdict::Pup {
+                detection: value
                     .detection
                     .to_owned()
                     .unwrap_or(String::from("Generic.Pup")),
-            )),
+            }),
             "Unknown" => Ok(Verdict::Unknown {
                 upload_url: UploadUrl(value.url.to_owned().ok_or(NoUploadUrl)?),
             }),
