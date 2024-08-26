@@ -294,8 +294,7 @@ public class Vaas : IDisposable, IVaas
         }
     }
 
-    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
-        Dictionary<string, string>? verdictRequestAttributes = null)
+    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken, Dictionary<string, string>? verdictRequestAttributes = null)
     {
         var sha256 = Sha256CheckSum(path);
         var verdictResponse = await ForRequestAsync(
