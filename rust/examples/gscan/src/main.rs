@@ -58,8 +58,12 @@ async fn main() -> VResult<()> {
         .map(|f| Url::parse(f).unwrap_or_else(|_| panic!("Not a valid url: {}", f)))
         .collect::<Vec<Url>>();
 
-    let client_id = matches.get_one::<String>("client_id").unwrap();
-    let client_secret = matches.get_one::<String>("client_secret").unwrap();
+    let client_id = matches
+        .get_one::<String>("client_id")
+        .expect("--client_id or the enviroment variable CLIENT_ID must be set");
+    let client_secret = matches
+        .get_one::<String>("client_secret")
+        .expect("--client_secret or the enviroment variable CLIENT_SECRET must be set");
 
     let authenticator = ClientCredentials::new(client_id.to_owned(), client_secret.to_owned());
     let vaas_connection = Vaas::builder(authenticator).build()?.connect().await?;
@@ -80,11 +84,7 @@ fn print_verdicts<I: AsRef<str>>(i: I, v: &VResult<VaasVerdict>) {
     print!("{} -> ", i.as_ref());
     match v {
         Ok(v) => {
-            print!("{}", v.verdict);
-            if let Some(detection) = &v.detection {
-                print!(" {}", detection);
-            }
-            println!();
+            println!("{}", v.verdict);
         }
         Err(e) => {
             println!("{}", e.to_string());
