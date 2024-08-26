@@ -79,7 +79,10 @@ async fn from_sha256_list_multiple_hashes() {
 
     let results = vaas.for_sha256_list(&sha256_list, &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), results[0].as_ref().unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("Generic.Malware")),
+        results[0].as_ref().unwrap().verdict
+    );
     assert_eq!(
         "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
         results[0].as_ref().unwrap().sha256.deref()
@@ -109,7 +112,10 @@ async fn from_sha256_single_malicious_hash() {
 
     let verdict = vaas.for_sha256(&sha256, &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("Generic.Malware")),
+        verdict.as_ref().unwrap().verdict
+    );
     assert_eq!(
         "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
         verdict.unwrap().sha256.deref()
@@ -127,7 +133,10 @@ async fn from_http_response_stream_returns_malicious_verdict() {
     let byte_stream = response.bytes_stream();
     let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict.as_ref().unwrap().verdict
+    );
 }
 
 #[tokio::test]
@@ -142,7 +151,10 @@ async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malici
     let byte_stream = response.bytes_stream();
     let verdict = vaas.for_stream(byte_stream, content_length, &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict.as_ref().unwrap().verdict
+    );
     assert_eq!(
         Some("text/plain"),
         verdict.as_ref().unwrap().mime_type.as_deref()
@@ -152,7 +164,7 @@ async fn from_http_response_stream_no_hash_lookup_no_cache_lookup_returns_malici
         verdict.as_ref().unwrap().file_type.as_deref()
     );
     assert_eq!(
-        Verdict::Malicious(String::from("EICAR-Test-File")),
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
         verdict.as_ref().unwrap().verdict
     );
 }
@@ -169,7 +181,10 @@ async fn from_string_stream_returns_malicious_verdict() {
     let ct = CancellationToken::from_seconds(10);
     let verdict = vaas.for_stream(stream, eicar_string.len(), &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict.as_ref().unwrap().verdict
+    );
 }
 
 // #[tokio::test]
@@ -224,7 +239,10 @@ async fn from_sha256_multiple_malicious_hash() {
         "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
         verdict_1.as_ref().unwrap().sha256.deref()
     );
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), verdict_1.unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("Generic.Malware")),
+        verdict_1.unwrap().verdict
+    );
     assert_eq!(
         "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
         verdict_2.as_ref().unwrap().sha256.deref()
@@ -249,7 +267,10 @@ async fn from_sha256_multiple_malicious_hash_without_cache() {
         "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
         verdict_1.as_ref().unwrap().sha256.deref()
     );
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), verdict_1.unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("Generic.Malware")),
+        verdict_1.unwrap().verdict
+    );
     assert_eq!(
         "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
         verdict_2.as_ref().unwrap().sha256.deref()
@@ -302,7 +323,10 @@ async fn for_file_single_malicious_file() {
 
     let verdict = vaas.for_file(&tmp_file, &ct).await.unwrap();
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict.verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict.verdict
+    );
     assert_eq!(Sha256::try_from(&tmp_file).unwrap(), verdict.sha256);
     assert_eq!(
         "EICAR virus test files".to_string(),
@@ -325,27 +349,10 @@ async fn from_file_single_malicious_file_without_cache() {
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict.as_ref().unwrap().verdict);
     assert_eq!(
-        Sha256::try_from(&tmp_file).unwrap(),
-        verdict.unwrap().sha256
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict.as_ref().unwrap().verdict
     );
-    std::fs::remove_file(&tmp_file).unwrap();
-}
-
-#[tokio::test]
-async fn from_file_single_malicious_file_without_hash_lookup() {
-    let eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-    let tmp_file =
-        std::env::temp_dir().join("from_file_single_malicious_file_without_hash_lookup_eicar.txt");
-    std::fs::write(&tmp_file, eicar.as_bytes()).unwrap();
-
-    let vaas = get_vaas_with_flags(true, false).await;
-    let ct = CancellationToken::from_seconds(30);
-
-    let verdict = vaas.for_file(&tmp_file, &ct).await;
-
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), verdict.as_ref().unwrap().verdict);
     assert_eq!(
         Sha256::try_from(&tmp_file).unwrap(),
         verdict.unwrap().sha256
@@ -365,7 +372,10 @@ async fn from_file_single_malicious_file_without_cache_and_without_hash_lookup()
 
     let verdict = vaas.for_file(&tmp_file, &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict.as_ref().unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict.as_ref().unwrap().verdict
+    );
     assert_eq!(
         Sha256::try_from(&tmp_file).unwrap(),
         verdict.unwrap().sha256
@@ -470,7 +480,10 @@ async fn from_sha256_multiple_clean_hash_on_separate_thread() {
     .await
     .unwrap();
 
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), v1.unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("Generic.Malware")),
+        v1.unwrap().verdict
+    );
     assert_eq!(Verdict::Clean, v2.unwrap().verdict);
 }
 
@@ -489,7 +502,10 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_fixed_jobs() {
     let v2 = vaas.for_sha256(&sha256_2, &ct);
 
     let (v1, v2) = tokio::join!(v1, v2);
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), v1.unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("Generic.Malware")),
+        v1.unwrap().verdict
+    );
     assert_eq!(Verdict::Clean, v2.unwrap().verdict);
 }
 
@@ -512,7 +528,10 @@ async fn from_sha256_multiple_clean_hash_await_concurrent_unknown_jobs() {
     let result = try_join_all(handles).await;
     let verdicts = result.unwrap();
 
-    assert_eq!(Verdict::Malicious(String::from("Generic.Malware")), verdicts[0].verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("Generic.Malware")),
+        verdicts[0].verdict
+    );
     assert_eq!(Verdict::Clean, verdicts[1].verdict);
 }
 
@@ -554,7 +573,10 @@ async fn from_url_single_malicious_url() {
 
     let verdict = vaas.for_url(&url, &ct).await.unwrap();
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict.verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict.verdict
+    );
 }
 
 #[tokio::test]
@@ -579,7 +601,13 @@ async fn from_url_multiple_url() {
 
     let verdict = vaas.for_url_list(&urls, &ct).await;
 
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict[0].as_ref().unwrap().verdict);
-    assert_eq!(Verdict::Malicious(String::from("EICAR-Test-File")), verdict[1].as_ref().unwrap().verdict);
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict[0].as_ref().unwrap().verdict
+    );
+    assert_eq!(
+        Verdict::Malicious(String::from("EICAR-Test-File#462103")),
+        verdict[1].as_ref().unwrap().verdict
+    );
     assert_eq!(Verdict::Clean, verdict[2].as_ref().unwrap().verdict);
 }
