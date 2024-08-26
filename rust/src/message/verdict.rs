@@ -13,9 +13,15 @@ pub enum Verdict {
     /// No malicious content found.
     Clean,
     /// Malicious content found.
-    Malicious,
+    Malicious {
+        /// Name of the first detected malware in the sample
+        detection: String,
+    },
     /// Potentially unwanted content found.
-    Pup,
+    Pup {
+        /// Name of the first dected pup in the sample
+        detection: String,
+    },
     /// Unknown if clean or malicious.
     Unknown {
         /// Pre-signed URL to submit a file for further analysis to get a `Clean` or `Malicious` verdict.
@@ -38,25 +44,21 @@ impl TryFrom<&VerdictResponse> for Verdict {
     fn try_from(value: &VerdictResponse) -> Result<Self, Self::Error> {
         match value.verdict.as_str() {
             "Clean" => Ok(Verdict::Clean),
-            "Malicious" => Ok(Verdict::Malicious),
-            "Pup" => Ok(Verdict::Pup),
+            "Malicious" => Ok(Verdict::Malicious {
+                detection: value
+                    .detection
+                    .to_owned()
+                    .unwrap_or(String::from("Generic.Malware")),
+            }),
+            "Pup" => Ok(Verdict::Pup {
+                detection: value
+                    .detection
+                    .to_owned()
+                    .unwrap_or(String::from("Generic.Pup")),
+            }),
             "Unknown" => Ok(Verdict::Unknown {
                 upload_url: UploadUrl(value.url.to_owned().ok_or(NoUploadUrl)?),
             }),
-            v => Err(Error::InvalidVerdict(v.to_string())),
-        }
-    }
-}
-
-impl TryFrom<&str> for Verdict {
-    type Error = Error;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        // It is not possible to construct a Verdict::Unknown from a string, as the upload_url is not known.
-        match value {
-            "Clean" => Ok(Verdict::Clean),
-            "Malicious" => Ok(Verdict::Malicious),
-            "Pup" => Ok(Verdict::Pup),
             v => Err(Error::InvalidVerdict(v.to_string())),
         }
     }
