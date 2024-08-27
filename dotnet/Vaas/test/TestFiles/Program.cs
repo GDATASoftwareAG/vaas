@@ -1,4 +1,5 @@
 ﻿using Vaas;
+using Vaas.Authentication;
 
 if (args.Length == 0)
 {
@@ -11,11 +12,11 @@ var vaas = await AuthenticateWithCredentials();
 foreach (var path in args)
 {
     Console.WriteLine($"Testing {path}");
-    var verdict = await vaas.ForFileAsync(path);
+    var verdict = await vaas.ForFileAsync(path, CancellationToken.None);
     Console.WriteLine($"Tested {path}: Verdict {verdict}");
 }
 
-static async Task<Vaas.Vaas> AuthenticateWithCredentials()
+static async Task<Vaas.IVaas> AuthenticateWithCredentials()
 {
     DotNetEnv.Env.NoClobber().TraversePath().Load();
     var url = DotNetEnv.Env.GetString(
@@ -26,8 +27,20 @@ static async Task<Vaas.Vaas> AuthenticateWithCredentials()
         "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
     var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
-    var vaas = new Vaas.Vaas(new VaasOptions() { UseCache = false });
-    await vaas.ConnectWithCredentials(clientId, clientSecret, tokenEndpoint, url);
+    
+    var vaas = VaasFactory.Create(new VaasOptions()
+    {
+        Url = new Uri(url),
+        TokenUrl = tokenEndpoint,
+        Credentials = new TokenRequest
+        {
+            GrantType = GrantType.ClientCredentials,
+            ClientId = clientId,
+            ClientSecret = clientSecret,
+        }
+    });
+
+    await vaas.Connect(CancellationToken.None);
     Console.WriteLine($"Connected to Vaas {url}", url);
     return vaas;
 }
