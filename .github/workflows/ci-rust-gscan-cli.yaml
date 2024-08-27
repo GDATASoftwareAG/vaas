@@ -45,7 +45,6 @@ jobs:
           RUSTTARGET: x86_64-pc-windows-gnu
           EXTRA_FILES: "Readme.md"
           UPLOAD_MODE: none
-          ARCHIVE_NAME: "gscan.zip"
 
       - name: Github Release
         if: startsWith(github.ref, 'refs/tags/gscan')
