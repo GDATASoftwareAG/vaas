@@ -1,0 +1,70 @@
+name: vaas-rust-ci
+on:
+  push:
+    branches:
+      - main
+      - rust_example_1_0_0
+    paths:
+      - "rust/example/gdscan/**"
+      - ".github/workflows/ci-rust-gscan-cli.yaml"
+  pull_request:
+    branches:
+      - main
+      - rust_example_1_0_0
+    paths:
+      - "rust/example/gdscan/**"
+      - ".github/workflows/ci-rust-gscan-cli.yaml"
+  release:
+    types: [created]
+
+
+jobs:
+  release:
+    name: release ${{ matrix.target }}
+    runs-on: ubuntu-22.04 
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: Scan for Viruses
+        uses: ./.github/actions/vaas-scan-action
+        with:
+          VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
+          VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
+
+      - uses: actions/checkout@master
+      - name: build
+        id: build
+        uses: rust-build/rust-build.action@v1.4.5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          SRC_DIR: rust/examples/gscan
+          RUSTTARGET: x86_64-pc-windows-gnu
+          EXTRA_FILES: "Readme.md"
+          UPLOAD_MODE: none
+          ARCHIVE_NAME: "gscan.zip"
+
+      - name: Github Release
+        if: startsWith(github.ref, 'refs/tags/gscan')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build.outputs.BUILT_ARCHIVE }}       
+
+      - name: Attach file to release
+        if: startsWith(github.ref, 'refs/tags/gscan')
+        uses: svenstaro/upload-release-action@v2
+        id: attach_to_release
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ steps.build.outputs.BUILT_ARCHIVE }}
+          asset_name: gscan.zip
+          tag: ${{ github.ref }}
+          overwrite: true                       
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
