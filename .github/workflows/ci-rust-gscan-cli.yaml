@@ -7,6 +7,8 @@ on:
     paths:
       - "rust/example/gdscan/**"
       - ".github/workflows/ci-rust-gscan-cli.yaml"
+    tags:
+      - "gscan*"
   pull_request:
     branches:
       - main
