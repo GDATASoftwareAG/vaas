@@ -28,7 +28,6 @@ use Psr\Log\NullLogger;
 use Revolt\EventLoop;
 use VaasSdk\Authentication\AuthenticatorInterface;
 use VaasSdk\Exceptions\VaasClientException;
-use VaasSdk\Message\BaseMessage;
 use VaasSdk\Message\VaasVerdict;
 use WebSocket\BadOpcodeException;
 
