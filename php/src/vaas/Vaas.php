@@ -2,10 +2,8 @@
 
 namespace VaasSdk;
 
-use Amp\ByteStream\ReadableResourceStream;
 use Amp\ByteStream\ReadableStream;
 use Amp\DeferredCancellation;
-use Amp\Future;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
@@ -196,7 +194,7 @@ class Vaas
         if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
             $this->logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
 
-            $fileStream = new ReadableResourceStream(\fopen($path, 'r'));
+            $fileStream = \Amp\File\openFile($path, 'r');
             $fileSize = \filesize($path);
             
             return new VaasVerdict(
