@@ -10,6 +10,10 @@ on:
     paths:
       - "github-actions/cleanup-packages/**"
       - ".github/workflows/image-retention.yaml"
+  pull_request:
+      paths:
+      - "github-actions/cleanup-packages/**"
+      - ".github/workflows/image-retention.yaml"
   workflow_dispatch:
 
 jobs:
