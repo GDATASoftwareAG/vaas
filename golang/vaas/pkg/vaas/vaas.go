@@ -39,6 +39,14 @@ type Vaas interface {
 	ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error)
 }
 
+type websocketConnection interface {
+	io.Closer
+	ReadJSON(data any) error
+	WriteJSON(data any) error
+	SetWriteDeadline(add time.Time) error
+	WriteMessage(messageType int, data []byte) error
+}
+
 // Confer example for constants, pong handler, and ping ticker
 // https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
 const (
@@ -59,10 +67,9 @@ var (
 // vaas provides the implementation of the Vaas interface.
 type vaas struct {
 	logger              *log.Logger
-	websocketConnection *websocket.Conn
+	websocketConnection websocketConnection
 	openRequests        map[string]chan msg.VerdictResponse
 	requestChannel      chan msg.VerdictRequest
-	responseChannel     chan msg.VerdictResponse
 	sessionID           string
 	vaasURL             string
 	waitAuthenticated   sync.WaitGroup
@@ -74,12 +81,11 @@ type vaas struct {
 // The vaasURL parameter specifies the endpoint for the VaaS service.
 func New(options options.VaasOptions, vaasURL string) Vaas {
 	client := &vaas{
-		logger:          log.Default(),
-		options:         options,
-		vaasURL:         vaasURL,
-		requestChannel:  make(chan msg.VerdictRequest, 1),
-		responseChannel: make(chan msg.VerdictResponse),
-		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+		logger:         log.Default(),
+		options:        options,
+		vaasURL:        vaasURL,
+		requestChannel: make(chan msg.VerdictRequest, 1),
+		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -88,12 +94,11 @@ func New(options options.VaasOptions, vaasURL string) Vaas {
 // It represents a client for interacting with a Vaas service.
 func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 	client := &vaas{
-		logger:          log.Default(),
-		options:         options,
-		vaasURL:         "wss://gateway.production.vaas.gdatasecurity.de",
-		requestChannel:  make(chan msg.VerdictRequest, 1),
-		responseChannel: make(chan msg.VerdictResponse),
-		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+		logger:         log.Default(),
+		options:        options,
+		vaasURL:        "wss://gateway.production.vaas.gdatasecurity.de",
+		requestChannel: make(chan msg.VerdictRequest, 1),
+		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -115,8 +120,7 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (t
 		return nil, err
 	}
 
-	go v.sendRequests(ctx)
-	termChan = v.listenWebSocket(ctx)
+	termChan = v.serve(ctx)
 
 	return termChan, nil
 }
@@ -431,7 +435,7 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 	defer v.waitAuthenticated.Done()
 
 	connection, resp, err := websocket.DefaultDialer.DialContext(ctx, v.vaasURL, nil, nil)
-	if err == websocket.ErrBadHandshake {
+	if errors.Is(err, websocket.ErrBadHandshake) {
 		return fmt.Errorf("handshake failed with status {%d}", resp.StatusCode)
 	}
 	if err != nil {
@@ -471,6 +475,16 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 
 	v.sessionID = authResponse.SessionID
 	return nil
+}
+
+func (v *vaas) serve(ctx context.Context) <-chan error {
+	listenCtx, listenCancel := context.WithCancel(ctx)
+	go func() {
+		v.sendRequests(ctx)
+		listenCancel()
+	}()
+
+	return v.listenWebSocket(listenCtx)
 }
 
 func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string) (msg.VaasVerdict, error) {
@@ -589,6 +603,16 @@ func (v *vaas) sendRequests(ctx context.Context) {
 				if v.options.EnableLogs {
 					v.logger.Printf("Failed to send request %v", err)
 				}
+
+				v.openRequestsMutex.Lock()
+				requestChan, exists := v.openRequests[request.GetGUID()]
+				v.openRequestsMutex.Unlock()
+				if exists {
+					requestChan <- msg.VerdictResponse{
+						Verdict: msg.Error,
+					}
+				}
+
 				return
 			}
 		}
@@ -653,6 +677,8 @@ func (v *vaas) listenWebSocket(ctx context.Context) chan error {
 }
 
 func (v *vaas) readWebSocket(termChan chan<- error) {
+	defer v.failAllOpenRequests()
+
 	for {
 		var verdictResponse msg.VerdictResponse
 
@@ -694,7 +720,7 @@ func (v *vaas) readWebSocket(termChan chan<- error) {
 			return
 		}
 		// This error occurs if whe JSON response could not be parsed by the websocket.
-		if err == io.ErrUnexpectedEOF {
+		if errors.Is(err, io.ErrUnexpectedEOF) {
 			if v.options.EnableLogs {
 				v.logger.Printf("Temporarily failed to read from websocket: %v", err)
 			}
@@ -706,5 +732,16 @@ func (v *vaas) readWebSocket(termChan chan<- error) {
 		}
 		termChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
 		return
+	}
+}
+
+func (v *vaas) failAllOpenRequests() {
+	v.openRequestsMutex.Lock()
+	defer v.openRequestsMutex.Unlock()
+
+	for _, request := range v.openRequests {
+		request <- msg.VerdictResponse{
+			Verdict: msg.Error,
+		}
 	}
 }
