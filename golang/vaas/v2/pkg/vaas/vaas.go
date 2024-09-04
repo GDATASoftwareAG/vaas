@@ -65,7 +65,6 @@ type vaas struct {
 	websocketConnection *websocket.Conn
 	openRequests        map[string]chan msg.VerdictResponse
 	requestChannel      chan msg.VerdictRequest
-	responseChannel     chan msg.VerdictResponse
 	sessionID           string
 	vaasURL             string
 	waitAuthenticated   sync.WaitGroup
@@ -77,12 +76,11 @@ type vaas struct {
 // The vaasURL parameter specifies the endpoint for the VaaS service.
 func New(options options.VaasOptions, vaasURL string) Vaas {
 	client := &vaas{
-		logger:          log.Default(),
-		options:         options,
-		vaasURL:         vaasURL,
-		requestChannel:  make(chan msg.VerdictRequest, 1),
-		responseChannel: make(chan msg.VerdictResponse),
-		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+		logger:         log.Default(),
+		options:        options,
+		vaasURL:        vaasURL,
+		requestChannel: make(chan msg.VerdictRequest, 1),
+		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -91,12 +89,11 @@ func New(options options.VaasOptions, vaasURL string) Vaas {
 // It represents a client for interacting with a Vaas service.
 func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 	client := &vaas{
-		logger:          log.Default(),
-		options:         options,
-		vaasURL:         "wss://gateway.production.vaas.gdatasecurity.de",
-		requestChannel:  make(chan msg.VerdictRequest, 1),
-		responseChannel: make(chan msg.VerdictResponse),
-		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+		logger:         log.Default(),
+		options:        options,
+		vaasURL:        "wss://gateway.production.vaas.gdatasecurity.de",
+		requestChannel: make(chan msg.VerdictRequest, 1),
+		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -128,10 +125,23 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (e
 		return nil, err
 	}
 
-	errorChan = v.listenWebSocket()
-	go v.sendRequests()
+	errChan := make(chan error)
+	listenErrChan := v.listenWebSocket()
 
-	return errorChan, nil
+	sendErrChan := make(chan error, 1)
+	go func() {
+		sendErrChan <- v.sendRequests()
+	}()
+
+	go func() {
+		defer close(errChan)
+		select {
+		case errChan <- <-listenErrChan:
+		case errChan <- <-sendErrChan:
+		}
+	}()
+
+	return errChan, nil
 }
 
 // ForSha256 sends an analysis request for a file identified by its SHA256 hash to the Vaas server and returns the verdict.
@@ -598,17 +608,27 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 	return nil
 }
 
-func (v *vaas) sendRequests() {
+func (v *vaas) sendRequests() error {
 	for {
 		select {
 		case <-v.termChan:
-			return
+			return nil
 		case request := <-v.requestChannel:
 			if err := v.websocketConnection.WriteJSON(request); err != nil {
 				if v.options.EnableLogs {
 					v.logger.Printf("Failed to send request %v", err)
 				}
-				return
+
+				v.openRequestsMutex.Lock()
+				requestChan, exists := v.openRequests[request.GetGUID()]
+				v.openRequestsMutex.Unlock()
+				if exists {
+					requestChan <- msg.VerdictResponse{
+						Verdict: msg.Error,
+					}
+				}
+
+				return err
 			}
 		}
 	}
@@ -657,6 +677,7 @@ func (v *vaas) listenWebSocket() <-chan error {
 	go func(errorChan chan<- error) {
 		defer close(errorChan)
 		defer close(v.termChan)
+		defer v.failAllOpenRequests()
 
 		for {
 			var verdictResponse msg.VerdictResponse
@@ -715,4 +736,15 @@ func (v *vaas) listenWebSocket() <-chan error {
 	}(errorChan)
 
 	return errorChan
+}
+
+func (v *vaas) failAllOpenRequests() {
+	v.openRequestsMutex.Lock()
+	defer v.openRequestsMutex.Unlock()
+
+	for _, request := range v.openRequests {
+		request <- msg.VerdictResponse{
+			Verdict: msg.Error,
+		}
+	}
 }

@@ -62,7 +62,6 @@ type vaas struct {
 	websocketConnection *websocket.Conn
 	openRequests        map[string]chan msg.VerdictResponse
 	requestChannel      chan msg.VerdictRequest
-	responseChannel     chan msg.VerdictResponse
 	sessionID           string
 	vaasURL             string
 	waitAuthenticated   sync.WaitGroup
@@ -74,12 +73,11 @@ type vaas struct {
 // The vaasURL parameter specifies the endpoint for the VaaS service.
 func New(options options.VaasOptions, vaasURL string) Vaas {
 	client := &vaas{
-		logger:          log.Default(),
-		options:         options,
-		vaasURL:         vaasURL,
-		requestChannel:  make(chan msg.VerdictRequest, 1),
-		responseChannel: make(chan msg.VerdictResponse),
-		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+		logger:         log.Default(),
+		options:        options,
+		vaasURL:        vaasURL,
+		requestChannel: make(chan msg.VerdictRequest, 1),
+		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -88,12 +86,11 @@ func New(options options.VaasOptions, vaasURL string) Vaas {
 // It represents a client for interacting with a Vaas service.
 func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 	client := &vaas{
-		logger:          log.Default(),
-		options:         options,
-		vaasURL:         "wss://gateway.production.vaas.gdatasecurity.de",
-		requestChannel:  make(chan msg.VerdictRequest, 1),
-		responseChannel: make(chan msg.VerdictResponse),
-		openRequests:    make(map[string]chan msg.VerdictResponse, 0),
+		logger:         log.Default(),
+		options:        options,
+		vaasURL:        "wss://gateway.production.vaas.gdatasecurity.de",
+		requestChannel: make(chan msg.VerdictRequest, 1),
+		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
 	}
 	return client
 }
@@ -115,8 +112,13 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (t
 		return nil, err
 	}
 
-	go v.sendRequests(ctx)
-	termChan = v.listenWebSocket(ctx)
+	listenCtx, listenCancel := context.WithCancel(ctx)
+	go func() {
+		v.sendRequests(ctx)
+		listenCancel()
+	}()
+
+	termChan = v.listenWebSocket(listenCtx)
 
 	return termChan, nil
 }
@@ -589,6 +591,16 @@ func (v *vaas) sendRequests(ctx context.Context) {
 				if v.options.EnableLogs {
 					v.logger.Printf("Failed to send request %v", err)
 				}
+
+				v.openRequestsMutex.Lock()
+				requestChan, exists := v.openRequests[request.GetGUID()]
+				v.openRequestsMutex.Unlock()
+				if exists {
+					requestChan <- msg.VerdictResponse{
+						Verdict: msg.Error,
+					}
+				}
+
 				return
 			}
 		}
@@ -653,6 +665,8 @@ func (v *vaas) listenWebSocket(ctx context.Context) chan error {
 }
 
 func (v *vaas) readWebSocket(termChan chan<- error) {
+	defer v.failAllOpenRequests()
+
 	for {
 		var verdictResponse msg.VerdictResponse
 
@@ -706,5 +720,16 @@ func (v *vaas) readWebSocket(termChan chan<- error) {
 		}
 		termChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
 		return
+	}
+}
+
+func (v *vaas) failAllOpenRequests() {
+	v.openRequestsMutex.Lock()
+	defer v.openRequestsMutex.Unlock()
+
+	for _, request := range v.openRequests {
+		request <- msg.VerdictResponse{
+			Verdict: msg.Error,
+		}
 	}
 }
