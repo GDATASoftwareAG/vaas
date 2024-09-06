@@ -13,11 +13,11 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
     getenv("TOKEN_URL") ?: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 );
 
-$vaas = new Vaas(
-    getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de"
-);
+$vaas = (new Vaas())
+    ->withAuthenticator($authenticator)
+    ->withUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
+    ->build();
 
-$vaas->Connect($authenticator->getToken());
 $scanPath = getenv("SCAN_PATH");
 $vaasVerdict = $vaas->ForFile($scanPath);
 

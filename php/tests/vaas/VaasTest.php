@@ -3,7 +3,6 @@
 namespace VaasTesting;
 
 use Amp\ByteStream\Pipe;
-use Amp\ByteStream\WritableBuffer;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
@@ -36,6 +35,7 @@ use VaasSdk\VaasOptions;
 use WebSocket\BadOpcodeException;
 
 use function Amp\ByteStream\Internal\tryToCreateReadableStreamFromResource;
+use function Amp\delay;
 
 final class VaasTest extends TestCase
 {
@@ -79,7 +79,11 @@ final class VaasTest extends TestCase
 
     private function _getVaas(bool $useCache = false, bool $useHashLookup = true, LoggerInterface $logger = null): Vaas
     {
-        return new Vaas($_ENV["VAAS_URL"], $logger ?? $this->_getDebugLogger(), new VaasOptions($useCache, $useHashLookup));
+        return (new Vaas())
+            ->withUrl($_ENV["VAAS_URL"])
+            ->withLogger($logger ?? $this->_getDebugLogger())
+            ->withOptions(new VaasOptions($useCache, $useHashLookup))
+            ->build();
     }
 
     private function _getDebugLogger(): LoggerInterface
@@ -135,18 +139,18 @@ final class VaasTest extends TestCase
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
     }
 
+    public function testForCallingTheConnectFunctionWithoutBuildOrGivenConnection_ThrowsInvalidStateException(): void
+    {
+        $this->expectException(VaasInvalidStateException::class);
+        $vaas = new Vaas();
+        $vaas->Connect("");
+    }
+
     public function testForConnectingWithInvalidToken_ThrowsVaasAccessDeniedException()
     {
         $this->expectException(VaasAuthenticationException::class);
         $vaas = $this->_getVaas();
         $vaas->Connect("invalid");
-    }
-
-    public function testForRequestHashBeforeConnec_ThrowsVaasInvalidStateException()
-    {
-        $this->expectException(VaasInvalidStateException::class);
-        $vaas = $this->_getVaas();
-        $vaas->ForSha256(self::MALICIOUS_HASH, "someuuid");
     }
 
     public function testForSha256MaliciousSha256_GetsMaliciousResponse(): void
@@ -173,6 +177,24 @@ final class VaasTest extends TestCase
         $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
         $this->assertEquals($uuid, $verdict->Guid);
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
+    }
+
+    public function test60SecondsWaitAfterConnect_DoesNotLoseConnection(): void
+    {
+        $this->markTestSkipped("this test should not run in ci");
+        $uuid = $this->getUuid();
+        $cleanSha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+
+        $vaas = $this->_getVaas();
+        $vaas->Connect($this->getClientCredentialsGrantAuthenticator()->getToken());
+
+        delay(60);
+
+        $verdict = $vaas->ForSha256($cleanSha256, $uuid);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->Verdict);
+        $this->assertEquals($uuid, $verdict->Guid);
+        $this->assertEqualsIgnoringCase($cleanSha256, $verdict->Sha256);
     }
 
     public function testForSha256CleanSha256_GetsCleanResponse(): void
@@ -448,6 +470,24 @@ final class VaasTest extends TestCase
         $invalidUrl = "https://";
         $verdict = $vaas->ForUrl($invalidUrl);
         $this->_getDebugLogger()->info("Verdict for URL " . $invalidUrl . " is " . $verdict->Verdict);
+    }
+
+    /**
+     * @throws VaasAuthenticationException
+     * @throws TimeoutException
+     */
+    public function testForUrl_NoTokenNoAuthenticator_ThrowsInvalidStateException()
+    {
+        $vaas = $this->_getVaas();
+        $this->expectException(VaasInvalidStateException::class);
+        $vaas->ForUrl("http://gdata.de");
+    }
+
+    public function testForUrl_CallConnectWithoutToken_ThrowsInvalidStateException()
+    {
+        $vaas = $this->_getVaas();
+        $this->expectException(VaasInvalidStateException::class);
+        $vaas->Connect();
     }
 
     /**

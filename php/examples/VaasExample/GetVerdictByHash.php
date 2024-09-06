@@ -12,10 +12,10 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
     getenv("CLIENT_SECRET"),
     getenv("TOKEN_URL") ?: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 );
-$vaas = new Vaas(
-    getenv("VAAS_URL") ?: "wss://gateway.production.vaas.gdatasecurity.de"
-);
-$vaas->Connect($authenticator->getToken());
+$vaas = (new Vaas())
+    ->withAuthenticator($authenticator)
+    ->withUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
+    ->build();
 
 // EICAR
 $vaasVerdict = $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
