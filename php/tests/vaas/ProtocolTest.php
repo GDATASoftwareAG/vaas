@@ -42,12 +42,12 @@ final class ProtocolTest extends TestCase
         $fakeWebsocket->method('receive')
             ->willReturn(WebsocketMessage::fromText('{"kind": "AuthResponse", "success": true, "session_id": "id"}'));
         $vaasConnection = (new VaasConnection())
-            ->WithConnection($fakeWebsocket)
+            ->withConnection($fakeWebsocket)
             ->build();
 
         $vaas = (new Vaas())
-            ->WithUrl("wws://url.de")
-            ->WithVaasConnection($vaasConnection)
+            ->withUrl("wws://url.de")
+            ->withVaasConnection($vaasConnection)
             ->build();
         $vaas->Connect("valid");
         $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
@@ -64,12 +64,12 @@ final class ProtocolTest extends TestCase
         $fakeWebsocket->method('receive')
             ->willReturn(WebsocketMessage::fromText('{"kind": "AuthResponse", "success": true, "session_id": "id"}'));
         $vaasConnection = (new VaasConnection())
-            ->WithConnection($fakeWebsocket)
+            ->withConnection($fakeWebsocket)
             ->build();
 
         $vaas = (new Vaas())
-            ->WithUrl("wws://url.de")
-            ->WithVaasConnection($vaasConnection)
+            ->withUrl("wws://url.de")
+            ->withVaasConnection($vaasConnection)
             ->build();
         $vaas->Connect("valid");
     }

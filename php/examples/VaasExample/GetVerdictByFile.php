@@ -14,8 +14,8 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
 );
 
 $vaas = (new Vaas())
-    ->WithAuthenticator($authenticator)
-    ->WithUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
+    ->withAuthenticator($authenticator)
+    ->withUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
     ->build();
 
 $scanPath = getenv("SCAN_PATH");

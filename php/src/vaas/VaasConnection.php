@@ -54,27 +54,27 @@ class VaasConnection
         $this->loop->ignore();
     }
 
-    public function WithAuthenticator(AuthenticatorInterface $authenticator): VaasConnection {
+    public function withAuthenticator(AuthenticatorInterface $authenticator): VaasConnection {
         $this->authenticator = $authenticator;
         return $this;
     }
 
-    public function WithConnection(WebsocketConnection $WebSocketClient): VaasConnection {
+    public function withConnection(WebsocketConnection $WebSocketClient): VaasConnection {
         $this->WebSocketClient = $WebSocketClient;
         return $this;
     }
 
-    public function WithUrl(string $url): VaasConnection {
+    public function withUrl(string $url): VaasConnection {
         $this->url = $url;
         return $this;
     }
     
-    public function WithLogger(LoggerInterface $logger): VaasConnection {
+    public function withLogger(LoggerInterface $logger): VaasConnection {
         $this->logger = $logger;
         return $this;
     }
 
-    public function WithTimeout(int $timeoutInSeconds): VaasConnection {
+    public function withTimeout(int $timeoutInSeconds): VaasConnection {
         $this->waitTimeoutInSeconds = $timeoutInSeconds;
         return $this;
     }
