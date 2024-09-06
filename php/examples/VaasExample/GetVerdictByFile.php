@@ -14,10 +14,10 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
 );
 
 $vaas = (new Vaas())
+    ->WithAuthenticator($authenticator)
     ->WithUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
     ->build();
 
-$vaas->Connect($authenticator->getToken());
 $scanPath = getenv("SCAN_PATH");
 $vaasVerdict = $vaas->ForFile($scanPath);
 
