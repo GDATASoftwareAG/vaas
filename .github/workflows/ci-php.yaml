@@ -77,7 +77,7 @@ jobs:
       - name: setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
         with:
-          ph p-version: ${{ matrix.version}}
+          php-version: ${{ matrix.version }}
 
       - name: install php dependencies
         uses: php-actions/composer@v6
