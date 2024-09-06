@@ -1,4 +1,4 @@
-name: vaas-java-ci
+name: vaas-java-legacy-ci
 on:
   push:
     branches:
