@@ -111,7 +111,9 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
+          title: "`Failed workflow on for VaaS-SDK ${workflow}`"
+          job: ${{ toJson(job) }}
+          steps: ${{ toJson(steps) }}
 
   deploy:
     needs: build-php
@@ -160,4 +162,6 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          overwrite: "{title: `Failed workflow on for VaaS-SDK ${workflow}`, sections: [{activityTitle: 'build failed', activitySubtitle: `Failed workflow on for VaaS-SDK ${workflow}`, activityImage: 'https://adaptivecards.io/content/cats/3.png'}], themeColor: '#ff0000'}"
+          title: "`Failed codeql on for VaaS-SDK ${workflow}`"
+          job: ${{ toJson(job) }}
+          steps: ${{ toJson(steps) }}
