@@ -17,7 +17,7 @@ class Client
             getenv("TOKEN_URL") ?: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
         );
         $this->vaas = (new Vaas())
-            ->WithAuthenticator($authenticator)
+            ->withAuthenticator($authenticator)
             ->build();
     }
 

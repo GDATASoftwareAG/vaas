@@ -47,37 +47,37 @@ class Vaas
         }
     }
 
-    public function WithOptions(VaasOptions $options): self
+    public function withOptions(VaasOptions $options): self
     {
         $this->options = $options;
         return $this;
     }
 
-    public function WithHtttpClient(HttpClient $httpClient): self
+    public function withHtttpClient(HttpClient $httpClient): self
     {
         $this->httpClient = $httpClient;
         return $this;
     }
 
-    public function WithAuthenticator(AuthenticatorInterface $authenticator): self
+    public function withAuthenticator(AuthenticatorInterface $authenticator): self
     {
         $this->authenticator = $authenticator;
         return $this;
     }
 
-    public function WithLogger(LoggerInterface $logger): self
+    public function withLogger(LoggerInterface $logger): self
     {
         $this->logger = $logger;
         return $this;
     }
 
-    public function WithUrl(string $vaasUrl): self
+    public function withUrl(string $vaasUrl): self
     {
         $this->vaasUrl = $vaasUrl;
         return $this;
     }
 
-    public function WithVaasConnection(VaasConnection $vaasConnection): self
+    public function withVaasConnection(VaasConnection $vaasConnection): self
     {
         $this->vaasConnection = $vaasConnection;
         return $this;
@@ -90,14 +90,14 @@ class Vaas
         }
         if (!isset($this->vaasConnection) && isset($this->authenticator)) {
             $this->vaasConnection = (new VaasConnection())
-                ->WithAuthenticator($this->authenticator)
-                ->WithUrl($this->vaasUrl)
-                ->WithLogger($this->logger)
+                ->withAuthenticator($this->authenticator)
+                ->withUrl($this->vaasUrl)
+                ->withLogger($this->logger)
                 ->build();
         } else if (!isset($this->vaasConnection)) {
             $this->vaasConnection = (new VaasConnection())
-                ->WithUrl($this->vaasUrl)
-                ->WithLogger($this->logger)
+                ->withUrl($this->vaasUrl)
+                ->withLogger($this->logger)
                 ->build();    
         }
         if (!isset($this->options)) {
