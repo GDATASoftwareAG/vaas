@@ -6,6 +6,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/Noooste/websocket"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
 	"math/rand"
@@ -13,10 +16,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
-
-	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/pkg/messages"
@@ -75,6 +76,59 @@ func (tf *testFixture) tearDown(t *testing.T) {
 	if err := <-tf.termChan; err != nil {
 		t.Errorf("Error during close of websocket - %v", err)
 	}
+}
+
+func TestVaas_TerminateRequestsOnBrokenConnection(t *testing.T) {
+	vc := New(options.VaasOptions{
+		UseHashLookup: true,
+		UseCache:      false,
+	}, "").(*vaas)
+	vc.sessionID = "fake-id"
+
+	wsTerm := new(sync.WaitGroup)
+	wsTerm.Add(1)
+
+	waitJSONWrite := new(sync.WaitGroup)
+	waitJSONWrite.Add(1)
+
+	wsMock := mockWebSocket{
+		readJSONFunc: func(_ any) error {
+			wsTerm.Wait()
+			return &websocket.CloseError{Code: websocket.CloseNormalClosure}
+		},
+		writeJSONFunc: func(_ any) error {
+			waitJSONWrite.Done()
+			return nil
+		},
+	}
+	vc.websocketConnection = wsMock
+
+	ctx, cancel := context.WithCancel(context.Background())
+	termChan := vc.serve(ctx)
+
+	waitForRequest := new(sync.WaitGroup)
+	waitForRequest.Add(1)
+
+	go func() {
+		defer waitForRequest.Done()
+		verdict, err := vc.ForSha256(ctx, "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2")
+		if err != nil {
+			t.Errorf("ForSha256 failed - %v", err)
+		}
+
+		if verdict.Verdict != msg.Error {
+			t.Errorf("Unexpected verdict - got: %v, want: %v", verdict, msg.Error)
+		}
+	}()
+
+	// Wait until request is send
+	waitJSONWrite.Wait()
+	// Terminate websocket read
+	wsTerm.Done()
+	// Wait for error responseresponse
+	waitForRequest.Wait()
+	cancel()
+	<-termChan
 }
 
 func TestVaas_ForSha256(t *testing.T) {
