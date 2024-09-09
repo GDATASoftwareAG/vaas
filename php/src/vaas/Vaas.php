@@ -50,6 +50,7 @@ class Vaas
     private LoggerInterface $_logger;
     private VaasOptions $_options;
     private HttpClient $_httpClient;
+    private JsonMapper $_jsonMapper;
 
     /**
      */
@@ -61,6 +62,8 @@ class Vaas
         $this->_logger->debug("Url: " . $vaasUrl);
         if ($vaasUrl)
             $this->_vaasUrl = $vaasUrl;
+        $this->_jsonMapper = new JsonMapper();
+        $this->_jsonMapper->bStrictObjectTypeChecking = false;
     }
 
     /**
@@ -248,14 +251,14 @@ class Vaas
                 $result = $result->getContent();
                 $this->_logger->debug("Result", json_decode($result, true));
                 $genericObject = \json_decode($result);
-                $resultObject = (new JsonMapper())->map(
+                $resultObject = $this->_jsonMapper->map(
                     $genericObject,
-                    new BaseMessage()
+                    BaseMessage::class
                 );
                 if ($resultObject->kind == Kind::AuthResponse) {
-                    $authResponse = (new JsonMapper())->map(
+                    $authResponse = $this->_jsonMapper->map(
                         $genericObject,
-                        new AuthResponse()
+                        AuthResponse::class
                     );
                     $this->_logger->debug($result);
                     if ($authResponse->success === false) {
@@ -265,9 +268,9 @@ class Vaas
                 }
                 if ($resultObject->kind == Kind::Error) {
                     try {
-                        $errorResponse = (new JsonMapper())->map(
+                        $errorResponse = $this->_jsonMapper->map(
                             $genericObject,
-                            new Error()
+                            Error::class
                         );
                     } catch (JsonMapper_Exception $e) {
                         // Received error type is not deserializable to Error
@@ -320,13 +323,13 @@ class Vaas
                 $result = $result->getContent();
                 $this->_logger->debug("Result", json_decode($result, true));
                 $resultObject = json_decode($result);
-                $baseMessage = (new JsonMapper())->map(
+                $baseMessage = $this->_jsonMapper->map(
                     $resultObject,
                     new BaseMessage()
                 );
                 if ($baseMessage->kind == Kind::Error) {
                     try {
-                        $errorResponse = (new JsonMapper())->map(
+                        $errorResponse = $this->_jsonMapper->map(
                             $resultObject,
                             new Error()
                         );
@@ -340,7 +343,7 @@ class Vaas
                     continue;
                 }
 
-                $verdictResponse = (new JsonMapper())->map(
+                $verdictResponse = $this->_jsonMapper->map(
                     $resultObject,
                     new VerdictResponse()
                 );
