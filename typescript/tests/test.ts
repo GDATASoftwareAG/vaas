@@ -82,7 +82,7 @@ describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", fun
     const vaas = new Vaas();
     await expect(
         (async () => await vaas.connect(token, VAAS_URL))(),
-    ).rejects.toThrow("Vaas authentication failed")
+    ).rejects.toThrow("Vaas authentication failed");
   });
 });
 
