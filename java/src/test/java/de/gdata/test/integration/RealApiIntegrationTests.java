@@ -7,7 +7,6 @@ import static org.testng.AssertJUnit.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -19,6 +18,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,18 @@ public class RealApiIntegrationTests {
     private static final Dotenv dotenv = Dotenv.configure()
             .ignoreIfMissing()
             .load();
+    private static Vaas vaas;
+
+    @BeforeAll
+    public static void setUpAll() throws URISyntaxException, InterruptedException, IOException, ExecutionException,
+            TimeoutException, VaasAuthenticationException {
+        vaas = getVaasWithCredentials();
+    }
+
+    @AfterAll
+    public static void tearDownAll() throws Exception {
+        vaas.close();
+    }
 
     @Test
     public void clientCredentialsGrantAuthenticatorGetToken() throws Exception {
@@ -69,11 +82,9 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forSha256SingleMaliciousHash() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
 
         var verdict = vaas.forSha256(sha256);
-        vaas.disconnect();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
         assertTrue("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
@@ -82,11 +93,9 @@ public class RealApiIntegrationTests {
 
     @Test
     public void fromSha256SinglePupHash() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
 
         var verdict = vaas.forSha256(sha256);
-        vaas.disconnect();
 
         assertEquals(Verdict.PUP, verdict.getVerdict());
         assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
@@ -95,20 +104,21 @@ public class RealApiIntegrationTests {
 
     @Test
     @Tag("ErrorLogProducer")
-    public void illegalCredentials() throws URISyntaxException {
+    public void illegalCredentials() throws Exception {
         var clientId = "NON_EXISTING_CLIENT_ID";
         var clientSecret = "A wizard is never late, Frodo Baggins. He arrives precisely when he means to!";
         var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var client = new Vaas(config, authenticator);
-        assertThrows(Exception.class, client::connect);
+        try (var client = new Vaas(config, authenticator)) {
+            assertThrows(Exception.class, client::connect);
+        }
     }
 
     @Test
     @Tag("ErrorLogProducer")
-    public void wrongTokenUsedToAuthenticateWebsocket() throws URISyntaxException {
+    public void wrongTokenUsedToAuthenticateWebsocket() throws Exception {
         class MockAuthenticator implements IAuthenticator {
 
             @Override
@@ -121,14 +131,13 @@ public class RealApiIntegrationTests {
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new MockAuthenticator();
 
-        var client = new Vaas(config, authenticator);
-
-        assertThrows(VaasAuthenticationException.class, client::connect);
+        try (var client = new Vaas(config, authenticator)) {
+            assertThrows(VaasAuthenticationException.class, client::connect);
+        }
     }
 
     @Test
     public void forSha256MultipleHashes() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var sha256_1 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
         var sha256_2 = new Sha256("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e");
         var sha256_3 = new Sha256("1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df");
@@ -136,7 +145,6 @@ public class RealApiIntegrationTests {
         var verdict_1 = vaas.forSha256(sha256_1);
         var verdict_2 = vaas.forSha256(sha256_2);
         var verdict_3 = vaas.forSha256(sha256_3);
-        vaas.disconnect();
 
         assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
         assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
@@ -152,7 +160,6 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forSha256MultipleUnknownHash() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var sha256_1 = new Sha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
         var sha256_2 = new Sha256("11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
         var sha256_3 = new Sha256("11000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a");
@@ -160,7 +167,6 @@ public class RealApiIntegrationTests {
         var verdict_1 = vaas.forSha256(sha256_1);
         var verdict_2 = vaas.forSha256(sha256_2);
         var verdict_3 = vaas.forSha256(sha256_3);
-        vaas.disconnect();
 
         assertEquals(Verdict.UNKNOWN, verdict_1.getVerdict());
         assertEquals(Verdict.UNKNOWN, verdict_2.getVerdict());
@@ -178,11 +184,9 @@ public class RealApiIntegrationTests {
     public void forFileSingleMaliciousFile()
             throws Exception {
         var tmpFile = Sha256Test.writeEicar();
-        var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
-        vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
@@ -193,7 +197,6 @@ public class RealApiIntegrationTests {
     public void forFileSingleMaliciousFileWithVerdictRequestAttributes()
             throws Exception {
         var tmpFile = Sha256Test.writeEicar();
-        var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile, new VerdictRequestAttributes() {
@@ -201,7 +204,6 @@ public class RealApiIntegrationTests {
                 setTenantId("JavaSDK");
             }
         });
-        vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
@@ -214,11 +216,9 @@ public class RealApiIntegrationTests {
         byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
         Files.write(tmpFile, clean);
-        var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
-        vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
@@ -231,11 +231,9 @@ public class RealApiIntegrationTests {
         var unknown = getRandomString(50);
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "unknown.txt");
         Files.writeString(tmpFile, unknown);
-        var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
-        vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assert (verdict != null);
@@ -250,11 +248,9 @@ public class RealApiIntegrationTests {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "empty.txt");
 
         Files.write(tmpFile, clean);
-        var vaas = this.getVaasWithCredentials();
 
         var sha256 = new Sha256(tmpFile);
         var verdict = vaas.forFile(tmpFile);
-        vaas.disconnect();
 
         Files.deleteIfExists(tmpFile);
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
@@ -264,7 +260,6 @@ public class RealApiIntegrationTests {
     @Test
     @Disabled("Enable to test keep-alive")
     public void forFile_WorksWithBigSample() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var verdict = vaas.forFile(Path.of("/home/vscode/big.zip"));
         assert (verdict != null);
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
@@ -273,7 +268,6 @@ public class RealApiIntegrationTests {
     @Test
     @Disabled("Enable to test keep-alive")
     public void forSha256_WorksAfter40s() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
         var verdict = vaas.forSha256(sha256);
         assert (verdict != null);
@@ -286,22 +280,24 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forSha256_ThrowsConnectionClosed() throws Exception {
-        var vaas = this.getVaasWithCredentials();
-        vaas.disconnect();
-        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-        assertThrows(VaasConnectionClosedException.class, () -> {
-            vaas.forSha256(sha256);
-        });
+        try (var vaas = getVaasWithCredentials()) {
+            vaas.disconnect();
+            var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
+            assertThrows(VaasConnectionClosedException.class, () -> {
+                vaas.forSha256(sha256);
+            });
+        }
     }
 
     @Test
     public void forSha256_VaasCloses() throws Exception {
-        var vaas = this.getVaasWithCredentials();
-        vaas.close();
-        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-        assertThrows(VaasConnectionClosedException.class, () -> {
-            vaas.forSha256(sha256);
-        });
+        try (var vaas = getVaasWithCredentials()) {
+            vaas.close();
+            var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
+            assertThrows(VaasConnectionClosedException.class, () -> {
+                vaas.forSha256(sha256);
+            });
+        }
     }
 
     @Test
@@ -313,16 +309,16 @@ public class RealApiIntegrationTests {
 
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var config = new VaasConfig(new URI(vaasUrl));
-        var vaas = new Vaas(config, authenticator);
-        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-        assertThrows(VaasInvalidStateException.class, () -> {
-            vaas.forSha256(sha256);
-        });
+        try (var vaas = new Vaas(config, authenticator)) {
+            var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
+            assertThrows(VaasInvalidStateException.class, () -> {
+                vaas.forSha256(sha256);
+            });
+        }
     }
 
     @Test
     public void forUrlMultipleMaliciousUrls() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://secure.eicar.org/eicar.com");
         var url_2 = new URL("https://secure.eicar.org/eicar.com.txt");
         var url_3 = new URL("https://secure.eicar.org/eicar_com.zip");
@@ -330,7 +326,6 @@ public class RealApiIntegrationTests {
         var verdict_1 = vaas.forUrl(url_1);
         var verdict_2 = vaas.forUrl(url_2);
         var verdict_3 = vaas.forUrl(url_3);
-        vaas.disconnect();
 
         assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
         assertEquals(Verdict.MALICIOUS, verdict_2.getVerdict());
@@ -340,7 +335,6 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("ErrorLogProducer")
     public void forUrl_WithoutAuthority_ThrowsURISyntaxException() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://");
         var e = assertThrows(URISyntaxException.class, () -> vaas.forUrl(url_1));
         assertEquals(
@@ -350,7 +344,6 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forUrl_WithUrlNull_ThrowsNullPointerException() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         @SuppressWarnings("DataFlowIssue")
         var e = assertThrows(NullPointerException.class, () -> vaas.forUrl(null));
         assertEquals("url is marked non-null but is null", e.getMessage());
@@ -359,7 +352,6 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("ErrorLogProducer")
     public void forUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://upload.production.vaas.gdatasecurity.de/nocontenthere");
         var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
         assertEquals(
@@ -374,7 +366,6 @@ public class RealApiIntegrationTests {
 
         while (true) {
             try {
-                var vaas = this.getVaasWithCredentials();
                 while (true) {
                     var verdict_1 = vaas.forUrl(url_1);
                     assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
@@ -395,7 +386,6 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("ErrorLogProducer")
     public void forUrlMultipleCleanUrls() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");
         var url_2 = new URL("https://github.com/GDATASoftwareAG/vaas");
         var url_3 = new URL("https://github.com/GDATASoftwareAG/vaas");
@@ -406,7 +396,6 @@ public class RealApiIntegrationTests {
         var verdict_1 = vaas.forUrl(url_1, verdictRequestAttributes);
         var verdict_2 = vaas.forUrl(url_2, verdictRequestAttributes);
         var verdict_3 = vaas.forUrl(url_3, verdictRequestAttributes);
-        vaas.disconnect();
 
         assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
         assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
@@ -427,7 +416,6 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forSha256_WithSha256Null_ThrowsNullPointerException() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         @SuppressWarnings("DataFlowIssue")
         var e = assertThrows(NullPointerException.class, () -> vaas.forSha256(null));
         assertEquals("sha256 is marked non-null but is null", e.getMessage());
@@ -435,7 +423,6 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forStream_WithCleanString_ReturnsCleanVerdict() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var targetStream = new ByteArrayInputStream("I am clean".getBytes());
         var contentLength = targetStream.available();
         var verdict = vaas.forStream(targetStream, contentLength);
@@ -445,7 +432,6 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forStream_WithEicarString_ReturnsMaliciousVerdict() throws Exception {
-        var vaas = this.getVaasWithCredentials();
         var targetStream = new ByteArrayInputStream(
                 "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
         var contentLength = targetStream.available();
@@ -461,7 +447,6 @@ public class RealApiIntegrationTests {
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLengthLong();
 
-        var vaas = this.getVaasWithCredentials();
         var verdict = vaas.forStream(inputStream, contentLength);
 
         assertEquals(Verdict.CLEAN, verdict.getVerdict());
@@ -474,7 +459,6 @@ public class RealApiIntegrationTests {
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLengthLong();
 
-        var vaas = this.getVaasWithCredentials();
         var verdict = vaas.forStream(inputStream, contentLength);
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
@@ -492,7 +476,7 @@ public class RealApiIntegrationTests {
         return sb.toString();
     }
 
-    private Vaas getVaasWithCredentials()
+    private static Vaas getVaasWithCredentials()
             throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException,
             VaasAuthenticationException {
         var clientId = getEnvironmentKey("CLIENT_ID");
@@ -507,7 +491,7 @@ public class RealApiIntegrationTests {
         return client;
     }
 
-    private String getEnvironmentKey(String key) {
+    private static String getEnvironmentKey(String key) {
         var value = dotenv.get(key);
         if (value == null) {
             throw new IllegalArgumentException("Environment variable " + key + " must be set.");
@@ -522,7 +506,6 @@ public class RealApiIntegrationTests {
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLengthLong();
 
-        var vaas = this.getVaasWithCredentials();
         var verdict = vaas.forStream(inputStream, contentLength);
 
         assertNotNull(verdict.getDetection());
