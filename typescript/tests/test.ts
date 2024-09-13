@@ -15,6 +15,8 @@ import { Readable } from "stream";
 import axios, { AxiosResponse } from "axios";
 import {describe, expect, test} from '@jest/globals';
 import {AuthenticationResponse} from "../src/messages/authentication_response";
+import http from 'http';
+import https from 'https';
 
 function throwError(errorMessage: string): never {
   throw new Error(errorMessage);
@@ -66,7 +68,7 @@ async function createVaasWithResourceOwnerPasswordGrantAuthenticator() {
   return vaas;
 }
 
-const defaultTimeout: number = 130_000;
+const defaultTimeout: number = 10_000;
 
 const eicarSha256 =
   "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
@@ -83,6 +85,7 @@ describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", fun
     await expect(
         (async () => await vaas.connect(token, VAAS_URL))(),
     ).rejects.toThrow("Vaas authentication failed");
+    vaas.close();
   });
 });
 
@@ -207,7 +210,7 @@ describe("Test verdict requests", function () {
   });
 
 
-  xtest("if a large file is uploaded, it is detected as clean", async () => {
+  test.skip("if a large file is uploaded, it is detected as clean", async () => {
     const randomFileContent = await randomBytes.sync(1073741824);
     var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
@@ -305,6 +308,8 @@ describe("Test verdict requests", function () {
       "https://secure.eicar.org/eicar.com.txt",
       { responseType: "stream" },
     );
+    axios.defaults.httpAgent = new http.Agent({ keepAlive: false });
+    axios.defaults.httpAgent = new https.Agent({ keepAlive: false });
     const verdict = await vaas.forStream(response.data);
     expect(verdict.verdict).toBe("Malicious");
     expect(verdict.detection).not.toEqual("");
@@ -382,7 +387,8 @@ describe("Vaas", () => {
           (async () => await vaas.connect("token", VAAS_URL))(),
         ).rejects.toThrow(VaasAuthenticationError);
         await expect((vaas as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
+        vaas.close();
       });
     });
-  });
+  }); 
 });
