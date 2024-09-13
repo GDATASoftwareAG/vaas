@@ -40,14 +40,15 @@ import de.gdata.vaas.messages.VerdictRequestAttributes;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class RealApiIntegrationTests {
+    private static final Dotenv dotenv = Dotenv.configure()
+            .ignoreIfMissing()
+            .load();
+
     @Test
     public void clientCredentialsGrantAuthenticatorGetToken() throws Exception {
-        var dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
-        var clientId = dotenv.get("CLIENT_ID");
-        var clientSecret = dotenv.get("CLIENT_SECRET");
-        var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
+        var clientId = getEnvironmentKey("CLIENT_ID");
+        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
+        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var token = authenticator.getToken();
 
@@ -56,13 +57,10 @@ public class RealApiIntegrationTests {
 
     @Test
     public void resourceOwnerPasswordAuthenticatorGetToken() throws Exception {
-        var dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
-        var clientId = dotenv.get("VAAS_CLIENT_ID");
-        var username = dotenv.get("VAAS_USER_NAME");
-        var password = dotenv.get("VAAS_PASSWORD");
-        var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
+        var clientId = getEnvironmentKey("VAAS_CLIENT_ID");
+        var username = getEnvironmentKey("VAAS_USER_NAME");
+        var password = getEnvironmentKey("VAAS_PASSWORD");
+        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
         var authenticator = new ResourceOwnerPasswordGrantAuthenticator(clientId, username, password, tokenUrl);
         var token = authenticator.getToken();
 
@@ -85,28 +83,23 @@ public class RealApiIntegrationTests {
     @Test
     public void fromSha256SinglePupHash() throws Exception {
         var vaas = this.getVaasWithCredentials();
-        var sha256 = new
-        Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
+        var sha256 = new Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
 
         var verdict = vaas.forSha256(sha256);
         vaas.disconnect();
 
         assertEquals(Verdict.PUP, verdict.getVerdict());
         assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
-        .equalsIgnoreCase(verdict.getSha256()));
+                .equalsIgnoreCase(verdict.getSha256()));
     }
 
     @Test
     @Tag("ErrorLogProducer")
     public void illegalCredentials() throws URISyntaxException {
-
-        var dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
         var clientId = "NON_EXISTING_CLIENT_ID";
         var clientSecret = "A wizard is never late, Frodo Baggins. He arrives precisely when he means to!";
-        var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
-        var vaasUrl = dotenv.get("VAAS_URL");
+        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var client = new Vaas(config, authenticator);
@@ -124,10 +117,7 @@ public class RealApiIntegrationTests {
             }
         }
 
-        var dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
-        var vaasUrl = dotenv.get("VAAS_URL");
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
         var authenticator = new MockAuthenticator();
 
@@ -316,13 +306,10 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forSha256_ConnectHasntBeCalled() throws Exception {
-        var dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
-        var clientId = dotenv.get("CLIENT_ID");
-        var clientSecret = dotenv.get("CLIENT_SECRET");
-        var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
-        var vaasUrl = dotenv.get("VAAS_URL");
+        var clientId = getEnvironmentKey("CLIENT_ID");
+        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
+        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
 
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var config = new VaasConfig(new URI(vaasUrl));
@@ -508,19 +495,24 @@ public class RealApiIntegrationTests {
     private Vaas getVaasWithCredentials()
             throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException,
             VaasAuthenticationException {
-        var dotenv = Dotenv.configure()
-                .ignoreIfMissing()
-                .load();
-        var clientId = dotenv.get("CLIENT_ID");
-        var clientSecret = dotenv.get("CLIENT_SECRET");
-        var tokenUrl = new URI(dotenv.get("TOKEN_URL"));
-        var vaasUrl = dotenv.get("VAAS_URL");
+        var clientId = getEnvironmentKey("CLIENT_ID");
+        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
+        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
 
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
         var config = new VaasConfig(new URI(vaasUrl));
         var client = new Vaas(config, authenticator);
         client.connect();
         return client;
+    }
+
+    private String getEnvironmentKey(String key) {
+        var value = dotenv.get(key);
+        if (value == null) {
+            throw new IllegalArgumentException("Environment variable " + key + " must be set.");
+        }
+        return value;
     }
 
     @Test
