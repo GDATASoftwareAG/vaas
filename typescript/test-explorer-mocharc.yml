@@ -1,4 +1,0 @@
-file:
-  - '/workspaces/vaas/typescript/tests/test.ts'
-require: ts-node/esm
-
