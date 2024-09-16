@@ -49,7 +49,7 @@
   "scripts": {
     "build": "npx tsc",
     "watch": "npx tsc --watch",
-    "test": "jest --ci --forceExit --detectOpenHandles",
+    "test": "jest --ci --runInBand --detectOpenHandles",
     "format": "prettier --write src/** tests/**"
   }
 }
