@@ -391,7 +391,7 @@ describe("Vaas", () => {
       });
 
       afterAll(() => {
-        vaas.close(); // Beispiel für das Schließen einer Datenbankverbindung
+        vaas.close();
       });      
     });
   }); 
