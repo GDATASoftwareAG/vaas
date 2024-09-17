@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="GDataCyberDefense.Vaas" Version="7.5.2" />
+      <PackageReference Include="GDataCyberDefense.Vaas" Version="7.5.3" />
     </ItemGroup>
 
 </Project>
