@@ -329,21 +329,21 @@ describe("Vaas", () => {
   let webSocket: WebSocket.WebSocket;
   let vaas: Vaas;
 
-  beforeEach(async () => {
-    webSocket = {
-      readyState: WebSocket.WebSocket.CONNECTING as number,
-      onopen: () => { },
-      onclose: () => { },
-      onmessage: () => { },
-      send: (data: any) => { },
-      close: () => { },
-    } as any;
-    vaas = new Vaas((url) => webSocket);
-  });
+  // beforeEach(async () => {
+  //   webSocket = {
+  //     readyState: WebSocket.WebSocket.CONNECTING as number,
+  //     onopen: () => { },
+  //     onclose: () => { },
+  //     onmessage: () => { },
+  //     send: (data: any) => { },
+  //     close: () => { },
+  //   } as any;
+  //   vaas = new Vaas((url) => webSocket);
+  // });
 
-  afterEach(() => {
-    vaas.close();
-  });
+  // afterEach(() => {
+  //   vaas.close();
+  // });
 
   methodsAndParams.forEach(async ([method, params]) => {
     describe(`#${method}()`, () => {
@@ -392,18 +392,18 @@ describe("Vaas", () => {
         }
       });
 
-      // it("throws if authentication failed", async () => {
-      //   const v = new Vaas();
-      //   try {
-      //     await expect(
-      //       () => v.connect("token", VAAS_URL),
-      //     ).rejects.toThrow(VaasAuthenticationError);
-      //     await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
-      //   }
-      //   finally {
-      //     v.close();
-      //   }
-      // });
+      fit("throws if authentication failed", async () => {
+        const v = new Vaas();
+        try {
+          await expect(
+            () => v.connect("token", VAAS_URL),
+          ).rejects.toThrow(VaasAuthenticationError);
+          await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
+        }
+        finally {
+          v.close();
+        }
+      });
     });
   });
 });
