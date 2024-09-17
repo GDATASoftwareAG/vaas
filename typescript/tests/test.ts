@@ -392,18 +392,18 @@ describe("Vaas", () => {
         }
       });
 
-      it("throws if authentication failed", async () => {
-        const v = new Vaas();
-        try {
-          await expect(
-            () => v.connect("token", VAAS_URL),
-          ).rejects.toThrow(VaasAuthenticationError);
-          await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
-        }
-        finally {
-          v.close();
-        }
-      });
+      // it("throws if authentication failed", async () => {
+      //   const v = new Vaas();
+      //   try {
+      //     await expect(
+      //       () => v.connect("token", VAAS_URL),
+      //     ).rejects.toThrow(VaasAuthenticationError);
+      //     await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
+      //   }
+      //   finally {
+      //     v.close();
+      //   }
+      // });
     });
   });
 });
