@@ -12,9 +12,11 @@ import {
 import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
 import ResourceOwnerPasswordGrantAuthenticator from "../src/ResourceOwnerPasswordGrantAuthenticator";
 import { Readable } from "stream";
-import axios, { AxiosResponse } from "axios";
-import {describe, expect, test} from '@jest/globals';
-import {AuthenticationResponse} from "../src/messages/authentication_response";
+import axios from "axios";
+import { describe, expect, test } from '@jest/globals';
+import { AuthenticationResponse } from "../src/messages/authentication_response";
+import http from 'http';
+import https from 'https';
 
 function throwError(errorMessage: string): never {
   throw new Error(errorMessage);
@@ -45,8 +47,8 @@ async function createVaasWithClientCredentialsGrantAuthenticator() {
     CLIENT_SECRET,
     TOKEN_URL,
   );
-  let vaas = new Vaas();
-  let token = await authenticator.getToken();
+  const vaas = new Vaas();
+  const token = await authenticator.getToken();
   await vaas.connect(token, VAAS_URL);
   vaas.debug = true;
   return vaas;
@@ -66,7 +68,7 @@ async function createVaasWithResourceOwnerPasswordGrantAuthenticator() {
   return vaas;
 }
 
-const defaultTimeout: number = 130_000;
+const defaultTimeout: number = 50_000;
 
 const eicarSha256 =
   "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
@@ -81,8 +83,9 @@ describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", fun
     const token = "ThisIsAnInvalidToken";
     const vaas = new Vaas();
     await expect(
-        (async () => await vaas.connect(token, VAAS_URL))(),
+      () => vaas.connect(token, VAAS_URL),
     ).rejects.toThrow("Vaas authentication failed");
+    vaas.close();
   });
 });
 
@@ -121,7 +124,7 @@ describe("Test verdict requests", function () {
   beforeAll(() => {
     jest.setTimeout(defaultTimeout);
   });
-  
+
   test('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
     const verdict = await vaas.forSha256(
@@ -207,7 +210,7 @@ describe("Test verdict requests", function () {
   });
 
 
-  xtest("if a large file is uploaded, it is detected as clean", async () => {
+  test.skip("if a large file is uploaded, it is detected as clean", async () => {
     const randomFileContent = await randomBytes.sync(1073741824);
     var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
     const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
@@ -305,6 +308,8 @@ describe("Test verdict requests", function () {
       "https://secure.eicar.org/eicar.com.txt",
       { responseType: "stream" },
     );
+    axios.defaults.httpAgent = new http.Agent({ keepAlive: false });
+    axios.defaults.httpAgent = new https.Agent({ keepAlive: false });
     const verdict = await vaas.forStream(response.data);
     expect(verdict.verdict).toBe("Malicious");
     expect(verdict.detection).not.toEqual("");
@@ -331,57 +336,73 @@ describe("Vaas", () => {
       onclose: () => { },
       onmessage: () => { },
       send: (data: any) => { },
+      close: () => { },
     } as any;
     vaas = new Vaas((url) => webSocket);
   });
 
+  afterEach(() => {
+    vaas.close();
+  });
+
   methodsAndParams.forEach(async ([method, params]) => {
     describe(`#${method}()`, () => {
-      test("throws if connect() has not been called", async () => {
-        const vaas = new Vaas();
-        await expect((vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
+      it("throws if connect() has not been called", async () => {
+        await expect(() => (vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
       });
 
-      test("throws if connect() was not awaited", async () => {
+      it("throws if connect() was not awaited", async () => {
         vaas.connect("token", VAAS_URL);
         (webSocket as any).readyState = WebSocket.WebSocket.CONNECTING;
-        await expect((vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
+        await expect(() => (vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
       });
 
-      test("throws not authenticated if connect() was not awaited", async () => {
+      it("throws not authenticated if connect() was not awaited", async () => {
         vaas.connect("token", VAAS_URL);
         (webSocket as any).readyState = WebSocket.WebSocket.OPEN;
-        await expect((vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
-      });
-
-      test("throws if connection was closed", async () => {
-        const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-        vaas.close();
-        await expect((vaas as any)[method](...params)).rejects.toThrow(VaasConnectionClosedError);
+        await expect(() => (vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
       });
 
       test.skip("is rejected if connection is closed by server", async () => {
-          const authResponse = new AuthenticationResponse(
-              "sessionId",
-              true,
-              "Authenticated."
-          );
-          await vaas.connect("token", VAAS_URL);
-          (webSocket as any).readyState = WebSocket.WebSocket.OPEN;
-          webSocket.onopen!({} as any);
-          webSocket.onmessage!({data: JSON.stringify(authResponse)} as any);
-          const promise = (vaas as any)[method](...params);
-          webSocket.onclose!({wasClean: true} as any);
+        const authResponse = new AuthenticationResponse(
+          "sessionId",
+          true,
+          "Authenticated."
+        );
+        await vaas.connect("token", VAAS_URL);
+        (webSocket as any).readyState = WebSocket.WebSocket.OPEN;
+        webSocket.onopen!({} as any);
+        webSocket.onmessage!({ data: JSON.stringify(authResponse) } as any);
+        const promise = (vaas as any)[method](...params);
+        webSocket.onclose!({ wasClean: true } as any);
 
-          await expect(promise).rejects.toThrow(VaasConnectionClosedError);
+        await expect(promise).rejects.toThrow(VaasConnectionClosedError);
       });
 
-      test("throws if authentication failed", async () => {
-        const vaas = new Vaas();
-        await expect(
-          (async () => await vaas.connect("token", VAAS_URL))(),
-        ).rejects.toThrow(VaasAuthenticationError);
-        await expect((vaas as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
+      // Tests not using mock
+
+      it("throws if connection was closed", async () => {
+        const v = await createVaasWithClientCredentialsGrantAuthenticator();
+        try {
+          v.close();
+          await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasConnectionClosedError);
+        }
+        finally {
+          v.close();
+        }
+      });
+
+      it("throws if authentication failed", async () => {
+        const v = new Vaas();
+        try {
+          await expect(
+            () => v.connect("token", VAAS_URL),
+          ).rejects.toThrow(VaasAuthenticationError);
+          await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
+        }
+        finally {
+          v.close();
+        }
       });
     });
   });
