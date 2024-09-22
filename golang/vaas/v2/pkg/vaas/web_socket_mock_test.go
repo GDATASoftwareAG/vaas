@@ -10,6 +10,8 @@ type mockWebSocket struct {
 	writeJSONFunc        func(data any) error
 	setWriteDeadlineFunc func(add time.Time) error
 	writeMessageFunc     func(messageType int, data []byte) error
+	setReadDeadline      func(t time.Time) error
+	setPongHandler       func(h func(appData string) error)
 }
 
 func (m mockWebSocket) Close() error {
@@ -45,4 +47,17 @@ func (m mockWebSocket) WriteMessage(messageType int, data []byte) error {
 		return m.writeMessageFunc(messageType, data)
 	}
 	return nil
+}
+
+func (m mockWebSocket) SetReadDeadline(t time.Time) error {
+	if m.setReadDeadline != nil {
+		return m.setReadDeadline(t)
+	}
+	return nil
+}
+
+func (m mockWebSocket) SetPongHandler(h func(appData string) error) {
+	if m.setPongHandler != nil {
+		m.setPongHandler(h)
+	}
 }
