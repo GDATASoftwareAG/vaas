@@ -74,14 +74,11 @@ func (tf *testFixture) setUp(t *testing.T) Vaas {
 }
 
 func (tf *testFixture) tearDown(t *testing.T) {
-	go func() {
-		if err := <-tf.errorChan; err != nil {
-			t.Errorf("Error during close of websocket - %v", err)
-		}
-	}()
-
 	if err := tf.vaasClient.Close(); err != nil {
 		t.Fatalf("Failed to close vaas client - %v", err)
+	}
+	if err := <-tf.errorChan; err != nil {
+		t.Errorf("Error during close of websocket - %v", err)
 	}
 }
 
