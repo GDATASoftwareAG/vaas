@@ -47,6 +47,8 @@ type websocketConnection interface {
 	WriteJSON(data any) error
 	SetWriteDeadline(add time.Time) error
 	WriteMessage(messageType int, data []byte) error
+	SetReadDeadline(t time.Time) error
+	SetPongHandler(h func(appData string) error)
 }
 
 // Confer example for constants, pong handler, and ping ticker
@@ -455,12 +457,6 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 		return err
 	}
 
-	connection.SetPongHandler(func(string) error {
-		_ = connection.SetReadDeadline(time.Now().Add(pingPeriod + pongWait))
-		_ = connection.SetWriteDeadline(time.Now().Add(pingPeriod + pongWait))
-		return nil
-	})
-
 	v.websocketConnection = connection
 
 	var token string
@@ -468,6 +464,7 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 		return err
 	}
 
+	v.websocketConnection.SetWriteDeadline(time.Now().Add(writeWait))
 	if err = v.websocketConnection.WriteJSON(msg.AuthRequest{
 		Kind:  "AuthRequest",
 		Token: token,
@@ -475,6 +472,7 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 		return err
 	}
 
+	v.websocketConnection.SetReadDeadline(time.Now().Add(pongWait))
 	var authResponse msg.AuthResponse
 	if err = v.websocketConnection.ReadJSON(&authResponse); err != nil {
 		return err
@@ -492,11 +490,11 @@ func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticato
 
 func (v *vaas) serve() <-chan error {
 	errChan := make(chan error)
-	listenErrChan := v.listenWebSocket()
+	listenErrChan := v.readPump()
 
 	sendErrChan := make(chan error, 1)
 	go func() {
-		sendErrChan <- v.sendRequests()
+		sendErrChan <- v.writePump()
 	}()
 
 	go func() {
@@ -622,7 +620,17 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 	return nil
 }
 
-func (v *vaas) sendRequests() error {
+// A goroutine running writePump is started for each connection. The
+// application ensures that there is at most one writer to a connection by
+// executing all writes from this goroutine.
+// see https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
+func (v *vaas) writePump() error {
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		v.websocketConnection.Close()
+	}()
+
 	for {
 		select {
 		case <-v.termChan:
@@ -644,50 +652,21 @@ func (v *vaas) sendRequests() error {
 
 				return err
 			}
-		}
-	}
-}
-
-func (v *vaas) runPingTicker() {
-	ticker := time.NewTicker(pingPeriod)
-	defer func() {
-		if v.options.EnableLogs {
-			v.logger.Printf("Ping ticker stopped")
-		}
-		ticker.Stop()
-	}()
-
-	if v.options.EnableLogs {
-		v.logger.Printf("Starting ping ticker")
-	}
-
-	for {
-		select {
 		case <-ticker.C:
-			if err := v.websocketConnection.SetWriteDeadline(time.Now().Add(writeWait)); err != nil {
-				if v.options.EnableLogs {
-					v.logger.Printf("Ping failed during SetWriteDeadline, error: %v", err)
-				}
-				return
-			}
+			v.websocketConnection.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := v.websocketConnection.WriteMessage(websocket.PingMessage, nil); err != nil {
-				if v.options.EnableLogs {
-					v.logger.Printf("Ping failed during WriteMessage, error: %v", err)
-				}
-				return
+				return err
 			}
-		case <-v.termChan:
-			return
 		}
 	}
 }
 
-func (v *vaas) listenWebSocket() <-chan error {
+func (v *vaas) readPump() <-chan error {
 	errorChan := make(chan error, 1)
 	v.termChan = make(chan bool)
 
-	go v.runPingTicker()
-
+	v.websocketConnection.SetReadDeadline(time.Now().Add(pongWait))
+	v.websocketConnection.SetPongHandler(func(string) error { v.websocketConnection.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	go func(errorChan chan<- error) {
 		defer close(errorChan)
 		defer close(v.termChan)
