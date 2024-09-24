@@ -189,7 +189,13 @@ impl Connection {
 
     /// Request a verdict for a file.
     pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<VaasVerdict> {
-        let sha256 = Sha256::try_from(file)?;
+        let buf = tokio::fs::read(file).await?;
+        self.for_buf(buf, ct).await
+    }
+    
+    /// Request a verdict for a buffer.
+    pub async fn for_buf(&self, buf: Vec<u8>, ct: &CancellationToken) -> VResult<VaasVerdict> {
+        let sha256 = Sha256::from(buf.as_slice());
         let request = VerdictRequest::new(
             &sha256,
             self.session_id.clone(),
@@ -210,7 +216,7 @@ impl Connection {
         match verdict {
             Verdict::Unknown { upload_url } => {
                 Self::handle_unknown(
-                    file,
+                    buf,
                     &guid,
                     response,
                     upload_url,
@@ -224,7 +230,7 @@ impl Connection {
     }
 
     async fn handle_unknown(
-        file: &Path,
+        buf: Vec<u8>,
         guid: &str,
         response: VerdictResponse,
         upload_url: UploadUrl,
@@ -235,7 +241,7 @@ impl Connection {
             .upload_token
             .as_ref()
             .ok_or(Error::MissingAuthToken)?;
-        let response = upload_file(file, upload_url, auth_token).await?;
+        let response = upload_buf(buf, upload_url, auth_token).await?;
 
         if response.status() != 200 {
             return Err(Error::FailedUploadFile(
@@ -396,14 +402,13 @@ impl Connection {
     }
 }
 
-async fn upload_file(
-    file: &Path,
+async fn upload_buf(
+    buf: Vec<u8>,
     upload_url: UploadUrl,
     auth_token: &str,
 ) -> VResult<reqwest::Response> {
-    let body = tokio::fs::File::open(&file).await?;
-    let content_length = body.metadata().await?.len() as usize;
-    upload_internal(body, content_length, upload_url, auth_token).await
+    let content_length = buf.len() as usize;
+    upload_internal(buf, content_length, upload_url, auth_token).await
 }
 
 async fn upload_stream<S>(
