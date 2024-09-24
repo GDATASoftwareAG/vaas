@@ -15,8 +15,10 @@ use reqwest::{Body, Url, Version};
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
+use futures_util::{stream, TryStream};
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -288,6 +290,14 @@ impl Connection {
     ) -> Vec<VResult<VaasVerdict>> {
         let req = files.iter().map(|f| self.for_file(f, ct));
         join_all(req).await
+    }
+
+    pub async fn for_buf(&self, buf: Vec<u8>, ct: &CancellationToken) -> VResult<VaasVerdict> {
+        let len = buf.len();
+        let stream = stream::once(async move {
+            Ok::<Vec<u8>, std::io::Error>(buf)
+        });
+        self.for_stream(stream, len, ct).await
     }
 
     async fn for_request(
