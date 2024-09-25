@@ -22,12 +22,16 @@ pub struct Sha256(String);
 impl From<&[u8]> for Sha256 {
     fn from(value: &[u8]) -> Self {
         use sha2::Digest;
+        use std::fmt::Write;
 
         let mut hasher = sha2::Sha256::new();
-        hasher.update(&value);
+        hasher.update(value);
         let result = hasher.finalize();
 
-        let hex_string = result.iter().map(|b| format!("{b:02x}")).collect();
+        let hex_string = result.iter().fold(String::new(), |mut output, b| {
+            let _ = write!(output, "{b:02x}");
+            output
+        });
         Self(hex_string)
     }
 }

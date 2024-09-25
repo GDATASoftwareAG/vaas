@@ -1,4 +1,4 @@
-use crate::error::VResult;
+use super::VerdictRequest;
 use crate::message::kind::Kind;
 use serde::{Deserialize, Serialize};
 
@@ -21,11 +21,10 @@ impl VerdictRequestForStream {
             use_shed,
         }
     }
+}
 
-    pub fn to_json(&self) -> VResult<String> {
-        serde_json::to_string(self).map_err(|e| e.into())
-    }
-    pub fn guid(&self) -> &str {
+impl VerdictRequest for VerdictRequestForStream {
+    fn guid(&self) -> &str {
         &self.guid
     }
 }
