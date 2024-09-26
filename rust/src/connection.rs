@@ -477,3 +477,65 @@ impl Drop for Connection {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::connection::UploadData;
+    use crate::Sha256;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
+    fn get_test_file(content: &[u8]) -> NamedTempFile {
+        let temp = tempfile::Builder::new().rand_bytes(16).tempfile().unwrap();
+        temp.as_file().write_all(content).unwrap();
+        temp
+    }
+
+    #[tokio::test]
+    async fn upload_data_get_len_with_buf() {
+        let buf = vec![0xFF, 0x00, 0x12];
+        assert_eq!(UploadData::len(&buf).await.unwrap(), 3);
+    }
+
+    #[tokio::test]
+    async fn upload_data_get_sha256_with_buf() {
+        let buf = vec![0xFF, 0x00, 0x12];
+        let expected_hash: Sha256 =
+            "3fd57ceececda401062f2d1a9d2d8d6944a12277125d61c7c230865d2e758dc8"
+                .try_into()
+                .unwrap();
+        assert_eq!(UploadData::get_sha256(&buf).unwrap(), expected_hash);
+    }
+
+    #[tokio::test]
+    async fn upload_data_to_body_with_buf() {
+        let buf = vec![0xFF, 0x00, 0x12];
+        let body = UploadData::to_body(buf.clone()).await.unwrap();
+        assert_eq!(body.as_bytes().unwrap(), buf.as_slice());
+    }
+
+    #[tokio::test]
+    async fn upload_data_get_len_with_file() {
+        let file = get_test_file(&[0x00, 0x01, 0x02]);
+        assert_eq!(UploadData::len(&file.path()).await.unwrap(), 3);
+    }
+
+    #[tokio::test]
+    async fn upload_data_get_sha256_with_file() {
+        let file = get_test_file(&[0xFF, 0x00, 0x12]);
+        let expected_hash: Sha256 =
+            "3fd57ceececda401062f2d1a9d2d8d6944a12277125d61c7c230865d2e758dc8"
+                .try_into()
+                .unwrap();
+        assert_eq!(UploadData::get_sha256(&file.path()).unwrap(), expected_hash);
+    }
+
+    #[tokio::test]
+    async fn upload_data_to_body_with_file() {
+        let content = &[0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+        let file = get_test_file(content);
+        let body = UploadData::to_body(file.path()).await.unwrap();
+        // File uses a streaming interface, so as_bytes() should return None
+        assert_eq!(body.as_bytes(), None);
+    }
+}
