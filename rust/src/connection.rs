@@ -173,30 +173,6 @@ impl Connection {
 
         match verdict {
             Verdict::Unknown { upload_url } => {
-                struct StreamUploadable<S> {
-                    stream: S,
-                    content_length: u64,
-                }
-
-                impl<S> UploadData for StreamUploadable<S>
-                where
-                    S: futures_util::stream::TryStream + Send + Sync + 'static,
-                    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-                    Bytes: From<S::Ok>,
-                {
-                    fn get_sha256(&self) -> VResult<Sha256> {
-                        panic!("Stream cannot compute SHA256")
-                    }
-
-                    async fn len(&self) -> VResult<u64> {
-                        Ok(self.content_length)
-                    }
-
-                    async fn to_body(self) -> VResult<Body> {
-                        Ok(Body::wrap_stream(self.stream))
-                    }
-                }
-
                 let data = StreamUploadable {
                     stream,
                     content_length: content_length as u64,
@@ -443,6 +419,30 @@ impl UploadData for Vec<u8> {
     }
 }
 
+struct StreamUploadable<S> {
+    stream: S,
+    content_length: u64,
+}
+
+impl<S> UploadData for StreamUploadable<S>
+where
+    S: futures_util::stream::TryStream + Send + Sync + 'static,
+    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+    Bytes: From<S::Ok>,
+{
+    fn get_sha256(&self) -> VResult<Sha256> {
+        panic!("Stream cannot compute SHA256")
+    }
+
+    async fn len(&self) -> VResult<u64> {
+        Ok(self.content_length)
+    }
+
+    async fn to_body(self) -> VResult<Body> {
+        Ok(Body::wrap_stream(self.stream))
+    }
+}
+
 async fn upload_internal(
     data: impl UploadData,
     upload_url: UploadUrl,
@@ -480,8 +480,9 @@ impl Drop for Connection {
 
 #[cfg(test)]
 mod tests {
-    use crate::connection::UploadData;
+    use crate::connection::{StreamUploadable, UploadData};
     use crate::Sha256;
+    use futures_util::stream;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -536,6 +537,43 @@ mod tests {
         let file = get_test_file(content);
         let body = UploadData::to_body(file.path()).await.unwrap();
         // File uses a streaming interface, so as_bytes() should return None
+        assert_eq!(body.as_bytes(), None);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn upload_data_get_sha256_with_stream() {
+        let stream =
+            stream::once(async move { Ok::<Vec<u8>, std::io::Error>(vec![0xFF, 0x00, 0x12]) });
+        let stream = StreamUploadable {
+            stream,
+            content_length: 3,
+        };
+        // Should panic, stream doesn't know its hash
+        UploadData::get_sha256(&stream).unwrap();
+    }
+
+    #[tokio::test]
+    async fn upload_data_get_len_with_stream() {
+        let stream =
+            stream::once(async move { Ok::<Vec<u8>, std::io::Error>(vec![0xFF, 0x00, 0x12]) });
+        let stream = StreamUploadable {
+            stream,
+            content_length: 3,
+        };
+        assert_eq!(UploadData::len(&stream).await.unwrap(), 3);
+    }
+
+    #[tokio::test]
+    async fn upload_data_to_body_with_stream() {
+        let stream =
+            stream::once(async move { Ok::<Vec<u8>, std::io::Error>(vec![0xFF, 0x00, 0x12]) });
+        let stream = StreamUploadable {
+            stream,
+            content_length: 3,
+        };
+        let body = UploadData::to_body(stream).await.unwrap();
+        // Stream uses a streaming interface, so as_bytes() should return None
         assert_eq!(body.as_bytes(), None);
     }
 }
