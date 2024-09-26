@@ -1,6 +1,7 @@
 //! Implements a SHA256 structure that guarantees that a given hash string is in the correct format.
 
 use regex::Regex;
+use std::fmt::Write;
 use std::path::{Path, PathBuf};
 use std::{convert::TryFrom, fmt, ops::Deref};
 
@@ -46,15 +47,7 @@ impl TryFrom<&PathBuf> for Sha256 {
     type Error = crate::error::Error;
 
     fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
-        use sha2::Digest;
-        let bytes = std::fs::read(value)?;
-
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(&bytes);
-        let result = hasher.finalize();
-
-        let hex_string = result.iter().map(|b| format!("{b:02x}")).collect();
-        Ok(Self(hex_string))
+        Self::try_from(value.as_path())
     }
 }
 
@@ -62,7 +55,24 @@ impl TryFrom<&Path> for Sha256 {
     type Error = crate::error::Error;
 
     fn try_from(value: &Path) -> Result<Self, Self::Error> {
-        Self::try_from(&value.to_path_buf())
+        let bytes = std::fs::read(value)?;
+        Ok(bytes.as_slice().into())
+    }
+}
+
+impl From<&[u8]> for Sha256 {
+    fn from(bytes: &[u8]) -> Self {
+        use sha2::Digest;
+
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(bytes);
+        let result = hasher.finalize();
+
+        let hex_string = result.iter().fold(String::new(), |mut output, b| {
+            let _ = write!(output, "{b:02x}");
+            output
+        });
+        Self(hex_string)
     }
 }
 

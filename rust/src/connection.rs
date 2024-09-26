@@ -15,10 +15,9 @@ use reqwest::{Body, Url, Version};
 use std::convert::TryFrom;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use futures_util::{stream, TryStream};
+use tokio::fs::File;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -129,6 +128,20 @@ impl Connection {
         VaasVerdict::try_from(response)
     }
 
+    /// Request verdicts for a list of SHA256 file hashes.
+    /// The order of the output is the same order as the provided input.
+    pub async fn for_sha256_list(
+        &self,
+        sha256_list: &[Sha256],
+        ct: &CancellationToken,
+    ) -> Vec<VResult<VaasVerdict>> {
+        let req = sha256_list
+            .iter()
+            .map(|sha256| self.for_sha256(sha256, ct))
+            .collect::<Vec<_>>();
+        join_all(req).await
+    }
+
     /// Request a verdict for a SHA256 file hash.
     pub async fn for_stream<S>(
         &self,
@@ -160,9 +173,37 @@ impl Connection {
 
         match verdict {
             Verdict::Unknown { upload_url } => {
-                Self::handle_unknown_stream(
+                struct StreamUploadable<S> {
+                    stream: S,
+                    content_length: u64,
+                }
+
+                impl<S> UploadData for StreamUploadable<S>
+                where
+                    S: futures_util::stream::TryStream + Send + Sync + 'static,
+                    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+                    Bytes: From<S::Ok>,
+                {
+                    fn get_sha256(&self) -> VResult<Sha256> {
+                        panic!("Stream cannot compute SHA256")
+                    }
+
+                    async fn len(&self) -> VResult<u64> {
+                        Ok(self.content_length)
+                    }
+
+                    async fn to_body(self) -> VResult<Body> {
+                        Ok(Body::wrap_stream(self.stream))
+                    }
+                }
+
+                let data = StreamUploadable {
                     stream,
-                    content_length,
+                    content_length: content_length as u64,
+                };
+
+                Self::handle_unknown(
+                    data,
                     &guid,
                     response,
                     upload_url,
@@ -175,23 +216,34 @@ impl Connection {
         }
     }
 
-    /// Request verdicts for a list of SHA256 file hashes.
+    /// Request a verdict for a file.
+    pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<VaasVerdict> {
+        self.for_generic(file, ct).await
+    }
+
+    /// Request a verdict for a list of files.
     /// The order of the output is the same order as the provided input.
-    pub async fn for_sha256_list(
+    pub async fn for_file_list(
         &self,
-        sha256_list: &[Sha256],
+        files: &[PathBuf],
         ct: &CancellationToken,
     ) -> Vec<VResult<VaasVerdict>> {
-        let req = sha256_list
-            .iter()
-            .map(|sha256| self.for_sha256(sha256, ct))
-            .collect::<Vec<_>>();
+        let req = files.iter().map(|f| self.for_file(f, ct));
         join_all(req).await
     }
 
-    /// Request a verdict for a file.
-    pub async fn for_file(&self, file: &Path, ct: &CancellationToken) -> VResult<VaasVerdict> {
-        let sha256 = Sha256::try_from(file)?;
+    /// Request a verdict for a blob of bytes.
+    pub async fn for_buf(&self, buf: Vec<u8>, ct: &CancellationToken) -> VResult<VaasVerdict> {
+        self.for_generic(buf, ct).await
+    }
+
+    /// for_generic uploads all types that implement `UploadData`
+    async fn for_generic(
+        &self,
+        data: impl UploadData,
+        ct: &CancellationToken,
+    ) -> VResult<VaasVerdict> {
+        let sha256 = data.get_sha256()?;
         let request = VerdictRequest::new(
             &sha256,
             self.session_id.clone(),
@@ -212,7 +264,7 @@ impl Connection {
         match verdict {
             Verdict::Unknown { upload_url } => {
                 Self::handle_unknown(
-                    file,
+                    data,
                     &guid,
                     response,
                     upload_url,
@@ -226,7 +278,7 @@ impl Connection {
     }
 
     async fn handle_unknown(
-        file: &Path,
+        data: impl UploadData,
         guid: &str,
         response: VerdictResponse,
         upload_url: UploadUrl,
@@ -237,7 +289,7 @@ impl Connection {
             .upload_token
             .as_ref()
             .ok_or(Error::MissingAuthToken)?;
-        let response = upload_file(file, upload_url, auth_token).await?;
+        let response = upload_internal(data, upload_url, auth_token).await?;
 
         if response.status() != 200 {
             return Err(Error::FailedUploadFile(
@@ -248,56 +300,6 @@ impl Connection {
 
         let resp = Self::wait_for_response(guid, result_channel, ct).await?;
         VaasVerdict::try_from(resp)
-    }
-
-    async fn handle_unknown_stream<S>(
-        stream: S,
-        content_length: usize,
-        guid: &str,
-        response: VerdictResponse,
-        upload_url: UploadUrl,
-        result_channel: &mut ResultChannelRx,
-        ct: &CancellationToken,
-    ) -> Result<VaasVerdict, Error>
-    where
-        S: futures_util::stream::TryStream + Send + Sync + 'static,
-        S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-        Bytes: From<S::Ok>,
-    {
-        let auth_token = response
-            .upload_token
-            .as_ref()
-            .ok_or(Error::MissingAuthToken)?;
-        let response = upload_stream(stream, content_length, upload_url, auth_token).await?;
-
-        if response.status() != 200 {
-            return Err(Error::FailedUploadFile(
-                response.status(),
-                response.text().await.expect("failed to get payload"),
-            ));
-        }
-
-        let resp = Self::wait_for_response(guid, result_channel, ct).await?;
-        VaasVerdict::try_from(resp)
-    }
-
-    /// Request a verdict for a list of files.
-    /// The order of the output is the same order as the provided input.
-    pub async fn for_file_list(
-        &self,
-        files: &[PathBuf],
-        ct: &CancellationToken,
-    ) -> Vec<VResult<VaasVerdict>> {
-        let req = files.iter().map(|f| self.for_file(f, ct));
-        join_all(req).await
-    }
-
-    pub async fn for_buf(&self, buf: Vec<u8>, ct: &CancellationToken) -> VResult<VaasVerdict> {
-        let len = buf.len();
-        let stream = stream::once(async move {
-            Ok::<Vec<u8>, std::io::Error>(buf)
-        });
-        self.for_stream(stream, len, ct).await
     }
 
     async fn for_request(
@@ -406,37 +408,48 @@ impl Connection {
     }
 }
 
-async fn upload_file(
-    file: &Path,
+trait UploadData {
+    fn get_sha256(&self) -> VResult<Sha256>;
+    async fn len(&self) -> VResult<u64>;
+    async fn to_body(self) -> VResult<Body>;
+}
+
+impl UploadData for &Path {
+    fn get_sha256(&self) -> VResult<Sha256> {
+        (*self).try_into()
+    }
+
+    async fn len(&self) -> VResult<u64> {
+        Ok(self.metadata()?.len())
+    }
+
+    async fn to_body(self) -> VResult<Body> {
+        let stream = File::open(self).await?;
+        Ok(stream.into())
+    }
+}
+
+impl UploadData for Vec<u8> {
+    fn get_sha256(&self) -> VResult<Sha256> {
+        Ok(self.as_slice().into())
+    }
+
+    async fn len(&self) -> VResult<u64> {
+        Ok(self.len() as u64)
+    }
+
+    async fn to_body(self) -> VResult<Body> {
+        Ok(self.into())
+    }
+}
+
+async fn upload_internal(
+    data: impl UploadData,
     upload_url: UploadUrl,
     auth_token: &str,
 ) -> VResult<reqwest::Response> {
-    let body = tokio::fs::File::open(&file).await?;
-    let content_length = body.metadata().await?.len() as usize;
-    upload_internal(body, content_length, upload_url, auth_token).await
-}
-
-async fn upload_stream<S>(
-    stream: S,
-    content_length: usize,
-    upload_url: UploadUrl,
-    auth_token: &str,
-) -> VResult<reqwest::Response>
-where
-    S: futures_util::stream::TryStream + Send + Sync + 'static,
-    S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
-    Bytes: From<S::Ok>,
-{
-    let body = Body::wrap_stream(stream);
-    upload_internal(body, content_length, upload_url, auth_token).await
-}
-
-async fn upload_internal<T: Into<Body>>(
-    body: T,
-    content_length: usize,
-    upload_url: UploadUrl,
-    auth_token: &str,
-) -> VResult<reqwest::Response> {
+    let content_length = data.len().await?;
+    let body = data.to_body().await?;
     let client = reqwest::Client::new();
     let response = client
         .put(upload_url.deref())

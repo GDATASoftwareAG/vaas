@@ -650,7 +650,7 @@ async fn from_url_multiple_url() {
 async fn for_buf() {
     let vaas = get_vaas_with_flags(false, false).await;
     let ct = CancellationToken::from_seconds(10);
-    let data = vec![];
+    let data = vec![1,2,3,4];
     let result = vaas.for_buf(data, &ct).await.unwrap();
     assert_eq!(result.verdict, Verdict::Clean);
 }
