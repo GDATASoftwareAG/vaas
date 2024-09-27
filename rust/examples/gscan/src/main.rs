@@ -1,11 +1,13 @@
 use clap::{command, ArgAction, Parser};
 use dotenv::dotenv;
+use futures::{stream, StreamExt};
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf};
 use vaas::{
     auth::authenticators::ClientCredentials, error::VResult, CancellationToken, Connection, Vaas,
     VaasVerdict,
 };
+use walkdir::WalkDir;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -44,7 +46,7 @@ async fn main() -> VResult<()> {
     dotenv().ok();
     let args = Args::parse();
 
-    // TODO: directory support
+    let files = expand_directories(&args.files);
 
     let authenticator = ClientCredentials::new(args.client_id.clone(), args.client_secret.clone());
     let vaas_connection = Vaas::builder(authenticator)
@@ -54,7 +56,7 @@ async fn main() -> VResult<()> {
         .connect()
         .await?;
 
-    let file_verdicts = scan_files(args.files.as_ref(), &vaas_connection).await?;
+    let file_verdicts = scan_files(files.into_iter(), &vaas_connection).await?;
     let url_verdicts = scan_urls(args.urls.as_ref(), &vaas_connection).await?;
 
     file_verdicts
@@ -78,13 +80,21 @@ fn print_verdicts<I: AsRef<str>>(i: I, v: &VResult<VaasVerdict>) {
     };
 }
 
-async fn scan_files<'a>(
-    files: &'a [PathBuf],
+async fn scan_files<'a, I>(
+    files: I,
     vaas_connection: &Connection,
-) -> VResult<Vec<(&'a PathBuf, VResult<VaasVerdict>)>> {
+) -> VResult<Vec<(PathBuf, VResult<VaasVerdict>)>>
+where
+    I: Iterator<Item = PathBuf>,
+{
     let ct = CancellationToken::from_minutes(1);
-    let verdicts = vaas_connection.for_file_list(files, &ct).await;
-    let results = files.iter().zip(verdicts).collect();
+
+    let verdicts_stream = stream::iter(files).then(|p: PathBuf| async {
+        let verdict = vaas_connection.for_file(&p, &ct).await;
+        (p, verdict)
+    });
+
+    let results: Vec<_> = verdicts_stream.collect().await;
 
     Ok(results)
 }
@@ -101,4 +111,23 @@ async fn scan_urls(
     }
 
     Ok(verdicts)
+}
+
+fn expand_directories<'a>(files: &'a [PathBuf]) -> impl Iterator<Item = PathBuf> + 'a {
+    files.iter().flat_map(expand_entry)
+}
+
+fn expand_entry(p: &PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
+    if p.is_file() {
+        return Box::new(std::iter::once(p.clone()));
+    }
+
+    let files_in_directory = WalkDir::new(p)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .map(|e| e.path().to_path_buf().clone())
+        .into_iter();
+
+    Box::new(files_in_directory)
 }
