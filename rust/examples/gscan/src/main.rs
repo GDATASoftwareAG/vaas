@@ -1,4 +1,5 @@
 use clap::{command, ArgAction, Parser};
+use dotenv::dotenv;
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf};
 use vaas::{
@@ -40,9 +41,9 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> VResult<()> {
+    dotenv().ok();
     let args = Args::parse();
 
-    // TODO: dotenv support
     // TODO: directory support
 
     let authenticator = ClientCredentials::new(args.client_id.clone(), args.client_secret.clone());
