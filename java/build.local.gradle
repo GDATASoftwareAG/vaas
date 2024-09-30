@@ -21,7 +21,7 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.34'
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.java-websocket:Java-WebSocket:1.5.7'
-    implementation 'org.jetbrains:annotations:24.1.0'
+    implementation 'org.jetbrains:annotations:25.0.0'
     implementation 'io.github.cdimascio:dotenv-java:3.0.2'
     testImplementation 'org.testng:testng:7.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.0'
