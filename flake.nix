@@ -28,6 +28,10 @@
           pkgs.iconv
         ];
 
+        typeScriptDeps = [
+          pkgs.nodejs
+        ];
+
       in
       with pkgs;
       {
@@ -36,7 +40,13 @@
             pkg-config
             openssl
           ] ++ tools
-          ++ rustDeps;
+          ++ rustDeps
+          ++ typeScriptDeps;
+
+          shellHook = ''
+            		alias c=cargo
+            		alias j=just
+            		alias lg=lazygit '';
         };
       }
     );
