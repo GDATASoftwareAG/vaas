@@ -46,11 +46,7 @@ mod tests {
         .to_string();
 
         let message_type = MessageType::try_from(&msg).unwrap();
-
-        let is_correct_type = match message_type {
-            MessageType::VerdictResponse(_) => true,
-            _ => false,
-        };
+        let is_correct_type = matches!(message_type, MessageType::VerdictResponse(_));
 
         assert!(is_correct_type);
     }
@@ -67,11 +63,7 @@ mod tests {
         .to_string();
 
         let message_type = MessageType::try_from(&msg);
-
-        let is_correct_type = match message_type {
-            Err(Error::ErrorResponse(_)) => true,
-            _ => false,
-        };
+        let is_correct_type = matches!(message_type, Err(Error::ErrorResponse(_)));
 
         assert!(is_correct_type);
     }

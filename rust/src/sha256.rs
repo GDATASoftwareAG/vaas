@@ -19,6 +19,23 @@ use std::{convert::TryFrom, fmt, ops::Deref};
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Sha256(String);
 
+impl From<&[u8]> for Sha256 {
+    fn from(value: &[u8]) -> Self {
+        use sha2::Digest;
+        use std::fmt::Write;
+
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(value);
+        let result = hasher.finalize();
+
+        let hex_string = result.iter().fold(String::new(), |mut output, b| {
+            let _ = write!(output, "{b:02x}");
+            output
+        });
+        Self(hex_string)
+    }
+}
+
 impl TryFrom<&str> for Sha256 {
     type Error = crate::error::Error;
 
@@ -46,15 +63,8 @@ impl TryFrom<&PathBuf> for Sha256 {
     type Error = crate::error::Error;
 
     fn try_from(value: &PathBuf) -> Result<Self, Self::Error> {
-        use sha2::Digest;
         let bytes = std::fs::read(value)?;
-
-        let mut hasher = sha2::Sha256::new();
-        hasher.update(&bytes);
-        let result = hasher.finalize();
-
-        let hex_string = result.iter().map(|b| format!("{b:02x}")).collect();
-        Ok(Self(hex_string))
+        Ok(Self::from(bytes.as_slice()))
     }
 }
 
