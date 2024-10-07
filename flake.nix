@@ -32,6 +32,10 @@
           pkgs.nodejs
         ];
 
+        dotnetDeps = [
+          pkgs.dotnet-sdk_8
+        ];
+
       in
       with pkgs;
       {
@@ -41,12 +45,16 @@
             openssl
           ] ++ tools
           ++ rustDeps
-          ++ typeScriptDeps;
+          ++ typeScriptDeps
+          ++ dotnetDeps;
 
           shellHook = ''
-            		alias c=cargo
-            		alias j=just
-            		alias lg=lazygit '';
+                        	alias c=cargo
+                        	alias j=just
+                        	alias lg=lazygit
+            		'';
+
+          DOTNET_CLI_HOME = "/tmp/.dotnet";
         };
       }
     );

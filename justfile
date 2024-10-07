@@ -17,6 +17,20 @@
 
 version := "0.0.0"
 
+# Copy a `.env` file from the root directory to all 
+# language directories
+populate-env:
+	cp .env cpp/.env
+	cp .env rust/.env
+	cp .env typescript/.env
+	cp .env dotnet/.env
+	cp .env python/.env
+	cp .env golang/vaas/.env
+	cp .env java/.env
+	cp .env php/.env
+	cp .env ruby/.env
+	cp .env shell/.env
+
 
 ############################################################
 # Rust commands
@@ -54,6 +68,24 @@ clean-ts:
 release-ts:
 	cd typescript && git tag -a ts{{version}} -m "Release TypeScript SDK {{version}}" && git push origin ts{{version}} && cd -
 
+
+############################################################
+# .NET commands
+############################################################
+
+build-dotnet:
+	cd dotnet/Vaas && dotnet build && cd -
+
+test-dotnet:
+	cd dotnet/Vaas && dotnet test && cd -
+
+clean-dotnet:
+	cd dotnet/Vaas && dotnet clean && cd -
+
+release-dotnet:
+	cd dotnet/Vaas && git tag -a cs{{version}} -m "Release .NET SDK {{version}}" && git push origin cs{{version}} && cd -
+
+
 ############################################################
 # Just aliases
 ############################################################
@@ -65,3 +97,8 @@ alias cr := clean-rust
 alias bt := build-ts
 alias tt := test-ts
 alias ct := clean-ts
+
+alias bd := build-dotnet
+alias td := test-dotnet
+alias cd := clean-dotnet
+
