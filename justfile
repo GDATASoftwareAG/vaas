@@ -16,12 +16,14 @@
 ############################################################
 
 build-rust:
-	cd rust
-	cargo build
-	cd -
+	cd rust && cargo build && cd -
 
 test-rust:
-	cd rust
-	cargo test --all
-	cd -
+	cd rust && cargo test --all && cd -
 
+############################################################
+# Just shortcuts
+############################################################
+
+alias br := build-rust
+alias tr := test-rust

@@ -11,14 +11,32 @@
       let
         pkgs = import nixpkgs { inherit system; };
         inherit (pkgs) lib;
+
+        tools = [
+          pkgs.just
+          pkgs.lazygit
+        ];
+
+        rustDeps = [
+          pkgs.cargo
+          pkgs.rustc
+          pkgs.clippy
+          pkgs.rustfmt
+        ] ++ lib.optional pkgs.stdenv.isDarwin [
+          pkgs.darwin.apple_sdk.frameworks.Cocoa
+          pkgs.libiconv
+          pkgs.iconv
+        ];
+
       in
       with pkgs;
       {
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            just
-            lazygit
-          ];
+            pkg-config
+            openssl
+          ] ++ tools
+          ++ rustDeps;
         };
       }
     );
