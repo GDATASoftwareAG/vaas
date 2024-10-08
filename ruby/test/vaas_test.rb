@@ -175,7 +175,7 @@ class VaasTest < Minitest::Test
 
       specify 'upload_failed' do
         vaas, token = create
-        message = {"url" => "https://upload.staging.vaas.gdatasecurity.de/upload", "upload_token" => "invalid_token"}
+        message = {"url" => "https://gateway.staging.vaas.gdatasecurity.de/upload", "upload_token" => "invalid_token"}
         Async do
           random_text = (0...8).map { (65 + rand(26)).chr }.join
           File.open("test.txt", "w") { |f| f.write(random_text) }
