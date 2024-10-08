@@ -10,7 +10,7 @@ on:
       - "cpp*"
   pull_request:
     branches:
-    - main
+      - main
     paths:
       - "cpp/**"
       - ".github/workflows/ci-cpp.yaml"
@@ -89,3 +89,12 @@ jobs:
         run: |
           ./test.sh
         working-directory: cpp
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          title: "Failed codeql on for VaaS-SDK vaas-cpp-ci"
+          job: ${{ toJson(job) }}
+          steps: ${{ toJson(steps) }}

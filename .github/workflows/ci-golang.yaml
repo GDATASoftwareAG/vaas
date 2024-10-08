@@ -97,7 +97,7 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          title: "`Failed workflow on for VaaS-SDK ${GITHUB_WORKFLOW}`"
+          title: "`Failed workflow on for VaaS-SDK vaas-golang-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}
 
@@ -158,7 +158,7 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          title: "`Failed workflow on for VaaS-SDK ${GITHUB_WORKFLOW}`"
+          title: "`Failed workflow on for VaaS-SDK vaas-golang-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}
 
@@ -181,3 +181,12 @@ jobs:
           else
             GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas/${MAJOR_VERSION}@${GITHUB_REF#refs/tags/golang/vaas/}
           fi
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          title: "`Failed workflow on for VaaS-SDK vaas-golang-ci`"
+          job: ${{ toJson(job) }}
+          steps: ${{ toJson(steps) }}
