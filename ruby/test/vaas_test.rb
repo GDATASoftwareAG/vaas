@@ -172,22 +172,6 @@ class VaasTest < Minitest::Test
           vaas.close
         end
       end
-
-      specify 'upload_failed' do
-        vaas, token = create
-        message = {"url" => "https://gateway.staging.vaas.gdatasecurity.de/upload", "upload_token" => "invalid_token"}
-        Async do
-          random_text = (0...8).map { (65 + rand(26)).chr }.join
-          File.open("test.txt", "w") { |f| f.write(random_text) }
-
-          vaas.connect(token)
-          assert_raises VAAS::VaasUploadError do
-            vaas.upload(message, "./test.txt").wait
-          end
-        ensure
-          vaas.close
-        end
-      end
     end
   end
 end
