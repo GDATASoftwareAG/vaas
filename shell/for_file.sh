@@ -7,7 +7,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-VAAS_URL="https://upload.staging.vaas.gdatasecurity.de"
+VAAS_URL="https://gateway.staging.vaas.gdatasecurity.de"
 TOKEN_URL="https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
 
 for file in "$@"; do
