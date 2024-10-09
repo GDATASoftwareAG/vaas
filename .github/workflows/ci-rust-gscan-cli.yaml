@@ -1,4 +1,4 @@
-name: vaas-rust-ci
+name: ci-rust-gscan-cli
 on:
   push:
     branches:
