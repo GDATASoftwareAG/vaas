@@ -53,5 +53,6 @@ _trial_temp*/
 ruby/.idea
 ruby/Gemfile.lock
 ruby/test/test.txt
+ruby/**/*.gem
 
 .env*

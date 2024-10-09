@@ -6,17 +6,8 @@ require_relative '../lib/vaas/client_credentials_grant_authenticator'
 require_relative '../lib/vaas/resource_owner_password_grant_authenticator'
 require_relative '../lib/vaas/vaas_main'
 
-# # test locally with .env file (comment this when push)
-# require 'dotenv'
-# Dotenv.load
-# CLIENT_ID = ENV.fetch('CLIENT_ID')
-# CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
-# TOKEN_URL = ENV.fetch('TOKEN_URL')
-# VAAS_URL = ENV.fetch('VAAS_URL')
-# USER_NAME = ENV.fetch('VAAS_USER_NAME')
-# PASSWORD = ENV.fetch('VAAS_PASSWORD')
-
-# automatic test (need this when push)
+require 'dotenv'
+Dotenv.load
 CLIENT_ID = ENV.fetch('CLIENT_ID')
 CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
 TOKEN_URL = ENV.fetch('TOKEN_URL')

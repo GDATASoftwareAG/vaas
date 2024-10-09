@@ -55,6 +55,10 @@
           pkgs.gradle
         ];
 
+        rubyDeps = [
+          pkgs.ruby
+        ];
+
       in
       with pkgs;
       {
@@ -69,7 +73,8 @@
           ++ goDeps
           ++ pythonDeps
           ++ phpDeps
-          ++ javaDeps;
+          ++ javaDeps
+          ++ rubyDeps;
 
           shellHook = ''
                         	alias c=cargo
@@ -83,6 +88,7 @@
           GOPATH = "/tmp/nix/.go";
           GOCACHE = "/tmp/nix/.gocache";
           COMPOSER_HOME = "/tmp/nix/.composer";
+          GEM_HOME = "/tmp/nix/.gem";
         };
       }
     );

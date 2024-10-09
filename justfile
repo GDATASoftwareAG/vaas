@@ -37,7 +37,7 @@ populate-env:
 	cp .env golang/vaas/pkg/vaas/.env
 	cp .env java/.env
 	cp .env php/tests/vaas/.env
-	cp .env ruby/.env
+	cp .env ruby/test/.env
 	cp .env shell/.env
 
 
@@ -167,6 +167,25 @@ release-java:
 
 
 ############################################################
+# Ruby commands
+############################################################
+
+install-ruby:
+	cd ruby && gem install --dev "vaas-0.0.1.gem" && cd -
+
+build-ruby:
+	cd ruby && gem build vaas.gemspec && cd -
+
+test-ruby: install-ruby 
+	cd ruby/test && ruby vaas_test.rb && cd -
+
+clean-ruby:
+	cd ruby && gem clean && cd -
+
+release-ruby:
+	git tag -a rb{{version}} -m "Release Ruby SDK {{version}}" && git push origin rb{{version}}
+
+############################################################
 # Just aliases
 ############################################################
 
@@ -196,3 +215,6 @@ alias bja := build-java
 alias tja := test-java
 alias cja := clean-java
 
+alias brb := build-ruby
+alias trb := test-ruby
+alias crb := clean-ruby
