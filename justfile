@@ -36,7 +36,7 @@ populate-env:
 	cp .env golang/vaas/pkg/authenticator/.env
 	cp .env golang/vaas/pkg/vaas/.env
 	cp .env java/.env
-	cp .env php/.env
+	cp .env php/tests/vaas/.env
 	cp .env ruby/.env
 	cp .env shell/.env
 
@@ -133,6 +133,23 @@ release-python:
 
 
 ############################################################
+# PHP commands
+############################################################
+
+install-php:
+	cd php/tests/vaas && composer install && cd -
+
+test-php: install-php
+	cd php/tests/vaas && ./vendor/bin/phpunit --color --testdox && cd -
+
+clean-php:
+	cd php/tests/vaas && rm -rf vendor && cd - 
+
+release-php:
+	git tag -a php{{version}} -m "Release PHP SDK {{version}}" && git push origin php{{version}}
+
+
+############################################################
 # Just aliases
 ############################################################
 
@@ -152,6 +169,9 @@ alias bgo := build-go
 alias tgo := test-go
 alias cgo := clean-go
 
-alias bpy := build-python
 alias tpy := test-python
 alias cpy := clean-python
+
+alias tph := test-php
+alias cph := clean-php
+

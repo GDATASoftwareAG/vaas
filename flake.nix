@@ -45,6 +45,11 @@
           pkgs.python312Packages.pip
         ];
 
+        phpDeps = [
+          pkgs.php
+          pkgs.php83Packages.composer
+        ];
+
       in
       with pkgs;
       {
@@ -57,7 +62,8 @@
           ++ typeScriptDeps
           ++ dotnetDeps
           ++ goDeps
-          ++ pythonDeps;
+          ++ pythonDeps
+          ++ phpDeps;
 
           shellHook = ''
                         	alias c=cargo
@@ -70,6 +76,7 @@
           DOTNET_CLI_HOME = "/tmp/nix/.dotnet";
           GOPATH = "/tmp/nix/.go";
           GOCACHE = "/tmp/nix/.gocache";
+          COMPOSER_HOME = "/tmp/nix/.composer";
         };
       }
     );
