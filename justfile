@@ -18,7 +18,10 @@
 version := "0.0.0"
 
 # Copy a `.env` file from the root directory to all 
-# language directories
+# language directories.
+# ATTENTION: The `.env` has to be placed manually in the
+# root directory, as secrets must not be checked into
+# the git repository.
 populate-env:
 	cp .env cpp/.env
 	cp .env rust/.env
@@ -26,6 +29,12 @@ populate-env:
 	cp .env dotnet/.env
 	cp .env python/.env
 	cp .env golang/vaas/.env
+	cp .env golang/vaas/v2/.env
+	cp .env golang/vaas/v2/examples/file-verdict-request/.env
+	cp .env golang/vaas/v2/pkg/vaas/.env
+	cp .env golang/vaas/v2/pkg/authenticator/.env
+	cp .env golang/vaas/pkg/authenticator/.env
+	cp .env golang/vaas/pkg/vaas/.env
 	cp .env java/.env
 	cp .env php/.env
 	cp .env ruby/.env
@@ -46,7 +55,7 @@ clean-rust:
 	cd rust && cargo clean && cd -
 
 release-rust:
-	cd rust && git tag -a rs{{version}} -m "Release Rust SDK {{version}}" && git push origin rs{{version}} && cd -
+	git tag -a rs{{version}} -m "Release Rust SDK {{version}}" && git push origin rs{{version}}
 
 
 ############################################################
@@ -66,7 +75,7 @@ clean-ts:
 	cd typescript && rm -rf node_modules && cd -
 
 release-ts:
-	cd typescript && git tag -a ts{{version}} -m "Release TypeScript SDK {{version}}" && git push origin ts{{version}} && cd -
+	git tag -a ts{{version}} -m "Release TypeScript SDK {{version}}" && git push origin ts{{version}}
 
 
 ############################################################
@@ -83,7 +92,24 @@ clean-dotnet:
 	cd dotnet/Vaas && dotnet clean && cd -
 
 release-dotnet:
-	cd dotnet/Vaas && git tag -a cs{{version}} -m "Release .NET SDK {{version}}" && git push origin cs{{version}} && cd -
+	git tag -a cs{{version}} -m "Release .NET SDK {{version}}" && git push origin cs{{version}}
+
+
+############################################################
+# Go commands
+############################################################
+
+build-go:
+	cd golang/vaas/v2 && go build ./... && cd -
+
+test-go:
+	cd golang/vaas/v2 && go test -race ./... && cd -
+
+clean-go:
+	cd golang/vaas/v2 && go clean ./... && cd -
+
+release-go:
+	git tag -a golang/vaas/v{{version}} -m "Release Go SDK {{version}}" && git push origin golang/vaas/v{{version}}
 
 
 ############################################################

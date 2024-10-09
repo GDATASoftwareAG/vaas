@@ -36,6 +36,10 @@
           pkgs.dotnet-sdk_8
         ];
 
+        goDeps = [
+          pkgs.go
+        ];
+
       in
       with pkgs;
       {
@@ -46,15 +50,20 @@
           ] ++ tools
           ++ rustDeps
           ++ typeScriptDeps
-          ++ dotnetDeps;
+          ++ dotnetDeps
+          ++ goDeps;
 
           shellHook = ''
                         	alias c=cargo
                         	alias j=just
                         	alias lg=lazygit
+                                alias ll="ls -la"
+                                alias lll="ls -lah"
             		'';
 
-          DOTNET_CLI_HOME = "/tmp/.dotnet";
+          DOTNET_CLI_HOME = "/tmp/nix/.dotnet";
+          GOPATH = "/tmp/nix/.go";
+          GOCACHE = "/tmp/nix/.gocache";
         };
       }
     );
