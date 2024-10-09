@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
 vaas::Vaas initVaas() {
     const auto vaasUrl = std::getenv("VAAS_URL")
                              ? std::getenv("VAAS_URL")
-                             : "https://upload.staging.vaas.gdatasecurity.de";
+                             : "https://gateway.staging.vaas.gdatasecurity.de";
     const auto tokenUrl = std::getenv("TOKEN_URL")
                               ? std::getenv("TOKEN_URL")
                               : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
