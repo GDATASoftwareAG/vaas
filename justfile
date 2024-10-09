@@ -150,6 +150,23 @@ release-php:
 
 
 ############################################################
+# Java commands
+############################################################
+
+build-java: 
+	cd java && gradle build -x test && cd -
+
+test-java:
+	cd java && gradle clean build && cd -
+
+clean-java:
+	cd java && gradle clean && cd -
+
+release-java:
+	git tag -a java{{version}} -m "Release Java SDK {{version}}" && git push origin java{{version}}
+
+
+############################################################
 # Just aliases
 ############################################################
 
@@ -174,4 +191,8 @@ alias cpy := clean-python
 
 alias tph := test-php
 alias cph := clean-php
+
+alias bja := build-java
+alias tja := test-java
+alias cja := clean-java
 

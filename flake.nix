@@ -50,6 +50,11 @@
           pkgs.php83Packages.composer
         ];
 
+        javaDeps = [
+          pkgs.jdk22
+          pkgs.gradle
+        ];
+
       in
       with pkgs;
       {
@@ -63,7 +68,8 @@
           ++ dotnetDeps
           ++ goDeps
           ++ pythonDeps
-          ++ phpDeps;
+          ++ phpDeps
+          ++ javaDeps;
 
           shellHook = ''
                         	alias c=cargo
