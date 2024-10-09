@@ -113,18 +113,45 @@ release-go:
 
 
 ############################################################
+# Python commands
+############################################################
+
+virtualenv-python:
+	cd python && python3 -m venv venv && cd -
+
+install-python: virtualenv-python
+	cd python && source venv/bin/activate && pip3 install -r requirements.txt && cd -
+
+test-python: install-python
+	cd python && source venv/bin/activate && python -m unittest -v tests/test_* && cd -
+
+clean-python:
+	cd python && rm -rf ./venv && cd -
+
+release-python:
+	git tag -a py{{version}} -m "Release Python SDK {{version}}" && git push origin py{{version}}
+
+
+############################################################
 # Just aliases
 ############################################################
 
-alias br := build-rust
-alias tr := test-rust
-alias cr := clean-rust
+alias brs := build-rust
+alias trs := test-rust
+alias crs := clean-rust
 
-alias bt := build-ts
-alias tt := test-ts
-alias ct := clean-ts
+alias bts := build-ts
+alias tts := test-ts
+alias cts := clean-ts
 
-alias bd := build-dotnet
-alias td := test-dotnet
-alias cd := clean-dotnet
+alias bdn := build-dotnet
+alias tdn := test-dotnet
+alias cdn := clean-dotnet
 
+alias bgo := build-go
+alias tgo := test-go
+alias cgo := clean-go
+
+alias bpy := build-python
+alias tpy := test-python
+alias cpy := clean-python

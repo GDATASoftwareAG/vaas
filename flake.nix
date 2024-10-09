@@ -40,6 +40,11 @@
           pkgs.go
         ];
 
+        pythonDeps = [
+          pkgs.python3
+          pkgs.python312Packages.pip
+        ];
+
       in
       with pkgs;
       {
@@ -51,7 +56,8 @@
           ++ rustDeps
           ++ typeScriptDeps
           ++ dotnetDeps
-          ++ goDeps;
+          ++ goDeps
+          ++ pythonDeps;
 
           shellHook = ''
                         	alias c=cargo
