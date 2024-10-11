@@ -186,8 +186,8 @@ class OIDCClient {
     }
 
     OIDCClient(OIDCClient&& other) noexcept
-        : tokenEndpoint(std::move(tokenEndpoint)), clientId(std::move(clientId)),
-          clientSecret(std::move(clientSecret)),
+        : tokenEndpoint(other.tokenEndpoint), clientId(other.clientId),
+          clientSecret(other.clientSecret),
           curl(other.curl) {
         other.curl = nullptr;
     }
