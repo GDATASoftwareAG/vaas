@@ -83,16 +83,16 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     long response_code;
     ensureCurlOk(curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code));
 
-    if (response_code < 200 || response_code >= 300) {
-        return response_code;
-    }
-
     const Json::CharReaderBuilder readerBuilder;
     std::string errs;
 
     const std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
     if (!response.empty()) {
         if (!reader->parse(response.c_str(), response.c_str() + response.size(), &jsonResponse, &errs)) {
+            if (response_code < 200 || response_code >= 300) {
+                // If the response code was an error anyway, return the error response instead of an exception
+                return response_code;
+            }
             throw vaas::VaasException("Failed to parse JSON response: " + errs);
         }
     }
@@ -225,13 +225,13 @@ class OIDCClient {
         const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
         if (!(response_code == 200 || response_code == 401)) {
             throw AuthenticationException(
-                "Server replied with unexpected HTTP response code " + std::to_string(response_code));
+                "Authentication Server replied with unexpected HTTP response code " + std::to_string(response_code));
         }
 
         if (jsonResponse.isMember("error") || response_code != 200) {
             const auto errorMsg = jsonResponse.isMember("error_description")
                                       ? jsonResponse.get("error_description", "")
-                                      : jsonResponse.get("error", "unknown error");
+                                      : jsonResponse.get("error", "authentication server did not return an error message");
             throw AuthenticationException(errorMsg.asString());
         }
 
