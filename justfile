@@ -18,12 +18,14 @@
 version := "0.0.0"
 
 # Copy a `.env` file from the root directory to all 
-# language directories.
-# ATTENTION: The `.env` has to be placed manually in the
+# language directories. For the C++ SDK, an `.cpp.env` is 
+# required, as the C++ SDK needs different credentials to
+# be run in the statigin environment.
+# ATTENTION: The `.env` & `.cpp.env` has to be placed manually in the
 # root directory, as secrets must not be checked into
 # the git repository.
 populate-env:
-	cp .env cpp/.env
+	mkdir -p cpp/build && cp .cpp.env cpp/build/.env
 	cp .env rust/.env
 	cp .env typescript/.env
 	cp .env dotnet/.env
@@ -40,6 +42,15 @@ populate-env:
 	cp .env ruby/test/.env
 	cp .env shell/.env
 
+############################################################
+# Commands for all luanguages at once.
+############################################################
+
+build-all: build-rust build-ts build-dotnet build-go build-python build-php build-java build-ruby build-cpp
+
+test-all: test-rust test-ts test-dotnet test-go test-python test-php test-java test-ruby test-cpp
+
+clean-all: clean-rust clean-ts clean-dotnet clean-go clean-python clean-php clean-java clean-ruby clean-cpp
 
 ############################################################
 # Rust commands
@@ -185,9 +196,32 @@ clean-ruby:
 release-ruby:
 	git tag -a rb{{version}} -m "Release Ruby SDK {{version}}" && git push origin rb{{version}}
 
+
+############################################################
+# C++ commands
+############################################################
+
+build-cpp:
+	cd cpp && cd build && cmake .. && make && cd -
+
+test-cpp: build-cpp
+	cd cpp/build && ./vaas_test --exit=true && cd -
+
+clean-cpp:
+	cd cpp && rm -rf build && cd -
+
+release-cpp:
+	git tag -a cpp{{version}} -m "Release C++ SDK {{version}}" && git push origin cpp{{version}}
+
 ############################################################
 # Just aliases
 ############################################################
+
+alias pa := populate-env
+
+alias ba := build-all
+alias ta := test-all
+alias ca := clean-all
 
 alias brs := build-rust
 alias trs := test-rust
@@ -218,3 +252,7 @@ alias cja := clean-java
 alias brb := build-ruby
 alias trb := test-ruby
 alias crb := clean-ruby
+
+alias bcp := build-cpp
+alias tcp := test-cpp
+alias ccp := clean-cpp

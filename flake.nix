@@ -59,6 +59,14 @@
           pkgs.ruby
         ];
 
+        cppDeps = [
+          pkgs.vcpkg
+          pkgs.cmake
+          pkgs.curl
+          pkgs.jsoncpp
+          pkgs.doctest
+        ];
+
       in
       with pkgs;
       {
@@ -74,7 +82,8 @@
           ++ pythonDeps
           ++ phpDeps
           ++ javaDeps
-          ++ rubyDeps;
+          ++ rubyDeps
+          ++ cppDeps;
 
           shellHook = ''
                         	alias c=cargo

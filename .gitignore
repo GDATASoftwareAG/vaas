@@ -55,4 +55,5 @@ ruby/Gemfile.lock
 ruby/test/test.txt
 ruby/**/*.gem
 
-.env*
+*.env*
+
