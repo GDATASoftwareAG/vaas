@@ -302,9 +302,12 @@ inline std::ostream& operator<<(std::ostream& os, const VaasReport& report) {
 /// Vaas talks to the VaaS service and provides reports for files or streams.
 class Vaas {
   public:
-    Vaas(std::string serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId,
+    Vaas(const std::string& serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId,
          const std::string& clientSecret)
-        : serverEndpoint(std::move(serverEndpoint)), authenticator(tokenEndpoint, clientId, clientSecret),
+        : Vaas(serverEndpoint, OIDCClient(tokenEndpoint, clientId, clientSecret)) {}
+
+    Vaas(std::string serverEndpoint, OIDCClient&& authenticator)
+        : serverEndpoint(std::move(serverEndpoint)), authenticator(std::move(authenticator)),
           curl(curl_easy_init()) {
         if (!curl) {
             throw std::runtime_error("Failed to initialize CURL");
