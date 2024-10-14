@@ -3,6 +3,7 @@
 namespace VaasSdk;
 
 use Amp\Cache\LocalCache;
+use Amp\CancelledException;
 use Amp\DeferredCancellation;
 use Amp\DeferredFuture;
 use Amp\Future;
@@ -86,7 +87,9 @@ class VaasConnection
         $this->loop = async(function() {
             $this->handleResponse();
         })->catch(function($e) {
-            $this->logger->error("Error", ["error" => $e]);
+            if (!$e instanceof CancelledException) {
+                $this->logger->error("Error", ["error" => $e]);
+            }
             $futures = $this->responses->getIterator();
             foreach($futures as $future) {
                 $future->error($e);
