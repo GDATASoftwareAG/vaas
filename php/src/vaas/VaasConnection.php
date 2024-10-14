@@ -85,6 +85,12 @@ class VaasConnection
         }
         $this->loop = async(function() {
             $this->handleResponse();
+        })->catch(function($e) {
+            $this->logger->error("Error", ["error" => $e]);
+            $futures = $this->responses->getIterator();
+            foreach($futures as $future) {
+                $future->error($e);
+            }
         });
         if (isset($this->authenticator)) {
             $this->Connect();
@@ -172,6 +178,7 @@ class VaasConnection
 
     private function handleResponse(): void {
         $mapper = new JsonMapper();
+        $mapper->bStrictObjectTypeChecking = false;
         $connection = $this->GetConnectedWebsocket();
         while ($message = $connection->receive($this->loopCancellation->getCancellation())) {
             if ($message == null) continue;
@@ -220,7 +227,6 @@ class VaasConnection
                         throw new VaasServerException("Unknown message kind: " . $baseMessage->kind);
                 };
             } catch (JsonMapper_Exception $e) {
-                $this->logger->error("Error", ["error" => $e]);
                 throw new VaasServerException("Error parsing received message: " . $e->getMessage());
             }
         }
