@@ -1,4 +1,4 @@
-use clap::{command, ArgAction, Parser};
+use clap::{command, Parser};
 use dotenv::dotenv;
 use futures::{stream, Stream, StreamExt};
 use reqwest::Url;
@@ -34,10 +34,22 @@ struct Args {
     #[arg(long, help = "Use the cache")]
     use_cache: bool,
 
-    #[arg(short='f', long, action=ArgAction::Append, required_unless_present("urls"), help="List of files to scan separated by whitepace")]
+    #[arg(
+        short = 'f',
+        long,
+        num_args=1..,
+        required_unless_present("urls"),
+        help = "List of files to scan separated by whitepace"
+    )]
     files: Vec<PathBuf>,
 
-    #[arg(short='u', long, action=ArgAction::Append, required_unless_present("files"), help="List of urls to scan separated by whitepace")]
+    #[arg(
+        short = 'u',
+        long,
+        num_args=1..,
+        required_unless_present("files"),
+        help = "List of urls to scan separated by whitepace"
+    )]
     urls: Vec<Url>,
 }
 
