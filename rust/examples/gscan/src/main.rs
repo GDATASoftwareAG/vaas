@@ -1,6 +1,6 @@
 use clap::{command, ArgAction, Parser};
 use dotenv::dotenv;
-use futures::{stream, StreamExt};
+use futures::{stream, Stream, StreamExt};
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf};
 use vaas::{
@@ -56,14 +56,21 @@ async fn main() -> VResult<()> {
         .connect()
         .await?;
 
-    let file_verdicts = scan_files(files.into_iter(), &vaas_connection).await?;
+    let file_verdicts = scan_files(files.into_iter(), &vaas_connection);
     let url_verdicts = scan_urls(args.urls.as_ref(), &vaas_connection).await?;
 
     file_verdicts
-        .iter()
-        .for_each(|(f, v)| print_verdicts(f.display().to_string(), v));
+        .for_each_concurrent(8, |(f, v)| async move {
+            println!(">");
+            print_verdicts(f.display().to_string(), &v);
+            println!("<")
+        })
+        .await;
 
-    url_verdicts.iter().for_each(|(u, v)| print_verdicts(u, v));
+    url_verdicts.iter().for_each(|(u, v)| {
+        print_verdicts(u, v);
+        // ready(())
+    });
 
     Ok(())
 }
@@ -80,23 +87,18 @@ fn print_verdicts<I: AsRef<str>>(i: I, v: &VResult<VaasVerdict>) {
     };
 }
 
-async fn scan_files<'a, I>(
+fn scan_files<'a, I>(
     files: I,
-    vaas_connection: &Connection,
-) -> VResult<Vec<(PathBuf, VResult<VaasVerdict>)>>
+    vaas_connection: &'a Connection,
+) -> impl Stream<Item = (PathBuf, VResult<VaasVerdict>)> + 'a
 where
-    I: Iterator<Item = PathBuf>,
+    I: Iterator<Item = PathBuf> + 'a,
 {
-    let ct = CancellationToken::from_minutes(1);
-
-    let verdicts_stream = stream::iter(files).then(|p: PathBuf| async {
+    stream::iter(files).then(move |p: PathBuf| async move {
+        let ct = CancellationToken::from_minutes(1);
         let verdict = vaas_connection.for_file(&p, &ct).await;
         (p, verdict)
-    });
-
-    let results: Vec<_> = verdicts_stream.collect().await;
-
-    Ok(results)
+    })
 }
 
 async fn scan_urls(
