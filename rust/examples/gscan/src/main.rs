@@ -82,7 +82,7 @@ fn print_verdicts<I: AsRef<str>>(i: I, v: &VResult<VaasVerdict>) {
             println!("{}", v.verdict);
         }
         Err(e) => {
-            println!("{}", e.to_string());
+            println!("{}", e);
         }
     };
 }
@@ -115,7 +115,7 @@ async fn scan_urls(
     Ok(verdicts)
 }
 
-fn expand_directories<'a>(files: &'a [PathBuf]) -> impl Iterator<Item = PathBuf> + 'a {
+fn expand_directories(files: &[PathBuf]) -> impl Iterator<Item = PathBuf> + '_ {
     files.iter().flat_map(expand_entry)
 }
 
@@ -128,8 +128,7 @@ fn expand_entry(p: &PathBuf) -> Box<dyn Iterator<Item = PathBuf>> {
         .into_iter()
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
-        .map(|e| e.path().to_path_buf())
-        .into_iter();
+        .map(|e| e.path().to_path_buf());
 
     Box::new(files_in_directory)
 }
