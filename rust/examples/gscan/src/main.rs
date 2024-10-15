@@ -3,6 +3,7 @@ use dotenv::dotenv;
 use futures::{stream, Stream, StreamExt};
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf};
+use tokio::task::spawn_blocking;
 use vaas::{
     auth::authenticators::ClientCredentials, error::VResult, CancellationToken, Connection, Vaas,
     VaasVerdict,
@@ -55,6 +56,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> VResult<()> {
+    console_subscriber::init();
+
     dotenv().ok();
     let args = Args::parse();
 
@@ -73,9 +76,7 @@ async fn main() -> VResult<()> {
 
     file_verdicts
         .for_each_concurrent(8, |(f, v)| async move {
-            println!(">");
             print_verdicts(f.display().to_string(), &v);
-            println!("<")
         })
         .await;
 
@@ -108,7 +109,9 @@ where
 {
     stream::iter(files).then(move |p: PathBuf| async move {
         let ct = CancellationToken::from_minutes(1);
+        println!("Start {}", p.display());
         let verdict = vaas_connection.for_file(&p, &ct).await;
+        println!("Stop {}", p.display());
         (p, verdict)
     })
 }
