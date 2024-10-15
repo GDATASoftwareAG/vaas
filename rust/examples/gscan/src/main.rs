@@ -1,9 +1,8 @@
-use clap::{command, Parser};
+use clap::Parser;
 use dotenv::dotenv;
-use futures::{stream, Stream, StreamExt};
+use futures::{stream, StreamExt};
 use reqwest::Url;
 use std::{collections::HashMap, path::PathBuf};
-use tokio::task::spawn_blocking;
 use vaas::{
     auth::authenticators::ClientCredentials, error::VResult, CancellationToken, Connection, Vaas,
     VaasVerdict,
@@ -54,6 +53,7 @@ struct Args {
     urls: Vec<Url>,
 }
 
+
 #[tokio::main]
 async fn main() -> VResult<()> {
     console_subscriber::init();
@@ -71,18 +71,20 @@ async fn main() -> VResult<()> {
         .connect()
         .await?;
 
-    let file_verdicts = scan_files(files.into_iter(), &vaas_connection);
+    let files = stream::iter(files);
+    let vaas_reference = &vaas_connection;
+    files.for_each_concurrent(8,|p| async move {
+            let ct = CancellationToken::from_minutes(1);
+            println!("Start {}", p.display());
+            let verdict = vaas_reference.for_file(&p, &ct).await;
+            println!("Stop {}", p.display());
+            print_verdicts(p.display().to_string(), &verdict);
+    }).await;
+    
     let url_verdicts = scan_urls(args.urls.as_ref(), &vaas_connection).await?;
-
-    file_verdicts
-        .for_each_concurrent(8, |(f, v)| async move {
-            print_verdicts(f.display().to_string(), &v);
-        })
-        .await;
 
     url_verdicts.iter().for_each(|(u, v)| {
         print_verdicts(u, v);
-        // ready(())
     });
 
     Ok(())
@@ -100,21 +102,6 @@ fn print_verdicts<I: AsRef<str>>(i: I, v: &VResult<VaasVerdict>) {
     };
 }
 
-fn scan_files<'a, I>(
-    files: I,
-    vaas_connection: &'a Connection,
-) -> impl Stream<Item = (PathBuf, VResult<VaasVerdict>)> + 'a
-where
-    I: Iterator<Item = PathBuf> + 'a,
-{
-    stream::iter(files).then(move |p: PathBuf| async move {
-        let ct = CancellationToken::from_minutes(1);
-        println!("Start {}", p.display());
-        let verdict = vaas_connection.for_file(&p, &ct).await;
-        println!("Stop {}", p.display());
-        (p, verdict)
-    })
-}
 
 async fn scan_urls(
     urls: &[Url],
