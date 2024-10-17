@@ -184,11 +184,11 @@ release-java:
 # Ruby commands
 ############################################################
 
-install-ruby:
-	cd ruby && gem install --dev "vaas-0.0.1.gem" && cd -
-
 build-ruby:
 	cd ruby && gem build vaas.gemspec && cd -
+
+install-ruby: build-ruby
+	cd ruby && gem install --dev "vaas-0.0.1.gem" && cd -
 
 test-ruby: install-ruby 
 	cd ruby/test && ruby vaas_test.rb && cd -
