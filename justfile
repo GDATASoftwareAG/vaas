@@ -46,7 +46,7 @@ populate-env:
 # Commands for all languages at once.
 ############################################################
 
-build-all: build-rust build-ts build-dotnet build-go build-python build-php build-java build-ruby build-cpp
+build-all: build-rust build-ts build-dotnet build-go build-java build-ruby build-cpp
 
 test-all: test-rust test-ts test-dotnet test-go test-python test-php test-java test-ruby test-cpp
 
@@ -110,10 +110,13 @@ release-dotnet:
 # Go commands
 ############################################################
 
-build-go:
+install-go:
+	cd golang/vaas/v2 && go mod download && cd -
+
+build-go: install-go
 	cd golang/vaas/v2 && go build ./... && cd -
 
-test-go:
+test-go: build-go
 	cd golang/vaas/v2 && go test -race ./... && cd -
 
 clean-go:
