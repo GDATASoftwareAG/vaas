@@ -43,7 +43,7 @@ populate-env:
 	cp .env shell/.env
 
 ############################################################
-# Commands for all luanguages at once.
+# Commands for all languages at once.
 ############################################################
 
 build-all: build-rust build-ts build-dotnet build-go build-python build-php build-java build-ruby build-cpp
