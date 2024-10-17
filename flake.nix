@@ -57,6 +57,7 @@
 
         rubyDeps = [
           pkgs.ruby
+          pkgs.git
         ];
 
         cppDeps = [
