@@ -69,11 +69,14 @@ mod tests {
     }
 
     #[tokio::test]
-    pub async fn get_response_if_set_all_returns() {
+    pub async fn get_response_if_set_all_returns_response() {
         let responses: ResponseBroker<i32, crate::error::Error> = ResponseBroker::new();
         let response_future = responses.get_response(TEST_REQUEST_ID.to_string());
+
         responses.set_all_responses(Ok(42));
+
         assert_eq!(response_future.await.unwrap(), 42);
+        assert_eq!(responses.responses.lock().unwrap().len(), 0);
     }
 
     #[tokio::test]
