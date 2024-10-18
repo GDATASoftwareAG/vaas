@@ -8,11 +8,11 @@ use crate::message::{
 use crate::options::Options;
 use crate::sha256::Sha256;
 use crate::vaas_verdict::VaasVerdict;
-use crate::verdict_responses::Responses;
+use crate::verdict_responses::ResponseBroker;
 use crate::CancellationToken;
 use bytes::Bytes;
 use futures::future::join_all;
-use futures_util::{FutureExt, TryFutureExt};
+use futures_util::FutureExt;
 use reqwest::{Body, Response, Url, Version};
 use serde::Serialize;
 use std::convert::TryFrom;
@@ -23,12 +23,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 type ThreadHandle = JoinHandle<Result<(), Error>>;
 type WebSocketWriter = Arc<Mutex<WebSocketWriteHalf>>;
+type VaasResponseBroker = ResponseBroker<VerdictResponse, Error>;
 
 /// Active connection to the verdict server.
 #[derive(Debug)]
@@ -37,7 +37,7 @@ pub struct Connection {
     session_id: String,
     reader_thread: ThreadHandle,
     keep_alive_thread: Option<ThreadHandle>,
-    responses: Arc<Responses<VResult<VerdictResponse>>>,
+    responses: Arc<VaasResponseBroker>,
     options: Options,
 }
 
@@ -49,7 +49,7 @@ impl Connection {
         options: Options,
     ) -> Self {
         let ws_writer = Arc::new(Mutex::new(ws_writer));
-        let responses = Arc::new(Responses::new());
+        let responses = Arc::new(ResponseBroker::new());
 
         let reader_loop = Connection::start_reader_loop(ws_reader, responses.clone()).await;
         let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, responses.clone()).await;
@@ -67,7 +67,7 @@ impl Connection {
     async fn start_keep_alive(
         options: &Options,
         ws_writer: &Arc<Mutex<WebSocketWriteHalf>>,
-        responses: Arc<Responses<VResult<VerdictResponse>>>,
+        responses: Arc<VaasResponseBroker>,
     ) -> Option<ThreadHandle> {
         if !options.keep_alive {
             return None;
@@ -211,7 +211,7 @@ impl Connection {
         guid: String,
         response: VerdictResponse,
         upload_url: UploadUrl,
-        responses: &Responses<VResult<VerdictResponse>>,
+        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> Result<VaasVerdict, Error> {
         let auth_token = response
@@ -231,7 +231,7 @@ impl Connection {
         guid: String,
         response: VerdictResponse,
         upload_url: UploadUrl,
-        responses: &Responses<VResult<VerdictResponse>>,
+        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> Result<VaasVerdict, Error>
     where
@@ -277,7 +277,7 @@ impl Connection {
     async fn for_request<T: VerdictRequest + Serialize>(
         request: T,
         ws_writer: WebSocketWriter,
-        responses: &Responses<VResult<VerdictResponse>>,
+        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
@@ -288,22 +288,18 @@ impl Connection {
 
     fn wait_for_response(
         guid: String,
-        responses: &Responses<VResult<VerdictResponse>>,
+        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> impl Future<Output = VResult<VerdictResponse>> {
         let response = responses.get_response(guid);
-        timeout(ct.duration, response).map(|outer| match outer {
-            Err(elapsed) => Err(elapsed.into()),
-            Ok(Ok(inner)) => inner,
-            Ok(Err(inner)) => Err(inner),
-        })
+        timeout(ct.duration, response).map(|outer| outer?)
     }
 
     // TODO: Move this functionality into the underlying websocket library.
     async fn keep_alive_loop(
         ws_writer: WebSocketWriter,
         keep_alive_delay_ms: u64,
-        responses: Arc<Responses<VResult<VerdictResponse>>>,
+        responses: Arc<VaasResponseBroker>,
     ) -> ThreadHandle {
         tokio::spawn(async move {
             loop {
@@ -320,7 +316,7 @@ impl Connection {
 
     async fn start_reader_loop(
         mut ws_reader: WebSocketReadHalf,
-        responses: Arc<Responses<VResult<VerdictResponse>>>,
+        responses: Arc<VaasResponseBroker>,
     ) -> ThreadHandle {
         tokio::spawn(async move {
             loop {
@@ -353,11 +349,7 @@ impl Connection {
     }
 }
 
-async fn upload_buf(
-    buf: Vec<u8>,
-    upload_url: UploadUrl,
-    auth_token: &str,
-) -> VResult<reqwest::Response> {
+async fn upload_buf(buf: Vec<u8>, upload_url: UploadUrl, auth_token: &str) -> VResult<Response> {
     let content_length = buf.len();
     upload_internal(buf, content_length, upload_url, auth_token).await
 }
@@ -367,7 +359,7 @@ async fn upload_stream<S>(
     content_length: usize,
     upload_url: UploadUrl,
     auth_token: &str,
-) -> VResult<reqwest::Response>
+) -> VResult<Response>
 where
     S: futures_util::stream::TryStream + Send + Sync + 'static,
     S::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
@@ -382,7 +374,7 @@ async fn upload_internal<T: Into<Body>>(
     content_length: usize,
     upload_url: UploadUrl,
     auth_token: &str,
-) -> VResult<reqwest::Response> {
+) -> VResult<Response> {
     let client = reqwest::Client::new();
     let response = client
         .put(upload_url.deref())

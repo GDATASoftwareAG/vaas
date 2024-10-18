@@ -4,7 +4,8 @@ use crate::message::{ErrorResponse, VerdictResponse};
 use reqwest::StatusCode;
 use std::sync::PoisonError;
 use thiserror::Error;
-use tokio::sync::broadcast::error::{RecvError, SendError};
+use tokio::sync::broadcast::error::SendError;
+use tokio::sync::oneshot::error::RecvError;
 use tokio::time::error::Elapsed;
 use websockets::WebSocketError;
 
@@ -114,7 +115,7 @@ impl From<tokio::sync::broadcast::error::SendError<Result<VerdictResponse, Error
     }
 }
 
-impl From<tokio::sync::broadcast::error::RecvError> for Error {
+impl From<RecvError> for Error {
     fn from(e: RecvError) -> Self {
         Self::ResultChannelError(e.to_string())
     }
