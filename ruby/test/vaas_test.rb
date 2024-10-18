@@ -6,11 +6,11 @@ require_relative '../lib/vaas/client_credentials_grant_authenticator'
 require_relative '../lib/vaas/resource_owner_password_grant_authenticator'
 require_relative '../lib/vaas/vaas_main'
 
-require 'dotenv'
 
 # Check if the .env file is present
 # If not, load the environment variables from the system
 if File.file?('.env')
+  require 'dotenv'
   Dotenv.load
 end
 
