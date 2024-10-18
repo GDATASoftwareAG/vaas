@@ -2,6 +2,7 @@
 
 namespace VaasTesting;
 
+use Amp\Websocket\WebsocketMessage;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
 use Psr\Log\NullLogger;
@@ -19,41 +20,58 @@ final class ProtocolTest extends TestCase
     {
         $this->expectException(VaasAuthenticationException::class);
 
-        $fakeWebsocket = $this->createStub(\WebSocket\Client::class);
+        $fakeWebsocket = $this->createStub(\Amp\Websocket\Client\WebsocketConnection::class);
         $fakeWebsocket->method('ping');
-        $fakeWebsocket->method('send');
-        $fakeWebsocket->method('isConnected')
-            ->willReturn(true);
+        $fakeWebsocket->method('isClosed')
+            ->willReturn(false);
         $fakeWebsocket->method('receive')
-            ->willReturn(new \WebSocket\Message\Text('{"kind": "AuthResponse", "success": false}'));
+            ->willReturn(WebsocketMessage::fromText('{"kind": "AuthResponse", "success": false}'));
         $vaasConnection = new VaasConnection("", $fakeWebsocket);
 
-        (new Vaas("url"))->Connect("invalid", $vaasConnection);
+        (new Vaas("url"))->build()->Connect("invalid", $vaasConnection);
     }
 
     public function testConnectionGetsClosedAfterConnecting_ThrowsVaasConnectionClosedException(): void
     {
         $this->expectException(VaasConnectionClosedException::class);
 
-        $fakeWebsocket = $this->createStub(\WebSocket\Client::class);
+        $fakeWebsocket = $this->createStub(\Amp\Websocket\Client\WebsocketConnection::class);
         $fakeWebsocket->method('ping');
-        $fakeWebsocket->method('send');
-        $fakeWebsocket->method('isConnected')
-            ->willReturn(true, true, false);
+        $fakeWebsocket->method('isClosed')
+            ->willReturn(false, true);
         $fakeWebsocket->method('receive')
-            ->willReturn(new \WebSocket\Message\Text('{"kind": "AuthResponse", "success": true, "session_id": "id"}'));
-        $vaasConnection = new VaasConnection("", $fakeWebsocket);
+            ->willReturn(WebsocketMessage::fromText('{"kind": "AuthResponse", "success": true, "session_id": "id"}'));
+        $vaasConnection = (new VaasConnection())
+            ->withConnection($fakeWebsocket)
+            ->build();
 
-        $vaas = new Vaas("url", new NullLogger());
-        $vaas->Connect("valid", $vaasConnection);
+        $vaas = (new Vaas())
+            ->withUrl("wws://url.de")
+            ->withVaasConnection($vaasConnection)
+            ->build();
+        $vaas->Connect("valid");
         $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
     }
 
-    public function testForSha256CallBeforeConnection_ThrowsVaasInvalidStateException(): void
+    public function testConnectionGetsClosedBeforeConnect_ThrowsVaasConnectionClosedException(): void
     {
-        $this->expectException(VaasInvalidStateException::class);
-        $vaas = new Vaas("url");
-        $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
+        $this->expectException(VaasConnectionClosedException::class);
+
+        $fakeWebsocket = $this->createStub(\Amp\Websocket\Client\WebsocketConnection::class);
+        $fakeWebsocket->method('ping');
+        $fakeWebsocket->method('isClosed')
+            ->willReturn(true);
+        $fakeWebsocket->method('receive')
+            ->willReturn(WebsocketMessage::fromText('{"kind": "AuthResponse", "success": true, "session_id": "id"}'));
+        $vaasConnection = (new VaasConnection())
+            ->withConnection($fakeWebsocket)
+            ->build();
+
+        $vaas = (new Vaas())
+            ->withUrl("wws://url.de")
+            ->withVaasConnection($vaasConnection)
+            ->build();
+        $vaas->Connect("valid");
     }
 
     public function testVerdictRequestSerializationTest(): void

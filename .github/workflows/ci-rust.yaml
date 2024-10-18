@@ -105,6 +105,6 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          title: "`Failed workflow on for VaaS-SDK ${workflow}`"
+          title: "`Failed workflow on for VaaS-SDK vaas-rust-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}

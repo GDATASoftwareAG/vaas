@@ -23,7 +23,6 @@ int main(int argc, char** argv) {
 
 vaas::Vaas initVaas() {
     auto dotenv = dotenv::Dotenv();
-
     auto vaasUrl = dotenv.get("VAAS_URL");
     auto tokenUrl = dotenv.get("TOKEN_URL");
     auto clientId = dotenv.get("CLIENT_ID");

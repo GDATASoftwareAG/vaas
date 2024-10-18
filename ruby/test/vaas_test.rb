@@ -163,7 +163,7 @@ class VaasTest < Minitest::Test
           vaas.close
         end
       end
-
+      
       specify 'upload_failed' do
         skip("certificate verify failed (self-signed certificate) for vaas staging")
         vaas, token = create
@@ -180,6 +180,7 @@ class VaasTest < Minitest::Test
           vaas.close
         end
       end
+      
     end
   end
 end

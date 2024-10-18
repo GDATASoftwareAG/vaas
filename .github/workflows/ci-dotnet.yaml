@@ -133,7 +133,7 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          title: "`Failed workflow on for VaaS-SDK ${workflow}`"
+          title: "`Failed workflow on for VaaS-SDK vaas-dotnet-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}
   codeql:
@@ -166,6 +166,6 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          title: "`Failed codeql on for VaaS-SDK ${workflow}`"
+          title: "`Failed codeql on for VaaS-SDK vaas-dotnet-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}

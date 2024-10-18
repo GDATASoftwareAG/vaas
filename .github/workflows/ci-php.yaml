@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - main
+      - phpdev-*
     paths:
       - "php/**"
       - ".github/workflows/ci-php.yaml"
@@ -111,7 +112,7 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          title: "`Failed workflow on for VaaS-SDK ${workflow}`"
+          title: "`Failed workflow on for VaaS-SDK vaas-php-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}
 
@@ -129,8 +130,14 @@ jobs:
           echo "RELEASE_VERSION=${GITHUB_REF#refs/*/php}" >> $GITHUB_ENV
           echo $RELEASE_VERSION
 
+      - name: extract version
+        if: startsWith(github.ref, 'refs/heads/phpdev-')
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/phpdev-}" >> $GITHUB_ENV
+          echo $RELEASE_VERSION
+
       - name: checkout
-        if: startsWith(github.ref, 'refs/tags/php')
+        if: startsWith(github.ref, 'refs/tags/php') || startsWith(github.ref, 'refs/heads/phpdev-')
         uses: actions/checkout@v4
 
       - name: publish on site repo
@@ -151,8 +158,25 @@ jobs:
           git remote add origin https://ata-no-one:$GITHUB_TOKEN@github.com/GDATASoftwareAG/vaas-php
           git push origin main --tags --force
 
+      - name: publish on site repo
+        if: startsWith(github.ref, 'refs/heads/phpdev-')
+        env:
+          GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
+        working-directory: php/src/vaas
+        run: |
+          git config --global user.email "ata-no-one@gdata.de"
+          git config --global user.name "Version Bot"
+          sed -i "s/\"version\": \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/\"version\": \"$RELEASE_VERSION\"/g" ./composer.json
+          cp ../../../Readme.md .
+          git init
+          git add .
+          git commit -m"publish php $RELEASE_VERSION"
+          git branch -M $RELEASE_VERSION
+          git remote add origin https://ata-no-one:$GITHUB_TOKEN@github.com/GDATASoftwareAG/vaas-php
+          git push origin $RELEASE_VERSION --force
+
       - name: sync packagist
-        if: startsWith(github.ref, 'refs/tags/php')
+        if: startsWith(github.ref, 'refs/tags/php') || startsWith(github.ref, 'refs/heads/phpdev-') 
         env:
           PACKAGIST_API_TOKEN: ${{ secrets.PACKAGIST_API_TOKEN }}
         run: curl -XPOST -H'content-type:application/json' "https://packagist.org/api/update-package?username=gdatacyberdefense&apiToken=$PACKAGIST_API_TOKEN" -d'{"repository":{"url":"https://packagist.org/packages/gdata/vaas"}}'
@@ -162,6 +186,6 @@ jobs:
         if: failure()
         with:
           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-          title: "`Failed codeql on for VaaS-SDK ${workflow}`"
+          title: "`Failed codeql on for VaaS-SDK vaas-php-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}

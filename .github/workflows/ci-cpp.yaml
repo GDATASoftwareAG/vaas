@@ -10,7 +10,7 @@ on:
       - "cpp*"
   pull_request:
     branches:
-    - main
+      - main
     paths:
       - "cpp/**"
       - ".github/workflows/ci-cpp.yaml"
@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=https://upload.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -89,3 +89,12 @@ jobs:
         run: |
           ./test.sh
         working-directory: cpp
+
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          title: "Failed codeql on for VaaS-SDK vaas-cpp-ci"
+          job: ${{ toJson(job) }}
+          steps: ${{ toJson(steps) }}
