@@ -48,7 +48,7 @@ impl<T: Clone + Debug, E: From<RecvError> + Clone + std::error::Error> ResponseB
         };
 
         for s in senders {
-            s.send(response.clone()).unwrap()
+            s.send(response.clone()).ok();
         }
     }
 }
