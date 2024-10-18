@@ -106,7 +106,7 @@ mod options;
 pub mod sha256;
 pub mod vaas;
 pub mod vaas_verdict;
-mod verdict_responses;
+pub(crate) mod verdict_responses;
 
 pub use crate::vaas::Vaas;
 pub use builder::Builder;

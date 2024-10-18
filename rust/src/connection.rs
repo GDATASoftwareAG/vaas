@@ -8,6 +8,7 @@ use crate::message::{
 use crate::options::Options;
 use crate::sha256::Sha256;
 use crate::vaas_verdict::VaasVerdict;
+use crate::verdict_responses::Responses;
 use crate::CancellationToken;
 use bytes::Bytes;
 use futures::future::join_all;
@@ -18,7 +19,6 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
@@ -26,8 +26,6 @@ use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
 type ThreadHandle = JoinHandle<Result<(), Error>>;
 type WebSocketWriter = Arc<Mutex<WebSocketWriteHalf>>;
-type ResultChannelRx = Receiver<VResult<VerdictResponse>>;
-type ResultChannelTx = Sender<VResult<VerdictResponse>>;
 
 /// Active connection to the verdict server.
 #[derive(Debug)]
@@ -36,7 +34,7 @@ pub struct Connection {
     session_id: String,
     reader_thread: ThreadHandle,
     keep_alive_thread: Option<ThreadHandle>,
-    result_channel: ResultChannelTx,
+    responses: Arc<Responses<VResult<VerdictResponse>>>,
     options: Options,
 }
 
@@ -48,17 +46,17 @@ impl Connection {
         options: Options,
     ) -> Self {
         let ws_writer = Arc::new(Mutex::new(ws_writer));
-        let (tx, _rx) = tokio::sync::broadcast::channel(options.channel_capacity);
+        let responses = Arc::new(Responses::new());
 
-        let reader_loop = Connection::start_reader_loop(ws_reader, tx.clone()).await;
-        let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, tx.clone()).await;
+        let reader_loop = Connection::start_reader_loop(ws_reader, responses.clone()).await;
+        let keep_alive_loop = Self::start_keep_alive(&options, &ws_writer, responses.clone()).await;
 
         Connection {
             ws_writer,
             session_id,
             reader_thread: reader_loop,
             keep_alive_thread: keep_alive_loop,
-            result_channel: tx,
+            responses,
             options,
         }
     }
@@ -66,12 +64,15 @@ impl Connection {
     async fn start_keep_alive(
         options: &Options,
         ws_writer: &Arc<Mutex<WebSocketWriteHalf>>,
-        tx: ResultChannelTx,
+        responses: Arc<Responses<VResult<VerdictResponse>>>,
     ) -> Option<ThreadHandle> {
         if !options.keep_alive {
             return None;
         }
-        Some(Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, tx).await)
+        Some(
+            Connection::keep_alive_loop(ws_writer.clone(), options.keep_alive_delay_ms, responses)
+                .await,
+        )
     }
 
     /// Request a verdict for a file behind a URL.
@@ -82,13 +83,8 @@ impl Connection {
             self.options.use_cache,
             self.options.use_hash_lookup,
         );
-        let response = Self::for_request(
-            request,
-            self.ws_writer.clone(),
-            &mut self.result_channel.subscribe(),
-            ct,
-        )
-        .await?;
+        let response =
+            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
         VaasVerdict::try_from(response)
     }
 
@@ -118,13 +114,8 @@ impl Connection {
             self.options.use_cache,
             self.options.use_hash_lookup,
         );
-        let response = Self::for_request(
-            request,
-            self.ws_writer.clone(),
-            &mut self.result_channel.subscribe(),
-            ct,
-        )
-        .await?;
+        let response =
+            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
         VaasVerdict::try_from(response)
     }
 
@@ -147,13 +138,8 @@ impl Connection {
         );
         let guid = request.guid.to_string();
 
-        let response = Self::for_request(
-            request,
-            self.ws_writer.clone(),
-            &mut self.result_channel.subscribe(),
-            ct,
-        )
-        .await?;
+        let response =
+            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
 
         let verdict = Verdict::try_from(&response)?;
 
@@ -162,10 +148,10 @@ impl Connection {
                 Self::handle_unknown_stream(
                     stream,
                     content_length,
-                    &guid,
+                    guid,
                     response,
                     upload_url,
-                    &mut self.result_channel.subscribe(),
+                    &self.responses,
                     ct,
                 )
                 .await
@@ -205,26 +191,13 @@ impl Connection {
         );
         let guid = request.guid.to_string();
 
-        let response = Self::for_request(
-            request,
-            self.ws_writer.clone(),
-            &mut self.result_channel.subscribe(),
-            ct,
-        )
-        .await?;
+        let response =
+            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
 
         let verdict = Verdict::try_from(&response)?;
         match verdict {
             Verdict::Unknown { upload_url } => {
-                Self::handle_unknown(
-                    buf,
-                    &guid,
-                    response,
-                    upload_url,
-                    &mut self.result_channel.subscribe(),
-                    ct,
-                )
-                .await
+                Self::handle_unknown(buf, guid, response, upload_url, &self.responses, ct).await
             }
             _ => VaasVerdict::try_from(response),
         }
@@ -232,10 +205,10 @@ impl Connection {
 
     async fn handle_unknown(
         buf: Vec<u8>,
-        guid: &str,
+        guid: String,
         response: VerdictResponse,
         upload_url: UploadUrl,
-        result_channel: &mut ResultChannelRx,
+        responses: &Responses<VResult<VerdictResponse>>,
         ct: &CancellationToken,
     ) -> Result<VaasVerdict, Error> {
         let auth_token = response
@@ -244,16 +217,16 @@ impl Connection {
             .ok_or(Error::MissingAuthToken)?;
         let response = upload_buf(buf, upload_url, auth_token).await?;
 
-        Self::handle_result(guid, response, result_channel, ct).await
+        Self::handle_result(guid, response, responses, ct).await
     }
 
     async fn handle_unknown_stream<S>(
         stream: S,
         content_length: usize,
-        guid: &str,
+        guid: String,
         response: VerdictResponse,
         upload_url: UploadUrl,
-        result_channel: &mut ResultChannelRx,
+        responses: &Responses<VResult<VerdictResponse>>,
         ct: &CancellationToken,
     ) -> Result<VaasVerdict, Error>
     where
@@ -267,13 +240,13 @@ impl Connection {
             .ok_or(Error::MissingAuthToken)?;
         let response = upload_stream(stream, content_length, upload_url, auth_token).await?;
 
-        Self::handle_result(guid, response, result_channel, ct).await
+        Self::handle_result(guid, response, responses, ct).await
     }
 
     async fn handle_result(
-        guid: &str,
+        guid: String,
         response: Response,
-        result_channel: &mut ResultChannelRx,
+        responses: &Responses<VResult<VerdictResponse>>,
         ct: &CancellationToken,
     ) -> Result<VaasVerdict, Error> {
         if response.status() != 200 {
@@ -286,7 +259,7 @@ impl Connection {
             ));
         }
 
-        let resp = Self::wait_for_response(guid, result_channel, ct).await?;
+        let resp = Self::wait_for_response(guid, responses, ct).await?;
         VaasVerdict::try_from(resp)
     }
 
@@ -304,47 +277,37 @@ impl Connection {
     async fn for_request<T: VerdictRequest + Serialize>(
         request: T,
         ws_writer: WebSocketWriter,
-        result_channel: &mut ResultChannelRx,
+        responses: &Responses<VResult<VerdictResponse>>,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
         ws_writer.lock().await.send_text(request.to_json()?).await?;
-        Self::wait_for_response(&guid, result_channel, ct).await
+        Self::wait_for_response(guid, responses, ct).await
     }
 
     async fn wait_for_response(
-        guid: &str,
-        result_channel: &mut ResultChannelRx,
+        guid: String,
+        responses: &Responses<VResult<VerdictResponse>>,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
-        loop {
-            let timeout = timeout(ct.duration, result_channel.recv()).await??;
-
-            match timeout {
-                Ok(vr) => {
-                    if vr.guid == guid {
-                        break Ok(vr);
-                    }
-                }
-                Err(e) => break Err(e),
-            }
-        }
+        let response = responses.get_response(guid);
+        timeout(ct.duration, response).await??
     }
 
     // TODO: Move this functionality into the underlying websocket library.
     async fn keep_alive_loop(
         ws_writer: WebSocketWriter,
         keep_alive_delay_ms: u64,
-        result_channel: ResultChannelTx,
+        responses: Arc<Responses<VResult<VerdictResponse>>>,
     ) -> ThreadHandle {
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(keep_alive_delay_ms)).await;
                 if let Err(e) = ws_writer.lock().await.send_ping(None).await {
-                    result_channel.send(Err(e.into()))?;
+                    responses.set_all_responses(Err(e.into()));
                 }
                 if let Err(e) = ws_writer.lock().await.flush().await {
-                    result_channel.send(Err(e.into()))?;
+                    responses.set_all_responses(Err(e.into()));
                 }
             }
         })
@@ -352,20 +315,20 @@ impl Connection {
 
     async fn start_reader_loop(
         mut ws_reader: WebSocketReadHalf,
-        result_channel: ResultChannelTx,
+        responses: Arc<Responses<VResult<VerdictResponse>>>,
     ) -> ThreadHandle {
         tokio::spawn(async move {
             loop {
                 let frame = ws_reader.receive().await;
                 match Self::parse_frame(frame) {
                     Ok(MessageType::VerdictResponse(vr)) => {
-                        result_channel.send(Ok(vr))?;
+                        responses.set_response(&vr.guid.clone(), Ok(vr));
                     }
                     Ok(MessageType::Close) => {
-                        result_channel.send(Err(Error::ConnectionClosed))?;
+                        responses.set_all_responses(Err(Error::ConnectionClosed));
                     }
                     Err(e) => {
-                        result_channel.send(Err(e))?;
+                        responses.set_all_responses(Err(e));
                     }
                     _ => {}
                 }
