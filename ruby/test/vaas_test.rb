@@ -7,7 +7,14 @@ require_relative '../lib/vaas/resource_owner_password_grant_authenticator'
 require_relative '../lib/vaas/vaas_main'
 
 require 'dotenv'
-Dotenv.load
+
+# Check if the .env file is present
+# If not, load the environment variables from the system
+if File.file?('.env')
+  Dotenv.load
+end
+
+# Load the environment variables
 CLIENT_ID = ENV.fetch('CLIENT_ID')
 CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
 TOKEN_URL = ENV.fetch('TOKEN_URL')
