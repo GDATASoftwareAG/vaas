@@ -87,7 +87,7 @@ impl Connection {
             self.options.use_hash_lookup,
         );
         let response =
-            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
+            self.for_request(request, ct).await?;
         VaasVerdict::try_from(response)
     }
 
@@ -118,7 +118,7 @@ impl Connection {
             self.options.use_hash_lookup,
         );
         let response =
-            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
+            self.for_request(request, ct).await?;
         VaasVerdict::try_from(response)
     }
 
@@ -142,19 +142,18 @@ impl Connection {
         let guid = request.guid.to_string();
 
         let response =
-            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
+            self.for_request(request, ct).await?;
 
         let verdict = Verdict::try_from(&response)?;
 
         match verdict {
             Verdict::Unknown { upload_url } => {
-                Self::handle_unknown_stream(
+                self.handle_unknown_stream(
                     stream,
                     content_length,
                     guid,
                     response,
                     upload_url,
-                    &self.responses,
                     ct,
                 )
                 .await
@@ -195,30 +194,30 @@ impl Connection {
         let guid = request.guid.to_string();
 
         let response =
-            Self::for_request(request, self.ws_writer.clone(), &self.responses, ct).await?;
+            self.for_request(request, ct).await?;
 
         let verdict = Verdict::try_from(&response)?;
         match verdict {
             Verdict::Unknown { upload_url } => {
-                Self::handle_unknown(buf, guid, response, upload_url, &self.responses, ct).await
+                self.handle_unknown(buf, guid, response, upload_url, ct).await
             }
             _ => VaasVerdict::try_from(response),
         }
     }
 
     async fn handle_unknown(
+        &self,
         buf: Vec<u8>,
         guid: String,
         response: VerdictResponse,
         upload_url: UploadUrl,
-        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> Result<VaasVerdict, Error> {
         let auth_token = response
             .upload_token
             .as_ref()
             .ok_or(Error::MissingAuthToken)?;
-        let resp = Self::wait_for_response(guid, responses, ct);
+        let resp = self.wait_for_response(guid, ct);
         let response = upload_buf(buf, upload_url, auth_token).await?;
 
         Self::ensure_http_success(response).await?;
@@ -226,12 +225,12 @@ impl Connection {
     }
 
     async fn handle_unknown_stream<S>(
+        &self,
         stream: S,
         content_length: usize,
         guid: String,
         response: VerdictResponse,
         upload_url: UploadUrl,
-        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> Result<VaasVerdict, Error>
     where
@@ -243,7 +242,7 @@ impl Connection {
             .upload_token
             .as_ref()
             .ok_or(Error::MissingAuthToken)?;
-        let resp = Self::wait_for_response(guid, responses, ct);
+        let resp = self.wait_for_response(guid, ct);
         let response = upload_stream(stream, content_length, upload_url, auth_token).await?;
 
         Self::ensure_http_success(response).await?;
@@ -275,23 +274,22 @@ impl Connection {
     }
 
     async fn for_request<T: VerdictRequest + Serialize>(
+        &self,
         request: T,
-        ws_writer: WebSocketWriter,
-        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
-        let response = Self::wait_for_response(guid, responses, ct);
-        ws_writer.lock().await.send_text(request.to_json()?).await?;
+        let response = self.wait_for_response(guid, ct);
+        self.ws_writer.lock().await.send_text(request.to_json()?).await?;
         response.await
     }
 
     fn wait_for_response(
+        &self,
         guid: String,
-        responses: &VaasResponseBroker,
         ct: &CancellationToken,
     ) -> impl Future<Output = VResult<VerdictResponse>> {
-        let response = responses.get_response(guid);
+        let response = self.responses.get_response(guid);
         timeout(ct.duration, response).map(|outer| outer?)
     }
 
