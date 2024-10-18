@@ -55,7 +55,7 @@ impl<T: Clone + Debug, E: From<RecvError> + Clone + std::error::Error> ResponseB
 
 #[cfg(test)]
 mod tests {
-    use crate::response_broker::ResponseBroker;
+    use super::ResponseBroker;
 
     const TEST_REQUEST_ID: &str = "1234";
 
