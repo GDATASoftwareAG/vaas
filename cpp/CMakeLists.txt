@@ -7,13 +7,14 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(CURL REQUIRED)
 find_package(jsoncpp CONFIG REQUIRED)
 find_package(doctest CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 # vaas_example
 add_executable(vaas_example main.cpp)
 
-target_link_libraries(vaas_example PRIVATE CURL::libcurl JsonCpp::JsonCpp)
+target_link_libraries(vaas_example PRIVATE CURL::libcurl JsonCpp::JsonCpp OpenSSL::SSL OpenSSL::Crypto)
 
 # test
 add_executable(vaas_test vaas_test.cpp)
 
-target_link_libraries(vaas_test PRIVATE CURL::libcurl JsonCpp::JsonCpp)
+target_link_libraries(vaas_test PRIVATE CURL::libcurl JsonCpp::JsonCpp OpenSSL::SSL OpenSSL::Crypto)

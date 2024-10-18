@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "vaas.h"
+#include "dotenv.h"
 #include <doctest/doctest.h>
 
 static char* program;
@@ -21,18 +22,12 @@ int main(int argc, char** argv) {
 }
 
 vaas::Vaas initVaas() {
-    const auto vaasUrl = std::getenv("VAAS_URL")
-                             ? std::getenv("VAAS_URL")
-                             : "https://gateway.staging.vaas.gdatasecurity.de";
-    const auto tokenUrl = std::getenv("TOKEN_URL")
-                              ? std::getenv("TOKEN_URL")
-                              : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
-    const auto clientId = std::getenv("CLIENT_ID")
-                              ? std::getenv("CLIENT_ID")
-                              : throw std::runtime_error("CLIENT_ID must be set");
-    const auto clientSecret = std::getenv("CLIENT_SECRET")
-                                  ? std::getenv("CLIENT_SECRET")
-                                  : throw std::runtime_error("CLIENT_SECRET must be set");
+    auto dotenv = dotenv::Dotenv();
+    auto vaasUrl = dotenv.get("VAAS_URL");
+    auto tokenUrl = dotenv.get("TOKEN_URL");
+    auto clientId = dotenv.get("CLIENT_ID");
+    auto clientSecret = dotenv.get("CLIENT_SECRET");
+    
     return vaas::Vaas(vaasUrl, tokenUrl, clientId, clientSecret);
 }
 
