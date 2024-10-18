@@ -12,6 +12,7 @@ use crate::verdict_responses::Responses;
 use crate::CancellationToken;
 use bytes::Bytes;
 use futures::future::join_all;
+use futures_util::{FutureExt, TryFutureExt};
 use reqwest::{Body, Response, Url, Version};
 use serde::Serialize;
 use std::convert::TryFrom;
@@ -20,9 +21,9 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use futures_util::TryFutureExt;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
+use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 use websockets::{Frame, WebSocketError, WebSocketReadHalf, WebSocketWriteHalf};
 
@@ -294,7 +295,11 @@ impl Connection {
         ct: &CancellationToken,
     ) -> impl Future<Output = VResult<VerdictResponse>> {
         let response = responses.get_response(guid);
-        timeout(ct.duration, response).map_err(|e| e.into()).and_then(|r| r).and_then(|r| r)
+        timeout(ct.duration, response).map(|outer| match outer {
+            Err(elapsed) => Err(elapsed.into()),
+            Ok(Ok(inner)) => inner,
+            Ok(Err(inner)) => Err(inner),
+        })
     }
 
     // TODO: Move this functionality into the underlying websocket library.
