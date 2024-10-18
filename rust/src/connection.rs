@@ -218,9 +218,11 @@ impl Connection {
             .upload_token
             .as_ref()
             .ok_or(Error::MissingAuthToken)?;
+        let resp = Self::wait_for_response(guid, responses, ct);
         let response = upload_buf(buf, upload_url, auth_token).await?;
 
-        Self::handle_result(guid, response, responses, ct).await
+        Self::ensure_http_success(response).await?;
+        VaasVerdict::try_from(resp.await?)
     }
 
     async fn handle_unknown_stream<S>(
@@ -241,17 +243,14 @@ impl Connection {
             .upload_token
             .as_ref()
             .ok_or(Error::MissingAuthToken)?;
+        let resp = Self::wait_for_response(guid, responses, ct);
         let response = upload_stream(stream, content_length, upload_url, auth_token).await?;
 
-        Self::handle_result(guid, response, responses, ct).await
+        Self::ensure_http_success(response).await?;
+        VaasVerdict::try_from(resp.await?)
     }
 
-    async fn handle_result(
-        guid: String,
-        response: Response,
-        responses: &Responses<VResult<VerdictResponse>>,
-        ct: &CancellationToken,
-    ) -> Result<VaasVerdict, Error> {
+    async fn ensure_http_success(response: Response) -> Result<(), Error> {
         if response.status() != 200 {
             return Err(Error::FailedUploadFile(
                 response.status(),
@@ -261,9 +260,7 @@ impl Connection {
                     .unwrap_or("failed to get payload".to_string()),
             ));
         }
-
-        let resp = Self::wait_for_response(guid, responses, ct).await?;
-        VaasVerdict::try_from(resp)
+        Ok(())
     }
 
     /// Request a verdict for a list of files.
