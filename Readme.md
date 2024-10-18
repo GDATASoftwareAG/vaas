@@ -111,7 +111,7 @@ The `release-*` task triggers a Github Action to build and release a new version
 just release-rust 0.1.0
 ```
 
-As the SDKs need credentials to authenticate against the VaaS API, you need to provide them in a `.env` file. Copy your `.env` file in the root of the project. The C++ SDK needs special credentials, which need to be provided in the `.cpp.env` file.
+As the SDKs need credentials to authenticate to the VaaS API. You need to provide them in a `.env` file. Copy your `.env` file into the root directory of the project. The C++ SDK needs special credentials, which you can provide in a `.cpp.env` file.
 
 ```bash
 # Copy the .env and .cpp.env file to all SDK folders
