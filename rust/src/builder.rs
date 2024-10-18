@@ -86,6 +86,11 @@ impl<A: Authenticator> Builder<A> {
         }
     }
 
+    #[deprecated(since = "6.1.1", note = "Not used anymore")]
+    pub fn channel_capacity(self, capacity: usize) -> Self {
+        self
+    }
+
     /// Change the URL of the VaaS API.
     pub fn url(self, url: Url) -> Self {
         Self { url, ..self }
