@@ -86,8 +86,10 @@ impl<A: Authenticator> Builder<A> {
         }
     }
 
+    /// Previously used to set the channel capacity of the internal results channel.
+    /// No longer used and currently a no-op.
     #[deprecated(since = "6.1.1", note = "Not used anymore")]
-    pub fn channel_capacity(self, capacity: usize) -> Self {
+    pub fn channel_capacity(self, _capacity: usize) -> Self {
         self
     }
 
