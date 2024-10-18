@@ -15,10 +15,12 @@ use futures::future::join_all;
 use reqwest::{Body, Response, Url, Version};
 use serde::Serialize;
 use std::convert::TryFrom;
+use std::future::Future;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
+use futures_util::TryFutureExt;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
@@ -281,17 +283,18 @@ impl Connection {
         ct: &CancellationToken,
     ) -> VResult<VerdictResponse> {
         let guid = request.guid().to_string();
+        let response = Self::wait_for_response(guid, responses, ct);
         ws_writer.lock().await.send_text(request.to_json()?).await?;
-        Self::wait_for_response(guid, responses, ct).await
+        response.await
     }
 
-    async fn wait_for_response(
+    fn wait_for_response(
         guid: String,
         responses: &Responses<VResult<VerdictResponse>>,
         ct: &CancellationToken,
-    ) -> VResult<VerdictResponse> {
+    ) -> impl Future<Output = VResult<VerdictResponse>> {
         let response = responses.get_response(guid);
-        timeout(ct.duration, response).await??
+        timeout(ct.duration, response).map_err(|e| e.into()).and_then(|r| r).and_then(|r| r)
     }
 
     // TODO: Move this functionality into the underlying websocket library.
