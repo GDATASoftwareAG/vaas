@@ -8,7 +8,7 @@ use crate::message::{
 use crate::options::Options;
 use crate::sha256::Sha256;
 use crate::vaas_verdict::VaasVerdict;
-use crate::verdict_responses::ResponseBroker;
+use crate::response_broker::ResponseBroker;
 use crate::CancellationToken;
 use bytes::Bytes;
 use futures::future::join_all;
