@@ -6,9 +6,10 @@ use std::sync::Mutex;
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
 use tokio::sync::oneshot::Sender;
+use tracing::{error, debug};
 
 #[derive(Debug)]
-pub(crate) struct ResponseBroker<T: Clone + Debug, E: From<RecvError> + Clone + std::error::Error> {
+pub(crate) struct ResponseBroker<T: Clone + Debug, E: std::error::Error + Clone + From<RecvError>> {
     responses: Mutex<HashMap<String, Sender<Result<T, E>>>>,
 }
 
@@ -33,11 +34,10 @@ impl<T: Clone + Debug, E: From<RecvError> + Clone + std::error::Error> ResponseB
         let mut requests = self.responses.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(r) = requests.remove(request_id) {
             if r.send(response).is_err() {
-                // TODO: proper logging
-                eprintln!("cannot send");
+                debug!("Receiver for {request_id} has been dropped");
             }
         } else {
-            eprintln!("cannot find request id");
+            error!("Can't find receiver for {request_id}");
         }
     }
 
@@ -55,6 +55,7 @@ impl<T: Clone + Debug, E: From<RecvError> + Clone + std::error::Error> ResponseB
 
 #[cfg(test)]
 mod tests {
+    use tracing_test::traced_test;
     use super::ResponseBroker;
 
     const TEST_REQUEST_ID: &str = "1234";
@@ -73,5 +74,13 @@ mod tests {
         let response_future = responses.get_response(TEST_REQUEST_ID.to_string());
         responses.set_all_responses(Ok(42));
         assert_eq!(response_future.await.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    #[traced_test]
+    pub async fn set_response_without_get_logs_error() {
+        let responses: ResponseBroker<i32, crate::error::Error> = ResponseBroker::new();
+        responses.set_response(TEST_REQUEST_ID, Ok(42));
+        assert!(logs_contain("Can't find receiver for 1234"));
     }
 }
