@@ -1,15 +1,17 @@
 use crate::error::VResult;
-use futures::channel::oneshot;
 use futures_util::{TryFutureExt};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::future::Future;
 use std::sync::Mutex;
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::Sender;
 
-struct VerdictResponses<T> {
+struct VerdictResponses<T: Clone + Debug> {
     responses: Mutex<HashMap<String, oneshot::Sender<T>>>,
 }
 
-impl<T> VerdictResponses<T> {
+impl<T: Clone + Debug> VerdictResponses<T> {
     pub fn new() -> Self {
         Self {
             responses: Mutex::new(HashMap::new()),
@@ -38,7 +40,16 @@ impl<T> VerdictResponses<T> {
         }
     }
 
-    //   set_all_responses
+    pub fn set_all_responses(&self, response: T) {
+        let senders: Vec<Sender<T>> = {
+            let mut responses = self.responses.lock().unwrap_or_else(|e| e.into_inner());
+            responses.drain().map(|(_, value)| value).collect()
+        };
+
+        for s in senders {
+            s.send(response.clone()).unwrap()
+        }
+    }
 }
 
 #[cfg(test)]
@@ -52,6 +63,14 @@ mod tests {
         let responses = VerdictResponses::new();
         let response_future = responses.get_response(TEST_REQUEST_ID);
         responses.set_response(TEST_REQUEST_ID, 42);
+        assert_eq!(response_future.await.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    pub async fn get_response_if_set_all_returns() {
+        let responses = VerdictResponses::new();
+        let response_future = responses.get_response(TEST_REQUEST_ID);
+        responses.set_all_responses(42);
         assert_eq!(response_future.await.unwrap(), 42);
     }
 }
