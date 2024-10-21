@@ -1,5 +1,5 @@
 {
-  description = "A flake for easy development of the multi-language Verdict-as-a-Service librarie";
+  description = "A flake for easy development of the multi-language Verdict-as-a-Service libraries";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
