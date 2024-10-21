@@ -53,7 +53,7 @@ class Dotenv {
     }
 
     static void removeCharsFromString(std::string& str, char* charsToRemove) {
-        for (unsigned int i = 0; i < strlen(charsToRemove); ++i) {
+        for (unsigned int i = 0; i < sizeof(charsToRemove); ++i) {
             str.erase(remove(str.begin(), str.end(), charsToRemove[i]), str.end());
         }
     }
