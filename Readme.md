@@ -63,27 +63,58 @@ We provide SDKs for various programming languages to make it easy for you to int
 |.NET|[.NET SDK](./dotnet/)|[Examples](./dotnet/examples)||[nuget.org](https://www.nuget.org/packages/GDataCyberDefense.Vaas)|
 |Ruby|[Ruby SDK](./ruby/)|[Examples](./ruby/examples)|[Reamde](https://github.com/GDATASoftwareAG/vaas/blob/main/ruby/README.md)|[rubygems](https://rubygems.org/gems/vaas)|
 |Go|[Go SDK](./golang/vaas/)|[Examples](./golang/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/golang/vaas/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/golang/vaas)|
+|C++|[C++ SDK](./cpp/)||[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/cpp/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/cpp)|
 
 The following table shows the functionality supported by each SDK:
 
-|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby|Golang
-|---|---|---|---|---|---|---|---|---|
-|Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check SHA256 list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|&#9989;|
-|Check URL|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
-|Check file list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|&#9989;|
-|Custom Guids for tracability on user side|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|
+|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby|Golang|C++|
+|---|---|---|---|---|---|---|---|---|---|
+|Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+|Check SHA256 list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|&#9989;|&#10060;|
+|Check URL|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#10060;|
+|Check file|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
+|Check file list|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#10060;|&#9989;|&#10060;|
+|Custom Guids for tracability on user side|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#9989;|&#10060;|&#10060;|&#10060;|
 
 
 ## Integration Ideas for Malware Detection trough VaaS
 You can use VaaS to create various applications that scan for malicious content with a few lines of code. Here are some examples:
 
-Create a command line scanner to find malware: [Example](rust/examples/gscan)
-<img src="assets/gscan.gif" alt="GScan command line malware scanner" style="width:100%">
+- [WordPress Plugin](https://wordpress.org/plugins/gdata-antivirus/) to scan for malware in uploaded files
+- [Nextcloud App](https://apps.nextcloud.com/apps/gdatavaas) to scan files in your Nextcloud instance
 
-Create a KDE Dolphin plugin to scan for malicious content: [Example](rust/examples/kde_dolphin)
-<img src="assets/dolphin_plugin.gif" alt="KDE Dolphin malware scanner plugin" style="width:100%">
+## Build & Test
 
-Create a WordPress plugin that scans all file uploads for malware: [Example](php/examples/wordpress)
-<img src="assets/wordpress.gif" alt="Wordpress plugin malware scanner" style="width:100%">
+The easiest way to build and test the SDKs is with the [Nix Package Manager](https://nixos.org/download/#download-nix) and the provided [Just](https://github.com/casey/just) file. Nix will take care of all dependencies and Just provides a simple interface to run the most common tasks.
+
+To build and test the SDKs, run the following command:
+
+```bash
+# switch into a development shell with all dependencies installed.
+# This will not alter your system, but provide a shell with all necessary tools.
+nix develop
+
+# Now use the Just tool to run the most common tasks
+just -l # list all available tasks
+
+# Just Examples
+# Run the tests for the Rust SDK
+just test-rust
+```
+
+There are `test-*`, `build-*`, `clean-*` and `release-*` tasks for each SDK, with the exception of Python and PHP, where no build task is available. You can also run the tests for all SDKs with `just test-all`. A `build-all` and `clean-all` task is available as well.
+
+The `release-*` task triggers a Github Action to build and release a new version of the specified SDK. It needs a version number as an argument, which is used to tag the release. The version number should follow the [Semantic Versioning](https://semver.org/) scheme.
+
+```bash
+# Example: Release the Rust SDK with version 0.1.0
+just release-rust 0.1.0
+```
+
+As the SDKs need credentials to authenticate to the VaaS API. You need to provide them in a `.env` file. Copy your `.env` file into the root directory of the project. The C++ SDK needs special credentials, which you can provide in a `.cpp.env` file.
+
+```bash
+# Copy the .env and .cpp.env file to all SDK folders
+# to be able to run the integration tests
+just populate-env
+

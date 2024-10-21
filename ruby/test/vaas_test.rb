@@ -6,17 +6,15 @@ require_relative '../lib/vaas/client_credentials_grant_authenticator'
 require_relative '../lib/vaas/resource_owner_password_grant_authenticator'
 require_relative '../lib/vaas/vaas_main'
 
-# # test locally with .env file (comment this when push)
-# require 'dotenv'
-# Dotenv.load
-# CLIENT_ID = ENV.fetch('CLIENT_ID')
-# CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
-# TOKEN_URL = ENV.fetch('TOKEN_URL')
-# VAAS_URL = ENV.fetch('VAAS_URL')
-# USER_NAME = ENV.fetch('VAAS_USER_NAME')
-# PASSWORD = ENV.fetch('VAAS_PASSWORD')
 
-# automatic test (need this when push)
+# Check if the .env file is present
+# If not, load the environment variables from the system
+if File.file?('.env')
+  require 'dotenv'
+  Dotenv.load
+end
+
+# Load the environment variables
 CLIENT_ID = ENV.fetch('CLIENT_ID')
 CLIENT_SECRET = ENV.fetch('CLIENT_SECRET')
 TOKEN_URL = ENV.fetch('TOKEN_URL')
@@ -35,7 +33,7 @@ class VaasTest < Minitest::Test
         TOKEN_URL
       )
       token = token || authenticator.get_token
-      timeout = timeout || 600
+      timeout = timeout || 10
       vaas = VAAS::VaasMain.new(VAAS_URL, timeout)
 
       return [vaas, token]
@@ -172,6 +170,7 @@ class VaasTest < Minitest::Test
           vaas.close
         end
       end
+      
     end
   end
 end
