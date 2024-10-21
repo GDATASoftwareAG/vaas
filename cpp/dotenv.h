@@ -59,13 +59,11 @@ class Dotenv {
     }
 
   public:
-    Dotenv() : envFile(".env") {
-        this->envFromFile = readEnvFromFile();
-    };
+    Dotenv() : Dotenv(".env") {}
 
     Dotenv(const std::string& envFile) : envFile(envFile) {
         this->envFromFile = readEnvFromFile();
-    };
+    }
 
     std::string get(const std::string& key) {
         if (std::getenv(key.c_str())) {
