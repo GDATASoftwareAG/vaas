@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 #include "vaas.h"
+#include "dotenv.h"
 #include <doctest/doctest.h>
 
 static char* program;
@@ -21,22 +22,17 @@ int main(int argc, char** argv) {
 }
 
 vaas::OIDCClient initAuthenticator() {
-    const auto tokenUrl = std::getenv("TOKEN_URL")
-                              ? std::getenv("TOKEN_URL")
-                              : "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
-    const auto clientId = std::getenv("CLIENT_ID")
-                              ? std::getenv("CLIENT_ID")
-                              : throw std::runtime_error("CLIENT_ID must be set");
-    const auto clientSecret = std::getenv("CLIENT_SECRET")
-                                  ? std::getenv("CLIENT_SECRET")
-                                  : throw std::runtime_error("CLIENT_SECRET must be set");
+    auto dotenv = dotenv::Dotenv();
+    const auto tokenUrl = dotenv.get("TOKEN_URL");
+    const auto clientId = dotenv.get("CLIENT_ID");
+    const auto clientSecret = dotenv.get("CLIENT_SECRET");
     return vaas::OIDCClient(tokenUrl, clientId, clientSecret);
 }
 
 vaas::Vaas initVaas() {
-    const auto vaasUrl = std::getenv("VAAS_URL")
-                             ? std::getenv("VAAS_URL")
-                             : "https://gateway.staging.vaas.gdatasecurity.de";
+    auto dotenv = dotenv::Dotenv();
+    auto vaasUrl = dotenv.get("VAAS_URL");
+    
     auto authenticator = initAuthenticator();
     return vaas::Vaas(vaasUrl, std::move(authenticator));
 }
