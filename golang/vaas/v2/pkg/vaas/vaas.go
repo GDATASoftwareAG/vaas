@@ -81,20 +81,21 @@ type vaas struct {
 	openRequestsMutex sync.Mutex
 	openRequests      map[string]chan msg.VerdictResponse
 
-	termChan            chan bool
-	websocketConnection websocketConnection
+	connectionLoopTermChan chan struct{}
+	websocketConnection    websocketConnection
 }
 
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
 // The vaasURL parameter specifies the endpoint for the VaaS service.
 func New(options options.VaasOptions, vaasURL string, authenticator authenticator.Authenticator) Vaas {
 	client := &vaas{
-		logger:         log.Default(),
-		options:        options,
-		vaasURL:        vaasURL,
-		requestChannel: make(chan msg.VerdictRequest, 1),
-		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
-		authenticator:  authenticator,
+		logger:                 log.Default(),
+		options:                options,
+		vaasURL:                vaasURL,
+		requestChannel:         make(chan msg.VerdictRequest, 1),
+		openRequests:           make(map[string]chan msg.VerdictResponse, 0),
+		authenticator:          authenticator,
+		connectionLoopTermChan: make(chan struct{}, 1),
 	}
 	go client.connectLoop()
 	return client
@@ -135,9 +136,12 @@ func (v *vaas) Close() (err error) {
 //	    log.Fatalf("Failed to connect to VaaS: %v", err)
 //	}
 func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (errorChan <-chan error, err error) {
-	errChan := make(chan error)
-	// TODO: notify channel if connection is closed
-	return errChan, nil
+	fakeErrChan := make(chan error)
+	go func() {
+		<-v.connectionLoopTermChan
+		fakeErrChan <- nil
+	}()
+	return fakeErrChan, nil
 }
 
 // ForSha256 sends an analysis request for a file identified by its SHA256 hash to the Vaas server and returns the verdict.
@@ -458,6 +462,9 @@ func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictRespons
 	resultChan := make(chan msg.VerdictResponse, 1)
 	v.openRequests[request.GetRequestId()] = resultChan
 	v.openRequestsMutex.Unlock()
+	if v.options.EnableLogs {
+		v.logger.Printf("Opening new request: %v", request)
+	}
 	v.requestChannel <- request
 	return resultChan
 }
@@ -528,6 +535,10 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 // executing all writes from this goroutine.
 // see https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
 func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel chan msg.VerdictRequest) error {
+	if v.options.EnableLogs {
+		v.logger.Printf("Starting writePump")
+	}
+
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -535,9 +546,11 @@ func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel
 
 	for {
 		select {
-		case <-v.termChan:
-			return nil
-		case request := <-requestChannel:
+		case request, ok := <-requestChannel:
+			if !ok {
+				fmt.Printf("writePump leaving now\n")
+				return nil
+			}
 			if err := websocketConnection.WriteJSON(request); err != nil {
 				if v.options.EnableLogs {
 					v.logger.Printf("Failed to send request %v", err)
@@ -565,14 +578,14 @@ func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel
 
 func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 	errorChan := make(chan error, 1)
-	v.termChan = make(chan bool)
 
 	websocketConnection.SetReadDeadline(time.Now().Add(pongWait))
 	websocketConnection.SetPongHandler(func(string) error { websocketConnection.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	go func(errorChan chan<- error) {
+		fmt.Printf("Starting readPump\n")
+		defer fmt.Printf("Terminating readPump\n")
+
 		defer close(errorChan)
-		defer close(v.termChan)
-		defer v.failAllOpenRequests()
 
 		for {
 			var verdictResponse msg.VerdictResponse
@@ -651,6 +664,7 @@ func (v *vaas) connectLoop() error {
 	var terminate = false
 	var err error
 	for !terminate {
+		fmt.Printf("connectLoop new iteration\n")
 		// TODO: handle error
 		err = func() error {
 			var reconnect = false
@@ -691,35 +705,49 @@ func (v *vaas) connectLoop() error {
 
 			sessionID := authResponse.SessionID
 
+			fmt.Printf("New authenticated connection established: %s\n", sessionID)
+
 			readErrChan := v.readPump(connection)
 
 			writeChan := make(chan msg.VerdictRequest, 1)
-			defer close(writeChan)
 			writeErrChan := make(chan error, 1)
-			defer close(writeErrChan)
 			// TODO: Move go to writePump
 			go func() {
+				fmt.Printf("writePump goroutine begin\n")
 				writeErrChan <- v.writePump(connection, writeChan)
+				close(writeErrChan)
+				fmt.Printf("writePump goroutine end\n")
 			}()
 
-			for !reconnect {
+			for !reconnect && !terminate {
 				select {
 				case request, ok := <-v.requestChannel:
 					if !ok {
+						fmt.Printf("request channel closed, terminating\n")
 						terminate = true
 						break
 					}
 					request.SetSessionId(sessionID)
+					fmt.Printf("forwarding request to readPump\n")
 					writeChan <- request
 					break
 				case <-readErrChan:
+					fmt.Printf("read err, reconnecting\n")
 					reconnect = true
 					break
 				case <-writeErrChan:
+					fmt.Printf("write err, reconnecting\n")
 					reconnect = true
 					break
 				}
 			}
+
+			fmt.Printf("Starting shutdown\n")
+			close(writeChan)
+			<-writeErrChan
+			connection.Close()
+			<-readErrChan
+			fmt.Printf("Shutdown completed\n")
 
 			// terminate goroutines
 			// wait for goroutines to finish?
@@ -728,5 +756,6 @@ func (v *vaas) connectLoop() error {
 			return nil
 		}()
 	}
+	close(v.connectionLoopTermChan)
 	return err
 }

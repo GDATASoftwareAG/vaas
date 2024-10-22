@@ -72,12 +72,15 @@ func (tf *testFixture) setUp(t *testing.T) Vaas {
 }
 
 func (tf *testFixture) tearDown(t *testing.T) {
+	fmt.Printf("Closing Vaas fixture\n")
 	if err := tf.vaasClient.Close(); err != nil {
 		t.Fatalf("Failed to close vaas client - %v", err)
 	}
+	fmt.Printf("Waiting for error channel to complete the close\n")
 	if err := <-tf.errorChan; err != nil {
 		t.Errorf("Error during close of websocket - %v", err)
 	}
+	fmt.Printf("Close completed\n")
 }
 
 //func TestVaas_TerminateRequestsOnBrokenConnection(t *testing.T) {
@@ -215,6 +218,7 @@ func TestVaas_ForSha256(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			fmt.Printf("hello world\n")
 			//VaasClient := New(tt.fields.testingOptions, "", authenticator.New("FAKE", "WRONG", "GOBAD"))
 			//if tt.authenticated {
 			fixture := new(testFixture)
@@ -231,8 +235,11 @@ func TestVaas_ForSha256(t *testing.T) {
 			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
 				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
 			}
+
+			fmt.Printf("test has concluded\n")
 		})
 	}
+	fmt.Printf("Final end of world\n")
 }
 
 func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
