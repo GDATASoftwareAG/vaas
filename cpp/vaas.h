@@ -14,7 +14,7 @@
 namespace vaas {
 
 static const char* USER_AGENT = "C++ SDK 0.1.0";
-const long CURL_VERBOSE = 0;
+constexpr long CURL_VERBOSE = 0;
 
 /// An AuthenticationException indicates that the credentials are incorrect. Manual intervention may be required.
 class AuthenticationException final : public std::runtime_error {
@@ -83,16 +83,16 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     long response_code;
     ensureCurlOk(curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code));
 
-    if (response_code < 200 || response_code >= 300) {
-        return response_code;
-    }
-
     const Json::CharReaderBuilder readerBuilder;
     std::string errs;
 
     const std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
     if (!response.empty()) {
         if (!reader->parse(response.c_str(), response.c_str() + response.size(), &jsonResponse, &errs)) {
+            if (response_code < 200 || response_code >= 300) {
+                // If the response code was an error anyway, return the error response instead of an exception
+                return response_code;
+            }
             throw vaas::VaasException("Failed to parse JSON response: " + errs);
         }
     }
@@ -100,12 +100,12 @@ static long getServerResponse(CURL* curl, Json::Value& jsonResponse) {
     return response_code;
 }
 
-std::string bytesToHex(const std::vector<unsigned char>& bytes) {
-    static const char hexDigits[] = "0123456789abcdef";
+inline std::string bytesToHex(const std::vector<unsigned char>& bytes) {
+    static constexpr char hexDigits[] = "0123456789abcdef";
     std::string hexStr;
     hexStr.reserve(bytes.size() * 2);
 
-    for (unsigned char byte : bytes) {
+    for (const unsigned char byte : bytes) {
         hexStr.push_back(hexDigits[byte >> 4]);
         hexStr.push_back(hexDigits[byte & 0x0F]);
     }
@@ -113,7 +113,7 @@ std::string bytesToHex(const std::vector<unsigned char>& bytes) {
     return hexStr;
 }
 
-std::string calculateSHA256(const std::filesystem::path& filePath) {
+inline std::string calculateSHA256(const std::filesystem::path& filePath) {
     // Open the file in binary mode
     std::ifstream file(filePath, std::ios::binary);
     if (!file) {
@@ -131,7 +131,7 @@ std::string calculateSHA256(const std::filesystem::path& filePath) {
     }
 
     // Read the file in chunks and update the digest
-    const std::size_t bufferSize = 4096;
+    constexpr std::size_t bufferSize = 4096;
     char buffer[bufferSize];
     while (file.read(buffer, bufferSize)) {
         if (EVP_DigestUpdate(context, buffer, file.gcount()) != 1) {
@@ -160,7 +160,7 @@ std::string calculateSHA256(const std::filesystem::path& filePath) {
     return bytesToHex(hash);
 }
 
-std::string getLastSegmentOfUrl(const std::string& url) {
+inline std::string getLastSegmentOfUrl(const std::string& url) {
     size_t lastSlashPos = url.find_last_of('/');
 
     if (lastSlashPos != std::string::npos) {
@@ -186,8 +186,8 @@ class OIDCClient {
     }
 
     OIDCClient(OIDCClient&& other) noexcept
-        : tokenEndpoint(std::move(tokenEndpoint)), clientId(std::move(clientId)),
-          clientSecret(std::move(clientSecret)),
+        : tokenEndpoint(other.tokenEndpoint), clientId(other.clientId),
+          clientSecret(other.clientSecret),
           curl(other.curl) {
         other.curl = nullptr;
     }
@@ -202,7 +202,7 @@ class OIDCClient {
     /// Retrieve a new access token from the identity provider, or return a cached token that is still valid.
     /// </summary>
     std::string getAccessToken() {
-        std::lock_guard<std::mutex> lock(mtx);
+        std::lock_guard lock(mtx);
         const auto now = std::chrono::system_clock::now();
         if (now < tokenExpiry) {
             return accessToken;
@@ -225,13 +225,13 @@ class OIDCClient {
         const auto response_code = vaas_internals::getServerResponse(curl, jsonResponse);
         if (!(response_code == 200 || response_code == 401)) {
             throw AuthenticationException(
-                "Server replied with unexpected HTTP response code " + std::to_string(response_code));
+                "Authentication Server replied with unexpected HTTP response code " + std::to_string(response_code));
         }
 
         if (jsonResponse.isMember("error") || response_code != 200) {
             const auto errorMsg = jsonResponse.isMember("error_description")
                                       ? jsonResponse.get("error_description", "")
-                                      : jsonResponse.get("error", "unknown error");
+                                      : jsonResponse.get("error", "authentication server did not return an error message");
             throw AuthenticationException(errorMsg.asString());
         }
 
@@ -289,8 +289,8 @@ class VaasReport {
             verdict = Pup;
     }
 
-    explicit VaasReport(const std::string& sha256, Verdict verdict)
-        : sha256{sha256}, verdict{verdict} {
+    explicit VaasReport(std::string sha256, const Verdict verdict)
+        : sha256{std::move(sha256)}, verdict{verdict} {
     }
 };
 
@@ -304,7 +304,10 @@ class Vaas {
   public:
     Vaas(const std::string& serverEndpoint, const std::string& tokenEndpoint, const std::string& clientId,
          const std::string& clientSecret)
-        : serverEndpoint(serverEndpoint), authenticator(tokenEndpoint, clientId, clientSecret),
+        : Vaas(serverEndpoint, OIDCClient(tokenEndpoint, clientId, clientSecret)) {}
+
+    Vaas(std::string serverEndpoint, OIDCClient&& authenticator)
+        : serverEndpoint(std::move(serverEndpoint)), authenticator(std::move(authenticator)),
           curl(curl_easy_init()) {
         if (!curl) {
             throw std::runtime_error("Failed to initialize CURL");
@@ -312,7 +315,7 @@ class Vaas {
     }
 
     Vaas(Vaas&& other) noexcept
-        : serverEndpoint(std::move(other.serverEndpoint)), // Can't actually move because it's const
+        : serverEndpoint(other.serverEndpoint), // Can't actually move because it's const
           authenticator(std::move(other.authenticator)),
           curl(other.curl) {
         other.curl = nullptr;
@@ -329,7 +332,7 @@ class Vaas {
     /// </summary>
     VaasReport forFile(const std::filesystem::path& filePath) {
         const auto sha256 = vaas_internals::calculateSHA256(filePath);
-        const auto report = forHash(sha256);
+        auto report = forHash(sha256);
         if (report.verdict != VaasReport::Verdict::Unknown) {
             return report;
         }

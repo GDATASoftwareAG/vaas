@@ -67,7 +67,7 @@ class Dotenv {
 
     std::string get(const std::string& key) {
         if (std::getenv(key.c_str())) {
-            return std::getenv(key.c_str());
+            return std::string(std::getenv(key.c_str()));
         }
 
         if (envFromFile.find(key) != envFromFile.end()) {
