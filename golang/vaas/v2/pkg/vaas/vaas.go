@@ -80,9 +80,6 @@ type vaas struct {
 	openRequestsMutex sync.Mutex
 	openRequests      map[string]chan msg.VerdictResponse
 
-	sessionID         string
-	waitAuthenticated sync.WaitGroup
-
 	termChan            chan bool
 	websocketConnection websocketConnection
 }
@@ -157,11 +154,7 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (e
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequest(v.sessionID, v.options, sha256)
+	request := msg.NewVerdictRequest("", v.options, sha256)
 
 	responseChannel := v.openRequest(request)
 	defer v.closeRequest(request)
@@ -196,10 +189,6 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 //	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	}
 func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return []msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
 	var waitGroup sync.WaitGroup
 	verdicts := make([]msg.VaasVerdict, len(sha256List))
 
@@ -235,10 +224,6 @@ func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.Va
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
 	file, err := os.Open(filePath)
 	defer func() {
 		_ = file.Close()
@@ -284,10 +269,6 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
 	buf := new(bytes.Buffer)
 	if _, err := io.Copy(buf, data); err != nil {
 		return msg.VaasVerdict{
@@ -324,10 +305,6 @@ func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVer
 //	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	}
 func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return nil, errors.New("invalid operation")
-	}
-
 	var waitGroup sync.WaitGroup
 	verdicts := make([]msg.VaasVerdict, len(fileList))
 
@@ -361,11 +338,7 @@ func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVe
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequestForURL(v.sessionID, v.options, url)
+	request := msg.NewVerdictRequestForURL("", v.options, url)
 
 	responseChan := v.openRequest(request)
 	defer v.closeRequest(request)
@@ -402,11 +375,7 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequestForStream(v.sessionID, v.options)
+	request := msg.NewVerdictRequestForStream("", v.options)
 
 	responseChan := v.openRequest(request)
 	defer v.closeRequest(request)
@@ -448,11 +417,7 @@ func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength in
 }
 
 func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequest(v.sessionID, v.options, sha256)
+	request := msg.NewVerdictRequest("", v.options, sha256)
 	responseChan := v.openRequest(request)
 	defer v.closeRequest(request)
 
@@ -487,8 +452,6 @@ func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictRespons
 	if v.options.EnableLogs {
 		v.logger.Printf("Opening request for %s", request.GetRequestId())
 	}
-
-	v.waitAuthenticated.Wait()
 
 	v.openRequestsMutex.Lock()
 	resultChan := make(chan msg.VerdictResponse, 1)
