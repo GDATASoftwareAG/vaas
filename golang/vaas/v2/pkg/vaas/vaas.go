@@ -526,7 +526,7 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
 // see https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
-func (v *vaas) writePump(websocketConnection websocketConnection /* TODO: writeChannel */) error {
+func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel chan msg.VerdictRequest) error {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -536,17 +536,17 @@ func (v *vaas) writePump(websocketConnection websocketConnection /* TODO: writeC
 		select {
 		case <-v.termChan:
 			return nil
-		case request := <-v.requestChannel:
+		case request := <-requestChannel:
 			if err := websocketConnection.WriteJSON(request); err != nil {
 				if v.options.EnableLogs {
 					v.logger.Printf("Failed to send request %v", err)
 				}
 
 				v.openRequestsMutex.Lock()
-				requestChan, exists := v.openRequests[request.GetRequestId()]
+				responseChan, exists := v.openRequests[request.GetRequestId()]
 				v.openRequestsMutex.Unlock()
 				if exists {
-					requestChan <- msg.VerdictResponse{
+					responseChan <- msg.VerdictResponse{
 						Verdict: msg.Error,
 					}
 				}
@@ -696,7 +696,7 @@ func (v *vaas) connectLoop() error {
 			defer close(writeErrChan)
 			// TODO: Move go to writePump
 			go func() {
-				writeErrChan <- v.writePump(connection)
+				writeErrChan <- v.writePump(connection, writeChan)
 			}()
 
 			for !reconnect {
