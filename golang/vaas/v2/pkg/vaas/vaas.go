@@ -70,27 +70,33 @@ var (
 
 // vaas provides the implementation of the Vaas interface.
 type vaas struct {
-	logger              *log.Logger
+	options       options.VaasOptions
+	vaasURL       string
+	authenticator authenticator.Authenticator
+
+	logger            *log.Logger
+	shutdown          sync.Once
+	requestChannel    chan msg.VerdictRequest
+	openRequestsMutex sync.Mutex
+	openRequests      map[string]chan msg.VerdictResponse
+
+	sessionID         string
+	waitAuthenticated sync.WaitGroup
+
 	termChan            chan bool
 	websocketConnection websocketConnection
-	openRequests        map[string]chan msg.VerdictResponse
-	requestChannel      chan msg.VerdictRequest
-	sessionID           string
-	vaasURL             string
-	waitAuthenticated   sync.WaitGroup
-	openRequestsMutex   sync.Mutex
-	options             options.VaasOptions
 }
 
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
 // The vaasURL parameter specifies the endpoint for the VaaS service.
-func New(options options.VaasOptions, vaasURL string) Vaas {
+func New(options options.VaasOptions, vaasURL string, authenticator authenticator.Authenticator) Vaas {
 	client := &vaas{
 		logger:         log.Default(),
 		options:        options,
 		vaasURL:        vaasURL,
 		requestChannel: make(chan msg.VerdictRequest, 1),
 		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
+		authenticator:  authenticator,
 	}
 	return client
 }
@@ -110,9 +116,13 @@ func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
 
 // Close terminates the websocket connection.
 func (v *vaas) Close() (err error) {
-	if err = v.websocketConnection.Close(); err != nil && v.options.EnableLogs {
-		v.logger.Printf("Failed to close web socket: %v", err)
-	}
+	v.shutdown.Do(func() {
+		close(v.requestChannel)
+	})
+
+	//if err = v.websocketConnection.Close(); err != nil && v.options.EnableLogs {
+	//	v.logger.Printf("Failed to close web socket: %v", err)
+	//}
 
 	return
 }
@@ -546,14 +556,14 @@ func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string
 
 func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
 	if v.options.EnableLogs {
-		v.logger.Printf("Opening request for %s", request.GetGUID())
+		v.logger.Printf("Opening request for %s", request.GetRequestId())
 	}
 
 	v.waitAuthenticated.Wait()
 
 	v.openRequestsMutex.Lock()
 	resultChan := make(chan msg.VerdictResponse, 1)
-	v.openRequests[request.GetGUID()] = resultChan
+	v.openRequests[request.GetRequestId()] = resultChan
 	v.openRequestsMutex.Unlock()
 	v.requestChannel <- request
 	return resultChan
@@ -561,12 +571,12 @@ func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictRespons
 
 func (v *vaas) closeRequest(request msg.VerdictRequest) {
 	if v.options.EnableLogs {
-		v.logger.Printf("Closing request for %s", request.GetGUID())
+		v.logger.Printf("Closing request for %s", request.GetRequestId())
 	}
 
 	v.openRequestsMutex.Lock()
-	close(v.openRequests[request.GetGUID()])
-	delete(v.openRequests, request.GetGUID())
+	close(v.openRequests[request.GetRequestId()])
+	delete(v.openRequests, request.GetRequestId())
 	v.openRequestsMutex.Unlock()
 }
 
@@ -624,7 +634,7 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
 // see https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
-func (v *vaas) writePump() error {
+func (v *vaas) writePump( /* TODO: writeChannel */ ) error {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -642,7 +652,7 @@ func (v *vaas) writePump() error {
 				}
 
 				v.openRequestsMutex.Lock()
-				requestChan, exists := v.openRequests[request.GetGUID()]
+				requestChan, exists := v.openRequests[request.GetRequestId()]
 				v.openRequestsMutex.Unlock()
 				if exists {
 					requestChan <- msg.VerdictResponse{
@@ -739,5 +749,88 @@ func (v *vaas) failAllOpenRequests() {
 		request <- msg.VerdictResponse{
 			Verdict: msg.Error,
 		}
+	}
+}
+
+func (v *vaas) connectLoop() error {
+	// TODO: Run until Close
+	var terminate = false
+	for !terminate {
+		// TODO: handle error
+		func() error {
+			var reconnect = false
+
+			// TODO: timeout for connect and auth
+			connection, response, err := websocket.DefaultDialer.DialContext(context.TODO(), v.vaasURL, nil, nil)
+			if errors.Is(err, websocket.ErrBadHandshake) {
+				return fmt.Errorf("handshake failed with status {%d}", response.StatusCode)
+			}
+			if err != nil {
+				return err
+			}
+
+			var token string
+			if token, err = v.authenticator.GetToken(); err != nil {
+				return err
+			}
+
+			connection.SetWriteDeadline(time.Now().Add(writeWait))
+			if err = v.websocketConnection.WriteJSON(msg.AuthRequest{
+				Kind:  "AuthRequest",
+				Token: token,
+			}); err != nil {
+				return err
+			}
+
+			connection.SetReadDeadline(time.Now().Add(pongWait))
+			var authResponse msg.AuthResponse
+			if err = v.websocketConnection.ReadJSON(&authResponse); err != nil {
+				return err
+			}
+			if authResponse.Kind == "Error" {
+				return errors.New(authResponse.Text)
+			}
+			if !authResponse.Success {
+				return errors.New("failed to authenticate")
+			}
+
+			sessionID := authResponse.SessionID
+
+			readErrChan := v.readPump()
+
+			writeChan := make(chan msg.VerdictRequest, 1)
+			defer close(writeChan)
+			writeErrChan := make(chan error, 1)
+			defer close(writeErrChan)
+			// TODO: Move go to writePump
+			go func() {
+				writeErrChan <- v.writePump()
+			}()
+
+			for !reconnect {
+				select {
+				case request, ok := <-v.requestChannel:
+					if !ok {
+						terminate = true
+						break
+					}
+					request.SetSessionId(sessionID)
+					writeChan <- request
+					break
+				case <-readErrChan:
+					reconnect = true
+					break
+				case <-writeErrChan:
+					reconnect = true
+					break
+				}
+			}
+
+			// terminate goroutines
+			// wait for goroutines to finish?
+			// fail remaining requests
+			// close websocket
+			return nil
+		}()
 	}
 }
