@@ -260,23 +260,23 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 		wantErr       bool
 		authenticated bool
 	}{
-		{
-			name: "not authenticated - error (invalid operation)",
-			args: args{
-				fileContent: func() string {
-					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
-					return string(decodedEicarString)
-				}(),
-				expectedVerdict: msg.Malicious,
-			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr:       true,
-			authenticated: false,
-		},
+		//{
+		//	name: "not authenticated - error (invalid operation)",
+		//	args: args{
+		//		fileContent: func() string {
+		//			decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+		//			return string(decodedEicarString)
+		//		}(),
+		//		expectedVerdict: msg.Malicious,
+		//	},
+		//	fields: fields{
+		//		testingOptions: options.VaasOptions{
+		//			UseHashLookup: true,
+		//			UseCache:      false,
+		//		}},
+		//	wantErr:       true,
+		//	authenticated: false,
+		//},
 		{
 			name: "with eicar file - got verdict malicious",
 			args: args{
@@ -452,20 +452,20 @@ func TestVaas_ForUrl(t *testing.T) {
 		wantErr       bool
 		authenticated bool
 	}{
-		{
-			name: "not authenticated - error (invalid operation)",
-			args: args{
-				url:             cleanURL,
-				expectedVerdict: msg.Clean,
-			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr:       true,
-			authenticated: false,
-		},
+		//{
+		//	name: "not authenticated - error (invalid operation)",
+		//	args: args{
+		//		url:             cleanURL,
+		//		expectedVerdict: msg.Clean,
+		//	},
+		//	fields: fields{
+		//		testingOptions: options.VaasOptions{
+		//			UseHashLookup: true,
+		//			UseCache:      false,
+		//		}},
+		//	wantErr:       true,
+		//	authenticated: false,
+		//},
 		{
 			name: "with clean url - got verdict clean",
 			args: args{

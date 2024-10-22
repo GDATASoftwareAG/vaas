@@ -20,11 +20,11 @@ type verdictRequestForStream struct {
 func (r verdictRequestForStream) GetRequestId() string {
 	return r.GUID
 }
-func (r verdictRequestForStream) SetSessionId(sessionId string) { r.SessionID = sessionId }
+func (r *verdictRequestForStream) SetSessionId(sessionId string) { r.SessionID = sessionId }
 
 // NewVerdictRequestForURL creates a new verdictRequestForURL instance.
 func NewVerdictRequestForStream(sessionID string, options options.VaasOptions) VerdictRequest {
-	return verdictRequestForStream{
+	return &verdictRequestForStream{
 		Kind:          VerdictRequestForStreamKind,
 		SessionID:     sessionID,
 		GUID:          uuid.New().String(),
@@ -35,7 +35,7 @@ func NewVerdictRequestForStream(sessionID string, options options.VaasOptions) V
 
 // NewVerdictRequestForURLWithAttributes creates a new verdictRequestForURL instance with attributes.
 func NewVerdictRequestForStreamWithAttributes(sessionID string, options options.VaasOptions, attributes VerdictRequestAttributes) VerdictRequest {
-	return verdictRequestForStream{
+	return &verdictRequestForStream{
 		Kind:                     VerdictRequestForStreamKind,
 		SessionID:                sessionID,
 		GUID:                     uuid.New().String(),
