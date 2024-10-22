@@ -43,6 +43,7 @@ type Vaas interface {
 
 type websocketConnection interface {
 	io.Closer
+	ReadMessage() (messageType int, p []byte, err error)
 	ReadJSON(data any) error
 	WriteJSON(data any) error
 	SetWriteDeadline(add time.Time) error
@@ -576,6 +577,8 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 		for {
 			var verdictResponse msg.VerdictResponse
 
+			//blah, blub, blue := websocketConnection.ReadMessage()
+			//print(blah, blub, blue)
 			err := websocketConnection.ReadJSON(&verdictResponse)
 			if err == nil {
 				v.openRequestsMutex.Lock()

@@ -14,5 +14,5 @@ const (
 // VerdictRequest is an interface for various types of verdict requests.
 type VerdictRequest interface {
 	GetRequestId() string
-	SetSessionId(requestId string)
+	SetSessionId(sessionId string)
 }

@@ -21,11 +21,11 @@ type verdictRequest struct {
 func (r verdictRequest) GetRequestId() string {
 	return r.GUID
 }
-func (r verdictRequest) SetSessionId(requestId string) { r.GUID = requestId }
+func (r *verdictRequest) SetSessionId(sessionId string) { r.SessionID = sessionId }
 
 // NewVerdictRequest creates a new verdictRequest instance.
 func NewVerdictRequest(sessionID string, options options.VaasOptions, sha256 string) VerdictRequest {
-	return verdictRequest{
+	return &verdictRequest{
 		Kind:          VerdictRequestKind,
 		Sha256:        sha256,
 		SessionID:     sessionID,
@@ -37,7 +37,7 @@ func NewVerdictRequest(sessionID string, options options.VaasOptions, sha256 str
 
 // NewVerdictRequestWithAttributes creates a new verdictRequest instance with attributes.
 func NewVerdictRequestWithAttributes(sessionID string, options options.VaasOptions, sha256 string, attributes VerdictRequestAttributes) VerdictRequest {
-	return verdictRequest{
+	return &verdictRequest{
 		Kind:                     VerdictRequestKind,
 		Sha256:                   sha256,
 		SessionID:                sessionID,

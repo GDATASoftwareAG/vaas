@@ -21,6 +21,10 @@ func (m mockWebSocket) Close() error {
 	return nil
 }
 
+func (m mockWebSocket) ReadMessage() (messageType int, p []byte, err error) {
+	return 1, nil, nil
+}
+
 func (m mockWebSocket) ReadJSON(data any) error {
 	if m.readJSONFunc != nil {
 		return m.readJSONFunc(data)
