@@ -660,11 +660,12 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 	return errorChan
 }
 
-func (v *vaas) failAllOpenRequests() {
+func (v *vaas) failAllOpenRequests(err error) {
 	v.openRequestsMutex.Lock()
 	defer v.openRequestsMutex.Unlock()
 
 	for _, request := range v.openRequests {
+		// TODO: Refactor to include proper error message here
 		request <- msg.VerdictResponse{
 			Verdict: msg.Error,
 		}
@@ -672,7 +673,6 @@ func (v *vaas) failAllOpenRequests() {
 }
 
 func (v *vaas) connectLoop() error {
-	// TODO: Run until Close
 	var terminate = false
 	var err error
 	for !terminate {
@@ -733,33 +733,37 @@ func (v *vaas) connectLoop() error {
 						break
 					}
 					request.SetSessionId(sessionID)
-					fmt.Printf("forwarding request to readPump\n")
+					fmt.Printf("forwarding request to writePump\n")
 					writeChan <- request
 					break
-				case <-readErrChan:
-					fmt.Printf("read err, reconnecting\n")
+				case err, ok := <-readErrChan:
 					reconnect = true
-					break
-				case <-writeErrChan:
-					fmt.Printf("write err, reconnecting\n")
+					if !ok {
+						err = errors.New("readPump closed without error message")
+					}
+					return err
+				case err, ok := <-writeErrChan:
 					reconnect = true
-					break
+					if !ok {
+						err = errors.New("writePump closed without error message")
+					}
+					return err
 				}
 			}
 
-			fmt.Printf("Starting shutdownOnce\n")
 			close(writeChan)
 			<-writeErrChan
-			connection.Close()
+			err = connection.Close()
 			<-readErrChan
 			fmt.Printf("Shutdown completed\n")
 
-			// terminate goroutines
-			// wait for goroutines to finish?
 			// fail remaining requests
-			// close websocket
-			return nil
+			return err
 		}()
+		if v.options.EnableLogs {
+			v.logger.Printf("Connection error: %v\n", err)
+		}
+		v.failAllOpenRequests(err)
 	}
 	close(v.connectionLoopTermChan)
 	return err
