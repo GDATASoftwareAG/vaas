@@ -17,9 +17,10 @@ type verdictRequestForStream struct {
 }
 
 // GetGUID returns the GUID of the verdictRequestForURL.
-func (r verdictRequestForStream) GetGUID() string {
+func (r verdictRequestForStream) GetRequestId() string {
 	return r.GUID
 }
+func (r verdictRequestForStream) SetSessionId(sessionId string) { r.SessionID = sessionId }
 
 // NewVerdictRequestForURL creates a new verdictRequestForURL instance.
 func NewVerdictRequestForStream(sessionID string, options options.VaasOptions) VerdictRequest {

@@ -18,9 +18,10 @@ type verdictRequest struct {
 }
 
 // GetGUID returns the GUID of the verdictRequest.
-func (r verdictRequest) GetGUID() string {
+func (r verdictRequest) GetRequestId() string {
 	return r.GUID
 }
+func (r verdictRequest) SetSessionId(requestId string) { r.GUID = requestId }
 
 // NewVerdictRequest creates a new verdictRequest instance.
 func NewVerdictRequest(sessionID string, options options.VaasOptions, sha256 string) VerdictRequest {
