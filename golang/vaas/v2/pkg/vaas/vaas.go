@@ -8,21 +8,20 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"strings"
-
 	"io"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"sync"
-	"time"
+	"strings"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/internal/hash"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
 	"github.com/Noooste/websocket"
+	"go.uber.org/zap"
+	"net"
+	"net/http"
+	"os"
+	"sync"
+	"time"
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
@@ -76,8 +75,7 @@ type vaas struct {
 	vaasURL       string
 	authenticator authenticator.Authenticator
 
-	// TODO: Replace with zap
-	logger            *log.Logger
+	logger            *zap.SugaredLogger
 	shutdownOnce      sync.Once
 	requestChannel    chan msg.VerdictRequest
 	openRequestsMutex sync.Mutex
@@ -89,8 +87,10 @@ type vaas struct {
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
 // The vaasURL parameter specifies the endpoint for the VaaS service.
 func New(options options.VaasOptions, vaasURL string, authenticator authenticator.Authenticator) Vaas {
+	logger, _ := zap.NewProduction()
+	sugar := logger.Sugar()
 	client := &vaas{
-		logger:                 log.Default(),
+		logger:                 sugar,
 		options:                options,
 		vaasURL:                vaasURL,
 		requestChannel:         make(chan msg.VerdictRequest, 1),
@@ -114,6 +114,9 @@ func (v *vaas) Close() (err error) {
 	v.shutdownOnce.Do(func() {
 		close(v.requestChannel)
 	})
+
+	// ignore Sync errors
+	_ = v.logger.Sync()
 
 	// TODO: wait for connectionLoop
 
@@ -456,24 +459,20 @@ func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string
 }
 
 func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
-	if v.options.EnableLogs {
-		v.logger.Printf("Opening request for %s", request.GetRequestId())
-	}
+	v.logger.Debugf("Opening request for %s", request.GetRequestId())
 
 	v.openRequestsMutex.Lock()
 	resultChan := make(chan msg.VerdictResponse, 1)
 	v.openRequests[request.GetRequestId()] = resultChan
 	v.openRequestsMutex.Unlock()
-	if v.options.EnableLogs {
-		v.logger.Printf("Opening new request: %v", request)
-	}
+	v.logger.Debugf("Opening new request: %v", request)
 	v.requestChannel <- request
 	return resultChan
 }
 
 func (v *vaas) closeRequest(request msg.VerdictRequest) {
 	if v.options.EnableLogs {
-		v.logger.Printf("Closing request for %s", request.GetRequestId())
+		v.logger.Debugf("Closing request for %s", request.GetRequestId())
 	}
 
 	v.openRequestsMutex.Lock()
@@ -556,9 +555,6 @@ func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel
 					return
 				}
 				if err := websocketConnection.WriteJSON(request); err != nil {
-					if v.options.EnableLogs {
-						v.logger.Printf("Failed to send request %v", err)
-					}
 					errorChan <- errors.Join(errors.New("writing to websocket failed"), err)
 					return
 				}
@@ -608,7 +604,7 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 					requestChan <- verdictResponse
 				} else {
 					if v.options.EnableLogs {
-						v.logger.Printf("Received response for missing map entry - sha256: %s, guid: %s", verdictResponse.Sha256, verdictResponse.GUID)
+						v.logger.Debugf("Received response for missing map entry - sha256: %s, guid: %s", verdictResponse.Sha256, verdictResponse.GUID)
 					}
 				}
 				continue
@@ -624,7 +620,7 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 				switch closeErr.Code {
 				case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
 					if v.options.EnableLogs {
-						v.logger.Printf("Websocket shutdownOnce - %d: %s", closeErr.Code, closeErr.Text)
+						v.logger.Debugf("Websocket shutdownOnce - %d: %s", closeErr.Code, closeErr.Text)
 					}
 					errorChan <- closeErr
 					return
@@ -636,7 +632,7 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 			// This error occurs when the context is canceled and we call close() on the websocket connection.
 			if errors.Is(err, net.ErrClosed) {
 				if v.options.EnableLogs {
-					v.logger.Printf("Websocket connection was closed")
+					v.logger.Debug("Websocket connection was closed")
 				}
 				errorChan <- err
 				return
@@ -644,13 +640,13 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 			// This error occurs if whe JSON response could not be parsed by the websocket.
 			if errors.Is(err, io.ErrUnexpectedEOF) {
 				if v.options.EnableLogs {
-					v.logger.Printf("Temporarily failed to read from websocket: %v", err)
+					v.logger.Debugf("Temporarily failed to read from websocket: %v", err)
 				}
 				continue
 			}
 			// We don't know what happened here, help...
 			if v.options.EnableLogs {
-				v.logger.Printf("Permanently failed to read from websocket: %v", err)
+				v.logger.Debugf("Permanently failed to read from websocket: %v", err)
 			}
 			errorChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
 			return
@@ -757,11 +753,10 @@ func (v *vaas) connectLoop() error {
 			<-readErrChan
 			fmt.Printf("Shutdown completed\n")
 
-			// fail remaining requests
 			return err
 		}()
 		if v.options.EnableLogs {
-			v.logger.Printf("Connection error: %v\n", err)
+			v.logger.Debugf("Connection error: %v\n", err)
 		}
 		v.failAllOpenRequests(err)
 	}
