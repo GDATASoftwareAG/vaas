@@ -536,46 +536,46 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
 // see https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
-func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel chan msg.VerdictRequest) error {
-	if v.options.EnableLogs {
-		v.logger.Printf("Starting writePump")
-	}
+func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel chan msg.VerdictRequest) <-chan error {
+	errorChan := make(chan error, 1)
+
+	fmt.Printf("Starting writePump\n")
 
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
 	}()
 
-	for {
-		select {
-		case request, ok := <-requestChannel:
-			if !ok {
-				fmt.Printf("writePump leaving now\n")
-				return nil
-			}
-			if err := websocketConnection.WriteJSON(request); err != nil {
-				if v.options.EnableLogs {
-					v.logger.Printf("Failed to send request %v", err)
+	go func() {
+		defer close(errorChan)
+		for {
+			select {
+			case request, ok := <-requestChannel:
+				if !ok {
+					fmt.Printf("writePump leaving now\n")
+					return
 				}
-
-				v.openRequestsMutex.Lock()
-				responseChan, exists := v.openRequests[request.GetRequestId()]
-				v.openRequestsMutex.Unlock()
-				if exists {
-					responseChan <- msg.VerdictResponse{
-						Verdict: msg.Error,
+				if err := websocketConnection.WriteJSON(request); err != nil {
+					if v.options.EnableLogs {
+						v.logger.Printf("Failed to send request %v", err)
 					}
+					errorChan <- errors.Join(errors.New("writing to websocket failed"), err)
+					return
 				}
-
-				return err
-			}
-		case <-ticker.C:
-			websocketConnection.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := websocketConnection.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return err
+			case <-ticker.C:
+				err := websocketConnection.SetWriteDeadline(time.Now().Add(writeWait))
+				if err != nil {
+					errorChan <- err
+					return
+				}
+				if err := websocketConnection.WriteMessage(websocket.PingMessage, nil); err != nil {
+					errorChan <- errors.Join(errors.New("writing to websocket failed"), err)
+					return
+				}
 			}
 		}
-	}
+	}()
+	return errorChan
 }
 
 func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
@@ -722,14 +722,7 @@ func (v *vaas) connectLoop() error {
 			readErrChan := v.readPump(connection)
 
 			writeChan := make(chan msg.VerdictRequest, 1)
-			writeErrChan := make(chan error, 1)
-			// TODO: Move go to writePump
-			go func() {
-				fmt.Printf("writePump goroutine begin\n")
-				writeErrChan <- v.writePump(connection, writeChan)
-				close(writeErrChan)
-				fmt.Printf("writePump goroutine end\n")
-			}()
+			writeErrChan := v.writePump(connection, writeChan)
 
 			for !reconnect && !terminate {
 				select {
