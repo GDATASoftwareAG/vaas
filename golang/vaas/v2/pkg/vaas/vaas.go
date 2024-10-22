@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"go.uber.org/zap/zapcore"
 	"io"
 	"strings"
 
@@ -87,8 +88,13 @@ type vaas struct {
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
 // The vaasURL parameter specifies the endpoint for the VaaS service.
 func New(options options.VaasOptions, vaasURL string, authenticator authenticator.Authenticator) Vaas {
-	logger, _ := zap.NewProduction()
+	config := zap.NewProductionConfig()
+	config.Encoding = "console"
+	config.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	config.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05")
+	logger, _ := config.Build()
 	sugar := logger.Sugar()
+
 	client := &vaas{
 		logger:                 sugar,
 		options:                options,
@@ -538,7 +544,7 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel chan msg.VerdictRequest) <-chan error {
 	errorChan := make(chan error, 1)
 
-	fmt.Printf("Starting writePump\n")
+	v.logger.Debug("Starting writePump")
 
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -551,7 +557,7 @@ func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel
 			select {
 			case request, ok := <-requestChannel:
 				if !ok {
-					fmt.Printf("writePump leaving now\n")
+					v.logger.Debug("writePump leaving now")
 					return
 				}
 				if err := websocketConnection.WriteJSON(request); err != nil {
@@ -586,8 +592,8 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 	})
 
 	go func() {
-		fmt.Printf("Starting readPump\n")
-		defer fmt.Printf("Terminating readPump\n")
+		v.logger.Debug("Starting readPump")
+		defer v.logger.Debug("Terminating readPump")
 
 		defer close(errorChan)
 
@@ -672,7 +678,7 @@ func (v *vaas) connectLoop() error {
 	var terminate = false
 	var err error
 	for !terminate {
-		fmt.Printf("connectLoop new iteration\n")
+		v.logger.Debug("connectLoop new iteration")
 		// TODO: handle error
 		err = func() error {
 			var reconnect = false
@@ -713,7 +719,7 @@ func (v *vaas) connectLoop() error {
 
 			sessionID := authResponse.SessionID
 
-			fmt.Printf("New authenticated connection established: %s\n", sessionID)
+			v.logger.Debugf("New authenticated connection established: %s", sessionID)
 
 			readErrChan := v.readPump(connection)
 
@@ -724,12 +730,12 @@ func (v *vaas) connectLoop() error {
 				select {
 				case request, ok := <-v.requestChannel:
 					if !ok {
-						fmt.Printf("request channel closed, terminating\n")
+						v.logger.Debug("request channel closed, terminating")
 						terminate = true
 						break
 					}
 					request.SetSessionId(sessionID)
-					fmt.Printf("forwarding request to writePump\n")
+					v.logger.Debug("forwarding request to writePump")
 					writeChan <- request
 					break
 				case err, ok := <-readErrChan:
@@ -751,13 +757,11 @@ func (v *vaas) connectLoop() error {
 			<-writeErrChan
 			err = connection.Close()
 			<-readErrChan
-			fmt.Printf("Shutdown completed\n")
+			v.logger.Debug("Shutdown completed")
 
 			return err
 		}()
-		if v.options.EnableLogs {
-			v.logger.Debugf("Connection error: %v\n", err)
-		}
+		v.logger.Debugf("Connection error: %v", err)
 		v.failAllOpenRequests(err)
 	}
 	close(v.connectionLoopTermChan)
