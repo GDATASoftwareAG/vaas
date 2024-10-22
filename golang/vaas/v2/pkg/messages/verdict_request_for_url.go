@@ -18,13 +18,14 @@ type verdictRequestForURL struct {
 }
 
 // GetGUID returns the GUID of the verdictRequestForURL.
-func (r verdictRequestForURL) GetGUID() string {
+func (r verdictRequestForURL) GetRequestId() string {
 	return r.GUID
 }
+func (r *verdictRequestForURL) SetSessionId(sessionId string) { r.SessionID = sessionId }
 
 // NewVerdictRequestForURL creates a new verdictRequestForURL instance.
 func NewVerdictRequestForURL(sessionID string, options options.VaasOptions, URL string) VerdictRequest {
-	return verdictRequestForURL{
+	return &verdictRequestForURL{
 		Kind:          VerdictRequestForURLKind,
 		URL:           URL,
 		SessionID:     sessionID,
@@ -36,7 +37,7 @@ func NewVerdictRequestForURL(sessionID string, options options.VaasOptions, URL 
 
 // NewVerdictRequestForURLWithAttributes creates a new verdictRequestForURL instance with attributes.
 func NewVerdictRequestForURLWithAttributes(sessionID string, options options.VaasOptions, URL string, attributes VerdictRequestAttributes) VerdictRequest {
-	return verdictRequestForURL{
+	return &verdictRequestForURL{
 		Kind:                     VerdictRequestForURLKind,
 		URL:                      URL,
 		SessionID:                sessionID,
