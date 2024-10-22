@@ -44,6 +44,7 @@ type Vaas interface {
 type websocketConnection interface {
 	io.Closer
 	ReadMessage() (messageType int, p []byte, err error)
+	// TODO: Replace with ReadMessage
 	ReadJSON(data any) error
 	WriteJSON(data any) error
 	SetWriteDeadline(add time.Time) error
@@ -75,14 +76,14 @@ type vaas struct {
 	vaasURL       string
 	authenticator authenticator.Authenticator
 
+	// TODO: Replace with zap
 	logger            *log.Logger
-	shutdown          sync.Once
+	shutdownOnce      sync.Once
 	requestChannel    chan msg.VerdictRequest
 	openRequestsMutex sync.Mutex
 	openRequests      map[string]chan msg.VerdictResponse
 
 	connectionLoopTermChan chan struct{}
-	websocketConnection    websocketConnection
 }
 
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
@@ -97,6 +98,7 @@ func New(options options.VaasOptions, vaasURL string, authenticator authenticato
 		authenticator:          authenticator,
 		connectionLoopTermChan: make(chan struct{}, 1),
 	}
+	// TODO: what's the right pattern for functions that start goroutines?
 	go client.connectLoop()
 	return client
 }
@@ -109,7 +111,7 @@ func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authentic
 
 // Close terminates the websocket connection.
 func (v *vaas) Close() (err error) {
-	v.shutdown.Do(func() {
+	v.shutdownOnce.Do(func() {
 		close(v.requestChannel)
 	})
 
@@ -579,9 +581,15 @@ func (v *vaas) writePump(websocketConnection websocketConnection, requestChannel
 func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 	errorChan := make(chan error, 1)
 
-	websocketConnection.SetReadDeadline(time.Now().Add(pongWait))
-	websocketConnection.SetPongHandler(func(string) error { websocketConnection.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-	go func(errorChan chan<- error) {
+	if err := websocketConnection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		errorChan <- err
+		return errorChan
+	}
+	websocketConnection.SetPongHandler(func(string) error {
+		return websocketConnection.SetReadDeadline(time.Now().Add(pongWait))
+	})
+
+	go func() {
 		fmt.Printf("Starting readPump\n")
 		defer fmt.Printf("Terminating readPump\n")
 
@@ -590,8 +598,6 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 		for {
 			var verdictResponse msg.VerdictResponse
 
-			//blah, blub, blue := websocketConnection.ReadMessage()
-			//print(blah, blub, blue)
 			err := websocketConnection.ReadJSON(&verdictResponse)
 			if err == nil {
 				v.openRequestsMutex.Lock()
@@ -608,17 +614,22 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 				continue
 			}
 
+			// Error handling
+			// websocket closed: end go routine
+			// other errors: write to errorChan
+
 			var closeErr *websocket.CloseError
-			// If websocket was shutdown by the server
+			// If websocket was shutdownOnce by the server
 			if errors.As(err, &closeErr) {
 				switch closeErr.Code {
 				case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
 					if v.options.EnableLogs {
-						v.logger.Printf("Websocket shutdown - %d: %s", closeErr.Code, closeErr.Text)
+						v.logger.Printf("Websocket shutdownOnce - %d: %s", closeErr.Code, closeErr.Text)
 					}
+					errorChan <- closeErr
 					return
 				default:
-					errorChan <- fmt.Errorf("unexpected shutdown of websocket - %w", closeErr)
+					errorChan <- fmt.Errorf("unexpected shutdownOnce of websocket - %w", closeErr)
 					return
 				}
 			}
@@ -627,6 +638,7 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 				if v.options.EnableLogs {
 					v.logger.Printf("Websocket connection was closed")
 				}
+				errorChan <- err
 				return
 			}
 			// This error occurs if whe JSON response could not be parsed by the websocket.
@@ -643,7 +655,7 @@ func (v *vaas) readPump(websocketConnection websocketConnection) <-chan error {
 			errorChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
 			return
 		}
-	}(errorChan)
+	}()
 
 	return errorChan
 }
@@ -742,7 +754,7 @@ func (v *vaas) connectLoop() error {
 				}
 			}
 
-			fmt.Printf("Starting shutdown\n")
+			fmt.Printf("Starting shutdownOnce\n")
 			close(writeChan)
 			<-writeErrChan
 			connection.Close()
