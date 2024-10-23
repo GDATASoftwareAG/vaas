@@ -8,12 +8,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/internal/hash"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
@@ -134,7 +136,80 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
-	return msg.VaasVerdict{}, errors.New("not implemented")
+	file, err := os.Open(filePath)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	sha256, err := hash.CalculateSha256(file)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+
+	verdict, err := v.ForSha256(ctx, sha256)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	if verdict.Verdict != msg.Unknown {
+		return verdict, nil
+	}
+
+	if _, err = file.Seek(0, 0); err != nil {
+		return msg.VaasVerdict{}, err
+	}
+
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	err = v.upload(ctx, file, fileInfo.Size())
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+
+	return v.ForSha256(ctx, sha256)
+}
+
+func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) error {
+	token, err := v.authenticator.GetToken()
+	if err != nil {
+		return err
+	}
+
+	uploadUrl, err := url.JoinPath(v.vaasURL.String(), "files")
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadUrl, file)
+	if err != nil {
+		return err
+	}
+
+	req.ContentLength = contentLength
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	// TODO: keep for connection pooling !
+	client := http.Client{
+		Transport: &http.Transport{
+			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+		},
+	}
+	httpResponse, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = httpResponse.Body.Close()
+	}()
+
+	if httpResponse.StatusCode != 201 {
+		// TODO: use same error for all HTTP requests
+		errMsg, _ := io.ReadAll(httpResponse.Body)
+		return fmt.Errorf("StatusCode: %d, Msg: %s", httpResponse.StatusCode, errMsg)
+	}
+
+	return nil
 }
 
 // ForFileInMemory sends an analysis request for file data provided as an io.Reader to the Vaas server and returns the verdict.
@@ -152,6 +227,7 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
+
 	return msg.VaasVerdict{}, errors.New("not implemented")
 }
 
@@ -189,54 +265,4 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
 	return msg.VaasVerdict{}, errors.New("not implemented")
-}
-
-func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token string) error {
-	req, err := http.NewRequest(http.MethodPut, url, file)
-	if err != nil {
-		return err
-	}
-
-	if contentLength > 0 {
-		req.ContentLength = contentLength
-	} else {
-		// VAAS requires a set Content-Length.
-		// Here can add support for various io.Reader, which are not supported by the http package.
-		if req.ContentLength == 0 {
-			switch t := file.(type) {
-			case io.Seeker:
-				var size int64
-				if size, err = t.Seek(0, io.SeekEnd); err == nil {
-					if _, err = t.Seek(0, io.SeekStart); err == nil {
-						req.ContentLength = size
-						break
-					}
-				}
-				return err
-			default:
-				return ErrUnsupportedReader
-			}
-		}
-	}
-
-	req.Header.Add("Authorization", token)
-
-	client := http.Client{
-		Transport: &http.Transport{
-			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
-		},
-	}
-	httpResponse, err := client.Do(req)
-
-	if err != nil {
-		return err
-	}
-	defer httpResponse.Body.Close()
-
-	if httpResponse.StatusCode != 200 {
-		errMsg, _ := io.ReadAll(httpResponse.Body)
-		return fmt.Errorf("StatusCode: %d, Msg: %s", httpResponse.StatusCode, errMsg)
-	}
-
-	return nil
 }

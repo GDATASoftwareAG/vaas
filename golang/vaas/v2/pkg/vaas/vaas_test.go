@@ -2,13 +2,16 @@ package vaas
 
 import (
 	"context"
+	"encoding/base64"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
 	"github.com/joho/godotenv"
 	"log"
+	"math/rand"
 	"net/url"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -204,113 +207,110 @@ func TestVaas_ForSha256(t *testing.T) {
 	}
 }
 
-//func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
-//	const (
-//		eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo"
-//	)
-//	type fields struct {
-//		testingOptions options.VaasOptions
-//	}
-//	type args struct {
-//		fileContent     string
-//		expectedVerdict msg.Verdict
-//	}
-//	tests := []struct {
-//		args          args
-//		name          string
-//		fields        fields
-//		wantErr       bool
-//		authenticated bool
-//	}{
-//		{
-//			name: "not authenticated - error (invalid operation)",
-//			args: args{
-//				fileContent: func() string {
-//					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
-//					return string(decodedEicarString)
-//				}(),
-//				expectedVerdict: msg.Malicious,
-//			},
-//			fields: fields{
-//				testingOptions: options.VaasOptions{
-//					UseHashLookup: true,
-//					UseCache:      false,
-//				}},
-//			wantErr:       true,
-//			authenticated: false,
-//		},
-//		{
-//			name: "with eicar file - got verdict malicious",
-//			args: args{
-//				fileContent: func() string {
-//					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
-//					return string(decodedEicarString)
-//				}(),
-//				expectedVerdict: msg.Malicious,
-//			},
-//			fields: fields{
-//				testingOptions: options.VaasOptions{
-//					UseHashLookup: true,
-//					UseCache:      false,
-//				}},
-//			wantErr:       false,
-//			authenticated: true,
-//		},
-//		{
-//			name: "With random file - got verdict clean",
-//			args: args{
-//				fileContent:     RandomString(200),
-//				expectedVerdict: msg.Clean,
-//			},
-//			fields: fields{
-//				testingOptions: options.VaasOptions{
-//					UseHashLookup: true,
-//					UseCache:      false,
-//				}},
-//			wantErr:       false,
-//			authenticated: true,
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			VaasClient := New(tt.fields.testingOptions, "")
-//			if tt.authenticated {
-//				fixture := new(testFixture)
-//				VaasClient = fixture.setUp(t)
-//				defer fixture.tearDown(t)
-//			}
-//
-//			testFile := filepath.Join(t.TempDir(), "testfile")
-//			if err := os.WriteFile(testFile, []byte(tt.args.fileContent), 0644); err != nil {
-//				t.Fatalf("error while writing file: %v", err)
-//			}
-//
-//			// test disk file
-//			verdict, err := VaasClient.ForFile(context.Background(), testFile)
-//			if (err != nil) != tt.wantErr {
-//				t.Fatalf("unexpected error - %v", err)
-//			}
-//
-//			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
-//				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
-//			}
-//
-//			// test in-memory file
-//			buf := new(bytes.Buffer)
-//			_, _ = io.Copy(buf, strings.NewReader(tt.args.fileContent))
-//
-//			verdict, err = VaasClient.ForFileInMemory(context.Background(), buf)
-//			if (err != nil) != tt.wantErr {
-//				t.Fatalf("unexpected error - %v", err)
-//			}
-//
-//			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
-//				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
-//			}
-//		})
-//	}
-//}
+func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
+	const (
+		eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo"
+	)
+	type fields struct {
+		testingOptions options.VaasOptions
+	}
+	type args struct {
+		fileContent     string
+		expectedVerdict msg.Verdict
+	}
+	tests := []struct {
+		args          args
+		name          string
+		fields        fields
+		wantErr       bool
+		authenticated bool
+	}{
+		//{
+		//	name: "not authenticated - error (invalid operation)",
+		//	args: args{
+		//		fileContent: func() string {
+		//			decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+		//			return string(decodedEicarString)
+		//		}(),
+		//		expectedVerdict: msg.Malicious,
+		//	},
+		//	fields: fields{
+		//		testingOptions: options.VaasOptions{
+		//			UseHashLookup: true,
+		//			UseCache:      false,
+		//		}},
+		//	wantErr:       true,
+		//	authenticated: false,
+		//},
+		{
+			name: "with eicar file - got verdict malicious",
+			args: args{
+				fileContent: func() string {
+					decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+					return string(decodedEicarString)
+				}(),
+				expectedVerdict: msg.Malicious,
+			},
+			fields: fields{
+				testingOptions: options.VaasOptions{
+					UseHashLookup: true,
+					UseCache:      false,
+				}},
+			wantErr:       false,
+			authenticated: true,
+		},
+		{
+			name: "With random file - got verdict clean",
+			args: args{
+				fileContent:     RandomString(200),
+				expectedVerdict: msg.Clean,
+			},
+			fields: fields{
+				testingOptions: options.VaasOptions{
+					UseHashLookup: true,
+					UseCache:      false,
+				}},
+			wantErr:       false,
+			authenticated: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture := new(testFixture)
+			vaasClient := fixture.setUp(t)
+
+			testFile := filepath.Join(t.TempDir(), "testfile")
+			if err := os.WriteFile(testFile, []byte(tt.args.fileContent), 0644); err != nil {
+				t.Fatalf("error while writing file: %v", err)
+			}
+
+			// test disk file
+			verdict, err := vaasClient.ForFile(context.Background(), testFile)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error - %v", err)
+			}
+
+			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
+				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
+			}
+
+			// test in-memory file
+			//buf := new(bytes.Buffer)
+			//_, _ = io.Copy(buf, strings.NewReader(tt.args.fileContent))
+			//
+			//verdict, err = vaasClient.ForFileInMemory(context.Background(), buf)
+			//if (err != nil) != tt.wantErr {
+			//	t.Fatalf("unexpected error - %v", err)
+			//}
+			//
+			//if err == nil && verdict.Verdict != tt.args.expectedVerdict {
+			//	t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
+			//}
+		})
+	}
+}
+
 //
 //func TestVaas_ForStream_WithStreamFromString(t *testing.T) {
 //	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
@@ -527,17 +527,17 @@ func TestVaas_ForSha256(t *testing.T) {
 //		assert.Equal(t, msg.Clean, verdict.Verdict, verdict.ErrMsg)
 //	}
 //}
-//
-//func RandomString(n int) string {
-//	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-//
-//	s := make([]rune, n)
-//	for i := range s {
-//		s[i] = letters[rand.Intn(len(letters))]
-//	}
-//	return string(s)
-//}
-//
+
+func RandomString(n int) string {
+	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+	s := make([]rune, n)
+	for i := range s {
+		s[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(s)
+}
+
 //func Index(s []msg.VaasVerdict, str string) int {
 //	for i, v := range s {
 //		if v.Sha256 == str {
