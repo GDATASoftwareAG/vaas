@@ -3,26 +3,17 @@
 package vaas
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-
-	"io"
-	"log"
-	"net"
-	"net/http"
-	"os"
-	"sync"
-	"time"
-
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/internal/hash"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
-	"github.com/Noooste/websocket"
+	"io"
+	"net/http"
+	"net/url"
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
@@ -30,39 +21,12 @@ import (
 // The Connect() function has to be called before any other requests are made.
 // Please refer to the individual function comments for more details on their usage and behavior.
 type Vaas interface {
-	io.Closer
-	Connect(ctx context.Context, auth authenticator.Authenticator) (errorChan <-chan error, err error)
 	ForUrl(ctx context.Context, uri string) (msg.VaasVerdict, error)
 	ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error)
 	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
 	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
 	ForFileInMemory(ctx context.Context, file io.Reader) (msg.VaasVerdict, error)
-	ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error)
-	ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error)
 }
-
-type websocketConnection interface {
-	io.Closer
-	ReadJSON(data any) error
-	WriteJSON(data any) error
-	SetWriteDeadline(add time.Time) error
-	WriteMessage(messageType int, data []byte) error
-	SetReadDeadline(t time.Time) error
-	SetPongHandler(h func(appData string) error)
-}
-
-// Confer example for constants, pong handler, and ping ticker
-// https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
-const (
-	// Time allowed to write a message to the peer.
-	writeWait = 10 * time.Second
-
-	// Time allowed to read the next pong message from the peer.
-	pongWait = 30 * time.Second
-
-	// Send pings to peer with this period. Must be less than pongWait.
-	pingPeriod = (pongWait * 9) / 10
-)
 
 var (
 	ErrUnsupportedReader = errors.New("unsupported reader")
@@ -70,74 +34,27 @@ var (
 
 // vaas provides the implementation of the Vaas interface.
 type vaas struct {
-	logger              *log.Logger
-	termChan            chan bool
-	websocketConnection websocketConnection
-	openRequests        map[string]chan msg.VerdictResponse
-	requestChannel      chan msg.VerdictRequest
-	sessionID           string
-	vaasURL             string
-	waitAuthenticated   sync.WaitGroup
-	openRequestsMutex   sync.Mutex
-	options             options.VaasOptions
+	vaasURL       *url.URL
+	options       options.VaasOptions
+	authenticator authenticator.Authenticator
 }
 
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
 // The vaasURL parameter specifies the endpoint for the VaaS service.
-func New(options options.VaasOptions, vaasURL string) Vaas {
+func New(options options.VaasOptions, vaasURL *url.URL, authenticator authenticator.Authenticator) Vaas {
 	client := &vaas{
-		logger:         log.Default(),
-		options:        options,
-		vaasURL:        vaasURL,
-		requestChannel: make(chan msg.VerdictRequest, 1),
-		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
+		options:       options,
+		vaasURL:       vaasURL,
+		authenticator: authenticator,
 	}
 	return client
 }
 
 // NewWithDefaultEndpoint creates a new instance of the Vaas struct with a default endpoint.
 // It represents a client for interacting with a Vaas service.
-func NewWithDefaultEndpoint(options options.VaasOptions) Vaas {
-	client := &vaas{
-		logger:         log.Default(),
-		options:        options,
-		vaasURL:        "wss://gateway.production.vaas.gdatasecurity.de",
-		requestChannel: make(chan msg.VerdictRequest, 1),
-		openRequests:   make(map[string]chan msg.VerdictResponse, 0),
-	}
-	return client
-}
-
-// Close terminates the websocket connection.
-func (v *vaas) Close() (err error) {
-	if err = v.websocketConnection.Close(); err != nil && v.options.EnableLogs {
-		v.logger.Printf("Failed to close web socket: %v", err)
-	}
-
-	return
-}
-
-// Connect opens a websocket connection to the VAAS Server. Use Close() to terminate the connection.
-// The errorChan indicates when a connection was closed. In the case of an unexpected close, an error is written to the channel.
-//
-// Example usage:
-//
-//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
-//	ctx := context.Background()
-//	auth := authenticator.NewClientCredentialsGrantAuthenticator("client_id", "client_secret")
-//	errorChan, err := vaasClient.Connect(ctx, auth)
-//	defer vaasClient.Close()
-//	if err != nil {
-//	    log.Fatalf("Failed to connect to VaaS: %v", err)
-//	}
-func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (errorChan <-chan error, err error) {
-	if err = v.authenticate(ctx, auth); err != nil {
-		return nil, err
-	}
-
-	errChan := v.serve()
-
-	return errChan, nil
+func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authenticator.Authenticator) Vaas {
+	vaasURL, _ := url.Parse("wss://gateway.production.vaas.gdatasecurity.de")
+	return New(options, vaasURL, authenticator)
 }
 
 // ForSha256 sends an analysis request for a file identified by its SHA256 hash to the Vaas server and returns the verdict.
@@ -155,67 +72,51 @@ func (v *vaas) Connect(ctx context.Context, auth authenticator.Authenticator) (e
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
+	// Loop until we get 200 or an error
+	for {
+		token, err := v.authenticator.GetToken()
+		if err != nil {
+			return msg.VaasVerdict{}, err
+		}
 
-	request := msg.NewVerdictRequest(v.sessionID, v.options, sha256)
+		reportUrl, err := url.JoinPath(v.vaasURL.String(), "files", sha256, "report")
 
-	responseChannel := v.openRequest(request)
-	defer v.closeRequest(request)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, reportUrl, nil)
+		if err != nil {
+			return msg.VaasVerdict{}, err
+		}
+		req.Header.Add("Authorization", "Bearer "+token)
 
-	var response msg.VerdictResponse
-	select {
-	case response = <-responseChannel:
-	case <-ctx.Done():
-		return msg.VaasVerdict{}, ctx.Err()
-	}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return msg.VaasVerdict{}, err
+		}
+		defer func() {
+			// TODO: Handle error?
+			_ = resp.Body.Close()
+		}()
 
-	return msg.VaasVerdict{
-		Verdict: response.Verdict,
-		Sha256:  response.Sha256,
-	}, nil
-}
+		switch resp.StatusCode {
+		case http.StatusNotFound:
+			return msg.VaasVerdict{
+				Verdict: msg.Unknown,
+				Sha256:  sha256,
+			}, nil
+		case http.StatusAccepted:
+			continue
+		case http.StatusOK:
+			var report msg.VaasReport
 
-// ForSha256List sends analysis requests for a list of SHA256 hashes to the Vaas server and returns the verdicts.
-// The analysis can be canceled using the provided context.
-//
-// Example usage:
-//
-//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
-//	ctx := context.Background()
-//	sha256List := []string{"sha256_hash_1", "sha256_hash_2"}
-//	verdicts, err := vaasClient.ForSha256List(ctx, sha256List)
-//	if err != nil {
-//	    log.Fatalf("Failed to get verdicts: %v", err)
-//	}
-//	for _, verdict := range verdicts {
-//	    fmt.Printf("SHA256: %s\n", verdict.Sha256)
-//	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
-//	}
-func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return []msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	var waitGroup sync.WaitGroup
-	verdicts := make([]msg.VaasVerdict, len(sha256List))
-
-	for i, sha256 := range sha256List {
-		waitGroup.Add(1)
-		go func(i int, sha256 string) {
-			defer waitGroup.Done()
-			verdict, err := v.ForSha256(ctx, sha256)
+			err := json.NewDecoder(resp.Body).Decode(&report)
 			if err != nil {
-				verdict = msg.VaasVerdict{Sha256: sha256, Verdict: msg.Error, ErrMsg: err.Error(),
-					Detection: verdict.Detection, FileType: verdict.FileType, MimeType: verdict.MimeType}
+				return msg.VaasVerdict{}, err
 			}
-			verdicts[i] = verdict
-		}(i, sha256)
-	}
-	waitGroup.Wait()
 
-	return verdicts, nil
+			return report.ConvertToVaasVerdict(), nil
+		default:
+			return msg.VaasVerdict{}, fmt.Errorf("received non-200 status code %d", resp.StatusCode)
+		}
+	}
 }
 
 // ForFile sends an analysis request for a file at the given filePath to the Vaas server and returns the verdict.
@@ -233,38 +134,7 @@ func (v *vaas) ForSha256List(ctx context.Context, sha256List []string) ([]msg.Va
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	file, err := os.Open(filePath)
-	defer func() {
-		_ = file.Close()
-	}()
-
-	if err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Error,
-			ErrMsg:  err.Error(),
-		}, err
-	}
-
-	sha256, err := hash.CalculateSha256(file)
-	if err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Error,
-			ErrMsg:  err.Error(),
-		}, err
-	}
-
-	if _, err = file.Seek(0, 0); err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Error,
-			ErrMsg:  err.Error(),
-		}, err
-	}
-
-	return v.forFileWithSha(ctx, file, sha256)
+	return msg.VaasVerdict{}, errors.New("not implemented")
 }
 
 // ForFileInMemory sends an analysis request for file data provided as an io.Reader to the Vaas server and returns the verdict.
@@ -282,67 +152,7 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	buf := new(bytes.Buffer)
-	if _, err := io.Copy(buf, data); err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Error,
-			ErrMsg:  err.Error(),
-		}, err
-	}
-
-	sha256, err := hash.CalculateSha256(bytes.NewReader(buf.Bytes()))
-	if err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Error,
-			ErrMsg:  err.Error(),
-		}, err
-	}
-
-	return v.forFileWithSha(ctx, bytes.NewReader(buf.Bytes()), sha256)
-}
-
-// ForFileList sends analysis requests for a list of file paths to the Vaas server and returns the verdicts.
-// The analysis can be canceled using the provided context.
-//
-// Example usage:
-//
-//	vaasClient := vaas.New(options,  "wss://example.authentication.endpoint")
-//	ctx := context.Background()
-//	fileList := []string{"path/to/file1.txt", "path/to/file2.txt"}
-//	verdicts, err := vaasClient.ForFileList(ctx, fileList)
-//	if err != nil {
-//	    log.Fatalf("Failed to get verdicts: %v", err)
-//	}
-//	for _, verdict := range verdicts {
-//	    fmt.Printf("File: %s\n", verdict.Sha256)
-//	    fmt.Printf("Verdict: %s\n", verdict.Verdict)
-//	}
-func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return nil, errors.New("invalid operation")
-	}
-
-	var waitGroup sync.WaitGroup
-	verdicts := make([]msg.VaasVerdict, len(fileList))
-
-	for i, file := range fileList {
-		waitGroup.Add(1)
-
-		go func(i int, file string) {
-			defer waitGroup.Done()
-			verdict, err := v.ForFile(ctx, file)
-			if err != nil {
-				verdict = msg.VaasVerdict{Verdict: msg.Error, ErrMsg: err.Error()}
-			}
-			verdicts[i] = verdict
-		}(i, file)
-	}
-	waitGroup.Wait()
-	return verdicts, nil
+	return msg.VaasVerdict{}, errors.New("not implemented")
 }
 
 // ForUrl sends an analysis request for a file URL to the Vaas server and returns the verdict.
@@ -359,29 +169,7 @@ func (v *vaas) ForFileList(ctx context.Context, fileList []string) ([]msg.VaasVe
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequestForURL(v.sessionID, v.options, url)
-
-	responseChan := v.openRequest(request)
-	defer v.closeRequest(request)
-
-	var response msg.VerdictResponse
-	select {
-	case response = <-responseChan:
-	case <-ctx.Done():
-		return msg.VaasVerdict{}, ctx.Err()
-	}
-
-	return msg.VaasVerdict{
-		Verdict:   response.Verdict,
-		Sha256:    response.Sha256,
-		Detection: response.Detection,
-		MimeType:  response.MimeType,
-		FileType:  response.FileType,
-	}, nil
+	return msg.VaasVerdict{}, errors.New("not implemented")
 }
 
 // ForStream sends an analysis request for a file stream to the Vaas server and returns the verdict.
@@ -400,174 +188,7 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequestForStream(v.sessionID, v.options)
-
-	responseChan := v.openRequest(request)
-	defer v.closeRequest(request)
-
-	var response msg.VerdictResponse
-	select {
-	case response = <-responseChan:
-	case <-ctx.Done():
-		return msg.VaasVerdict{}, ctx.Err()
-	}
-
-	if response.Verdict != "" && response.Verdict != msg.Unknown {
-		return msg.VaasVerdict{}, errors.New("server returned verdict without receiving content")
-	}
-
-	if len(strings.TrimSpace(response.UploadToken)) == 0 {
-		return msg.VaasVerdict{}, errors.New("verdictResponse missing UploadToken for stream upload")
-	}
-
-	if len(strings.TrimSpace(response.URL)) == 0 {
-		return msg.VaasVerdict{}, errors.New("verdictResponse missing URL for stream upload")
-	}
-
-	if err := v.uploadFile(stream, contentLength, response.URL, response.UploadToken); err != nil {
-		return msg.VaasVerdict{
-			Verdict: msg.Error,
-			ErrMsg:  err.Error(),
-		}, err
-	}
-	response = <-responseChan
-
-	return msg.VaasVerdict{
-		Verdict:   response.Verdict,
-		Sha256:    response.Sha256,
-		Detection: response.Detection,
-		MimeType:  response.MimeType,
-		FileType:  response.FileType,
-	}, nil
-}
-
-func (v *vaas) authenticate(ctx context.Context, auth authenticator.Authenticator) error {
-	v.waitAuthenticated.Add(1)
-	defer v.waitAuthenticated.Done()
-
-	connection, resp, err := websocket.DefaultDialer.DialContext(ctx, v.vaasURL, nil, nil)
-	if errors.Is(err, websocket.ErrBadHandshake) {
-		return fmt.Errorf("handshake failed with status {%d}", resp.StatusCode)
-	}
-	if err != nil {
-		return err
-	}
-
-	v.websocketConnection = connection
-
-	var token string
-	if token, err = auth.GetToken(); err != nil {
-		return err
-	}
-
-	v.websocketConnection.SetWriteDeadline(time.Now().Add(writeWait))
-	if err = v.websocketConnection.WriteJSON(msg.AuthRequest{
-		Kind:  "AuthRequest",
-		Token: token,
-	}); err != nil {
-		return err
-	}
-
-	v.websocketConnection.SetReadDeadline(time.Now().Add(pongWait))
-	var authResponse msg.AuthResponse
-	if err = v.websocketConnection.ReadJSON(&authResponse); err != nil {
-		return err
-	}
-	if authResponse.Kind == "Error" {
-		return errors.New(authResponse.Text)
-	}
-	if !authResponse.Success {
-		return errors.New("failed to authenticate")
-	}
-
-	v.sessionID = authResponse.SessionID
-	return nil
-}
-
-func (v *vaas) serve() <-chan error {
-	errChan := make(chan error)
-	listenErrChan := v.readPump()
-
-	sendErrChan := make(chan error, 1)
-	go func() {
-		sendErrChan <- v.writePump()
-	}()
-
-	go func() {
-		defer close(errChan)
-		select {
-		case errChan <- <-listenErrChan:
-		case errChan <- <-sendErrChan:
-		}
-	}()
-
-	return errChan
-}
-
-func (v *vaas) forFileWithSha(ctx context.Context, data io.Reader, sha256 string) (msg.VaasVerdict, error) {
-	if v.sessionID == "" {
-		return msg.VaasVerdict{}, errors.New("invalid operation")
-	}
-
-	request := msg.NewVerdictRequest(v.sessionID, v.options, sha256)
-	responseChan := v.openRequest(request)
-	defer v.closeRequest(request)
-
-	var response msg.VerdictResponse
-	select {
-	case response = <-responseChan:
-	case <-ctx.Done():
-		return msg.VaasVerdict{}, ctx.Err()
-	}
-
-	if response.Verdict == msg.Unknown {
-		if err := v.uploadFile(data, 0, response.URL, response.UploadToken); err != nil {
-			return msg.VaasVerdict{
-				Verdict: msg.Error,
-				Sha256:  sha256,
-				ErrMsg:  err.Error(),
-			}, err
-		}
-		response = <-responseChan
-	}
-
-	return msg.VaasVerdict{
-		Verdict:   response.Verdict,
-		Sha256:    response.Sha256,
-		Detection: response.Detection,
-		FileType:  response.FileType,
-		MimeType:  response.MimeType,
-	}, nil
-}
-
-func (v *vaas) openRequest(request msg.VerdictRequest) <-chan msg.VerdictResponse {
-	if v.options.EnableLogs {
-		v.logger.Printf("Opening request for %s", request.GetGUID())
-	}
-
-	v.waitAuthenticated.Wait()
-
-	v.openRequestsMutex.Lock()
-	resultChan := make(chan msg.VerdictResponse, 1)
-	v.openRequests[request.GetGUID()] = resultChan
-	v.openRequestsMutex.Unlock()
-	v.requestChannel <- request
-	return resultChan
-}
-
-func (v *vaas) closeRequest(request msg.VerdictRequest) {
-	if v.options.EnableLogs {
-		v.logger.Printf("Closing request for %s", request.GetGUID())
-	}
-
-	v.openRequestsMutex.Lock()
-	close(v.openRequests[request.GetGUID()])
-	delete(v.openRequests, request.GetGUID())
-	v.openRequestsMutex.Unlock()
+	return msg.VaasVerdict{}, errors.New("not implemented")
 }
 
 func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token string) error {
@@ -618,126 +239,4 @@ func (v *vaas) uploadFile(file io.Reader, contentLength int64, url string, token
 	}
 
 	return nil
-}
-
-// A goroutine running writePump is started for each connection. The
-// application ensures that there is at most one writer to a connection by
-// executing all writes from this goroutine.
-// see https://github.com/Noooste/websocket/blob/master/examples/chat/client.go
-func (v *vaas) writePump() error {
-	ticker := time.NewTicker(pingPeriod)
-	defer func() {
-		ticker.Stop()
-		v.websocketConnection.Close()
-	}()
-
-	for {
-		select {
-		case <-v.termChan:
-			return nil
-		case request := <-v.requestChannel:
-			if err := v.websocketConnection.WriteJSON(request); err != nil {
-				if v.options.EnableLogs {
-					v.logger.Printf("Failed to send request %v", err)
-				}
-
-				v.openRequestsMutex.Lock()
-				requestChan, exists := v.openRequests[request.GetGUID()]
-				v.openRequestsMutex.Unlock()
-				if exists {
-					requestChan <- msg.VerdictResponse{
-						Verdict: msg.Error,
-					}
-				}
-
-				return err
-			}
-		case <-ticker.C:
-			v.websocketConnection.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := v.websocketConnection.WriteMessage(websocket.PingMessage, nil); err != nil {
-				return err
-			}
-		}
-	}
-}
-
-func (v *vaas) readPump() <-chan error {
-	errorChan := make(chan error, 1)
-	v.termChan = make(chan bool)
-
-	v.websocketConnection.SetReadDeadline(time.Now().Add(pongWait))
-	v.websocketConnection.SetPongHandler(func(string) error { v.websocketConnection.SetReadDeadline(time.Now().Add(pongWait)); return nil })
-	go func(errorChan chan<- error) {
-		defer close(errorChan)
-		defer close(v.termChan)
-		defer v.failAllOpenRequests()
-
-		for {
-			var verdictResponse msg.VerdictResponse
-
-			err := v.websocketConnection.ReadJSON(&verdictResponse)
-			if err == nil {
-				v.openRequestsMutex.Lock()
-				requestChan, exists := v.openRequests[verdictResponse.GUID]
-				v.openRequestsMutex.Unlock()
-
-				if exists {
-					requestChan <- verdictResponse
-				} else {
-					if v.options.EnableLogs {
-						v.logger.Printf("Received response for missing map entry - sha256: %s, guid: %s", verdictResponse.Sha256, verdictResponse.GUID)
-					}
-				}
-				continue
-			}
-
-			var closeErr *websocket.CloseError
-			// If websocket was shutdown by the server
-			if errors.As(err, &closeErr) {
-				switch closeErr.Code {
-				case websocket.CloseNormalClosure, websocket.CloseGoingAway, websocket.CloseNoStatusReceived:
-					if v.options.EnableLogs {
-						v.logger.Printf("Websocket shutdown - %d: %s", closeErr.Code, closeErr.Text)
-					}
-					return
-				default:
-					errorChan <- fmt.Errorf("unexpected shutdown of websocket - %w", closeErr)
-					return
-				}
-			}
-			// This error occurs when the context is canceled and we call close() on the websocket connection.
-			if errors.Is(err, net.ErrClosed) {
-				if v.options.EnableLogs {
-					v.logger.Printf("Websocket connection was closed")
-				}
-				return
-			}
-			// This error occurs if whe JSON response could not be parsed by the websocket.
-			if errors.Is(err, io.ErrUnexpectedEOF) {
-				if v.options.EnableLogs {
-					v.logger.Printf("Temporarily failed to read from websocket: %v", err)
-				}
-				continue
-			}
-			// We don't know what happened here, help...
-			if v.options.EnableLogs {
-				v.logger.Printf("Permanently failed to read from websocket: %v", err)
-			}
-			errorChan <- fmt.Errorf("unexpected error of websocket connection - %w", err)
-			return
-		}
-	}(errorChan)
-
-	return errorChan
-}
-
-func (v *vaas) failAllOpenRequests() {
-	v.openRequestsMutex.Lock()
-	defer v.openRequestsMutex.Unlock()
-
-	for _, request := range v.openRequests {
-		request <- msg.VerdictResponse{
-			Verdict: msg.Error,
-		}
-	}
 }
