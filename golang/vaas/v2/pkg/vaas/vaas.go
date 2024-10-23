@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
@@ -165,7 +166,7 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
-	err = v.upload(ctx, file, fileInfo.Size())
+	_, err = v.upload(ctx, file, fileInfo.Size())
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
@@ -173,17 +174,18 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	return v.ForSha256(ctx, sha256)
 }
 
-func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) error {
+// TODO: return the parsed body (TBD how API will look)
+func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) (string, error) {
 	token, err := v.authenticator.GetToken()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	uploadUrl, err := url.JoinPath(v.vaasURL.String(), "files")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadUrl, file)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	req.ContentLength = contentLength
@@ -197,7 +199,7 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 	}
 	httpResponse, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() {
 		_ = httpResponse.Body.Close()
@@ -206,10 +208,16 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 	if httpResponse.StatusCode != 201 {
 		// TODO: use same error for all HTTP requests
 		errMsg, _ := io.ReadAll(httpResponse.Body)
-		return fmt.Errorf("StatusCode: %d, Msg: %s", httpResponse.StatusCode, errMsg)
+		return "", fmt.Errorf("StatusCode: %d, Msg: %s", httpResponse.StatusCode, errMsg)
 	}
 
-	return nil
+	location := httpResponse.Header.Get("Location")
+	prefix := "/files/"
+	if !strings.HasPrefix(location, prefix) {
+		return "", errors.New("can't parse Location in response")
+	}
+	sha256 := strings.TrimPrefix(location, prefix)
+	return sha256, nil
 }
 
 // ForFileInMemory sends an analysis request for file data provided as an io.Reader to the Vaas server and returns the verdict.
@@ -264,5 +272,10 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
-	return msg.VaasVerdict{}, errors.New("not implemented")
+	sha256, err := v.upload(ctx, stream, contentLength)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+
+	return v.ForSha256(ctx, sha256)
 }
