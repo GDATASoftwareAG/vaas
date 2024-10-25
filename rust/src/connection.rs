@@ -325,11 +325,13 @@ impl Connection {
                     }
                     Ok(MessageType::Close) => {
                         responses.set_all_responses(Err(Error::ConnectionClosed));
-                    }
+                    },
+                    Ok(MessageType::Ping) | Ok(MessageType::Pong) => {
+                        // Ignore pings and pongs
+                    },
                     Err(e) => {
                         responses.set_all_responses(Err(e));
                     }
-                    _ => {}
                 }
             }
         })
