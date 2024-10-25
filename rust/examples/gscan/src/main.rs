@@ -71,11 +71,9 @@ async fn main() -> VResult<()> {
 
     let files = stream::iter(files);
     let vaas_reference = &vaas_connection;
-    files.for_each_concurrent(8,|p| async move {
+    files.for_each_concurrent(2,|p| async move {
             let ct = CancellationToken::from_minutes(1);
-            println!("Start {}", p.display());
             let verdict = vaas_reference.for_file(&p, &ct).await;
-            println!("Stop {}", p.display());
             print_verdicts(p.display().to_string(), &verdict);
     }).await;
     
