@@ -1,6 +1,6 @@
 [package]
 name = "gscan"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 authors = ["GDATA CyberDefense AG <opensource@gdata.de>"]
 license = "MIT"
@@ -8,11 +8,10 @@ description = "GDATA Verdict-as-a-Service CLI Scanner"
 publish = false
 
 [dependencies]
-vaas = { version = "6.0.0" }
+vaas = { version = "6.1.1" }
 tokio = { version = "1.37", features = ["rt-multi-thread", "macros"] }
 clap = { version = "4.5.18", features = ["env", "cargo", "derive"] }
 reqwest = "0.12.4"
 futures = "0.3.30"
 dotenv = "0.15"
 walkdir = "2.5.0"
-console-subscriber = "0.4.0"
