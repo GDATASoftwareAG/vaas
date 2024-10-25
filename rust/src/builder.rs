@@ -32,7 +32,6 @@ impl<A: Authenticator> Builder<A> {
             options: Options {
                 keep_alive_delay_ms: 10_000,
                 keep_alive: true,
-                channel_capacity: 100,
                 use_cache: true,
                 use_hash_lookup: true,
             },
@@ -87,17 +86,11 @@ impl<A: Authenticator> Builder<A> {
         }
     }
 
-    /// Set the channel capacity of the internal results channel.
-    /// Increase the value if a `ResultChannelError("channel lagged by X")` is received.
-    /// Defaults to 100.
-    pub fn channel_capacity(self, capacity: usize) -> Self {
-        Self {
-            options: Options {
-                channel_capacity: capacity,
-                ..self.options
-            },
-            ..self
-        }
+    /// Previously used to set the channel capacity of the internal results channel.
+    /// No longer used and currently a no-op.
+    #[deprecated(since = "6.1.1", note = "Not used anymore")]
+    pub fn channel_capacity(self, _capacity: usize) -> Self {
+        self
     }
 
     /// Change the URL of the VaaS API.
