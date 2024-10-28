@@ -30,8 +30,8 @@ importers:
         specifier: 6.0.1
         version: 6.0.1
       uuid:
-        specifier: 10.0.0
-        version: 10.0.0
+        specifier: 11.0.1
+        version: 11.0.1
       ws:
         specifier: 8.18.0
         version: 8.18.0
@@ -1345,8 +1345,8 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
-  uuid@10.0.0:
-    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+  uuid@11.0.1:
+    resolution: {integrity: sha512-wt9UB5EcLhnboy1UvA1mvGPXkIIrHSu+3FmUksARfdVw9tuPf3CH/CohxO0Su1ApoKAeT6BVzAJIvjTuQVSmuQ==}
     hasBin: true
 
   v8-compile-cache-lib@3.0.1:
@@ -2928,7 +2928,7 @@ snapshots:
       escalade: 3.1.2
       picocolors: 1.1.0
 
-  uuid@10.0.0: {}
+  uuid@11.0.1: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
