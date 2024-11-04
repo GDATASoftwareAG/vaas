@@ -352,10 +352,10 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("ErrorLogProducer")
     public void forUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException() throws Exception {
-        var url_1 = new URL("https://gateway.production.vaas.gdatasecurity.de/nocontenthere");
+        var url_1 = new URL("https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere");
         var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
         assertEquals(
-                "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/nocontenthere",
+                "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere",
                 e.getMessage());
     }
 
