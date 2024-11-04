@@ -513,4 +513,17 @@ public class RealApiIntegrationTests {
         assertEquals("EICAR virus test files", verdict.getFileType());
         assertEquals("text/plain", verdict.getMimeType());
     }
+
+    @Test
+    @Disabled("Runs endless. Monitor memory usage.")
+    public void connect_RepeatedlyCalled_DoesntLeakMemory() throws Exception {
+        var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
+
+        while (true) {
+            vaas.connect();
+            var verdict = vaas.forSha256(sha256);
+
+            assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+        }
+    }
 }
