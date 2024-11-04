@@ -214,9 +214,9 @@ class VaasTest(unittest.IsolatedAsyncioTestCase):
     async def test_for_url__with_url_with_status_code_4xx__raises_VaasClientError(self):
         options = get_disabled_options()
         async with await create_and_connect(options=options) as vaas:
-            with self.assertRaises(VaasClientError, msg="Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere") as error:
-                await vaas.for_url("https://upload.production.vaas.gdatasecurity.de/nocontenthere")
-            self.assertEqual(str(error.msg), "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere")
+            with self.assertRaises(VaasClientError, msg="Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere") as error:
+                await vaas.for_url("https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere")
+            self.assertEqual(str(error.msg), "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere")
 
     async def test_for_buffer_traces(self):
         tracing = VaasTracing()

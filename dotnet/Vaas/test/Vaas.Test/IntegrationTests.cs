@@ -174,10 +174,10 @@ public class IntegrationTests
     {
         var vaas = await AuthenticateWithCredentials();
         var e = await Assert.ThrowsAsync<VaasClientException>(() =>
-            vaas.ForUrlAsync(new Uri("https://upload.production.vaas.gdatasecurity.de/nocontenthere"),
+            vaas.ForUrlAsync(new Uri("https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere"),
                 CancellationToken.None));
         Assert.Equal(
-            "Call failed with status code 404 (Not Found): GET https://upload.production.vaas.gdatasecurity.de/nocontenthere",
+            "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere",
             e.Message);
     }
 
