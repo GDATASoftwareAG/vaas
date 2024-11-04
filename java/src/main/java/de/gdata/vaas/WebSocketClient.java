@@ -9,6 +9,7 @@ import org.java_websocket.enums.ReadyState;
 import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.handshake.ServerHandshake;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,11 +25,10 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     @Getter
     private Error errorResponses = null;
 
-    @Getter
     @NonNull
-    private String token;
+    private final IAuthenticator authenticator;
 
-    private final CompletableFuture<Void> authenticated = new CompletableFuture<Void>();
+    private final CompletableFuture<Void> authenticated = new CompletableFuture<>();
 
     @Getter
     private String sessionId = null;
@@ -36,9 +36,9 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
     private static final Timer timer = new Timer(true);
     private TimerTask pingTask;
 
-    public WebSocketClient(VaasConfig config, String token) {
+    public WebSocketClient(VaasConfig config, @NonNull IAuthenticator authenticator) {
         super(config.getUrl());
-        this.token = token;
+        this.authenticator = authenticator;
     }
 
     public void EnsureIsAuthenticated() throws VaasConnectionClosedException, VaasInvalidStateException {
@@ -52,8 +52,9 @@ public class WebSocketClient extends org.java_websocket.client.WebSocketClient {
 
     public void Authenticate(long timeout, TimeUnit timeUnit)
             throws VaasAuthenticationException, InterruptedException, ExecutionException, TimeoutException,
-            WebsocketNotConnectedException {
-        var authRequest = new AuthRequest(this.getToken());
+            WebsocketNotConnectedException, IOException {
+        var token = this.authenticator.getToken();
+        var authRequest = new AuthRequest(token);
         this.send(authRequest.toJson());
         waitForAuthentication(timeout, timeUnit);
         if (this.sessionId == null) {

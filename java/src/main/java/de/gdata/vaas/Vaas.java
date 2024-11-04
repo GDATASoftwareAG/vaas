@@ -35,8 +35,6 @@ public class Vaas implements AutoCloseable {
     @NonNull
     private VaasOptions options;
 
-    @Getter
-    @NonNull
     private final IAuthenticator authenticator;
     private final HttpClient httpClient = HttpClient.newBuilder().build();
     private WebSocketClient client;
@@ -68,9 +66,11 @@ public class Vaas implements AutoCloseable {
      */
     public void connect() throws IOException, InterruptedException, VaasAuthenticationException, TimeoutException {
         var timer = new SimpleTimer(connectionTimeoutInMs, TimeUnit.MILLISECONDS);
-        var clientToken = authenticator.getToken();
         while (true) {
-            this.client = new WebSocketClient(this.getConfig(), clientToken);
+            if (this.client != null) {
+                this.client.close();
+            }
+            this.client = new WebSocketClient(this.getConfig(), authenticator);
             if (this.client.connectBlocking(timer.getRemainingMs(), TimeUnit.MILLISECONDS)) {
                 try {
                     this.client.Authenticate(timer.getRemainingMs(), TimeUnit.MILLISECONDS);
