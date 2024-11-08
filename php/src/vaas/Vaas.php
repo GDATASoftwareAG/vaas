@@ -3,7 +3,9 @@
 namespace VaasSdk;
 
 use Amp\ByteStream\ReadableStream;
+use Amp\CompositeCancellation;
 use Amp\DeferredCancellation;
+use Amp\DeferredFuture;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\HttpException;
@@ -358,17 +360,23 @@ class Vaas
             $request->setBody(StreamedContent::fromStream($fileStream, $fileSize));
             $request->addHeader("Content-Length", $fileSize);
             $request->addHeader("Authorization", $uploadToken);
-
-            $response = $this->httpClient->request($request, new TimeoutCancellation($this->uploadTimeoutInSeconds));
+            $timeoutCancellation = new TimeoutCancellation($this->uploadTimeoutInSeconds);
+            $response = $this->httpClient->request($request,
+                new CompositeCancellation($timeoutCancellation, $cancellation->getCancellation()));
             if ($response->getStatus() > 399) {
                 $reason = $response->getBody()->buffer($cancellation->getCancellation());
                 throw new UploadFailedException($reason, $response->getStatus());
             }
         } catch (\Exception $e) {
-                if ($e instanceof HttpException) {
-                    throw new UploadFailedException($e->getMessage(), $e->getCode());
-                }
-                throw new VaasClientException($e->getMessage());
+            $this->vaasConnection->RemoveResponse($requestId);
+            if ($e instanceof HttpException) {
+                $uploadFailedException = new UploadFailedException($e->getMessage(), $e->getCode());
+                $futureResponse->getFuture()->error($uploadFailedException);
+                throw new $uploadFailedException;
+            }
+            $vaasClientException = new VaasClientException($e->getMessage());
+            $futureResponse->getFuture()->error($vaasClientException);
+            throw $vaasClientException;
         } finally {
             EventLoop::cancel($pingTimer);
             $cancellation->cancel();
