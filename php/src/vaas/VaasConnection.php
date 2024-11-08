@@ -147,6 +147,10 @@ class VaasConnection
         return $future;
     }
 
+    public function RemoveResponse($requestId): void {
+        $this->responses->delete($requestId);
+    }
+
     public function GetConnectedWebsocket(): WebsocketConnection
     {
         if (!isset($this->WebSocketClient)) {

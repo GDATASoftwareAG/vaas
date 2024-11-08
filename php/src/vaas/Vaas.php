@@ -196,7 +196,7 @@ class Vaas
             $fileStream = \Amp\File\openFile($path, 'r');
             $fileSize = \filesize($path);
             
-            return new VaasVerdict(
+            $verdict = new VaasVerdict(
                 $this->UploadStream(
                     $fileStream,
                     $verdictResponse->url,
@@ -204,6 +204,10 @@ class Vaas
                     $fileSize,
                     $verdictResponse->guid)
             );
+
+            $fileStream->close();
+
+            return $verdict;
         }
 
         return new VaasVerdict($verdictResponse);
