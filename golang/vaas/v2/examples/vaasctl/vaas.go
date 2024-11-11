@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -38,9 +39,13 @@ func main() {
 	if !exists {
 		tokenEndpoint = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
 	}
-	vaasURL, exists := os.LookupEnv("VAAS_URL")
+	vaasURLString, exists := os.LookupEnv("VAAS_URL")
 	if !exists {
-		vaasURL = "wss://gateway.production.vaas.gdatasecurity.de"
+		vaasURLString = "wss://gateway.production.vaas.gdatasecurity.de"
+	}
+	vaasURL, err := url.Parse(vaasURLString)
+	if err != nil {
+		log.Fatal("VAAS_URL is not an URL")
 	}
 
 	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
@@ -49,14 +54,7 @@ func main() {
 		UseHashLookup: true,
 		UseCache:      false,
 		EnableLogs:    false,
-	}, vaasURL)
-	connectCtx, webSocketCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer webSocketCancel()
-
-	termChan, err := vaasClient.Connect(connectCtx, auth)
-	if err != nil {
-		log.Fatalf("failed to connect to VaaS %s", err.Error())
-	}
+	}, vaasURL, auth)
 
 	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer analysisCancel()
@@ -81,35 +79,20 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-
-	if err = vaasClient.Close(); err != nil {
-		log.Printf("unable to close VaasClient - %v", err)
-	}
-	if err = <-termChan; err != nil {
-		log.Printf("Websocket shutdown with an error - %v", err)
-	}
 }
 
 func checkFile(ctx context.Context, fileList []string, vaasClient vaas.Vaas) error {
 	if len(fileList) == 0 {
 		log.Fatal("no file entered in arguments")
+	}
 
-	} else if len(fileList) == 1 {
-		result, err := vaasClient.ForFile(ctx, fileList[0])
+	for _, file := range fileList {
+		result, err := vaasClient.ForFile(ctx, file)
 		if err != nil {
-			return err
+			log.Printf("%s: %s", file, err.Error())
+			continue
 		}
-		fmt.Println(result.Verdict)
-
-	} else if len(fileList) > 1 {
-		results, err := vaasClient.ForFileList(ctx, fileList)
-		if err != nil {
-			return err
-		}
-
-		for _, result := range results {
-			fmt.Println(result.Sha256, result.Verdict, result.Detection)
-		}
+		fmt.Println(file, result.Sha256, result.Verdict, result.Detection)
 	}
 	return nil
 }
@@ -118,23 +101,15 @@ func checkSha256(ctx context.Context, sha256List []string, vaasClient vaas.Vaas)
 	if len(sha256List) == 0 {
 		log.Fatal("no sha256 entered in arguments")
 	}
-	if len(sha256List) == 1 {
-		result, err := vaasClient.ForSha256(ctx, sha256List[0])
+	for _, sha256 := range sha256List {
+		result, err := vaasClient.ForSha256(ctx, sha256)
 		if err != nil {
-			return err
+			log.Printf("%s: %s", sha256, err.Error())
+			continue
 		}
-		fmt.Println(result.Verdict)
-
-	} else if len(sha256List) > 1 {
-		results, err := vaasClient.ForSha256List(ctx, sha256List)
-		if err != nil {
-			return err
-		}
-
-		for _, verdict := range results {
-			fmt.Println(verdict.Sha256, verdict.Verdict)
-		}
+		fmt.Println(sha256, result.Verdict)
 	}
+
 	return nil
 }
 
@@ -152,7 +127,7 @@ func checkURL(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error
 
 	} else if len(urlList) > 1 {
 		var waitGroup sync.WaitGroup
-		for _, url := range urlList {
+		for _, u := range urlList {
 			waitGroup.Add(1)
 			go func(url string) {
 				defer waitGroup.Done()
@@ -162,7 +137,7 @@ func checkURL(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error
 				} else {
 					fmt.Println(result)
 				}
-			}(url)
+			}(u)
 		}
 		waitGroup.Wait()
 	}
