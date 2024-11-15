@@ -26,6 +26,13 @@ const (
 	userAgent = "golang-vaas-sdk"
 )
 
+// Errors returned by the VaaS API
+var (
+	ErrClientFailure         = errors.New("client error")
+	ErrServerFailure         = errors.New("server error")
+	ErrAuthenticationFailure = errors.New("authentication failed")
+)
+
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
 // All kinds of requests can be canceled by the context.
 // Please refer to the individual function comments for more details on their usage and behavior.
@@ -69,16 +76,28 @@ func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authentic
 	return New(options, vaasURL, authenticator)
 }
 
-func parseVaasError(responseBody []byte) error {
-	var problemDetails msg.ProblemDetails
+func parseVaasError(response *http.Response, responseBody []byte) error {
+	// Special handling as Bad Requests do not contain a ProblemDetails body
+	if response.StatusCode == http.StatusBadRequest {
+		return errors.Join(ErrClientFailure, errors.New("HTTP error: Bad Request"))
+	}
 
+	var problemDetails msg.ProblemDetails
 	err := json.Unmarshal(responseBody, &problemDetails)
 	if err != nil {
 		return err
 	}
 
-	// TODO: VaasClientException vs VaasServerException
-	return errors.New(problemDetails.Detail)
+	var baseErr error
+	switch problemDetails.Type {
+	case "VaasClientException":
+		baseErr = ErrClientFailure
+	case "VaasServerException":
+		baseErr = ErrServerFailure
+	default:
+		baseErr = ErrServerFailure
+	}
+	return errors.Join(baseErr, errors.New(problemDetails.Detail))
 }
 
 func readHttpResponse(httpClient *http.Client, request *http.Request) (Response *http.Response, Body []byte, Error error) {
@@ -101,7 +120,7 @@ func readHttpResponse(httpClient *http.Client, request *http.Request) (Response 
 func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
 	token, err := v.authenticator.GetToken()
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrAuthenticationFailure, err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
@@ -162,7 +181,7 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 
 			return report.ConvertToVaasVerdict(), nil
 		default:
-			return msg.VaasVerdict{}, parseVaasError(body)
+			return msg.VaasVerdict{}, parseVaasError(response, body)
 		}
 	}
 }
@@ -229,7 +248,7 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 	}
 
 	if response.StatusCode != 201 {
-		return "", parseVaasError(body)
+		return "", parseVaasError(response, body)
 	}
 
 	location := response.Header.Get("Location")

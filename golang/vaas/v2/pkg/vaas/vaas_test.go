@@ -298,19 +298,6 @@ func TestVaas_ForFile(t *testing.T) {
 			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
 				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
 			}
-
-			// test in-memory file
-			//buf := new(bytes.Buffer)
-			//_, _ = io.Copy(buf, strings.NewReader(tt.args.fileContent))
-			//
-			//verdict, err = vaasClient.ForBuffer(context.Background(), buf)
-			//if (err != nil) != tt.wantErr {
-			//	t.Fatalf("unexpected error - %v", err)
-			//}
-			//
-			//if err == nil && verdict.Verdict != tt.args.expectedVerdict {
-			//	t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
-			//}
 		})
 	}
 }
@@ -367,54 +354,52 @@ func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 	}
 }
 
-//func TestVaas_ForStream_WithStreamFromUrlZeroContentLength(t *testing.T) {
-//	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
-//
-//	fixture := new(testFixture)
-//	VaasClient := fixture.setUp(t)
-//	defer fixture.tearDown(t)
-//
-//	_, err := VaasClient.ForStream(context.Background(), response.Body, 0)
-//
-//	if err == nil {
-//		t.Fatalf("expected error, got nil")
-//	}
-//
-//	if !errors.Is(err, ErrUnsupportedReader) {
-//		t.Fatalf("expected error %v, got %v", ErrUnsupportedReader, err)
-//	}
-//}
-//
-//func TestVaas_ForStream_WithStreamFromUrl_RetunsMaliciousWithDetectionsAndMimeType(t *testing.T) {
-//	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
-//
-//	fixture := new(testFixture)
-//	VaasClient := fixture.setUp(t)
-//	defer fixture.tearDown(t)
-//
-//	verdict, err := VaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
-//
-//	if err != nil {
-//		t.Fatalf("unexpected error - %v", err)
-//	}
-//
-//	if verdict.Verdict != msg.Malicious {
-//		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
-//	}
-//
-//	if verdict.MimeType != "text/plain" {
-//		t.Errorf("expected mime type to be text/plain, got %v", verdict.MimeType)
-//	}
-//
-//	if verdict.Detection == "" {
-//		t.Errorf("expected a detection, got empty string")
-//	}
-//
-//	if verdict.Detection != "EICAR-Test-File#462103" {
-//		t.Errorf("detection has to be EICAR-Test-File#462103, got %v", verdict.Detection)
-//	}
-//}
-//
+func TestVaas_ForStream_WithZeroContentLength_ReturnsError(t *testing.T) {
+	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
+
+	fixture := new(testFixture)
+	VaasClient := fixture.setUp(t)
+
+	_, err := VaasClient.ForStream(context.Background(), response.Body, 0)
+
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	if !errors.Is(err, ErrClientFailure) {
+		t.Fatalf("expected error %v, got %v", ErrClientFailure, err)
+	}
+}
+
+func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMimeType(t *testing.T) {
+	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
+
+	fixture := new(testFixture)
+	VaasClient := fixture.setUp(t)
+
+	verdict, err := VaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
+
+	if err != nil {
+		t.Fatalf("unexpected error - %v", err)
+	}
+
+	if verdict.Verdict != msg.Malicious {
+		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
+	}
+
+	if verdict.MimeType != "text/plain" {
+		t.Errorf("expected mime type to be text/plain, got %v", verdict.MimeType)
+	}
+
+	if verdict.Detection == "" {
+		t.Errorf("expected a detection, got empty string")
+	}
+
+	if verdict.Detection != "EICAR-Test-File#462103" {
+		t.Errorf("detection has to be EICAR-Test-File#462103, got %v", verdict.Detection)
+	}
+}
+
 //func TestVaas_ForUrl(t *testing.T) {
 //	const (
 //		cleanURL string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
@@ -498,55 +483,6 @@ func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 //		})
 //	}
 //}
-//
-//func TestVaas_ForSha256List(t *testing.T) {
-//	fixture := new(testFixture)
-//	vaasClient := fixture.setUp(t)
-//	defer fixture.tearDown(t)
-//
-//	maliciousSha256 := strings.ToLower("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2")
-//	cleanSha256 := strings.ToLower("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e")
-//	unknownSha256 := strings.ToLower("1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df")
-//
-//	verdicts, err := vaasClient.ForSha256List(context.Background(), []string{maliciousSha256, cleanSha256, unknownSha256})
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	maliciousIndex := Index(verdicts, maliciousSha256)
-//	unknownIndex := Index(verdicts, unknownSha256)
-//	cleanIndex := Index(verdicts, cleanSha256)
-//
-//	assert.Equal(t, msg.Malicious, verdicts[maliciousIndex].Verdict)
-//	assert.Equal(t, msg.Clean, verdicts[cleanIndex].Verdict)
-//	assert.Equal(t, msg.Unknown, verdicts[unknownIndex].Verdict)
-//}
-//
-//func TestVaas_ForFileList(t *testing.T) {
-//	fixture := new(testFixture)
-//	vaasClient := fixture.setUp(t)
-//	defer fixture.tearDown(t)
-//
-//	tmpDir := t.TempDir()
-//
-//	var randomFiles []string
-//	for i := 0; i < 3; i++ {
-//		filename := filepath.Join(tmpDir, fmt.Sprintf("cleanFile%d", i))
-//		if err := os.WriteFile(filename, []byte(RandomString(200)), 0644); err != nil {
-//			t.Fatalf("error while writing clean file: %v", err)
-//		}
-//		randomFiles = append(randomFiles, filename)
-//	}
-//
-//	verdicts, err := vaasClient.ForFileList(context.Background(), randomFiles)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//
-//	for _, verdict := range verdicts {
-//		assert.Equal(t, msg.Clean, verdict.Verdict, verdict.ErrMsg)
-//	}
-//}
 
 func RandomString(n int) string {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
@@ -557,13 +493,3 @@ func RandomString(n int) string {
 	}
 	return string(s)
 }
-
-//func Index(s []msg.VaasVerdict, str string) int {
-//	for i, v := range s {
-//		if v.Sha256 == str {
-//			return i
-//		}
-//	}
-//
-//	return -1
-//}

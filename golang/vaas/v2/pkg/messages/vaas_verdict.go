@@ -5,7 +5,6 @@ package messages
 type VaasVerdict struct {
 	Verdict   Verdict
 	Sha256    string
-	ErrMsg    string
 	Detection string
 	MimeType  string
 	FileType  string

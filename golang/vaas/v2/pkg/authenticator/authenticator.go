@@ -145,7 +145,7 @@ func NewWithDefaultTokenEndpoint(clientID string, clientSecret string) Authentic
 	return New(clientID, clientSecret, "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
 }
 
-// GetToken obtains an authentication token using the clientCredentialsGrantAuthenticator.
+// GetToken obtains an authentication token using the configured authentication flow.
 // It returns the obtained token and any error encountered during the process.
 func (c *commonOIDCAuthenticator) GetToken() (string, error) {
 	c.tokenLock.Lock()
@@ -163,7 +163,7 @@ func (c *commonOIDCAuthenticator) GetToken() (string, error) {
 			if err := json.NewDecoder(response.Body).Decode(&tokenErrResponse); err != nil {
 				return "", fmt.Errorf("http request failed: %s", response.Status)
 			}
-			return "", fmt.Errorf(tokenErrResponse.Error + ":" + tokenErrResponse.ErrorDescription)
+			return "", fmt.Errorf(tokenErrResponse.Error + ": " + tokenErrResponse.ErrorDescription)
 		}
 
 		var tokenResponse msg.TokenResponse
