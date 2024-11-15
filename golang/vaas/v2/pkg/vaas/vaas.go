@@ -19,6 +19,8 @@ import (
 	"strings"
 )
 
+// TODO: useCache, useHashLookup ???
+
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
 // All kinds of requests can be canceled by the context.
 // The Connect() function has to be called before any other requests are made.
@@ -28,7 +30,7 @@ type Vaas interface {
 	ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error)
 	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
 	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
-	ForFileInMemory(ctx context.Context, file io.Reader) (msg.VaasVerdict, error)
+	ForBuffer(ctx context.Context, file io.Reader) (msg.VaasVerdict, error)
 }
 
 var (
@@ -181,7 +183,7 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 		return "", err
 	}
 
-	uploadUrl, err := url.JoinPath(v.vaasURL.String(), "files")
+	uploadUrl := v.vaasURL.JoinPath("files").String()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, uploadUrl, file)
 	if err != nil {
@@ -191,7 +193,7 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 	req.ContentLength = contentLength
 	req.Header.Add("Authorization", "Bearer "+token)
 
-	// TODO: keep for connection pooling !
+	// TODO for alpha: keep for connection pooling !
 	client := http.Client{
 		Transport: &http.Transport{
 			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
@@ -228,13 +230,13 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 //	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
 //	ctx := context.Background()
 //	fileData := bytes.NewReader([]byte("file contents"))
-//	verdict, err := vaasClient.ForFileInMemory(ctx, fileData)
+//	verdict, err := vaasClient.ForBuffer(ctx, fileData)
 //	if err != nil {
 //	    log.Fatalf("Failed to get verdict: %v", err)
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForFileInMemory(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
+func (v *vaas) ForBuffer(ctx context.Context, data io.Reader) (msg.VaasVerdict, error) {
 
 	return msg.VaasVerdict{}, errors.New("not implemented")
 }

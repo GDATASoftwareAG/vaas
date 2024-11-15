@@ -301,7 +301,7 @@ func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
 			//buf := new(bytes.Buffer)
 			//_, _ = io.Copy(buf, strings.NewReader(tt.args.fileContent))
 			//
-			//verdict, err = vaasClient.ForFileInMemory(context.Background(), buf)
+			//verdict, err = vaasClient.ForBuffer(context.Background(), buf)
 			//if (err != nil) != tt.wantErr {
 			//	t.Fatalf("unexpected error - %v", err)
 			//}

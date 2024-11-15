@@ -122,6 +122,7 @@ func NewWithDefaultTokenEndpoint(clientID string, clientSecret string) Authentic
 // GetToken obtains an authentication token using the clientCredentialsGrantAuthenticator.
 // It returns the obtained token and any error encountered during the process.
 func (c clientCredentialsGrantAuthenticator) GetToken() (string, error) {
+	// TODO: Memoize token until expiration (see C++), thread-safety
 	data := url.Values{}
 	data.Set("client_id", c.clientID)
 	data.Set("client_secret", c.clientSecret)
@@ -188,6 +189,7 @@ func NewWithResourceOwnerPassword(clientID string, username string, password str
 // GetToken obtains an authentication token using the resourceOwnerPasswordGrantAuthenticator.
 // It returns the obtained token and any error encountered during the process.
 func (c resourceOwnerPasswordGrantAuthenticator) GetToken() (string, error) {
+	// TODO: Memoize token until expiration (see C++), thread-safety
 	data := url.Values{}
 	data.Set("client_id", c.clientID)
 	data.Set("username", c.username)
