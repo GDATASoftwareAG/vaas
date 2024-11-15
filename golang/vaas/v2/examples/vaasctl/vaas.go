@@ -4,13 +4,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/joho/godotenv"
 	"log"
 	"net/url"
 	"os"
 	"sync"
 	"time"
-
-	"github.com/joho/godotenv"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
@@ -56,7 +55,7 @@ func main() {
 		EnableLogs:    false,
 	}, vaasURL, auth)
 
-	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)
+	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer analysisCancel()
 
 	if *sha256Check {
