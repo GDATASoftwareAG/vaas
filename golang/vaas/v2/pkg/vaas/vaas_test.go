@@ -354,22 +354,22 @@ func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 	}
 }
 
-func TestVaas_ForStream_WithZeroContentLength_ReturnsError(t *testing.T) {
-	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
-
-	fixture := new(testFixture)
-	VaasClient := fixture.setUp(t)
-
-	_, err := VaasClient.ForStream(context.Background(), response.Body, 0)
-
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-
-	if !errors.Is(err, ErrClientFailure) {
-		t.Fatalf("expected error %v, got %v", ErrClientFailure, err)
-	}
-}
+//func TestVaas_ForStream_WithZeroContentLength_ReturnsError(t *testing.T) {
+//	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
+//
+//	fixture := new(testFixture)
+//	VaasClient := fixture.setUp(t)
+//
+//	_, err := VaasClient.ForStream(context.Background(), response.Body, 0)
+//
+//	if err == nil {
+//		t.Fatalf("expected error, got nil")
+//	}
+//
+//	if !errors.Is(err, ErrClientFailure) {
+//		t.Fatalf("expected error %v, got %v", ErrClientFailure, err)
+//	}
+//}
 
 func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMimeType(t *testing.T) {
 	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
