@@ -86,8 +86,7 @@ type cachedToken struct {
 
 // ShouldRefresh determines whether this token should be replaced by a newer one
 func (c cachedToken) ShouldRefresh() bool {
-	// Suggest refreshing the token slightly early to avoid races
-	return time.Now().Add(time.Minute).After(c.expires)
+	return time.Now().After(c.expires)
 }
 
 func parametersForClientCredentials(clientID, clientSecret string) url.Values {
