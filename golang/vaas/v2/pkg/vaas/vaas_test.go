@@ -3,6 +3,7 @@ package vaas
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 type testFixture struct {
@@ -209,7 +211,7 @@ func TestVaas_ForSha256(t *testing.T) {
 	}
 }
 
-func TestVaas_ForFile_And_ForFileInMemory(t *testing.T) {
+func TestVaas_ForFile(t *testing.T) {
 	const (
 		eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo"
 	)
@@ -343,6 +345,25 @@ func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
 
 	if verdict.Verdict != msg.Malicious {
 		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
+	}
+}
+
+func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
+	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUp(t)
+
+	cancelCtx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+	defer cancel()
+	verdict, err := vaasClient.ForStream(cancelCtx, response.Body, response.ContentLength)
+
+	if err == nil {
+		t.Fatalf("expected error got success instead (%v)", verdict)
+	}
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected cancelled error, got %v", err)
 	}
 }
 
