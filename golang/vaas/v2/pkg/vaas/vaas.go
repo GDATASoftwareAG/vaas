@@ -162,6 +162,9 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 		}
 
 		response, body, err := readHttpResponse(v.httpClient, req)
+		if err != nil {
+			return msg.VaasVerdict{}, err
+		}
 
 		switch response.StatusCode {
 		case http.StatusNotFound:
