@@ -247,14 +247,14 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 		return "", err
 	}
 
-	if response.StatusCode != 201 {
+	if response.StatusCode != http.StatusCreated {
 		return "", parseVaasError(response, body)
 	}
 
 	location := response.Header.Get("Location")
 	prefix := "/files/"
 	if !strings.HasPrefix(location, prefix) {
-		return "", errors.New("can't parse Location in response")
+		return "", errors.Join(ErrServerFailure, errors.New("can't parse Location in response"))
 	}
 	sha256 := strings.TrimPrefix(location, prefix)
 	return sha256, nil
