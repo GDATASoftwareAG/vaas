@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/internal/hash"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
@@ -188,10 +189,29 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	defer func() {
 		_ = file.Close()
 	}()
+
+	sha256, err := hash.CalculateSha256(file)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	verdict, err := v.ForSha256(ctx, sha256)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+
+	if verdict.Verdict != msg.Unknown {
+		return verdict, nil
+	}
+
+	if _, err = file.Seek(0, 0); err != nil {
+		return msg.VaasVerdict{}, err
+	}
+
 	stat, err := file.Stat()
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
+
 	return v.ForStream(ctx, file, stat.Size())
 }
 
