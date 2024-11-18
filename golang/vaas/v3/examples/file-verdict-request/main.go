@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"time"
 
@@ -36,9 +37,18 @@ func main() {
 	if !exists {
 		tokenEndpoint = "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token"
 	}
-	vaasUrl, exists := os.LookupEnv("VAAS_URL")
+	vaasURLString, exists := os.LookupEnv("VAAS_URL")
 	if !exists {
-		tokenEndpoint = "wss://gateway.staging.vaas.gdatasecurity.de"
+		vaasURLString = "https://gateway.staging.vaas.gdatasecurity.de"
+	}
+	vaasURL, err := url.Parse(vaasURLString)
+	if err != nil {
+		log.Fatal("VAAS_URL is not an URL")
+	}
+
+	scanPath, exists := os.LookupEnv("SCAN_PATH")
+	if !exists {
+		scanPath = "README.md"
 	}
 
 	// Create a new authenticator with the provided Client ID and Client Secret
@@ -49,37 +59,16 @@ func main() {
 		UseHashLookup: true,
 		UseCache:      false,
 		EnableLogs:    false,
-	}, vaasUrl)
-
-	// Create a context with a cancellation function
-	connectCtx, webSocketCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer webSocketCancel()
-
-	// Establish a WebSocket connection to the VaaS server
-	termChan, err := vaasClient.Connect(connectCtx, auth)
-	if err != nil {
-		log.Fatalf("failed to connect to VaaS %s", err.Error())
-	}
+	}, vaasURL, auth)
 
 	// Create a context with a timeout for the analysis
 	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer analysisCancel()
 
-	// Request a verdict for a specific file (replace "path-to-your-file" with the actual file path)
-	result, err := vaasClient.ForFile(analysisCtx, "path-to-your-file")
+	// Request a verdict for a specific file
+	result, err := vaasClient.ForFile(analysisCtx, scanPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Println(result.Verdict)
-
-	// Close the WebSocket connection
-	err = vaasClient.Close()
-	if err != nil {
-		log.Fatalf("failed to close VaaS connection %s", err.Error())
-	}
-
-	// Wait for the WebSocket to terminate and handle any errors
-	if err = <-termChan; err != nil {
-		log.Printf("Websocket shutdown with an error - %v", err)
-	}
 }

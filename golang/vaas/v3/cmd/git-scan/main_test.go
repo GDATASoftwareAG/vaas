@@ -37,16 +37,16 @@ func TestDoubleMe(t *testing.T) {
 			errors.New("you either need VAAS_CLIENT_ID and VAAS_CLIENT_SECRET or VAAS_USERAME and VAAS_PASSWORD"), "<nil>"},
 		{"client_credentials set",
 			"client_id", "client_secret", "", "",
-			nil, "*authenticator.clientCredentialsGrantAuthenticator"},
+			nil, "*authenticator.commonOIDCAuthenticator"},
 		{"client_credentials and username set",
 			"client_id", "client_secret", "username", "",
-			nil, "*authenticator.clientCredentialsGrantAuthenticator"},
+			nil, "*authenticator.commonOIDCAuthenticator"},
 		{"username and password set",
 			"", "", "username", "password",
-			nil, "*authenticator.resourceOwnerPasswordGrantAuthenticator"},
+			nil, "*authenticator.commonOIDCAuthenticator"},
 		{"username and password and	client_id set",
 			"client_id", "", "username", "password",
-			nil, "*authenticator.resourceOwnerPasswordGrantAuthenticator"},
+			nil, "*authenticator.commonOIDCAuthenticator"},
 	}
 
 	for _, tc := range table {

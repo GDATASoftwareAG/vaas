@@ -77,6 +77,67 @@ func Test_clientCredentialsGrantAuthenticator_GetToken(t *testing.T) {
 	}
 }
 
+func Test_clientCredentialsGrantAuthenticator_GetToken_ReusesToken(t *testing.T) {
+	type args struct {
+		clientID     string
+		clientSecret string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Same token when called twice",
+			args: func() args {
+				if err := godotenv.Load(); err != nil {
+					log.Printf("failed to load environment - %v", err)
+				}
+				clientID, exists := os.LookupEnv("CLIENT_ID")
+				if !exists {
+					log.Fatal("no Client ID set")
+				}
+				clientSecret, exists := os.LookupEnv("CLIENT_SECRET")
+				if !exists {
+					log.Fatal("no Client Secret set")
+				}
+
+				return args{
+					clientID:     clientID,
+					clientSecret: clientSecret,
+				}
+			}(),
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tokenEndpoint, exists := os.LookupEnv("TOKEN_URL")
+			if !exists {
+				log.Fatal("no token endpoint configured")
+			}
+
+			authenticator := New(tt.args.clientID, tt.args.clientSecret, tokenEndpoint)
+			accessToken, err := authenticator.GetToken()
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error - %v", err)
+			}
+
+			accessToken2, err := authenticator.GetToken()
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error - %v", err)
+			}
+
+			if accessToken != accessToken2 {
+				t.Errorf("tokens should be equal")
+			}
+		})
+	}
+}
+
 func Test_resourceOwnerPasswordGrantAuthenticator_GetToken(t *testing.T) {
 	type args struct {
 		clientID string

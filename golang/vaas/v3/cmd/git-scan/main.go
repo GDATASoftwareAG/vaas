@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -37,11 +38,15 @@ func main() {
 		log.Fatal(credentialsError)
 	}
 
-	vaasUrl, exists := os.LookupEnv("VAAS_URL")
+	vaasURLString, exists := os.LookupEnv("VAAS_URL")
 	if !exists {
-		vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de/"
+		vaasURLString = "https://gateway.production.vaas.gdatasecurity.de"
 	}
-	log.Println("vaas url:", vaasUrl)
+	vaasURL, err := url.Parse(vaasURLString)
+	if err != nil {
+		log.Fatal("VAAS_URL is not an URL")
+	}
+	log.Println("vaas url:", vaasURL)
 
 	gitRevParseCommand := exec.Command("git", "rev-parse", "--show-toplevel")
 	rootDirectoryBytes, err := gitRevParseCommand.CombinedOutput()
@@ -69,15 +74,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	vaas := vaas.New(options.DefaultOptions(), vaasUrl)
+	vaas := vaas.New(options.DefaultOptions(), vaasURL, vaasAuthenticator)
 	ctx, webSocketCancel := context.WithCancel(context.Background())
-	termChan, err := vaas.Connect(ctx, vaasAuthenticator)
-	if err != nil {
-		log.Fatal("vaas connect error: ", err)
-	}
-	if termChan == nil {
-		log.Fatal("vaas connect error")
-	}
 	var maliciousFileFound bool
 	for _, file := range files {
 		if file == "" {
@@ -88,7 +86,7 @@ func main() {
 		}
 		log.Println("checking file: ", file)
 		pathToFile := filepath.Join(rootDirectory, file)
-		verdict, err := vaas.ForFile(context.Background(), pathToFile)
+		verdict, err := vaas.ForFile(ctx, pathToFile)
 		if err != nil {
 			log.Fatalln(err)
 		}
@@ -98,9 +96,6 @@ func main() {
 		}
 	}
 	webSocketCancel()
-	if err = <-termChan; err != nil {
-		log.Printf("Websocket shutdown with an error - %v", err)
-	}
 	if maliciousFileFound {
 		os.Exit(1)
 	}

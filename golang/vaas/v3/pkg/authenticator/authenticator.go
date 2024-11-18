@@ -54,6 +54,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"net/http"
 	"net/url"
@@ -67,12 +68,42 @@ type Authenticator interface {
 	GetToken() (string, error)
 }
 
-// clientCredentialsGrantAuthenticator is an implementation of the Authenticator interface.
-type clientCredentialsGrantAuthenticator struct {
+// commonOIDCAuthenticator implements the Authenticator, supporting both the clientCredentials and
+// resourceOwnerPassword flows.
+type commonOIDCAuthenticator struct {
 	httpClient    *http.Client
-	clientID      string
-	clientSecret  string
 	tokenEndpoint string
+	parameters    url.Values
+	token         *cachedToken
+	tokenLock     sync.Mutex
+}
+
+// cachedToken is a cached access token that may be reused
+type cachedToken struct {
+	accessToken string
+	expires     time.Time
+}
+
+// ShouldRefresh determines whether this token should be replaced by a newer one
+func (c cachedToken) ShouldRefresh() bool {
+	return time.Now().After(c.expires)
+}
+
+func parametersForClientCredentials(clientID, clientSecret string) url.Values {
+	data := url.Values{}
+	data.Set("client_id", clientID)
+	data.Set("client_secret", clientSecret)
+	data.Set("grant_type", "client_credentials")
+	return data
+}
+
+func parametersForResourceOwnerPassword(clientID, username, password string) url.Values {
+	data := url.Values{}
+	data.Set("client_id", clientID)
+	data.Set("username", username)
+	data.Set("password", password)
+	data.Set("grant_type", "password")
+	return data
 }
 
 // New creates a new instance of the clientCredentialsGrantAuthenticator.
@@ -89,11 +120,10 @@ type clientCredentialsGrantAuthenticator struct {
 //	    log.Fatal(err)
 //	}
 func New(clientID string, clientSecret string, tokenEndpoint string) Authenticator {
-	return &clientCredentialsGrantAuthenticator{
-		clientID:      clientID,
-		clientSecret:  clientSecret,
+	return &commonOIDCAuthenticator{
 		tokenEndpoint: tokenEndpoint,
 		httpClient:    &http.Client{Timeout: 120 * time.Second},
+		parameters:    parametersForClientCredentials(clientID, clientSecret),
 	}
 }
 
@@ -111,53 +141,41 @@ func New(clientID string, clientSecret string, tokenEndpoint string) Authenticat
 //	    log.Fatal(err)
 //	}
 func NewWithDefaultTokenEndpoint(clientID string, clientSecret string) Authenticator {
-	return &clientCredentialsGrantAuthenticator{
-		clientID:      clientID,
-		clientSecret:  clientSecret,
-		tokenEndpoint: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token",
-		httpClient:    &http.Client{Timeout: 120 * time.Second},
-	}
+	return New(clientID, clientSecret, "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token")
 }
 
-// GetToken obtains an authentication token using the clientCredentialsGrantAuthenticator.
+// GetToken obtains an authentication token using the configured authentication flow.
 // It returns the obtained token and any error encountered during the process.
-func (c clientCredentialsGrantAuthenticator) GetToken() (string, error) {
-	data := url.Values{}
-	data.Set("client_id", c.clientID)
-	data.Set("client_secret", c.clientSecret)
-	data.Set("grant_type", "client_credentials")
+func (c *commonOIDCAuthenticator) GetToken() (string, error) {
+	c.tokenLock.Lock()
+	defer c.tokenLock.Unlock()
 
-	request, err := http.NewRequest("POST", c.tokenEndpoint, bytes.NewReader([]byte(data.Encode())))
-	if err != nil {
-		return "", err
+	if c.token == nil || c.token.ShouldRefresh() {
+		// New token
+		response, err := c.httpClient.Post(c.tokenEndpoint, "application/x-www-form-urlencoded", bytes.NewReader([]byte(c.parameters.Encode())))
+		if err != nil {
+			return "", err
+		}
+
+		if response.StatusCode != 200 {
+			var tokenErrResponse msg.TokenErrorResponse
+			if err := json.NewDecoder(response.Body).Decode(&tokenErrResponse); err != nil {
+				return "", fmt.Errorf("http request failed: %s", response.Status)
+			}
+			return "", fmt.Errorf(tokenErrResponse.Error + ": " + tokenErrResponse.ErrorDescription)
+		}
+
+		var tokenResponse msg.TokenResponse
+		if err = json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
+			return "", err
+		}
+
+		c.token = &cachedToken{
+			accessToken: tokenResponse.Accesstoken,
+			expires:     time.Now().Add(time.Duration(tokenResponse.ExpiresIn) * time.Second),
+		}
 	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	response, err := c.httpClient.Do(request)
-	if err != nil {
-		return "", err
-	}
-
-	if response.StatusCode != 200 {
-		return "", fmt.Errorf("http request failed: %s", response.Status)
-	}
-
-	var tokenResponse msg.TokenResponse
-	if err = json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
-		return "", err
-	}
-
-	return tokenResponse.Accesstoken, nil
-}
-
-// resourceOwnerPasswordGrantAuthenticator is an implementation of the Authenticator interface
-// that obtains an authentication token using the resource owner password grant.
-type resourceOwnerPasswordGrantAuthenticator struct {
-	httpClient    *http.Client
-	clientID      string
-	username      string
-	password      string
-	tokenEndpoint string
+	return c.token.accessToken, nil
 }
 
 // NewWithResourceOwnerPassword creates a new instance of the resourceOwnerPasswordGrantAuthenticator.
@@ -176,43 +194,9 @@ type resourceOwnerPasswordGrantAuthenticator struct {
 //	    log.Fatal(err)
 //	}
 func NewWithResourceOwnerPassword(clientID string, username string, password string, tokenEndpoint string) Authenticator {
-	return &resourceOwnerPasswordGrantAuthenticator{
-		clientID:      clientID,
-		username:      username,
-		password:      password,
+	return &commonOIDCAuthenticator{
 		tokenEndpoint: tokenEndpoint,
 		httpClient:    &http.Client{Timeout: 120 * time.Second},
+		parameters:    parametersForResourceOwnerPassword(clientID, username, password),
 	}
-}
-
-// GetToken obtains an authentication token using the resourceOwnerPasswordGrantAuthenticator.
-// It returns the obtained token and any error encountered during the process.
-func (c resourceOwnerPasswordGrantAuthenticator) GetToken() (string, error) {
-	data := url.Values{}
-	data.Set("client_id", c.clientID)
-	data.Set("username", c.username)
-	data.Set("password", c.password)
-	data.Set("grant_type", "password")
-
-	request, err := http.NewRequest("POST", c.tokenEndpoint, bytes.NewReader([]byte(data.Encode())))
-	if err != nil {
-		return "", err
-	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	response, err := c.httpClient.Do(request)
-	if err != nil {
-		return "", err
-	}
-
-	if response.StatusCode != 200 {
-		return "", fmt.Errorf("http request failed: %s", response.Status)
-	}
-
-	var tokenResponse msg.TokenResponse
-	if err = json.NewDecoder(response.Body).Decode(&tokenResponse); err != nil {
-		return "", err
-	}
-
-	return tokenResponse.Accesstoken, nil
 }
