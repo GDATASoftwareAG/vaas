@@ -12,9 +12,9 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/authenticator"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/vaas"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/vaas"
 )
 
 func main() {

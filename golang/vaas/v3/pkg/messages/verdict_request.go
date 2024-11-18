@@ -2,7 +2,7 @@
 package messages
 
 import (
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v2/pkg/options"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
 	"github.com/google/uuid"
 )
 
