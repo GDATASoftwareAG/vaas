@@ -66,6 +66,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: set legacy vaas gateway for production
+        run: |
+          if [[ "${{ matrix.version-directory }}" == "./" || "${{ matrix.version-directory }}" == "v2/" ]]; then
+            echo "VAAS_URL=wss://gateway.production.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          else
+            echo "VAAS_URL=https://gateway.production.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          fi
+
+
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-beta')))
         run: |
@@ -73,7 +82,7 @@ jobs:
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
-          if [ "${{ matrix.version-directory }}" == "./" || "${{ matrix.version-directory }}" == "v2/" ]; then
+          if [[ "${{ matrix.version-directory }}" == "./" || "${{ matrix.version-directory }}" == "v2/" ]]; then
             echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
           else
             echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
@@ -89,7 +98,7 @@ jobs:
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
-          if [ "${{ matrix.version-directory }}" == "./" || "${{ matrix.version-directory }}" == "v2/" ]; then
+          if [[ "${{ matrix.version-directory }}" == "./" || "${{ matrix.version-directory }}" == "v2/" ]]; then
             echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
           else
             echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
@@ -97,15 +106,6 @@ jobs:
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
-
-      - name: set legacy vaas gateway for production
-        if: (inputs.environment == 'main' || (startsWith(github.ref, 'refs/tags') && !(endsWith(github.ref, '-alpha') || endsWith(github.ref, '-beta'))))
-        run: |
-          if [ "${{ matrix.version-directory }}" == "./" || "${{ matrix.version-directory }}" == "v2/" ]; then
-            echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          else
-            echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          fi
 
       - name: run tests
         run: go test -race ./...
