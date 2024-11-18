@@ -18,7 +18,7 @@ java {
 }
 
 dependencies {
-    implementation 'org.projectlombok:lombok:1.18.34'
+    implementation 'org.projectlombok:lombok:1.18.36'
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.java-websocket:Java-WebSocket:1.5.7'
     implementation 'org.jetbrains:annotations:26.0.1'
@@ -29,11 +29,11 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.3'
 
 
-    compileOnly 'org.projectlombok:lombok:1.18.34'
-    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+    compileOnly 'org.projectlombok:lombok:1.18.36'
+    annotationProcessor 'org.projectlombok:lombok:1.18.36'
 
-    testCompileOnly 'org.projectlombok:lombok:1.18.34'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+    testCompileOnly 'org.projectlombok:lombok:1.18.36'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.36'
 }
 
 test {
