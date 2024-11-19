@@ -10,5 +10,4 @@ const (
 	Unknown   Verdict = "Unknown"
 	Malicious Verdict = "Malicious"
 	Pup       Verdict = "Pup"
-	Error     Verdict = "Error"
 )
