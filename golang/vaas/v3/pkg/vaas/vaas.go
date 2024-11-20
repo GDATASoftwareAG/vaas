@@ -22,8 +22,7 @@ import (
 // TODO: useCache, useHashLookup ???
 
 const (
-	// TODO: version
-	userAgent = "golang-vaas-sdk"
+	userAgent = "Go/3.0.8-alpha"
 )
 
 // Errors returned by the VaaS API
@@ -59,7 +58,6 @@ func New(options options.VaasOptions, vaasURL *url.URL, authenticator authentica
 		vaasURL:       vaasURL,
 		authenticator: authenticator,
 		httpClient: &http.Client{
-			Timeout: 1 * time.Minute,
 			Transport: &http.Transport{
 				// Disable HTTP/2
 				TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
@@ -72,7 +70,7 @@ func New(options options.VaasOptions, vaasURL *url.URL, authenticator authentica
 // NewWithDefaultEndpoint creates a new instance of the Vaas struct with a default endpoint.
 // It represents a client for interacting with a Vaas service.
 func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authenticator.Authenticator) Vaas {
-	vaasURL, _ := url.Parse("wss://gateway.production.vaas.gdatasecurity.de")
+	vaasURL, _ := url.Parse("https://gateway.production.vaas.gdatasecurity.de")
 	return New(options, vaasURL, authenticator)
 }
 
@@ -137,7 +135,7 @@ func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url s
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
 //	ctx := context.Background()
 //	sha256 := "..."
 //	verdict, err := vaasClient.ForSha256(ctx, sha256)
@@ -194,7 +192,7 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
 //	ctx := context.Background()
 //	filePath := "path/to/file.txt"
 //	verdict, err := vaasClient.ForFile(ctx, filePath)
@@ -268,7 +266,7 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
 //	ctx := context.Background()
 //	verdict, err := vaasClient.ForUrl(ctx, "https://example.com/examplefile")
 //	if err != nil {
@@ -286,7 +284,7 @@ func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) 
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "wss://example.authentication.endpoint")
+//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
 //	ctx := context.Background()
 //	contentLength := 1234
 //	verdict, err := vaasClient.ForStream(ctx, stream, contentLength)
