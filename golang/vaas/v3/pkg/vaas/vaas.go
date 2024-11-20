@@ -16,7 +16,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 )
 
 // TODO: useCache, useHashLookup ???
