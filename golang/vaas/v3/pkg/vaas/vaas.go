@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/internal/hash"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/messages"
@@ -206,7 +207,7 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 
 		switch response.StatusCode {
 		case http.StatusNotFound:
-			return nil, errors.Join(ErrClientFailure, errors.New("url job not found"))
+			return nil, errors.Join(ErrClientFailure, fmt.Errorf("url job %v not found", urlJobId))
 		case http.StatusAccepted:
 			continue
 		case http.StatusOK:
@@ -313,12 +314,10 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	if err != nil {
 		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
 	}
-	verdict, err := v.ForSha256(ctx, sha256)
-	if err != nil {
-		return msg.VaasVerdict{}, err
-	}
 
-	if verdict.Verdict != msg.Unknown {
+	verdict, err := v.ForSha256(ctx, sha256)
+	// We only care about the hash lookup if it's not failed and has actionable verdict
+	if err == nil && verdict.Verdict != msg.Unknown {
 		return verdict, nil
 	}
 
