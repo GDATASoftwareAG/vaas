@@ -66,18 +66,14 @@ func TestVaas_ForSha256(t *testing.T) {
 		maliciousSha256 string = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
 		unknownSha256   string = "1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df"
 	)
-	type fields struct {
-		testingOptions options.VaasOptions
-	}
 	type args struct {
 		sha256          string
 		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
-		args    args
-		name    string
-		fields  fields
-		wantErr bool
+		args          args
+		name          string
+		expectedError error
 	}{
 		{
 			name: "With clean sha256 - got verdict clean",
@@ -85,12 +81,6 @@ func TestVaas_ForSha256(t *testing.T) {
 				sha256:          cleanSha256,
 				expectedVerdict: msg.Clean,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
 		},
 		{
 			name: "With malicious sha256 - got verdict malicious",
@@ -98,12 +88,6 @@ func TestVaas_ForSha256(t *testing.T) {
 				sha256:          maliciousSha256,
 				expectedVerdict: msg.Malicious,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
 		},
 		{
 			name: "With unknown sha256 - got verdict unknown",
@@ -111,12 +95,6 @@ func TestVaas_ForSha256(t *testing.T) {
 				sha256:          unknownSha256,
 				expectedVerdict: msg.Unknown,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -126,8 +104,8 @@ func TestVaas_ForSha256(t *testing.T) {
 
 			verdict, err := vaasClient.ForSha256(context.Background(), tt.args.sha256)
 
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error - %v", err)
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf("unexpected error, expected %v but got %v", tt.expectedError, err)
 			}
 
 			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
@@ -141,18 +119,14 @@ func TestVaas_ForFile(t *testing.T) {
 	const (
 		eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo"
 	)
-	type fields struct {
-		testingOptions options.VaasOptions
-	}
 	type args struct {
 		fileContent     string
 		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
-		args    args
-		name    string
-		fields  fields
-		wantErr bool
+		args          args
+		name          string
+		expectedError error
 	}{
 		{
 			name: "with eicar file - got verdict malicious",
@@ -163,12 +137,6 @@ func TestVaas_ForFile(t *testing.T) {
 				}(),
 				expectedVerdict: msg.Malicious,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
 		},
 		{
 			name: "With random file - got verdict clean",
@@ -176,12 +144,6 @@ func TestVaas_ForFile(t *testing.T) {
 				fileContent:     RandomString(200),
 				expectedVerdict: msg.Clean,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
 		},
 	}
 
@@ -197,8 +159,9 @@ func TestVaas_ForFile(t *testing.T) {
 
 			// test disk file
 			verdict, err := vaasClient.ForFile(context.Background(), testFile)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error - %v", err)
+
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf("unexpected error, expected %v but got %v", tt.expectedError, err)
 			}
 
 			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
@@ -308,21 +271,18 @@ func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMime
 
 func TestVaas_ForUrl(t *testing.T) {
 	const (
-		cleanURL string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
-		eicarURL string = "https://secure.eicar.org/eicar.com"
+		cleanURL   string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
+		eicarURL   string = "https://secure.eicar.org/eicar.com"
+		invalidURL string = "https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere"
 	)
-	type fields struct {
-		testingOptions options.VaasOptions
-	}
 	type args struct {
 		url             string
 		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
-		args    args
-		name    string
-		fields  fields
-		wantErr bool
+		args          args
+		name          string
+		expectedError error
 	}{
 		{
 			name: "with clean url - got verdict clean",
@@ -330,12 +290,6 @@ func TestVaas_ForUrl(t *testing.T) {
 				url:             cleanURL,
 				expectedVerdict: msg.Clean,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
 		},
 		{
 			name: "with eicar url - got verdict malicious",
@@ -343,38 +297,14 @@ func TestVaas_ForUrl(t *testing.T) {
 				url:             eicarURL,
 				expectedVerdict: msg.Malicious,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
 		},
 		{
-			name: "with clean url - got verdict clean",
+			name: "with invalid url - got client error",
 			args: args{
-				url:             cleanURL,
-				expectedVerdict: msg.Clean,
-			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: false,
-		},
-		{
-			name: "with invalid url - expect client error",
-			args: args{
-				url:             eicarURL,
+				url:             invalidURL,
 				expectedVerdict: msg.Malicious,
 			},
-			fields: fields{
-				testingOptions: options.VaasOptions{
-					UseHashLookup: true,
-					UseCache:      false,
-				}},
-			wantErr: true,
+			expectedError: ErrClientFailure,
 		},
 	}
 	for _, tt := range tests {
@@ -388,8 +318,8 @@ func TestVaas_ForUrl(t *testing.T) {
 			}
 			verdict, err := VaasClient.ForUrl(context.Background(), testUrl)
 
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("unexpected error - %v", err)
+			if !errors.Is(err, tt.expectedError) {
+				t.Fatalf("unexpected error, expected %v but got %v", tt.expectedError, err)
 			}
 
 			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
