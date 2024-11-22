@@ -242,7 +242,7 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 // TODO: return the parsed body (TBD how API will look)
 func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) (string, error) {
 	uploadUrl := v.vaasURL.JoinPath("files").String()
-	req, err := v.newAuthenticatedRequest(ctx, http.MethodPut, uploadUrl, file)
+	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, uploadUrl, file)
 	if err != nil {
 		return "", err
 	}
