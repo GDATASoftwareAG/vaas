@@ -3,6 +3,7 @@
 package vaas
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -35,7 +36,7 @@ var (
 // All kinds of requests can be canceled by the context.
 // Please refer to the individual function comments for more details on their usage and behavior.
 type Vaas interface {
-	ForUrl(ctx context.Context, uri string) (msg.VaasVerdict, error)
+	ForUrl(ctx context.Context, url url.URL) (msg.VaasVerdict, error)
 	ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error)
 	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
 	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
@@ -114,6 +115,14 @@ func readHttpResponse(httpClient *http.Client, request *http.Request) (Response 
 	return resp, data, nil
 }
 
+func encodeToJsonBuffer(data any) (*bytes.Buffer, error) {
+	encoded, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	return bytes.NewBuffer(encoded), nil
+}
+
 func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
 	token, err := v.authenticator.GetToken()
 	if err != nil {
@@ -172,7 +181,7 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 		case http.StatusAccepted:
 			continue
 		case http.StatusOK:
-			var report msg.VaasReport
+			var report msg.FileReport
 
 			err := json.Unmarshal(body, &report)
 			if err != nil {
@@ -260,6 +269,69 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 	return sha256, nil
 }
 
+func (v *vaas) submitUrlForAnalysis(ctx context.Context, url url.URL) (msg.URLAnalysis, error) {
+	var analysis = msg.URLAnalysis{}
+	submitUrl := v.vaasURL.JoinPath("urls").String()
+	var analysisRequest = msg.URLAnalysisRequest{
+		Url: url.String(),
+		// TODO
+		UseHashLookup: true,
+	}
+	buffer, err := encodeToJsonBuffer(&analysisRequest)
+	if err != nil {
+		return analysis, err
+	}
+	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, submitUrl, buffer)
+	if err != nil {
+		return analysis, err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	response, body, err := readHttpResponse(v.httpClient, req)
+	if err != nil {
+		return analysis, err
+	}
+
+	if response.StatusCode != http.StatusCreated {
+		return analysis, parseVaasError(response, body)
+	}
+
+	err = json.Unmarshal(body, &analysis)
+	return analysis, err
+}
+
+func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport, error) {
+	submitUrl := v.vaasURL.JoinPath("urls", urlJobId, "report").String()
+	// Loop until 200 or error
+	for {
+		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, submitUrl, nil)
+		if err != nil {
+			return nil, err
+		}
+		response, body, err := readHttpResponse(v.httpClient, req)
+		if err != nil {
+			return nil, err
+		}
+
+		switch response.StatusCode {
+		case http.StatusNotFound:
+			return nil, errors.Join(ErrServerFailure, errors.New("url job not found"))
+		case http.StatusAccepted:
+			continue
+		case http.StatusOK:
+			var report msg.URLReport
+
+			err := json.Unmarshal(body, &report)
+			if err != nil {
+				return nil, err
+			}
+
+			return &report, nil
+		default:
+			return nil, parseVaasError(response, body)
+		}
+	}
+}
+
 // ForUrl sends an analysis request for a file URL to the Vaas server and returns the verdict.
 // The analysis can be canceled using the provided context.
 //
@@ -273,8 +345,16 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForUrl(ctx context.Context, url string) (msg.VaasVerdict, error) {
-	return msg.VaasVerdict{}, errors.New("not implemented")
+func (v *vaas) ForUrl(ctx context.Context, url url.URL) (msg.VaasVerdict, error) {
+	analysis, err := v.submitUrlForAnalysis(ctx, url)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	report, err := v.pollUrlJob(ctx, analysis.JobId)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	return report.ConvertToVaasVerdict(), nil
 }
 
 // ForStream sends an analysis request for a file stream to the Vaas server and returns the verdict.
