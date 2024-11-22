@@ -24,7 +24,7 @@ type testFixture struct {
 	errorChan  <-chan error
 }
 
-func (tf *testFixture) setUp(t *testing.T) Vaas {
+func (tf *testFixture) setUp() Vaas {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load environment - %v", err)
 	}
@@ -60,58 +60,6 @@ func (tf *testFixture) setUp(t *testing.T) Vaas {
 	return tf.vaasClient
 }
 
-//func TestVaas_TerminateRequestsOnBrokenConnection(t *testing.T) {
-//	vc := New(options.VaasOptions{
-//		UseHashLookup: true,
-//		UseCache:      false,
-//	}, "").(*vaas)
-//	vc.sessionID = "fake-id"
-//
-//	wsTerm := new(sync.WaitGroup)
-//	wsTerm.Add(1)
-//
-//	waitJSONWrite := new(sync.WaitGroup)
-//	waitJSONWrite.Add(1)
-//
-//	wsMock := mockWebSocket{
-//		readJSONFunc: func(_ any) error {
-//			wsTerm.Wait()
-//			return &websocket.CloseError{Code: websocket.CloseNormalClosure}
-//		},
-//		writeJSONFunc: func(_ any) error {
-//			waitJSONWrite.Done()
-//			return nil
-//		},
-//	}
-//	vc.websocketConnection = wsMock
-//
-//	termChan := vc.serve()
-//
-//	waitForRequest := new(sync.WaitGroup)
-//	waitForRequest.Add(1)
-//
-//	go func() {
-//		defer waitForRequest.Done()
-//		verdict, err := vc.ForSha256(context.Background(), "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2")
-//		if err != nil {
-//			t.Errorf("ForSha256 failed - %v", err)
-//		}
-//
-//		if verdict.Verdict != msg.Error {
-//			t.Errorf("Unexpected verdict - got: %v, want: %v", verdict, msg.Error)
-//		}
-//	}()
-//
-//	// Wait until request is send
-//	waitJSONWrite.Wait()
-//	// Terminate websocket read
-//	wsTerm.Done()
-//	// Wait for error response
-//	waitForRequest.Wait()
-//	_ = vc.Close()
-//	<-termChan
-//}
-
 func TestVaas_ForSha256(t *testing.T) {
 	const (
 		cleanSha256     string = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"
@@ -132,21 +80,6 @@ func TestVaas_ForSha256(t *testing.T) {
 		wantErr       bool
 		authenticated bool
 	}{
-		//{
-		//	name: "not authenticated - error (invalid operation)",
-		//	args: args{
-		//		sha256:          cleanSha256,
-		//		expectedVerdict: msg.Clean,
-		//	},
-		//	fields: fields{
-		//		testingOptions: options.VaasOptions{
-		//			UseHashLookup: true,
-		//			UseCache:      false,
-		//			EnableLogs:    true,
-		//		}},
-		//	wantErr:       true,
-		//	authenticated: false,
-		//},
 		{
 			name: "With clean sha256 - got verdict clean",
 			args: args{
@@ -196,7 +129,7 @@ func TestVaas_ForSha256(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fixture := new(testFixture)
-			vaasClient := fixture.setUp(t)
+			vaasClient := fixture.setUp()
 
 			verdict, err := vaasClient.ForSha256(context.Background(), tt.args.sha256)
 
@@ -229,23 +162,6 @@ func TestVaas_ForFile(t *testing.T) {
 		wantErr       bool
 		authenticated bool
 	}{
-		//{
-		//	name: "not authenticated - error (invalid operation)",
-		//	args: args{
-		//		fileContent: func() string {
-		//			decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
-		//			return string(decodedEicarString)
-		//		}(),
-		//		expectedVerdict: msg.Malicious,
-		//	},
-		//	fields: fields{
-		//		testingOptions: options.VaasOptions{
-		//			UseHashLookup: true,
-		//			UseCache:      false,
-		//		}},
-		//	wantErr:       true,
-		//	authenticated: false,
-		//},
 		{
 			name: "with eicar file - got verdict malicious",
 			args: args{
@@ -282,7 +198,7 @@ func TestVaas_ForFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fixture := new(testFixture)
-			vaasClient := fixture.setUp(t)
+			vaasClient := fixture.setUp()
 
 			testFile := filepath.Join(t.TempDir(), "testfile")
 			if err := os.WriteFile(testFile, []byte(tt.args.fileContent), 0644); err != nil {
@@ -305,7 +221,7 @@ func TestVaas_ForFile(t *testing.T) {
 func TestVaas_ForStream_WithStreamFromString(t *testing.T) {
 	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
 	fixture := new(testFixture)
-	vaasClient := fixture.setUp(t)
+	vaasClient := fixture.setUp()
 
 	verdict, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size())
 
@@ -322,7 +238,7 @@ func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
 	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
 
 	fixture := new(testFixture)
-	vaasClient := fixture.setUp(t)
+	vaasClient := fixture.setUp()
 
 	verdict, err := vaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
 
@@ -339,7 +255,7 @@ func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
 
 	fixture := new(testFixture)
-	vaasClient := fixture.setUp(t)
+	vaasClient := fixture.setUp()
 
 	cancelCtx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
 	defer cancel()
@@ -375,7 +291,7 @@ func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMime
 	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
 
 	fixture := new(testFixture)
-	VaasClient := fixture.setUp(t)
+	VaasClient := fixture.setUp()
 
 	verdict, err := VaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
 
@@ -400,89 +316,75 @@ func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMime
 	}
 }
 
-//func TestVaas_ForUrl(t *testing.T) {
-//	const (
-//		cleanURL string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
-//		eicarURL string = "https://secure.eicar.org/eicar.com"
-//	)
-//	type fields struct {
-//		testingOptions options.VaasOptions
-//	}
-//	type args struct {
-//		url             string
-//		expectedVerdict msg.Verdict
-//	}
-//	tests := []struct {
-//		args          args
-//		name          string
-//		fields        fields
-//		wantErr       bool
-//		authenticated bool
-//	}{
-//		{
-//			name: "not authenticated - error (invalid operation)",
-//			args: args{
-//				url:             cleanURL,
-//				expectedVerdict: msg.Clean,
-//			},
-//			fields: fields{
-//				testingOptions: options.VaasOptions{
-//					UseHashLookup: true,
-//					UseCache:      false,
-//				}},
-//			wantErr:       true,
-//			authenticated: false,
-//		},
-//		{
-//			name: "with clean url - got verdict clean",
-//			args: args{
-//				url:             cleanURL,
-//				expectedVerdict: msg.Clean,
-//			},
-//			fields: fields{
-//				testingOptions: options.VaasOptions{
-//					UseHashLookup: true,
-//					UseCache:      false,
-//				}},
-//			wantErr:       false,
-//			authenticated: true,
-//		},
-//		{
-//			name: "with eicar url - got verdict malicious",
-//			args: args{
-//				url:             eicarURL,
-//				expectedVerdict: msg.Malicious,
-//			},
-//			fields: fields{
-//				testingOptions: options.VaasOptions{
-//					UseHashLookup: true,
-//					UseCache:      false,
-//				}},
-//			wantErr:       false,
-//			authenticated: true,
-//		},
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			VaasClient := New(tt.fields.testingOptions, "")
-//			if tt.authenticated {
-//				fixture := new(testFixture)
-//				VaasClient = fixture.setUp(t)
-//				defer fixture.tearDown(t)
-//			}
-//
-//			verdict, err := VaasClient.ForUrl(context.Background(), tt.args.url)
-//
-//			if (err != nil) != tt.wantErr {
-//				t.Fatalf("unexpected error - %v", err)
-//			}
-//
-//			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
-//				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
-//			}
-//		})
-//	}
-//}
+func TestVaas_ForUrl(t *testing.T) {
+	const (
+		cleanURL string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
+		eicarURL string = "https://secure.eicar.org/eicar.com"
+	)
+	type fields struct {
+		testingOptions options.VaasOptions
+	}
+	type args struct {
+		url             string
+		expectedVerdict msg.Verdict
+	}
+	tests := []struct {
+		args          args
+		name          string
+		fields        fields
+		wantErr       bool
+		authenticated bool
+	}{
+		{
+			name: "with clean url - got verdict clean",
+			args: args{
+				url:             cleanURL,
+				expectedVerdict: msg.Clean,
+			},
+			fields: fields{
+				testingOptions: options.VaasOptions{
+					UseHashLookup: true,
+					UseCache:      false,
+				}},
+			wantErr:       false,
+			authenticated: true,
+		},
+		{
+			name: "with eicar url - got verdict malicious",
+			args: args{
+				url:             eicarURL,
+				expectedVerdict: msg.Malicious,
+			},
+			fields: fields{
+				testingOptions: options.VaasOptions{
+					UseHashLookup: true,
+					UseCache:      false,
+				}},
+			wantErr:       false,
+			authenticated: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture := new(testFixture)
+			VaasClient := fixture.setUp()
+
+			testUrl, err := url.Parse(tt.args.url)
+			if err != nil {
+				t.Fatalf("Cannot parse test testUrl - %v", err)
+			}
+			verdict, err := VaasClient.ForUrl(context.Background(), *testUrl)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("unexpected error - %v", err)
+			}
+
+			if err == nil && verdict.Verdict != tt.args.expectedVerdict {
+				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
+			}
+		})
+	}
+}
 
 func RandomString(n int) string {
 	var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
