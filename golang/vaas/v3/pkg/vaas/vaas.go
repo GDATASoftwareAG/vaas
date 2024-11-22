@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 )
 
 // TODO: useCache, useHashLookup ???
@@ -239,30 +238,25 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	return v.ForStream(ctx, file, stat.Size())
 }
 
-// TODO: return the parsed body (TBD how API will look)
-func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) (string, error) {
+func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) (msg.FileAnalysis, error) {
+	var analysis = msg.FileAnalysis{}
 	uploadUrl := v.vaasURL.JoinPath("files").String()
 	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, uploadUrl, file)
 	if err != nil {
-		return "", err
+		return analysis, err
 	}
 	req.ContentLength = contentLength
 	response, body, err := readHttpResponse(v.httpClient, req)
 	if err != nil {
-		return "", err
+		return analysis, err
 	}
 
 	if response.StatusCode != http.StatusCreated {
-		return "", parseVaasError(response, body)
+		return analysis, parseVaasError(response, body)
 	}
 
-	location := response.Header.Get("Location")
-	prefix := "/files/"
-	if !strings.HasPrefix(location, prefix) {
-		return "", errors.Join(ErrServerFailure, errors.New("can't parse Location in response"))
-	}
-	sha256 := strings.TrimPrefix(location, prefix)
-	return sha256, nil
+	err = json.Unmarshal(body, &analysis)
+	return analysis, err
 }
 
 func (v *vaas) submitUrlForAnalysis(ctx context.Context, url *url.URL) (msg.URLAnalysis, error) {
@@ -369,10 +363,10 @@ func (v *vaas) ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
-	sha256, err := v.upload(ctx, stream, contentLength)
+	analysis, err := v.upload(ctx, stream, contentLength)
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
 
-	return v.ForSha256(ctx, sha256)
+	return v.ForSha256(ctx, analysis.Sha256)
 }
