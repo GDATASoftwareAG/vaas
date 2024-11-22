@@ -90,7 +90,6 @@ func TestVaas_ForSha256(t *testing.T) {
 				testingOptions: options.VaasOptions{
 					UseHashLookup: true,
 					UseCache:      false,
-					EnableLogs:    true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -105,7 +104,6 @@ func TestVaas_ForSha256(t *testing.T) {
 				testingOptions: options.VaasOptions{
 					UseHashLookup: true,
 					UseCache:      false,
-					EnableLogs:    true,
 				}},
 			wantErr:       false,
 			authenticated: true,
@@ -120,7 +118,6 @@ func TestVaas_ForSha256(t *testing.T) {
 				testingOptions: options.VaasOptions{
 					UseHashLookup: true,
 					UseCache:      false,
-					EnableLogs:    true,
 				}},
 			wantErr:       false,
 			authenticated: true,
