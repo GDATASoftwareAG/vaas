@@ -75,15 +75,11 @@ func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authentic
 }
 
 func parseVaasError(response *http.Response, responseBody []byte) error {
-	// Special handling as Bad Requests do not contain a ProblemDetails body
-	if response.StatusCode == http.StatusBadRequest {
-		return errors.Join(ErrClientFailure, errors.New("HTTP error: Bad Request"))
-	}
-
 	var problemDetails msg.ProblemDetails
 	err := json.Unmarshal(responseBody, &problemDetails)
 	if err != nil {
-		return err
+		// Server did not reply with a parseable error body, returning the HTTP code instead
+		return errors.Join(ErrServerFailure, errors.New("HTTP error: "+response.Status))
 	}
 
 	var baseErr error
