@@ -38,6 +38,11 @@ populate-env:
 	cp .env golang/vaas/v2/pkg/authenticator/.env
 	cp .env golang/vaas/pkg/authenticator/.env
 	cp .env golang/vaas/pkg/vaas/.env
+	cp .env golang/vaas/v3/.env
+	cp .env golang/vaas/v3/examples/file-verdict-request/.env
+	cp .env golang/vaas/v3/examples/vaasctl/.env
+	cp .env golang/vaas/v3/pkg/vaas/.env
+	cp .env golang/vaas/v3/pkg/authenticator/.env
 	cp .env java/.env
 	cp .env php/tests/vaas/.env
 	cp .env ruby/test/.env
