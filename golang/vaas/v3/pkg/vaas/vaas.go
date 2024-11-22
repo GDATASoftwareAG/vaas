@@ -134,6 +134,129 @@ func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url s
 	return req, nil
 }
 
+func (v *vaas) uploadUrl(ctx context.Context, url *url.URL) (msg.URLAnalysis, error) {
+	var analysis = msg.URLAnalysis{}
+	submitUrl := v.vaasURL.JoinPath("urls").String()
+	var analysisRequest = msg.URLAnalysisRequest{
+		Url:           url.String(),
+		UseHashLookup: v.options.UseHashLookup,
+	}
+	buffer, err := encodeToJsonBuffer(&analysisRequest)
+	if err != nil {
+		return analysis, err
+	}
+	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, submitUrl, buffer)
+	if err != nil {
+		return analysis, err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	response, body, err := readHttpResponse(v.httpClient, req)
+	if err != nil {
+		return analysis, err
+	}
+
+	if response.StatusCode != http.StatusCreated {
+		return analysis, parseVaasError(response, body)
+	}
+
+	err = json.Unmarshal(body, &analysis)
+	if err != nil {
+		return analysis, errors.Join(ErrClientFailure, err)
+	}
+	return analysis, nil
+}
+
+func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int64) (msg.FileAnalysis, error) {
+	var analysis = msg.FileAnalysis{}
+	uploadUrl := v.vaasURL.JoinPath("files")
+	uploadUrl.Query().Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
+	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, uploadUrl.String(), file)
+	if err != nil {
+		return analysis, err
+	}
+	req.ContentLength = contentLength
+	response, body, err := readHttpResponse(v.httpClient, req)
+	if err != nil {
+		return analysis, err
+	}
+
+	if response.StatusCode != http.StatusCreated {
+		return analysis, parseVaasError(response, body)
+	}
+
+	err = json.Unmarshal(body, &analysis)
+	if err != nil {
+		return analysis, errors.Join(ErrClientFailure, err)
+	}
+	return analysis, nil
+}
+
+func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport, error) {
+	submitUrl := v.vaasURL.JoinPath("urls", urlJobId, "report").String()
+	// Loop until 200 or error
+	for {
+		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, submitUrl, nil)
+		if err != nil {
+			return nil, err
+		}
+		response, body, err := readHttpResponse(v.httpClient, req)
+		if err != nil {
+			return nil, err
+		}
+
+		switch response.StatusCode {
+		case http.StatusNotFound:
+			return nil, errors.Join(ErrClientFailure, errors.New("url job not found"))
+		case http.StatusAccepted:
+			continue
+		case http.StatusOK:
+			var report msg.URLReport
+			err := json.Unmarshal(body, &report)
+			if err != nil {
+				return nil, errors.Join(ErrClientFailure, err)
+			}
+			return &report, nil
+		default:
+			return nil, parseVaasError(response, body)
+		}
+	}
+}
+
+func (v *vaas) pollFile(ctx context.Context, sha256 string) (*msg.FileReport, error) {
+	reportUrl := v.vaasURL.JoinPath("files", sha256, "report")
+	reportUrl.Query().Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
+	reportUrl.Query().Add("useCache", strconv.FormatBool(v.options.UseCache))
+	reportUrlString := reportUrl.String()
+	// Loop until we get 200 or an error
+	for {
+		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, reportUrlString, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		response, body, err := readHttpResponse(v.httpClient, req)
+		if err != nil {
+			return nil, err
+		}
+
+		switch response.StatusCode {
+		case http.StatusNotFound:
+			return nil, nil
+		case http.StatusAccepted:
+			continue
+		case http.StatusOK:
+			var report msg.FileReport
+			err = json.Unmarshal(body, &report)
+			if err != nil {
+				return nil, errors.Join(ErrClientFailure, err)
+			}
+			return &report, nil
+		default:
+			return nil, parseVaasError(response, body)
+		}
+	}
+}
+
 // ForSha256 sends an analysis request for a file identified by its SHA256 hash to the Vaas server and returns the verdict.
 // The analysis can be canceled using the provided context.
 //
@@ -149,41 +272,18 @@ func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url s
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error) {
-	reportUrl := v.vaasURL.JoinPath("files", sha256, "report")
-	reportUrl.Query().Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
-	reportUrl.Query().Add("useCache", strconv.FormatBool(v.options.UseCache))
-	reportUrlString := reportUrl.String()
-	// Loop until we get 200 or an error
-	for {
-		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, reportUrlString, nil)
-		if err != nil {
-			return msg.VaasVerdict{}, err
-		}
-
-		response, body, err := readHttpResponse(v.httpClient, req)
-		if err != nil {
-			return msg.VaasVerdict{}, err
-		}
-
-		switch response.StatusCode {
-		case http.StatusNotFound:
-			return msg.VaasVerdict{
-				Verdict: msg.Unknown,
-				Sha256:  sha256,
-			}, nil
-		case http.StatusAccepted:
-			continue
-		case http.StatusOK:
-			var report msg.FileReport
-			err = json.Unmarshal(body, &report)
-			if err != nil {
-				return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
-			}
-			return report.ConvertToVaasVerdict(), nil
-		default:
-			return msg.VaasVerdict{}, parseVaasError(response, body)
-		}
+	report, err := v.pollFile(ctx, sha256)
+	if err != nil {
+		return msg.VaasVerdict{}, err
 	}
+
+	if report == nil {
+		// Not found
+		return msg.VaasVerdict{
+			Verdict: msg.Unknown,
+		}, nil
+	}
+	return report.ConvertToVaasVerdict(), nil
 }
 
 // ForFile sends an analysis request for a file at the given filePath to the Vaas server and returns the verdict.
@@ -232,94 +332,6 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	}
 
 	return v.ForStream(ctx, file, stat.Size())
-}
-
-func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int64) (msg.FileAnalysis, error) {
-	var analysis = msg.FileAnalysis{}
-	uploadUrl := v.vaasURL.JoinPath("files")
-	uploadUrl.Query().Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
-	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, uploadUrl.String(), file)
-	if err != nil {
-		return analysis, err
-	}
-	req.ContentLength = contentLength
-	response, body, err := readHttpResponse(v.httpClient, req)
-	if err != nil {
-		return analysis, err
-	}
-
-	if response.StatusCode != http.StatusCreated {
-		return analysis, parseVaasError(response, body)
-	}
-
-	err = json.Unmarshal(body, &analysis)
-	if err != nil {
-		return analysis, errors.Join(ErrClientFailure, err)
-	}
-	return analysis, nil
-}
-
-func (v *vaas) uploadUrl(ctx context.Context, url *url.URL) (msg.URLAnalysis, error) {
-	var analysis = msg.URLAnalysis{}
-	submitUrl := v.vaasURL.JoinPath("urls").String()
-	var analysisRequest = msg.URLAnalysisRequest{
-		Url:           url.String(),
-		UseHashLookup: v.options.UseHashLookup,
-	}
-	buffer, err := encodeToJsonBuffer(&analysisRequest)
-	if err != nil {
-		return analysis, err
-	}
-	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, submitUrl, buffer)
-	if err != nil {
-		return analysis, err
-	}
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	response, body, err := readHttpResponse(v.httpClient, req)
-	if err != nil {
-		return analysis, err
-	}
-
-	if response.StatusCode != http.StatusCreated {
-		return analysis, parseVaasError(response, body)
-	}
-
-	err = json.Unmarshal(body, &analysis)
-	if err != nil {
-		return analysis, errors.Join(ErrClientFailure, err)
-	}
-	return analysis, nil
-}
-
-func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport, error) {
-	submitUrl := v.vaasURL.JoinPath("urls", urlJobId, "report").String()
-	// Loop until 200 or error
-	for {
-		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, submitUrl, nil)
-		if err != nil {
-			return nil, err
-		}
-		response, body, err := readHttpResponse(v.httpClient, req)
-		if err != nil {
-			return nil, err
-		}
-
-		switch response.StatusCode {
-		case http.StatusNotFound:
-			return nil, errors.Join(ErrClientFailure, errors.New("url job not found"))
-		case http.StatusAccepted:
-			continue
-		case http.StatusOK:
-			var report msg.URLReport
-			err := json.Unmarshal(body, &report)
-			if err != nil {
-				return nil, errors.Join(ErrClientFailure, err)
-			}
-			return &report, nil
-		default:
-			return nil, parseVaasError(response, body)
-		}
-	}
 }
 
 // ForUrl sends an analysis request for a file URL to the Vaas server and returns the verdict.
