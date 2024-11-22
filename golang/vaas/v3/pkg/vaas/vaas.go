@@ -36,7 +36,7 @@ var (
 // All kinds of requests can be canceled by the context.
 // Please refer to the individual function comments for more details on their usage and behavior.
 type Vaas interface {
-	ForUrl(ctx context.Context, url url.URL) (msg.VaasVerdict, error)
+	ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error)
 	ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error)
 	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
 	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
@@ -265,7 +265,7 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 	return sha256, nil
 }
 
-func (v *vaas) submitUrlForAnalysis(ctx context.Context, url url.URL) (msg.URLAnalysis, error) {
+func (v *vaas) submitUrlForAnalysis(ctx context.Context, url *url.URL) (msg.URLAnalysis, error) {
 	var analysis = msg.URLAnalysis{}
 	submitUrl := v.vaasURL.JoinPath("urls").String()
 	var analysisRequest = msg.URLAnalysisRequest{
@@ -341,7 +341,7 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForUrl(ctx context.Context, url url.URL) (msg.VaasVerdict, error) {
+func (v *vaas) ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error) {
 	analysis, err := v.submitUrlForAnalysis(ctx, url)
 	if err != nil {
 		return msg.VaasVerdict{}, err

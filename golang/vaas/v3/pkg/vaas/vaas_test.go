@@ -373,7 +373,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Cannot parse test testUrl - %v", err)
 			}
-			verdict, err := VaasClient.ForUrl(context.Background(), *testUrl)
+			verdict, err := VaasClient.ForUrl(context.Background(), testUrl)
 
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("unexpected error - %v", err)
