@@ -74,11 +74,10 @@ func TestVaas_ForSha256(t *testing.T) {
 		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
-		args          args
-		name          string
-		fields        fields
-		wantErr       bool
-		authenticated bool
+		args    args
+		name    string
+		fields  fields
+		wantErr bool
 	}{
 		{
 			name: "With clean sha256 - got verdict clean",
@@ -91,8 +90,7 @@ func TestVaas_ForSha256(t *testing.T) {
 					UseHashLookup: true,
 					UseCache:      false,
 				}},
-			wantErr:       false,
-			authenticated: true,
+			wantErr: false,
 		},
 		{
 			name: "With malicious sha256 - got verdict malicious",
@@ -105,8 +103,7 @@ func TestVaas_ForSha256(t *testing.T) {
 					UseHashLookup: true,
 					UseCache:      false,
 				}},
-			wantErr:       false,
-			authenticated: true,
+			wantErr: false,
 		},
 		{
 			name: "With unknown sha256 - got verdict unknown",
@@ -119,8 +116,7 @@ func TestVaas_ForSha256(t *testing.T) {
 					UseHashLookup: true,
 					UseCache:      false,
 				}},
-			wantErr:       false,
-			authenticated: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -153,11 +149,10 @@ func TestVaas_ForFile(t *testing.T) {
 		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
-		args          args
-		name          string
-		fields        fields
-		wantErr       bool
-		authenticated bool
+		args    args
+		name    string
+		fields  fields
+		wantErr bool
 	}{
 		{
 			name: "with eicar file - got verdict malicious",
@@ -173,8 +168,7 @@ func TestVaas_ForFile(t *testing.T) {
 					UseHashLookup: true,
 					UseCache:      false,
 				}},
-			wantErr:       false,
-			authenticated: true,
+			wantErr: false,
 		},
 		{
 			name: "With random file - got verdict clean",
@@ -187,8 +181,7 @@ func TestVaas_ForFile(t *testing.T) {
 					UseHashLookup: true,
 					UseCache:      false,
 				}},
-			wantErr:       false,
-			authenticated: true,
+			wantErr: false,
 		},
 	}
 
@@ -326,11 +319,10 @@ func TestVaas_ForUrl(t *testing.T) {
 		expectedVerdict msg.Verdict
 	}
 	tests := []struct {
-		args          args
-		name          string
-		fields        fields
-		wantErr       bool
-		authenticated bool
+		args    args
+		name    string
+		fields  fields
+		wantErr bool
 	}{
 		{
 			name: "with clean url - got verdict clean",
@@ -343,8 +335,7 @@ func TestVaas_ForUrl(t *testing.T) {
 					UseHashLookup: true,
 					UseCache:      false,
 				}},
-			wantErr:       false,
-			authenticated: true,
+			wantErr: false,
 		},
 		{
 			name: "with eicar url - got verdict malicious",
@@ -357,8 +348,33 @@ func TestVaas_ForUrl(t *testing.T) {
 					UseHashLookup: true,
 					UseCache:      false,
 				}},
-			wantErr:       false,
-			authenticated: true,
+			wantErr: false,
+		},
+		{
+			name: "with clean url - got verdict clean",
+			args: args{
+				url:             cleanURL,
+				expectedVerdict: msg.Clean,
+			},
+			fields: fields{
+				testingOptions: options.VaasOptions{
+					UseHashLookup: true,
+					UseCache:      false,
+				}},
+			wantErr: false,
+		},
+		{
+			name: "with invalid url - expect client error",
+			args: args{
+				url:             eicarURL,
+				expectedVerdict: msg.Malicious,
+			},
+			fields: fields{
+				testingOptions: options.VaasOptions{
+					UseHashLookup: true,
+					UseCache:      false,
+				}},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
