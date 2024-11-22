@@ -19,8 +19,6 @@ import (
 	"strconv"
 )
 
-// TODO: useCache, useHashLookup ???
-
 const (
 	userAgent = "Go/3.0.8-alpha"
 )
@@ -28,8 +26,9 @@ const (
 // Errors returned by the VaaS API
 var (
 	ErrClientFailure         = errors.New("client error")
-	ErrServerFailure         = errors.New("server error")
-	ErrAuthenticationFailure = errors.New("authentication failed")
+	ErrServerFailure         = errors.New("server reported an internal error")
+	ErrAuthenticationFailure = errors.New("VaaS authentication failed")
+	ErrConnectionProblem     = errors.New("could not connect to VaaS")
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
@@ -98,16 +97,16 @@ func parseVaasError(response *http.Response, responseBody []byte) error {
 func readHttpResponse(httpClient *http.Client, request *http.Request) (Response *http.Response, Body []byte, Error error) {
 	resp, err := httpClient.Do(request)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Join(ErrConnectionProblem, err)
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return resp, nil, err
+		return resp, nil, errors.Join(ErrClientFailure, err)
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		return resp, data, err
+		return resp, data, errors.Join(ErrClientFailure, err)
 	}
 	return resp, data, nil
 }
@@ -115,7 +114,7 @@ func readHttpResponse(httpClient *http.Client, request *http.Request) (Response 
 func encodeToJsonBuffer(data any) (*bytes.Buffer, error) {
 	encoded, err := json.Marshal(data)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrClientFailure, err)
 	}
 	return bytes.NewBuffer(encoded), nil
 }
@@ -128,7 +127,7 @@ func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url s
 
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return nil, err
+		return nil, errors.Join(ErrClientFailure, err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("User-Agent", userAgent)
@@ -178,7 +177,7 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 			var report msg.FileReport
 			err = json.Unmarshal(body, &report)
 			if err != nil {
-				return msg.VaasVerdict{}, err
+				return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
 			}
 			return report.ConvertToVaasVerdict(), nil
 		default:
@@ -204,7 +203,7 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return msg.VaasVerdict{}, err
+		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
 	}
 	defer func() {
 		_ = file.Close()
@@ -212,7 +211,7 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 
 	sha256, err := hash.CalculateSha256(file)
 	if err != nil {
-		return msg.VaasVerdict{}, err
+		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
 	}
 	verdict, err := v.ForSha256(ctx, sha256)
 	if err != nil {
@@ -224,18 +223,18 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	}
 
 	if _, err = file.Seek(0, 0); err != nil {
-		return msg.VaasVerdict{}, err
+		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
 	}
 
 	stat, err := file.Stat()
 	if err != nil {
-		return msg.VaasVerdict{}, err
+		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
 	}
 
 	return v.ForStream(ctx, file, stat.Size())
 }
 
-func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) (msg.FileAnalysis, error) {
+func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int64) (msg.FileAnalysis, error) {
 	var analysis = msg.FileAnalysis{}
 	uploadUrl := v.vaasURL.JoinPath("files")
 	uploadUrl.Query().Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
@@ -254,10 +253,13 @@ func (v *vaas) upload(ctx context.Context, file io.Reader, contentLength int64) 
 	}
 
 	err = json.Unmarshal(body, &analysis)
-	return analysis, err
+	if err != nil {
+		return analysis, errors.Join(ErrClientFailure, err)
+	}
+	return analysis, nil
 }
 
-func (v *vaas) submitUrlForAnalysis(ctx context.Context, url *url.URL) (msg.URLAnalysis, error) {
+func (v *vaas) uploadUrl(ctx context.Context, url *url.URL) (msg.URLAnalysis, error) {
 	var analysis = msg.URLAnalysis{}
 	submitUrl := v.vaasURL.JoinPath("urls").String()
 	var analysisRequest = msg.URLAnalysisRequest{
@@ -283,7 +285,10 @@ func (v *vaas) submitUrlForAnalysis(ctx context.Context, url *url.URL) (msg.URLA
 	}
 
 	err = json.Unmarshal(body, &analysis)
-	return analysis, err
+	if err != nil {
+		return analysis, errors.Join(ErrClientFailure, err)
+	}
+	return analysis, nil
 }
 
 func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport, error) {
@@ -301,17 +306,15 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 
 		switch response.StatusCode {
 		case http.StatusNotFound:
-			return nil, errors.Join(ErrServerFailure, errors.New("url job not found"))
+			return nil, errors.Join(ErrClientFailure, errors.New("url job not found"))
 		case http.StatusAccepted:
 			continue
 		case http.StatusOK:
 			var report msg.URLReport
-
 			err := json.Unmarshal(body, &report)
 			if err != nil {
-				return nil, err
+				return nil, errors.Join(ErrClientFailure, err)
 			}
-
 			return &report, nil
 		default:
 			return nil, parseVaasError(response, body)
@@ -333,7 +336,7 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error) {
-	analysis, err := v.submitUrlForAnalysis(ctx, url)
+	analysis, err := v.uploadUrl(ctx, url)
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
@@ -360,7 +363,7 @@ func (v *vaas) ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
-	analysis, err := v.upload(ctx, stream, contentLength)
+	analysis, err := v.uploadFile(ctx, stream, contentLength)
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
