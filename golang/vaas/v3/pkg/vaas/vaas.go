@@ -258,12 +258,12 @@ func (v *vaas) pollFile(ctx context.Context, sha256 string) (*msg.FileReport, er
 	}
 }
 
-// ForSha256 sends an analysis request for a file identified by its SHA256 hash to the Vaas server and returns the verdict.
+// ForSha256 sends an analysis request for a file identified by its SHA256 hash to the VaaS server and returns the verdict.
 // The analysis can be canceled using the provided context.
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
+//	vaasClient := vaas.NewWithDefaultEndpoint(options, auth)
 //	ctx := context.Background()
 //	sha256 := "..."
 //	verdict, err := vaasClient.ForSha256(ctx, sha256)
@@ -282,17 +282,18 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 		// Not found
 		return msg.VaasVerdict{
 			Verdict: msg.Unknown,
+			Sha256:  sha256,
 		}, nil
 	}
 	return report.ConvertToVaasVerdict(), nil
 }
 
-// ForFile sends an analysis request for a file at the given filePath to the Vaas server and returns the verdict.
+// ForFile sends an analysis request for a file at the given filePath to the VaaS server and returns the verdict.
 // The analysis can be canceled using the provided context.
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
+//	vaasClient := vaas.NewWithDefaultEndpoint(options, auth)
 //	ctx := context.Background()
 //	filePath := "path/to/file.txt"
 //	verdict, err := vaasClient.ForFile(ctx, filePath)
@@ -333,14 +334,15 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 	return v.ForStream(ctx, file, stat.Size())
 }
 
-// ForUrl sends an analysis request for a file URL to the Vaas server and returns the verdict.
+// ForUrl sends an analysis request for a file URL to the VaaS server and returns the verdict.
 // The analysis can be canceled using the provided context.
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
+//	vaasClient := vaas.NewWithDefaultEndpoint(options, auth)
 //	ctx := context.Background()
-//	verdict, err := vaasClient.ForUrl(ctx, "https://example.com/examplefile")
+//	myUrl, _ := url.Parse("https://example.com/examplefile")
+//	verdict, err := vaasClient.ForUrl(ctx, myUrl)
 //	if err != nil {
 //	    log.Fatalf("Failed to get verdict: %v", err)
 //	}
@@ -358,13 +360,13 @@ func (v *vaas) ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error
 	return report.ConvertToVaasVerdict(), nil
 }
 
-// ForStream sends an analysis request for a file stream to the Vaas server and returns the verdict.
+// ForStream sends an analysis request for a file stream to the VaaS server and returns the verdict.
+// contentLength must be set to the stream's length, in bytes.
 // The analysis can be canceled using the provided context.
-// ContentLength should either be non-zero or the stream must be seekable.
 //
 // Example usage:
 //
-//	vaasClient := vaas.New(options, "https://example.authentication.endpoint")
+//	vaasClient := vaas.NewWithDefaultEndpoint(options, auth)
 //	ctx := context.Background()
 //	contentLength := 1234
 //	verdict, err := vaasClient.ForStream(ctx, stream, contentLength)
