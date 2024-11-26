@@ -62,4 +62,13 @@ public class AuthenticatorTest
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
         Assert.Equal(2, _handler.Requests);
     }
+
+    [Fact]
+    public async Task GetTokenAsync_IfClockSkew_ReusesToken()
+    {
+        _systemClock.Setup(x => x.UtcNow).Returns(() => DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+        _ = await _authenticator.GetTokenAsync(CancellationToken.None);
+        _ = await _authenticator.GetTokenAsync(CancellationToken.None);
+        Assert.Equal(1, _handler.Requests);
+    }
 }

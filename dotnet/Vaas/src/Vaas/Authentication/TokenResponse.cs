@@ -5,9 +5,9 @@ namespace Vaas.Authentication;
 
 public class TokenResponse
 {
-    [JsonPropertyName("access_token")]
-    public string AccessToken { get; init; }
- 
+    [JsonPropertyName("access_token")] public string AccessToken { get; init; }
+    [JsonPropertyName("expires_in")] public int? LifetimeSeconds { get; init; }
+
     public TokenResponse(string accessToken)
     {
         Guard.IsNotNullOrEmpty(accessToken);

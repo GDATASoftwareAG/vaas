@@ -30,13 +30,14 @@ public class Authenticator : IAuthenticator, IDisposable
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
-            
+
             if (_lastResponse != null && _validTo.ToUniversalTime() >= _systemClock.UtcNow)
                 return _lastResponse.AccessToken;
-            
+
             _lastResponse = await RequestTokenAsync(cancellationToken);
-            var accessToken = _jwtSecurityTokenHandler.ReadJwtToken(_lastResponse.AccessToken);
-            _validTo = accessToken.ValidTo;
+            //var accessToken = _jwtSecurityTokenHandler.ReadJwtToken(_lastResponse.AccessToken);
+            // TODO: Throw if null
+            _validTo = _systemClock.UtcNow.Add(TimeSpan.FromSeconds(_lastResponse.LifetimeSeconds!)).UtcDateTime;
             return _lastResponse.AccessToken;
         }
         finally
@@ -56,7 +57,7 @@ public class Authenticator : IAuthenticator, IDisposable
             throw new JsonException("Access token is null");
         return tokenResponse;
     }
-    
+
     private FormUrlEncodedContent TokenRequestToForm()
     {
         if (_options.Credentials.GrantType == GrantType.ClientCredentials)
@@ -70,7 +71,7 @@ public class Authenticator : IAuthenticator, IDisposable
                 }
             );
         }
-        
+
         return new FormUrlEncodedContent(
             new List<KeyValuePair<string, string>>
             {
