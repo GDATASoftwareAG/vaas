@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Net.WebSockets;
 using System.Reflection;
 using System.Security.Cryptography;
@@ -17,7 +18,6 @@ using CommunityToolkit.Diagnostics;
 using Vaas.Authentication;
 using Vaas.Messages;
 using Websocket.Client;
-using Websocket.Client.Exceptions;
 
 namespace Vaas;
 
@@ -48,7 +48,7 @@ public interface IVaas
         CancellationToken cancellationToken,
         ForStreamOptions? options = null
     );
-    
+
     Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
         ForUrlOptions? options = null);
 }
@@ -90,7 +90,7 @@ public class Vaas : IDisposable, IVaas
 
     private static string ProductVersion =>
         Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
-    
+
     private void HandleResponseMessage(ResponseMessage msg)
     {
         if (msg.MessageType != WebSocketMessageType.Text || msg.Text == null) return;
@@ -157,7 +157,7 @@ public class Vaas : IDisposable, IVaas
                 UseCache = _options.UseCache,
                 UseShed = _options.UseHashLookup,
             });
-        return new VaasVerdict(verdictResponse);
+        return VaasVerdict.From(verdictResponse);
     }
 
     public async Task<VaasVerdict> ForStreamAsync(
@@ -193,7 +193,7 @@ public class Vaas : IDisposable, IVaas
         var response = WaitForResponseAsync(verdictResponse.Guid);
         await UploadStream(stream, verdictResponse.Url, verdictResponse.UploadToken, cancellationToken);
 
-        return new VaasVerdict(await response);
+        return VaasVerdict.From(await response);
     }
 
     private async Task UploadStream(Stream stream, string url, string token, CancellationToken cancellationToken)
@@ -226,18 +226,31 @@ public class Vaas : IDisposable, IVaas
     public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
         ForSha256Options? options = null)
     {
-        var verdictResponse = await ForRequestAsync(
-            new VerdictRequest(sha256, SessionId ?? throw new InvalidOperationException())
+        var reportUri = new Uri(_options.Url, $"/files/{sha256}/report");
+        var request = new HttpRequestMessage()
+        {
+            RequestUri = reportUri,
+            Method = HttpMethod.Get,
+        };
+        while (true)
+        {
+            var token = await _authenticator.GetTokenAsync(cancellationToken);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            switch (response.StatusCode)
             {
-                UseCache = _options.UseCache,
-                UseShed = _options.UseHashLookup,
-                VerdictRequestAttributes = null
-            });
-        if (!verdictResponse.IsValid)
-            throw new JsonException("VerdictResponse is not valid");
-        return new VaasVerdict(verdictResponse);
+                case HttpStatusCode.OK:
+                    var fileReport = await response.Content.ReadFromJsonAsync<FileReport>(cancellationToken);
+                    return VaasVerdict.From(fileReport ?? throw new VaasServerException("TODO"));
+                case HttpStatusCode.Accepted:
+                    continue;
+                default:
+                    throw new NotImplementedException("Parse error here");
+                    break;
+            }
+        }
     }
-    
+
     private static void EnsureSuccess(HttpStatusCode status)
     {
         switch ((int)status)
@@ -251,7 +264,8 @@ public class Vaas : IDisposable, IVaas
         }
     }
 
-    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken, ForFileOptions? options = null)
+    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
+        ForFileOptions? options = null)
     {
         var sha256 = Sha256CheckSum(path);
         var verdictResponse = await ForRequestAsync(
@@ -263,7 +277,7 @@ public class Vaas : IDisposable, IVaas
         if (!verdictResponse.IsValid)
             throw new JsonException("VerdictResponse is not valid");
         if (verdictResponse.Verdict != Verdict.Unknown)
-            return new VaasVerdict(verdictResponse);
+            return VaasVerdict.From(verdictResponse);
         if (string.IsNullOrWhiteSpace(verdictResponse.Url) ||
             string.IsNullOrWhiteSpace(verdictResponse.UploadToken))
         {
@@ -273,7 +287,7 @@ public class Vaas : IDisposable, IVaas
         var response = WaitForResponseAsync(verdictResponse.Guid);
         await UploadFile(path, verdictResponse.Url, verdictResponse.UploadToken, cancellationToken);
 
-        return new VaasVerdict(await response);
+        return VaasVerdict.From(await response);
     }
 
     private async Task UploadFile(string path, string url, string token, CancellationToken cancellationToken)
