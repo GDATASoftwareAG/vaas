@@ -26,6 +26,7 @@ public class Authenticator : IAuthenticator, IDisposable
         _options = options;
     }
 
+    /// <exception cref="AuthenticationException"></exception>
     public async Task<string> GetTokenAsync(CancellationToken cancellationToken)
     {
         try
@@ -37,8 +38,8 @@ public class Authenticator : IAuthenticator, IDisposable
 
             _lastResponse = await RequestTokenAsync(cancellationToken);
             var expiresInSeconds = _lastResponse.ExpiresInSeconds ??
-                                   throw new AuthenticationException("Identity provider did not return expires_in.");
-            
+                                   throw new AuthenticationException("Identity provider did not return expires_in");
+
             _validTo = _systemClock.UtcNow.Add(TimeSpan.FromSeconds(expiresInSeconds)).UtcDateTime;
             return _lastResponse.AccessToken;
         }
@@ -51,12 +52,37 @@ public class Authenticator : IAuthenticator, IDisposable
     private async Task<TokenResponse> RequestTokenAsync(CancellationToken cancellationToken)
     {
         var form = TokenRequestToForm();
-        var response = await _httpClient.PostAsync(_options.TokenUrl, form, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsync(_options.TokenUrl, form, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            throw new AuthenticationException("Failed to request token", ex);
+        }
+
         var stringResponse = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var statusCode = (int)response.StatusCode;
+            try
+            {
+                var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(stringResponse) ??
+                                    throw new JsonException("empty response");
+                throw new AuthenticationException(
+                    $"Identity provider returned status code {statusCode} {errorResponse.Error} {errorResponse.ErrorDescription ?? ""}");
+            }
+            catch (JsonException)
+            {
+                throw new AuthenticationException($"Identity provider returned status code: {statusCode}");
+            }
+        }
+
         var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(stringResponse);
         if (tokenResponse == null)
-            throw new JsonException("Access token is null");
+            throw new AuthenticationException("Access token is null");
         return tokenResponse;
     }
 
