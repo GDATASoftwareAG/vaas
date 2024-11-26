@@ -1,8 +1,11 @@
 using System;
 using System.Net.Http;
+using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Moq;
+using Moq.Contrib.HttpClient;
 using Vaas.Authentication;
 using Xunit;
 
@@ -70,5 +73,24 @@ public class AuthenticatorTest
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
         Assert.Equal(1, _handler.Requests);
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_IfNoExpiresIn_ThrowsAuthenticationException()
+    {
+        var handlerMock = UseHttpMessageHandlerMock();
+        handlerMock.SetupRequest(HttpMethod.Post, GetVaasOptions().TokenUrl)
+            .ReturnsResponse("""{"access_token": "My great token"}""");
+
+        var e = await Assert.ThrowsAsync<AuthenticationException>(() => _authenticator.GetTokenAsync(CancellationToken.None));
+        
+        e.Message.Should().Be("Identity provider did not return expires_in.");
+    }
+
+    private Mock<HttpMessageHandler> UseHttpMessageHandlerMock()
+    {
+        var handlerMock = new Mock<HttpMessageHandler>();
+        _handler.InnerHandler = handlerMock.Object;
+        return handlerMock;
     }
 }

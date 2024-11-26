@@ -31,7 +31,8 @@ public class ForSha256Options
 public interface IVaas
 {
     Task Connect(CancellationToken cancellationToken);
-
+    
+    // TODO: ForUrlOptions
     Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null);
 
@@ -41,9 +42,11 @@ public interface IVaas
     Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
         ForSha256Options? options = null);
 
+    // TODO: ForFileOptions
     Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
         Dictionary<string, string>? verdictRequestAttributes = null);
 
+    // TODO: ForStreamOptions
     Task<VaasVerdict> ForStreamAsync(
         Stream stream,
         CancellationToken cancellationToken,

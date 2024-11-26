@@ -37,7 +37,7 @@ public class Authenticator : IAuthenticator, IDisposable
 
             _lastResponse = await RequestTokenAsync(cancellationToken);
             var expiresInSeconds = _lastResponse.ExpiresInSeconds ??
-                                   throw new AuthenticationException("Identity Provider did not return expires_in.");
+                                   throw new AuthenticationException("Identity provider did not return expires_in.");
             
             _validTo = _systemClock.UtcNow.Add(TimeSpan.FromSeconds(expiresInSeconds)).UtcDateTime;
             return _lastResponse.AccessToken;
