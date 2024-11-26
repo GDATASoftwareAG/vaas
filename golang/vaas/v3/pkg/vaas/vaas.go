@@ -322,7 +322,7 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 		return verdict, nil
 	}
 
-	if _, err = file.Seek(0, 0); err != nil {
+	if _, err = file.Seek(0, io.SeekStart); err != nil {
 		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
 	}
 
