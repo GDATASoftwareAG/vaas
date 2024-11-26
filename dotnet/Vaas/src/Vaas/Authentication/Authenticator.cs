@@ -66,18 +66,26 @@ public class Authenticator : IAuthenticator, IDisposable
 
         if (!response.IsSuccessStatusCode)
         {
+            ErrorResponse? errorResponse = null;
             var statusCode = (int)response.StatusCode;
             try
             {
-                var errorResponse = JsonSerializer.Deserialize<ErrorResponse>(stringResponse) ??
-                                    throw new JsonException("empty response");
-                throw new AuthenticationException(
-                    $"Identity provider returned status code {statusCode} {errorResponse.Error} {errorResponse.ErrorDescription ?? ""}");
+                errorResponse = JsonSerializer.Deserialize<ErrorResponse>(stringResponse);
             }
-            catch (JsonException)
+            catch (JsonException e)
             {
-                throw new AuthenticationException($"Identity provider returned status code: {statusCode}");
+                throw new AuthenticationException(
+                    $"Identity provider returned status code {statusCode}: {e.Message}");
             }
+
+            if (errorResponse == null)
+            {
+                throw new AuthenticationException(
+                    $"Identity provider returned status code {statusCode}: Empty body");
+            }
+
+            throw new AuthenticationException(
+                $"Identity provider returned status code {statusCode}: {errorResponse.ErrorDescription ?? errorResponse.Error}");
         }
 
         var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(stringResponse);

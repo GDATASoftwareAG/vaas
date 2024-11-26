@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Security.Authentication;
@@ -93,15 +94,22 @@ public class AuthenticatorTest
     public async Task GetTokenAsync_IfUnauthorized_ThrowsAuthenticationException()
     {
         var handlerMock = UseHttpMessageHandlerMock();
+        MockUnauthorizdClient(handlerMock);
+        
+        var e = await Assert.ThrowsAsync<AuthenticationException>(() =>
+            _authenticator.GetTokenAsync(CancellationToken.None));
+
+        e.Message.Should()
+            .Be(
+                "Identity provider returned status code 401: Invalid client or Invalid client credentials");
+    }
+
+    private void MockUnauthorizdClient(Mock<HttpMessageHandler> handlerMock)
+    {
         handlerMock.SetupRequest(HttpMethod.Post, GetVaasOptions().TokenUrl)
             .ReturnsResponse(
                 """{"error":"unauthorized_client","error_description":"Invalid client or Invalid client credentials"}""",
                 configure: response => { response.StatusCode = HttpStatusCode.Unauthorized; });
-
-        var e = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            _authenticator.GetTokenAsync(CancellationToken.None));
-
-        e.Message.Should().Be("Identity provider returned status code 401 unauthorized_client Invalid client or Invalid client credentials");
     }
 
     [Fact]
@@ -114,7 +122,9 @@ public class AuthenticatorTest
         var e = await Assert.ThrowsAsync<AuthenticationException>(() =>
             _authenticator.GetTokenAsync(CancellationToken.None));
 
-        e.Message.Should().Be("Identity provider returned status code: 500");
+        e.Message.Should()
+            .Be(
+                "Identity provider returned status code 500: The input does not contain any JSON tokens. Expected the input to start with a valid JSON token, when isFinalBlock is true. Path: $ | LineNumber: 0 | BytePositionInLine: 0.");
     }
 
     [Fact]
@@ -138,5 +148,17 @@ public class AuthenticatorTest
         var handlerMock = new Mock<HttpMessageHandler>();
         _handler.InnerHandler = handlerMock.Object;
         return handlerMock;
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_IfLastRequestFailed_Waits1sBeforeNextRequest()
+    {
+        var handlerMock = UseHttpMessageHandlerMock();
+        MockUnauthorizdClient(handlerMock);
+        
+        await Assert.ThrowsAsync<AuthenticationException>(() => _authenticator.GetTokenAsync(CancellationToken.None));
+        var sw = Stopwatch.StartNew();
+        await Assert.ThrowsAsync<AuthenticationException>(() => _authenticator.GetTokenAsync(CancellationToken.None));
+        sw.Elapsed.Should().BeGreaterOrEqualTo(TimeSpan.FromSeconds(1));
     }
 }
