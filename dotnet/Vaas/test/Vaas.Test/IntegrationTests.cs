@@ -27,25 +27,7 @@ public class IntegrationTests
         _output = output;
         DotNetEnv.Env.TraversePath().Load();
     }
-
-    [Fact]
-    public async Task ConnectWithWrongCredentialsThrowsVaasAuthenticationException()
-    {
-        var services = GetServices(new Dictionary<string, string>()
-        {
-            { "VerdictAsAService:Url", VaasUrl.ToString() },
-            { "VerdictAsAService:TokenUrl", AuthenticationEnvironment.TokenUrl.ToString() },
-            { "VerdictAsAService:Credentials:GrantType", "ClientCredentials" },
-            { "VerdictAsAService:Credentials:ClientId", "foobar" },
-            { "VerdictAsAService:Credentials:ClientSecret", "foobar2" },
-        });
-        var provider = services.BuildServiceProvider();
-
-        var vaas = provider.GetRequiredService<IVaas>();
-        await Assert.ThrowsAsync<VaasAuthenticationException>(async () =>
-            await vaas.Connect(CancellationToken.None));
-    }
-
+    
     [Fact]
     public async Task FromSha256SingleMaliciousHash()
     {
@@ -262,7 +244,6 @@ public class IntegrationTests
         var provider = services.BuildServiceProvider();
 
         var vaas = provider.GetRequiredService<IVaas>();
-        await vaas.Connect(CancellationToken.None);
         return (Vaas)vaas;
     }
 
@@ -287,25 +268,7 @@ public class IntegrationTests
         Assert.Equal(Verdict.Clean, result.Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("empty.txt"), result.Sha256);
     }
-
-    [Fact]
-    public async Task Connect_WithResourceOwnerPasswordGrantAuthenticator()
-    {
-        var services = GetServices(new Dictionary<string, string>()
-        {
-            { "VerdictAsAService:Url", VaasUrl.ToString() },
-            { "VerdictAsAService:TokenUrl", AuthenticationEnvironment.TokenUrl.ToString() },
-            { "VerdictAsAService:Credentials:GrantType", "Password" },
-            { "VerdictAsAService:Credentials:ClientId", AuthenticationEnvironment.ClientIdForResourceOwnerPasswordGrant },
-            { "VerdictAsAService:Credentials:UserName", AuthenticationEnvironment.UserName },
-            { "VerdictAsAService:Credentials:Password", AuthenticationEnvironment.Password },
-        });
-        var provider = services.BuildServiceProvider();
-
-        var vaas = provider.GetRequiredService<IVaas>();
-        await vaas.Connect(CancellationToken.None);
-    }
-
+    
     [Fact]
     public async Task ForStream_WithEicarUrl_ReturnsMaliciousWithDetectionsAndMimeType()
     {

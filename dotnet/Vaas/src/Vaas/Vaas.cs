@@ -24,34 +24,33 @@ namespace Vaas;
 public class ForSha256Options
 {
     public bool UseCache { get; set; } = true;
-
-    public static ForSha256Options Default { get; } = new();
 }
+
+public record ForFileOptions();
+
+public record ForStreamOptions();
+
+public record ForUrlOptions();
 
 public interface IVaas
 {
-    Task Connect(CancellationToken cancellationToken);
-    
-    // TODO: ForUrlOptions
-    Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
-        Dictionary<string, string>? verdictRequestAttributes = null);
-
     /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
     /// <exception cref="VaasServerException">The server encountered an internal error.</exception>
     /// <exception cref="T:System.Threading.Tasks.TaskCanceledException">The request failed due to timeout.</exception>
     Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
         ForSha256Options? options = null);
 
-    // TODO: ForFileOptions
     Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
-        Dictionary<string, string>? verdictRequestAttributes = null);
+        ForFileOptions? options = null);
 
-    // TODO: ForStreamOptions
     Task<VaasVerdict> ForStreamAsync(
         Stream stream,
         CancellationToken cancellationToken,
-        Dictionary<string, string>? verdictRequestAttributes = null
+        ForStreamOptions? options = null
     );
+    
+    Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
+        ForUrlOptions? options = null);
 }
 
 public class Vaas : IDisposable, IVaas
@@ -87,41 +86,11 @@ public class Vaas : IDisposable, IVaas
         _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
     }
 
-    private const string ProductName = "VaaS_C#_SDK";
+    private const string ProductName = "Cs";
 
     private static string ProductVersion =>
         Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
-
-    public async Task Connect(CancellationToken cancellationToken)
-    {
-        string token;
-        try
-        {
-            token = await _authenticator.GetTokenAsync(cancellationToken);
-        }
-        catch (HttpRequestException e)
-        {
-            if (e.StatusCode != null)
-            {
-                EnsureSuccess(e.StatusCode.Value);
-            }
-
-            // How can this happen?
-            throw new VaasClientException("Unknown authentication error", e);
-        }
-
-        _client = new WebsocketClient(_options.Url, WebsocketClientFactory);
-        _client.ReconnectTimeout = null;
-        _client.MessageReceived.Subscribe(HandleResponseMessage);
-        await _client.Start();
-        if (!_client.IsStarted)
-        {
-            throw new WebsocketException("Could not start client");
-        }
-
-        await Authenticate(token);
-    }
-
+    
     private void HandleResponseMessage(ResponseMessage msg)
     {
         if (msg.MessageType != WebSocketMessageType.Text || msg.Text == null) return;
@@ -179,28 +148,14 @@ public class Vaas : IDisposable, IVaas
         _ => new VaasServerException(problemDetails?.Detail)
     };
 
-    private async Task Authenticate(string token)
-    {
-        var authenticationRequest = new AuthenticationRequest(token);
-        var jsonString = JsonSerializer.Serialize(authenticationRequest);
-        _client?.Send(jsonString);
-
-        var delay = Task.Delay(AuthenticationTimeoutInMs);
-        if (await Task.WhenAny(Authenticated, delay) == delay)
-        {
-            throw new VaasAuthenticationException();
-        }
-    }
-
     public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
-        Dictionary<string, string>? verdictRequestAttributes = null)
+        ForUrlOptions? options = null)
     {
         var verdictResponse = await ForUrlRequestAsync(
             new VerdictRequestForUrl(uri, SessionId ?? throw new VaasInvalidStateException())
             {
                 UseCache = _options.UseCache,
                 UseShed = _options.UseHashLookup,
-                VerdictRequestAttributes = verdictRequestAttributes
             });
         return new VaasVerdict(verdictResponse);
     }
@@ -208,7 +163,7 @@ public class Vaas : IDisposable, IVaas
     public async Task<VaasVerdict> ForStreamAsync(
         Stream stream,
         CancellationToken cancellationToken,
-        Dictionary<string, string>? verdictRequestAttributes = null
+        ForStreamOptions? options = null
     )
     {
         if (stream == null)
@@ -219,7 +174,6 @@ public class Vaas : IDisposable, IVaas
             {
                 UseCache = _options.UseCache,
                 UseHashLookup = _options.UseHashLookup,
-                VerdictRequestAttributes = verdictRequestAttributes
             });
         if (!verdictResponse.IsValid)
             throw new JsonException("VerdictResponse is not valid");
@@ -297,7 +251,7 @@ public class Vaas : IDisposable, IVaas
         }
     }
 
-    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken, Dictionary<string, string>? verdictRequestAttributes = null)
+    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken, ForFileOptions? options = null)
     {
         var sha256 = Sha256CheckSum(path);
         var verdictResponse = await ForRequestAsync(
@@ -305,7 +259,6 @@ public class Vaas : IDisposable, IVaas
             {
                 UseCache = _options.UseCache,
                 UseShed = _options.UseHashLookup,
-                VerdictRequestAttributes = verdictRequestAttributes
             });
         if (!verdictResponse.IsValid)
             throw new JsonException("VerdictResponse is not valid");

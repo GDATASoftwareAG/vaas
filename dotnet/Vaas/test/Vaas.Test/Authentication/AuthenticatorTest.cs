@@ -58,7 +58,7 @@ public class AuthenticatorTest
         Credentials = new()
         {
             GrantType = GrantType.Password,
-            ClientId = "vaas-customer",
+            ClientId = AuthenticationEnvironment.ClientIdForResourceOwnerPasswordGrant,
             UserName = AuthenticationEnvironment.UserName,
             Password = AuthenticationEnvironment.Password,
         }

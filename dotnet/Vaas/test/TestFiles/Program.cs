@@ -16,7 +16,7 @@ foreach (var path in args)
     Console.WriteLine($"Tested {path}: Verdict {verdict}");
 }
 
-static async Task<Vaas.IVaas> AuthenticateWithCredentials()
+static async Task<IVaas> AuthenticateWithCredentials()
 {
     DotNetEnv.Env.NoClobber().TraversePath().Load();
     var url = DotNetEnv.Env.GetString(
@@ -40,7 +40,5 @@ static async Task<Vaas.IVaas> AuthenticateWithCredentials()
         }
     });
 
-    await vaas.Connect(CancellationToken.None);
-    Console.WriteLine($"Connected to Vaas {url}", url);
     return vaas;
 }
