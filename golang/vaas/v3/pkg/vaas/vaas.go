@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	userAgent = "Go/3.0.9-alpha"
+	userAgent = "Go/3.0.10-alpha"
 )
 
 // Errors returned by the VaaS API
