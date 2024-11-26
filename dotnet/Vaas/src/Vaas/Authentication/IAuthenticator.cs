@@ -5,5 +5,6 @@ namespace Vaas.Authentication;
 
 public interface IAuthenticator
 {
+    /// <exception cref="AuthenticationException"></exception>
     Task<string> GetTokenAsync(CancellationToken cancellationToken);
 }

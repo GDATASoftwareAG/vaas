@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
 using System.Security.Authentication;
 using System.Text.Json;
@@ -15,9 +14,9 @@ public class Authenticator : IAuthenticator, IDisposable
     private readonly ISystemClock _systemClock;
     private readonly VaasOptions _options;
     private readonly SemaphoreSlim _semaphore = new(1);
-    private readonly JwtSecurityTokenHandler _jwtSecurityTokenHandler = new();
     private TokenResponse? _lastResponse;
     private DateTime _validTo;
+    private DateTime? _lastRequestTime;
 
     public Authenticator(HttpClient httpClient, ISystemClock systemClock, VaasOptions options)
     {
@@ -26,16 +25,26 @@ public class Authenticator : IAuthenticator, IDisposable
         _options = options;
     }
 
-    /// <exception cref="AuthenticationException"></exception>
     public async Task<string> GetTokenAsync(CancellationToken cancellationToken)
     {
         try
         {
             await _semaphore.WaitAsync(cancellationToken);
 
-            if (_lastResponse != null && _validTo.ToUniversalTime() >= _systemClock.UtcNow)
+            var now = _systemClock.UtcNow;
+            if (_lastResponse != null && _validTo.ToUniversalTime() >= now)
                 return _lastResponse.AccessToken;
 
+            if (_lastRequestTime != null)
+            {
+                var timeToWait = _lastRequestTime + TimeSpan.FromSeconds(1) - now;
+                if (timeToWait > TimeSpan.Zero)
+                {
+                    await Task.Delay(timeToWait.Value, cancellationToken);
+                }
+            }
+
+            _lastRequestTime = now.UtcDateTime;
             _lastResponse = await RequestTokenAsync(cancellationToken);
             var expiresInSeconds = _lastResponse.ExpiresInSeconds ??
                                    throw new AuthenticationException("Identity provider did not return expires_in");
@@ -66,7 +75,7 @@ public class Authenticator : IAuthenticator, IDisposable
 
         if (!response.IsSuccessStatusCode)
         {
-            ErrorResponse? errorResponse = null;
+            ErrorResponse? errorResponse;
             var statusCode = (int)response.StatusCode;
             try
             {
@@ -116,11 +125,6 @@ public class Authenticator : IAuthenticator, IDisposable
                 new("password", _options.Credentials.Password ?? throw new InvalidOperationException()),
                 new("grant_type", "password")
             });
-    }
-
-    public Task<string> RefreshTokenAsync(CancellationToken cancellationToken)
-    {
-        throw new System.NotImplementedException();
     }
 
     public void Dispose()
