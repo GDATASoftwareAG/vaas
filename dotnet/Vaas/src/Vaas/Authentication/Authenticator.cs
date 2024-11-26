@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
+using System.Security.Authentication;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -35,9 +36,10 @@ public class Authenticator : IAuthenticator, IDisposable
                 return _lastResponse.AccessToken;
 
             _lastResponse = await RequestTokenAsync(cancellationToken);
-            //var accessToken = _jwtSecurityTokenHandler.ReadJwtToken(_lastResponse.AccessToken);
-            // TODO: Throw if null
-            _validTo = _systemClock.UtcNow.Add(TimeSpan.FromSeconds(_lastResponse.LifetimeSeconds!)).UtcDateTime;
+            var expiresInSeconds = _lastResponse.ExpiresInSeconds ??
+                                   throw new AuthenticationException("Identity Provider did not return expires_in.");
+            
+            _validTo = _systemClock.UtcNow.Add(TimeSpan.FromSeconds(expiresInSeconds)).UtcDateTime;
             return _lastResponse.AccessToken;
         }
         finally
