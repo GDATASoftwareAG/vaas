@@ -22,7 +22,6 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load environment - %v", err)
 	}
-	log.Printf(os.LookupEnv("CLIENT_ID"))
 
 	// Retrieve the Client ID and Client Secret from environment variables
 	clientID, exists := os.LookupEnv("CLIENT_ID")
@@ -58,7 +57,6 @@ func main() {
 	vaasClient := vaas.New(options.VaasOptions{
 		UseHashLookup: true,
 		UseCache:      false,
-		EnableLogs:    false,
 	}, vaasURL, auth)
 
 	// Create a context with a timeout for the analysis

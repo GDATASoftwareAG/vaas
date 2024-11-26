@@ -52,7 +52,6 @@ func main() {
 	vaasClient := vaas.New(options.VaasOptions{
 		UseHashLookup: true,
 		UseCache:      false,
-		EnableLogs:    false,
 	}, vaasURL, auth)
 
 	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 15*time.Minute)
@@ -118,7 +117,11 @@ func checkURL(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error
 	}
 
 	if len(urlList) == 1 {
-		result, err := vaasClient.ForUrl(ctx, urlList[0])
+		checkUrl, err := url.Parse(urlList[0])
+		if err != nil {
+			return err
+		}
+		result, err := vaasClient.ForUrl(ctx, checkUrl)
 		if err != nil {
 			return err
 		}
@@ -128,15 +131,19 @@ func checkURL(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error
 		var waitGroup sync.WaitGroup
 		for _, u := range urlList {
 			waitGroup.Add(1)
-			go func(url string) {
+			checkUrl, err := url.Parse(u)
+			if err != nil {
+				return err
+			}
+			go func(checkUrl *url.URL) {
 				defer waitGroup.Done()
-				result, err := vaasClient.ForUrl(ctx, url)
+				result, err := vaasClient.ForUrl(ctx, checkUrl)
 				if err != nil {
 					fmt.Println(err)
 				} else {
 					fmt.Println(result)
 				}
-			}(u)
+			}(checkUrl)
 		}
 		waitGroup.Wait()
 	}
