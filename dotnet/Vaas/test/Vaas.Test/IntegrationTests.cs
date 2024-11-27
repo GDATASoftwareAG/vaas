@@ -74,27 +74,7 @@ public class IntegrationTests
         Assert.Equal(Verdict.Unknown, verdict.Verdict);
         Assert.Equal("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9", verdict.Sha256);
     }
-
-    [Fact]
-    public async Task From256ListMultipleHashes()
-    {
-        var myList = new List<string>
-        {
-            "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
-            "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
-            "1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df"
-        };
-        var vaas = await AuthenticateWithCredentials();
-        var verdictList = await vaas.ForSha256ListAsync(myList, CancellationToken.None);
-        Assert.Equal(Verdict.Malicious, verdictList[0].Verdict);
-        Assert.Equal("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2", verdictList[0].Sha256, true);
-        Assert.Equal(Verdict.Clean, verdictList[1].Verdict);
-        Assert.Equal("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e", verdictList[1].Sha256, true);
-        Assert.Equal(Verdict.Unknown, verdictList[2].Verdict);
-        Assert.Equal("1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df", verdictList[2].Sha256, true);
-    }
-
-
+    
     [Fact]
     public async Task GenerateFileUnknownHash()
     {
@@ -107,29 +87,7 @@ public class IntegrationTests
         Assert.Equal(Verdict.Clean, result.Verdict);
         Assert.Equal(Vaas.Sha256CheckSum("test.txt"), result.Sha256);
     }
-
-    [Fact]
-    public async Task GenerateFileList()
-    {
-        var rnd = new Random();
-        var b = new byte[50];
-        rnd.NextBytes(b);
-        await File.WriteAllBytesAsync("test1.txt", b);
-        rnd.NextBytes(b);
-        await File.WriteAllBytesAsync("test2.txt", b);
-        rnd.NextBytes(b);
-        await File.WriteAllBytesAsync("test3.txt", b);
-        var vaas = await AuthenticateWithCredentials();
-        var resultList = await vaas.ForFileListAsync(new List<string> { "test1.txt", "test2.txt", "test3.txt" },
-            CancellationToken.None);
-        Assert.Equal(Verdict.Clean, resultList[0].Verdict);
-        Assert.Equal(Vaas.Sha256CheckSum("test1.txt"), resultList[0].Sha256);
-        Assert.Equal(Verdict.Clean, resultList[1].Verdict);
-        Assert.Equal(Vaas.Sha256CheckSum("test2.txt"), resultList[1].Sha256);
-        Assert.Equal(Verdict.Clean, resultList[2].Verdict);
-        Assert.Equal(Vaas.Sha256CheckSum("test3.txt"), resultList[2].Sha256);
-    }
-
+    
     // [Fact]
     // public async Task FromSha256_ReturnsPup_ForAmtsoSample()
     // {

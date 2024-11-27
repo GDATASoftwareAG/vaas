@@ -27,8 +27,4 @@
     <ProjectReference Include="..\..\src\Vaas\Vaas.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Messages\__snapshots__\" />
-  </ItemGroup>
-
 </Project>
