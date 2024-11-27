@@ -91,54 +91,6 @@ public class Vaas : IVaas
         _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
     }
 
-    private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) => problemDetails?.Type switch
-    {
-        "VaasClientException" => new VaasClientException(problemDetails.Detail),
-        _ => new VaasServerException(problemDetails?.Detail)
-    };
-
-    public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
-        ForUrlOptions? options = null)
-    {
-        throw new NotImplementedException();
-    }
-
-    public async Task<VaasVerdict> ForStreamAsync(
-        Stream stream,
-        CancellationToken cancellationToken,
-        ForStreamOptions? options = null
-    )
-    {
-        throw new NotImplementedException();
-    }
-
-    private async Task UploadStream(Stream stream, string url, string token, CancellationToken cancellationToken)
-    {
-        using var requestContent = new StreamContent(stream);
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Put, url);
-        requestMessage.Version = HttpVersion.Version11;
-        requestMessage.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-        requestMessage.Content = requestContent;
-        requestMessage.Headers.Authorization = new AuthenticationHeaderValue(token);
-
-        var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            ProblemDetails? problemDetails;
-            try
-            {
-                problemDetails = JsonSerializer.Deserialize<ProblemDetails>(responseBody);
-            }
-            catch (JsonException)
-            {
-                throw new VaasServerException("Server did not return proper ProblemDetails");
-            }
-
-            throw ProblemDetailsToException(problemDetails);
-        }
-    }
-
     public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
         ForSha256Options? options = null)
     {
@@ -167,6 +119,60 @@ public class Vaas : IVaas
         }
     }
 
+    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
+        ForFileOptions? options = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<VaasVerdict> ForStreamAsync(
+        Stream stream,
+        CancellationToken cancellationToken,
+        ForStreamOptions? options = null
+    )
+    {
+        throw new NotImplementedException();
+    }
+
+    public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
+        ForUrlOptions? options = null)
+    {
+        throw new NotImplementedException();
+    }
+
+    private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) => problemDetails?.Type switch
+    {
+        "VaasClientException" => new VaasClientException(problemDetails.Detail),
+        _ => new VaasServerException(problemDetails?.Detail)
+    };
+
+    private async Task UploadStream(Stream stream, string url, string token, CancellationToken cancellationToken)
+    {
+        using var requestContent = new StreamContent(stream);
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Put, url);
+        requestMessage.Version = HttpVersion.Version11;
+        requestMessage.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+        requestMessage.Content = requestContent;
+        requestMessage.Headers.Authorization = new AuthenticationHeaderValue(token);
+
+        var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            ProblemDetails? problemDetails;
+            try
+            {
+                problemDetails = JsonSerializer.Deserialize<ProblemDetails>(responseBody);
+            }
+            catch (JsonException)
+            {
+                throw new VaasServerException("Server did not return proper ProblemDetails");
+            }
+
+            throw ProblemDetailsToException(problemDetails);
+        }
+    }
+    
     private static void EnsureSuccess(HttpStatusCode status)
     {
         switch ((int)status)
@@ -178,12 +184,6 @@ public class Vaas : IVaas
             case >= 500 and < 600:
                 throw new VaasServerException("Server-side error");
         }
-    }
-
-    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
-        ForFileOptions? options = null)
-    {
-        throw new NotImplementedException();
     }
 
     private async Task UploadFile(string path, string url, string token, CancellationToken cancellationToken)
