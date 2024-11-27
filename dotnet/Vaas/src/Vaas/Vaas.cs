@@ -19,13 +19,24 @@ namespace Vaas;
 public class ForSha256Options
 {
     public bool UseCache { get; set; } = true;
+    
+    public static ForSha256Options Default { get; } = new();
 }
 
-public record ForFileOptions();
+public class ForFileOptions
+{
+    public static ForFileOptions Default { get; } = new();
+}
 
-public record ForStreamOptions();
+public class ForStreamOptions
+{
+    public static ForStreamOptions Default { get; } = new();
+}
 
-public record ForUrlOptions();
+public record ForUrlOptions
+{
+    public static ForUrlOptions Default { get; } = new();
+}
 
 public interface IVaas
 {
@@ -63,8 +74,10 @@ public interface IVaas
 
 public class Vaas : IVaas
 {
-    private const int AuthenticationTimeoutInMs = 1000;
-    
+    private const string ProductName = "Cs";
+    private static string ProductVersion =>
+        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
+
     private readonly HttpClient _httpClient;
     private readonly IAuthenticator _authenticator;
     private readonly VaasOptions _options;
@@ -78,11 +91,6 @@ public class Vaas : IVaas
         _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
     }
 
-    private const string ProductName = "Cs";
-
-    private static string ProductVersion =>
-        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
-    
     private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) => problemDetails?.Type switch
     {
         "VaasClientException" => new VaasClientException(problemDetails.Detail),
