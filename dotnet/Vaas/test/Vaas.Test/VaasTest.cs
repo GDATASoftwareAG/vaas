@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
@@ -171,30 +172,17 @@ public class VaasTest
         throw new NotImplementedException();
     }
 
-    [Fact]
-    public async Task ForFileAsync_ReturnsVerdict()
+    [Theory]
+    [InlineData("", Verdict.Clean)]
+    [InlineData("foobar", Verdict.Clean)]
+    [InlineData("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*", Verdict.Malicious)]
+    public async Task ForFileAsync_ReturnsVerdict(string content, Verdict verdict)
     {
-        throw new NotImplementedException();
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
         
-        // var rnd = new Random();
-        // var b = new byte[50];
-        // rnd.NextBytes(b);
-        // await File.WriteAllBytesAsync("test.txt", b);
-        // var vaas = await AuthenticateWithCredentials();
-        // var result = await vaas.ForFileAsync("test.txt", CancellationToken.None);
-        // Assert.Equal(Verdict.Clean, result.Verdict);
-        // Assert.Equal(Vaas.Sha256CheckSum("test.txt"), result.Sha256);
-        //
-        //
-        // [Fact]
-        // public async Task UploadEmptyFile()
-        // {
-        //     await File.WriteAllBytesAsync("empty.txt", Array.Empty<byte>());
-        //     var vaas = await AuthenticateWithCredentials();
-        //     var result = await vaas.ForFileAsync("empty.txt", CancellationToken.None);
-        //     Assert.Equal(Verdict.Clean, result.Verdict);
-        //     Assert.Equal(Vaas.Sha256CheckSum("empty.txt"), result.Sha256);
-        // }
+        var actual = await _vaas.ForFileAsync("file.txt", CancellationToken.None);
+
+        Assert.Equal(verdict, actual.Verdict);
     }
     
     [Fact]
