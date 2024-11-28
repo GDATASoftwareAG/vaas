@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -18,7 +20,9 @@ namespace Vaas;
 
 public class ForSha256Options
 {
-    public bool UseCache { get; set; } = true;
+    public bool UseCache { get; init; } = true;
+    
+    public string? VaasRequestId { get; init; }
     
     public static ForSha256Options Default { get; } = new();
 }
@@ -94,16 +98,18 @@ public class Vaas : IVaas
     public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
         ForSha256Options? options = null)
     {
+        options ??= ForSha256Options.Default;
         var reportUri = new Uri(_options.Url, $"/files/{sha256}/report");
         var request = new HttpRequestMessage()
         {
             RequestUri = reportUri,
             Method = HttpMethod.Get,
         };
+        using var activity = GetVaasActivity(options.VaasRequestId);
+        
         while (true)
         {
-            var token = await _authenticator.GetTokenAsync(cancellationToken);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            await AddRequestHeadersAsync(request, cancellationToken);
             var response = await _httpClient.SendAsync(request, cancellationToken);
             switch (response.StatusCode)
             {
@@ -119,10 +125,57 @@ public class Vaas : IVaas
         }
     }
 
+    private async Task AddRequestHeadersAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var token = await _authenticator.GetTokenAsync(cancellationToken);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private static Activity? GetVaasActivity(string? vaasRequestId, [CallerMemberName] string name = "")
+    {
+        if (string.IsNullOrWhiteSpace(vaasRequestId)) return null;
+        
+        var activity = Activity.Current;
+        if (activity == null)
+        {
+            var listener = new ActivityListener()
+            {
+                ShouldListenTo = (_) => true,
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                ActivityStarted = (activity) => Console.WriteLine($"Activity started: {activity.DisplayName}"),
+                ActivityStopped = (activity) => Console.WriteLine($"Activity stopped: {activity.DisplayName}")
+
+            };
+            ActivitySource.AddActivityListener(listener);
+            
+            var activitySource = new ActivitySource("Vaas");
+            activity = activitySource.StartActivity();
+        }
+        
+        var traceState = $"vaasrequestid={vaasRequestId}";
+        var existingTraceState = activity.GetCustomProperty("tracestate") as string;
+        if (!string.IsNullOrEmpty(existingTraceState))
+        {
+            traceState += $",{existingTraceState}";
+        }
+        activity.SetCustomProperty("tracestate", traceState);
+        return activity;
+    }
+    
     public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
         ForFileOptions? options = null)
     {
-        throw new NotImplementedException();
+        var sha256 = Sha256CheckSum(path);
+        var response = await ForSha256Async(sha256, cancellationToken);
+
+        // TODO: If detection && fileType && mimeType != null
+        if (response.Verdict != Verdict.Unknown)
+        {
+            return response;
+        }
+
+        await using var stream = File.OpenRead(path);
+        return await ForStreamAsync(stream, cancellationToken);
     }
 
     public async Task<VaasVerdict> ForStreamAsync(

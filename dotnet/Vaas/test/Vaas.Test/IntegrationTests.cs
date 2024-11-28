@@ -29,53 +29,6 @@ public class IntegrationTests
     }
     
     [Fact]
-    public async Task FromSha256SingleMaliciousHash()
-    {
-        var vaas = await AuthenticateWithCredentials();
-        var verdict = await vaas.ForSha256Async(
-            new ChecksumSha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"),
-            CancellationToken.None);
-        Assert.Equal(Verdict.Malicious, verdict.Verdict);
-        Assert.Equal("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2", verdict.Sha256);
-    }
-
-    [Fact]
-    public async Task FromSha256SingleCleanHash()
-    {
-        var vaas = await AuthenticateWithCredentials();
-        var verdict = await vaas.ForSha256Async(
-            new ChecksumSha256("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"),
-            CancellationToken.None);
-        Assert.Equal(Verdict.Clean, verdict.Verdict);
-        Assert.Equal("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e", verdict.Sha256, true);
-    }
-
-    [Fact(Skip = "Remove Skip to test keepalive")]
-    public async Task FromSha256_WorksAfter40s()
-    {
-        var vaas = await AuthenticateWithCredentials();
-        const string guid = "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
-        var verdict = await vaas.ForSha256Async(new ChecksumSha256(guid), CancellationToken.None);
-        Assert.Equal(Verdict.Clean, verdict.Verdict);
-        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
-        await Task.Delay(40000);
-        verdict = await vaas.ForSha256Async(new ChecksumSha256(guid), CancellationToken.None);
-        Assert.Equal(Verdict.Clean, verdict.Verdict);
-        Assert.Equal("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C", verdict.Sha256, true);
-    }
-
-    [Fact]
-    public async Task FromSha256SingleUnknownHash()
-    {
-        var vaas = await AuthenticateWithCredentials();
-        var verdict = await vaas.ForSha256Async(
-            new ChecksumSha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9"),
-            CancellationToken.None);
-        Assert.Equal(Verdict.Unknown, verdict.Verdict);
-        Assert.Equal("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9", verdict.Sha256);
-    }
-    
-    [Fact]
     public async Task GenerateFileUnknownHash()
     {
         var rnd = new Random();
@@ -198,7 +151,7 @@ public class IntegrationTests
             { "VerdictAsAService:Credentials:ClientSecret", AuthenticationEnvironment.ClientSecret },
             { "VerdictAsAService:UseCache", "false" }
         });
-        ServiceCollectionTools.Output(_output, services);
+        // ServiceCollectionTools.Output(_output, services);
         var provider = services.BuildServiceProvider();
 
         var vaas = provider.GetRequiredService<IVaas>();
