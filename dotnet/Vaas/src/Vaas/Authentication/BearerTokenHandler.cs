@@ -11,11 +11,15 @@ public class BearerTokenHandler : DelegatingHandler
 
     public BearerTokenHandler(IAuthenticator authenticator) => _authenticator = authenticator;
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-        CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken
+    )
     {
-        request.Headers.Authorization =
-            new AuthenticationHeaderValue("Bearer", await _authenticator.GetTokenAsync(cancellationToken));
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            await _authenticator.GetTokenAsync(cancellationToken)
+        );
         return await base.SendAsync(request, cancellationToken);
     }
 }

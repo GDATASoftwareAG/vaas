@@ -46,8 +46,9 @@ public class Authenticator : IAuthenticator, IDisposable
 
             _lastRequestTime = now.UtcDateTime;
             _lastResponse = await RequestTokenAsync(cancellationToken);
-            var expiresInSeconds = _lastResponse.ExpiresInSeconds ??
-                                   throw new AuthenticationException("Identity provider did not return expires_in");
+            var expiresInSeconds =
+                _lastResponse.ExpiresInSeconds
+                ?? throw new AuthenticationException("Identity provider did not return expires_in");
 
             _validTo = _systemClock.UtcNow.Add(TimeSpan.FromSeconds(expiresInSeconds)).UtcDateTime;
             return _lastResponse.AccessToken;
@@ -84,17 +85,20 @@ public class Authenticator : IAuthenticator, IDisposable
             catch (JsonException e)
             {
                 throw new AuthenticationException(
-                    $"Identity provider returned status code {statusCode}: {e.Message}");
+                    $"Identity provider returned status code {statusCode}: {e.Message}"
+                );
             }
 
             if (errorResponse == null)
             {
                 throw new AuthenticationException(
-                    $"Identity provider returned status code {statusCode}: Empty body");
+                    $"Identity provider returned status code {statusCode}: Empty body"
+                );
             }
 
             throw new AuthenticationException(
-                $"Identity provider returned status code {statusCode}: {errorResponse.ErrorDescription ?? errorResponse.Error}");
+                $"Identity provider returned status code {statusCode}: {errorResponse.ErrorDescription ?? errorResponse.Error}"
+            );
         }
 
         var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(stringResponse);
@@ -111,8 +115,11 @@ public class Authenticator : IAuthenticator, IDisposable
                 new List<KeyValuePair<string, string>>
                 {
                     new("client_id", _options.Credentials.ClientId),
-                    new("client_secret", _options.Credentials.ClientSecret ?? throw new InvalidOperationException()),
-                    new("grant_type", "client_credentials")
+                    new(
+                        "client_secret",
+                        _options.Credentials.ClientSecret ?? throw new InvalidOperationException()
+                    ),
+                    new("grant_type", "client_credentials"),
                 }
             );
         }
@@ -121,10 +128,17 @@ public class Authenticator : IAuthenticator, IDisposable
             new List<KeyValuePair<string, string>>
             {
                 new("client_id", _options.Credentials.ClientId),
-                new("username", _options.Credentials.UserName ?? throw new InvalidOperationException()),
-                new("password", _options.Credentials.Password ?? throw new InvalidOperationException()),
-                new("grant_type", "password")
-            });
+                new(
+                    "username",
+                    _options.Credentials.UserName ?? throw new InvalidOperationException()
+                ),
+                new(
+                    "password",
+                    _options.Credentials.Password ?? throw new InvalidOperationException()
+                ),
+                new("grant_type", "password"),
+            }
+        );
     }
 
     public void Dispose()

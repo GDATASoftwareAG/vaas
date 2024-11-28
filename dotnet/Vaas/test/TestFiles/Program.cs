@@ -19,26 +19,29 @@ foreach (var path in args)
 static async Task<IVaas> AuthenticateWithCredentials()
 {
     DotNetEnv.Env.NoClobber().TraversePath().Load();
-    var url = DotNetEnv.Env.GetString(
-        "VAAS_URL",
-        "wss://gateway.production.vaas.gdatasecurity.de");
-    var tokenEndpoint = new Uri(DotNetEnv.Env.GetString(
-        "TOKEN_URL",
-        "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
+    var url = DotNetEnv.Env.GetString("VAAS_URL", "wss://gateway.production.vaas.gdatasecurity.de");
+    var tokenEndpoint = new Uri(
+        DotNetEnv.Env.GetString(
+            "TOKEN_URL",
+            "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+        )
+    );
     var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
     var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
-    
-    var vaas = VaasFactory.Create(new VaasOptions()
-    {
-        Url = new Uri(url),
-        TokenUrl = tokenEndpoint,
-        Credentials = new TokenRequest
+
+    var vaas = VaasFactory.Create(
+        new VaasOptions()
         {
-            GrantType = GrantType.ClientCredentials,
-            ClientId = clientId,
-            ClientSecret = clientSecret,
+            Url = new Uri(url),
+            TokenUrl = tokenEndpoint,
+            Credentials = new TokenRequest
+            {
+                GrantType = GrantType.ClientCredentials,
+                ClientId = clientId,
+                ClientSecret = clientSecret,
+            },
         }
-    });
+    );
 
     return vaas;
 }

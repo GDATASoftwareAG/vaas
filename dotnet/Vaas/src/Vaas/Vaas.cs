@@ -58,15 +58,21 @@ public interface IVaas
     /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
     /// <exception cref="VaasServerException">The server encountered an internal error.</exception>
     /// <exception cref="T:System.Threading.Tasks.TaskCanceledException">The request failed due to timeout.</exception>
-    Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
-        ForSha256Options? options = null);
+    Task<VaasVerdict> ForSha256Async(
+        ChecksumSha256 sha256,
+        CancellationToken cancellationToken,
+        ForSha256Options? options = null
+    );
 
     /// <exception cref="AuthenticationException">Authentication failed.</exception>
     /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
     /// <exception cref="VaasServerException">The server encountered an internal error.</exception>
     /// <exception cref="T:System.Threading.Tasks.TaskCanceledException">The request failed due to timeout.</exception>
-    Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
-        ForFileOptions? options = null);
+    Task<VaasVerdict> ForFileAsync(
+        string path,
+        CancellationToken cancellationToken,
+        ForFileOptions? options = null
+    );
 
     /// <exception cref="AuthenticationException">Authentication failed.</exception>
     /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
@@ -82,8 +88,11 @@ public interface IVaas
     /// <exception cref="VaasClientException">The request is malformed or cannot be completed.</exception>
     /// <exception cref="VaasServerException">The server encountered an internal error.</exception>
     /// <exception cref="T:System.Threading.Tasks.TaskCanceledException">The request failed due to timeout.</exception>
-    Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
-        ForUrlOptions? options = null);
+    Task<VaasVerdict> ForUrlAsync(
+        Uri uri,
+        CancellationToken cancellationToken,
+        ForUrlOptions? options = null
+    );
 }
 
 public class Vaas : IVaas
@@ -103,19 +112,23 @@ public class Vaas : IVaas
         _httpClient = httpClient;
         _authenticator = authenticator;
         _options = options;
-        _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue(ProductName, ProductVersion));
+        _httpClient.DefaultRequestHeaders.UserAgent.Add(
+            new ProductInfoHeaderValue(ProductName, ProductVersion)
+        );
     }
 
-    public async Task<VaasVerdict> ForSha256Async(ChecksumSha256 sha256, CancellationToken cancellationToken,
-        ForSha256Options? options = null)
+    public async Task<VaasVerdict> ForSha256Async(
+        ChecksumSha256 sha256,
+        CancellationToken cancellationToken,
+        ForSha256Options? options = null
+    )
     {
         options ??= ForSha256Options.Default;
-        var reportUri = new Uri(_options.Url, $"/files/{sha256}/report?useCache={JsonSerializer.Serialize(options.UseCache)}&useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}");
-        var request = new HttpRequestMessage()
-        {
-            RequestUri = reportUri,
-            Method = HttpMethod.Get,
-        };
+        var reportUri = new Uri(
+            _options.Url,
+            $"/files/{sha256}/report?useCache={JsonSerializer.Serialize(options.UseCache)}&useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
+        );
+        var request = new HttpRequestMessage() { RequestUri = reportUri, Method = HttpMethod.Get };
         using var activity = GetVaasActivity(options.VaasRequestId);
 
         while (true)
@@ -125,7 +138,9 @@ public class Vaas : IVaas
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
-                    var fileReport = await response.Content.ReadFromJsonAsync<FileReport>(cancellationToken);
+                    var fileReport = await response.Content.ReadFromJsonAsync<FileReport>(
+                        cancellationToken
+                    );
                     return VaasVerdict.From(fileReport ?? throw new VaasServerException("TODO"));
                 case HttpStatusCode.Accepted:
                     continue;
@@ -136,15 +151,22 @@ public class Vaas : IVaas
         }
     }
 
-    private async Task AddRequestHeadersAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    private async Task AddRequestHeadersAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken
+    )
     {
         var token = await _authenticator.GetTokenAsync(cancellationToken);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
-    private static Activity? GetVaasActivity(string? vaasRequestId, [CallerMemberName] string name = "")
+    private static Activity? GetVaasActivity(
+        string? vaasRequestId,
+        [CallerMemberName] string name = ""
+    )
     {
-        if (string.IsNullOrWhiteSpace(vaasRequestId)) return null;
+        if (string.IsNullOrWhiteSpace(vaasRequestId))
+            return null;
 
         var activity = Activity.Current;
         if (activity == null)
@@ -154,8 +176,10 @@ public class Vaas : IVaas
                 ShouldListenTo = (_) => true,
                 Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
                     ActivitySamplingResult.AllDataAndRecorded,
-                ActivityStarted = (activity) => Console.WriteLine($"Activity started: {activity.DisplayName}"),
-                ActivityStopped = (activity) => Console.WriteLine($"Activity stopped: {activity.DisplayName}")
+                ActivityStarted = (activity) =>
+                    Console.WriteLine($"Activity started: {activity.DisplayName}"),
+                ActivityStopped = (activity) =>
+                    Console.WriteLine($"Activity stopped: {activity.DisplayName}"),
             };
             ActivitySource.AddActivityListener(listener);
 
@@ -174,8 +198,11 @@ public class Vaas : IVaas
         return activity;
     }
 
-    public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
-        ForFileOptions? options = null)
+    public async Task<VaasVerdict> ForFileAsync(
+        string path,
+        CancellationToken cancellationToken,
+        ForFileOptions? options = null
+    )
     {
         options ??= ForFileOptions.Default;
 
@@ -191,10 +218,15 @@ public class Vaas : IVaas
 
             var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
 
-            var verdictWithoutDetection = response.Verdict is Verdict.Malicious or Verdict.Pup &&
-                                          string.IsNullOrEmpty(response.Detection);
-            if (response.Verdict != Verdict.Unknown && !verdictWithoutDetection &&
-                !string.IsNullOrWhiteSpace(response.FileType) && !string.IsNullOrEmpty(response.MimeType))
+            var verdictWithoutDetection =
+                response.Verdict is Verdict.Malicious or Verdict.Pup
+                && string.IsNullOrEmpty(response.Detection);
+            if (
+                response.Verdict != Verdict.Unknown
+                && !verdictWithoutDetection
+                && !string.IsNullOrWhiteSpace(response.FileType)
+                && !string.IsNullOrEmpty(response.MimeType)
+            )
             {
                 return response;
             }
@@ -204,7 +236,7 @@ public class Vaas : IVaas
         var forStreamOptions = new ForStreamOptions
         {
             VaasRequestId = options.VaasRequestId,
-            UseHashLookup = options.UseHashLookup
+            UseHashLookup = options.UseHashLookup,
         };
         return await ForStreamAsync(stream, cancellationToken, forStreamOptions);
     }
@@ -216,26 +248,34 @@ public class Vaas : IVaas
     )
     {
         options ??= ForStreamOptions.Default;
-        var url = new Uri(_options.Url, $"/files?useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}");
+        var url = new Uri(
+            _options.Url,
+            $"/files?useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
+        );
 
         var request = new HttpRequestMessage()
         {
             RequestUri = url,
             Method = HttpMethod.Post,
-            Content = new StreamContent(stream)
+            Content = new StreamContent(stream),
         };
         await AddRequestHeadersAsync(request, cancellationToken);
 
         var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var fileAnalysisStarted = await response.Content.ReadFromJsonAsync<FileAnalysisStarted>(cancellationToken);
+        var fileAnalysisStarted = await response.Content.ReadFromJsonAsync<FileAnalysisStarted>(
+            cancellationToken
+        );
 
         return await ForSha256Async(fileAnalysisStarted.Sha256, cancellationToken);
     }
 
-    public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
-        ForUrlOptions? options = null)
+    public async Task<VaasVerdict> ForUrlAsync(
+        Uri uri,
+        CancellationToken cancellationToken,
+        ForUrlOptions? options = null
+    )
     {
         options ??= ForUrlOptions.Default;
         var urlAnalysisUri = new Uri(_options.Url, "/urls");
@@ -244,17 +284,22 @@ public class Vaas : IVaas
         {
             RequestUri = urlAnalysisUri,
             Method = HttpMethod.Post,
-            Content = JsonContent.Create(new UrlAnalysisRequest
-            {
-                url = uri,
-                useHashLookup = options.UseHashLookup
-            })
+            Content = JsonContent.Create(
+                new UrlAnalysisRequest { url = uri, useHashLookup = options.UseHashLookup }
+            ),
         };
 
         await AddRequestHeadersAsync(urlAnalysisRequest, cancellationToken);
-        var urlAnalysisResponse = await _httpClient.SendAsync(urlAnalysisRequest, cancellationToken);
+        var urlAnalysisResponse = await _httpClient.SendAsync(
+            urlAnalysisRequest,
+            cancellationToken
+        );
         urlAnalysisResponse.EnsureSuccessStatusCode();
-        var id = (await urlAnalysisResponse.Content.ReadFromJsonAsync<UrlAnalysisResponse>(cancellationToken))?.Id;
+        var id = (
+            await urlAnalysisResponse.Content.ReadFromJsonAsync<UrlAnalysisResponse>(
+                cancellationToken
+            )
+        )?.Id;
 
         while (true)
         {
@@ -262,7 +307,7 @@ public class Vaas : IVaas
             var reportRequest = new HttpRequestMessage
             {
                 RequestUri = reportUri,
-                Method = HttpMethod.Get
+                Method = HttpMethod.Get,
             };
 
             var reportResponse = await _httpClient.SendAsync(reportRequest, cancellationToken);
@@ -270,7 +315,9 @@ public class Vaas : IVaas
             switch (reportResponse.StatusCode)
             {
                 case HttpStatusCode.OK:
-                    var urlReport = await reportResponse.Content.ReadFromJsonAsync<UrlReport>(cancellationToken);
+                    var urlReport = await reportResponse.Content.ReadFromJsonAsync<UrlReport>(
+                        cancellationToken
+                    );
                     return VaasVerdict.From(urlReport ?? throw new VaasServerException("TODO"));
                 case HttpStatusCode.Accepted:
                     continue;
@@ -281,13 +328,19 @@ public class Vaas : IVaas
         }
     }
 
-    private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) => problemDetails?.Type switch
-    {
-        "VaasClientException" => new VaasClientException(problemDetails.Detail),
-        _ => new VaasServerException(problemDetails?.Detail)
-    };
+    private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) =>
+        problemDetails?.Type switch
+        {
+            "VaasClientException" => new VaasClientException(problemDetails.Detail),
+            _ => new VaasServerException(problemDetails?.Detail),
+        };
 
-    private async Task UploadStream(Stream stream, string url, string token, CancellationToken cancellationToken)
+    private async Task UploadStream(
+        Stream stream,
+        string url,
+        string token,
+        CancellationToken cancellationToken
+    )
     {
         using var requestContent = new StreamContent(stream);
         using var requestMessage = new HttpRequestMessage(HttpMethod.Put, url);
@@ -318,16 +371,24 @@ public class Vaas : IVaas
     {
         switch ((int)status)
         {
-            case 401 or 403:
+            case 401
+            or 403:
                 throw new VaasAuthenticationException();
-            case >= 400 and < 500:
+            case >= 400
+            and < 500:
                 throw new VaasClientException("Client-side error");
-            case >= 500 and < 600:
+            case >= 500
+            and < 600:
                 throw new VaasServerException("Server-side error");
         }
     }
 
-    private async Task UploadFile(string path, string url, string token, CancellationToken cancellationToken)
+    private async Task UploadFile(
+        string path,
+        string url,
+        string token,
+        CancellationToken cancellationToken
+    )
     {
         await using var fileStream = File.OpenRead(path);
         await UploadStream(fileStream, url, token, cancellationToken);

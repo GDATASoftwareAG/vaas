@@ -39,11 +39,10 @@ public class VerdictResponse
 
     [JsonPropertyName("file_type")]
     public string? FileType { get; init; }
-    
+
     [JsonPropertyName("mime_type")]
     public string? MimeType { get; init; }
 
     [MemberNotNullWhen(true, nameof(Sha256), nameof(Guid))]
-    public bool IsValid => !string.IsNullOrWhiteSpace(Sha256)
-                           && !string.IsNullOrWhiteSpace(Guid);
+    public bool IsValid => !string.IsNullOrWhiteSpace(Sha256) && !string.IsNullOrWhiteSpace(Guid);
 }

@@ -7,14 +7,16 @@ namespace Vaas.Authentication;
 public enum GrantType
 {
     ClientCredentials,
-    Password
+    Password,
 }
 
 public class TokenRequest
 {
-    [Required] public GrantType GrantType { get; set; }
+    [Required]
+    public GrantType GrantType { get; set; }
 
-    [Required] public string ClientId { get; set; } = string.Empty;
+    [Required]
+    public string ClientId { get; set; } = string.Empty;
     public string? ClientSecret { get; set; }
 
     public string? UserName { get; set; }
@@ -26,11 +28,15 @@ public class TokenRequest
         var memberNames = new[] { context.MemberName ?? "" };
         if (request.GrantType == GrantType.ClientCredentials)
         {
-            if (string.IsNullOrWhiteSpace(request.ClientId) || string.IsNullOrWhiteSpace(request.ClientSecret))
+            if (
+                string.IsNullOrWhiteSpace(request.ClientId)
+                || string.IsNullOrWhiteSpace(request.ClientSecret)
+            )
             {
                 return new ValidationResult(
                     "The fields ClientId and ClientSecret are required for the GrantType ClientCredentials.",
-                    memberNames);
+                    memberNames
+                );
             }
 
             return ValidationResult.Success!;
@@ -38,12 +44,16 @@ public class TokenRequest
 
         if (request.GrantType == GrantType.Password)
         {
-            if (string.IsNullOrWhiteSpace(request.ClientId) || string.IsNullOrWhiteSpace(request.UserName) ||
-                string.IsNullOrWhiteSpace(request.Password))
+            if (
+                string.IsNullOrWhiteSpace(request.ClientId)
+                || string.IsNullOrWhiteSpace(request.UserName)
+                || string.IsNullOrWhiteSpace(request.Password)
+            )
             {
                 return new ValidationResult(
                     "The fields ClientId, UserName and Password are required for the GrantType Password.",
-                    memberNames);
+                    memberNames
+                );
             }
 
             return ValidationResult.Success!;

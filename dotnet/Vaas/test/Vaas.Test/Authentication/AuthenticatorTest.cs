@@ -17,8 +17,10 @@ public class CountingDelegatingHandler : DelegatingHandler
 {
     public int Requests { get; private set; }
 
-    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
-        CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken
+    )
     {
         Requests++;
         return await base.SendAsync(request, cancellationToken);
@@ -38,36 +40,46 @@ public class AuthenticatorTest
         _handler.InnerHandler = new HttpClientHandler();
         _httpClient = new HttpClient(_handler);
         _systemClock.Setup(x => x.UtcNow).Returns(() => DateTimeOffset.UtcNow);
-        _authenticator = new Authenticator(_httpClient, _systemClock.Object, GetVaasOptionsForClientCredentials());
+        _authenticator = new Authenticator(
+            _httpClient,
+            _systemClock.Object,
+            GetVaasOptionsForClientCredentials()
+        );
     }
 
-    private VaasOptions GetVaasOptionsForClientCredentials() => new()
-    {
-        TokenUrl = AuthenticationEnvironment.TokenUrl,
-        Credentials = new()
+    private VaasOptions GetVaasOptionsForClientCredentials() =>
+        new()
         {
-            GrantType = GrantType.ClientCredentials,
-            ClientId = AuthenticationEnvironment.ClientId,
-            ClientSecret = AuthenticationEnvironment.ClientSecret
-        }
-    };
+            TokenUrl = AuthenticationEnvironment.TokenUrl,
+            Credentials = new()
+            {
+                GrantType = GrantType.ClientCredentials,
+                ClientId = AuthenticationEnvironment.ClientId,
+                ClientSecret = AuthenticationEnvironment.ClientSecret,
+            },
+        };
 
-    private VaasOptions GetVaasOptionsForPassword() => new()
-    {
-        TokenUrl = AuthenticationEnvironment.TokenUrl,
-        Credentials = new()
+    private VaasOptions GetVaasOptionsForPassword() =>
+        new()
         {
-            GrantType = GrantType.Password,
-            ClientId = AuthenticationEnvironment.ClientIdForResourceOwnerPasswordGrant,
-            UserName = AuthenticationEnvironment.UserName,
-            Password = AuthenticationEnvironment.Password,
-        }
-    };
+            TokenUrl = AuthenticationEnvironment.TokenUrl,
+            Credentials = new()
+            {
+                GrantType = GrantType.Password,
+                ClientId = AuthenticationEnvironment.ClientIdForResourceOwnerPasswordGrant,
+                UserName = AuthenticationEnvironment.UserName,
+                Password = AuthenticationEnvironment.Password,
+            },
+        };
 
     [Fact]
     public async Task GetTokenAsync_WithClientCredentials_ReturnsToken()
     {
-        var authenticator = new Authenticator(_httpClient, _systemClock.Object, GetVaasOptionsForClientCredentials());
+        var authenticator = new Authenticator(
+            _httpClient,
+            _systemClock.Object,
+            GetVaasOptionsForClientCredentials()
+        );
         _ = await authenticator.GetTokenAsync(CancellationToken.None);
         Assert.Equal(1, _handler.Requests);
     }
@@ -75,7 +87,11 @@ public class AuthenticatorTest
     [Fact]
     public async Task GetTokenAsync_WithPassword_ReturnsToken()
     {
-        var authenticator = new Authenticator(_httpClient, _systemClock.Object, GetVaasOptionsForPassword());
+        var authenticator = new Authenticator(
+            _httpClient,
+            _systemClock.Object,
+            GetVaasOptionsForPassword()
+        );
         _ = await authenticator.GetTokenAsync(CancellationToken.None);
         Assert.Equal(1, _handler.Requests);
     }
@@ -92,7 +108,9 @@ public class AuthenticatorTest
     public async Task GetTokenAsync_IfTokenExpired_GetsNewToken()
     {
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
-        _systemClock.Setup(x => x.UtcNow).Returns(() => DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+        _systemClock
+            .Setup(x => x.UtcNow)
+            .Returns(() => DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
         Assert.Equal(2, _handler.Requests);
     }
@@ -100,7 +118,9 @@ public class AuthenticatorTest
     [Fact]
     public async Task GetTokenAsync_IfClockSkew_ReusesToken()
     {
-        _systemClock.Setup(x => x.UtcNow).Returns(() => DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+        _systemClock
+            .Setup(x => x.UtcNow)
+            .Returns(() => DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
         Assert.Equal(1, _handler.Requests);
@@ -110,11 +130,13 @@ public class AuthenticatorTest
     public async Task GetTokenAsync_IfNoExpiresIn_ThrowsAuthenticationException()
     {
         var handlerMock = UseHttpMessageHandlerMock();
-        handlerMock.SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+        handlerMock
+            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
             .ReturnsResponse("""{"access_token": "My great token"}""");
 
-        var e = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            _authenticator.GetTokenAsync(CancellationToken.None));
+        var e = await Assert.ThrowsAsync<AuthenticationException>(
+            () => _authenticator.GetTokenAsync(CancellationToken.None)
+        );
 
         e.Message.Should().Be("Identity provider did not return expires_in");
     }
@@ -125,47 +147,62 @@ public class AuthenticatorTest
         var handlerMock = UseHttpMessageHandlerMock();
         MockUnauthorizedClient(handlerMock);
 
-        var e = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            _authenticator.GetTokenAsync(CancellationToken.None));
+        var e = await Assert.ThrowsAsync<AuthenticationException>(
+            () => _authenticator.GetTokenAsync(CancellationToken.None)
+        );
 
         e.Message.Should()
             .Be(
-                "Identity provider returned status code 401: Invalid client or Invalid client credentials");
+                "Identity provider returned status code 401: Invalid client or Invalid client credentials"
+            );
     }
 
     private void MockUnauthorizedClient(Mock<HttpMessageHandler> handlerMock)
     {
-        handlerMock.SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+        handlerMock
+            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
             .ReturnsResponse(
                 """{"error":"unauthorized_client","error_description":"Invalid client or Invalid client credentials"}""",
-                configure: response => { response.StatusCode = HttpStatusCode.Unauthorized; });
+                configure: response =>
+                {
+                    response.StatusCode = HttpStatusCode.Unauthorized;
+                }
+            );
     }
 
     [Fact]
     public async Task GetTokenAsync_IfHttpError_ThrowsAuthenticationException()
     {
         var handlerMock = UseHttpMessageHandlerMock();
-        handlerMock.SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+        handlerMock
+            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
             .ReturnsResponse(HttpStatusCode.InternalServerError);
 
-        var e = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            _authenticator.GetTokenAsync(CancellationToken.None));
+        var e = await Assert.ThrowsAsync<AuthenticationException>(
+            () => _authenticator.GetTokenAsync(CancellationToken.None)
+        );
 
         e.Message.Should()
             .Be(
-                "Identity provider returned status code 500: The input does not contain any JSON tokens. Expected the input to start with a valid JSON token, when isFinalBlock is true. Path: $ | LineNumber: 0 | BytePositionInLine: 0.");
+                "Identity provider returned status code 500: The input does not contain any JSON tokens. Expected the input to start with a valid JSON token, when isFinalBlock is true. Path: $ | LineNumber: 0 | BytePositionInLine: 0."
+            );
     }
 
     [Fact]
     public async Task GetTokenAsync_IfHttpRequestException_ThrowsAuthenticationException()
     {
         var handlerMock = UseHttpMessageHandlerMock();
-        handlerMock.SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
-            .Throws(new HttpRequestException(
-                "Name or service not known (dsdkfsdufsdufoweuiruierlknclxoijfiowejf.de:80)"));
+        handlerMock
+            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+            .Throws(
+                new HttpRequestException(
+                    "Name or service not known (dsdkfsdufsdufoweuiruierlknclxoijfiowejf.de:80)"
+                )
+            );
 
-        var e = await Assert.ThrowsAsync<AuthenticationException>(() =>
-            _authenticator.GetTokenAsync(CancellationToken.None));
+        var e = await Assert.ThrowsAsync<AuthenticationException>(
+            () => _authenticator.GetTokenAsync(CancellationToken.None)
+        );
         e.Message.Should().Be("Failed to request token");
         e.InnerException.Should().BeOfType<HttpRequestException>();
         e.InnerException!.Message.Should()
@@ -187,9 +224,13 @@ public class AuthenticatorTest
         var staticNow = DateTimeOffset.UtcNow;
         _systemClock.Setup(x => x.UtcNow).Returns(() => staticNow);
 
-        await Assert.ThrowsAsync<AuthenticationException>(() => _authenticator.GetTokenAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<AuthenticationException>(
+            () => _authenticator.GetTokenAsync(CancellationToken.None)
+        );
         var sw = Stopwatch.StartNew();
-        await Assert.ThrowsAsync<AuthenticationException>(() => _authenticator.GetTokenAsync(CancellationToken.None));
+        await Assert.ThrowsAsync<AuthenticationException>(
+            () => _authenticator.GetTokenAsync(CancellationToken.None)
+        );
         sw.Elapsed.Should().BeGreaterOrEqualTo(TimeSpan.FromSeconds(1));
     }
 }

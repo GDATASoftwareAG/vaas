@@ -4,23 +4,20 @@ namespace Vaas;
 
 public class VaasInvalidStateException : Exception
 {
-    public VaasInvalidStateException() : base("Connect() was not called")
-    {
-    }
+    public VaasInvalidStateException()
+        : base("Connect() was not called") { }
 }
 
 public class VaasAuthenticationException : Exception
 {
-    public VaasAuthenticationException() : base("Authentication failed")
-    {
-    }
+    public VaasAuthenticationException()
+        : base("Authentication failed") { }
 }
 
 public class VaasConnectionClosedException : Exception
 {
-    public VaasConnectionClosedException() : base("Connection closed")
-    {
-    }
+    public VaasConnectionClosedException()
+        : base("Connection closed") { }
 }
 
 /// <summary>The request is malformed or cannot be completed.</summary>
@@ -32,15 +29,13 @@ public class VaasConnectionClosedException : Exception
 ///   <li>Analyze the error</li>
 /// </ul>
 /// </remarks>
-public class VaasClientException : Exception 
+public class VaasClientException : Exception
 {
-    public VaasClientException(string? message) : base(message)
-    {
-    }
+    public VaasClientException(string? message)
+        : base(message) { }
 
-    public VaasClientException(string? message, Exception? innerException) : base(message, innerException)
-    {
-    }
+    public VaasClientException(string? message, Exception? innerException)
+        : base(message, innerException) { }
 }
 
 /// <summary>The server encountered an internal error.</summary>
@@ -53,11 +48,9 @@ public class VaasClientException : Exception
 /// </remarks>
 public class VaasServerException : Exception
 {
-    public VaasServerException(string? message) : base(message)
-    {
-    }
+    public VaasServerException(string? message)
+        : base(message) { }
 
-    public VaasServerException(string? message, Exception? innerException) : base(message, innerException)
-    {
-    }
+    public VaasServerException(string? message, Exception? innerException)
+        : base(message, innerException) { }
 }

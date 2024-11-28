@@ -19,7 +19,7 @@ public class VaasVerdict
             FileType = fileReport.FileType,
         };
     }
-    
+
     public static VaasVerdict From(UrlReport urlReport)
     {
         return new VaasVerdict
@@ -31,7 +31,6 @@ public class VaasVerdict
             FileType = urlReport.FileType,
         };
     }
-
 
     public static VaasVerdict From(VerdictResponse verdictResponse)
     {

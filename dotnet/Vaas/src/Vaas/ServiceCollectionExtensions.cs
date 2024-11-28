@@ -8,20 +8,20 @@ namespace Vaas;
 public static class ServiceCollectionExtensions
 {
     private const string SectionKey = "VerdictAsAService";
-    
-    public static IServiceCollection AddVerdictAsAService(this IServiceCollection services, IConfiguration configuration)
+
+    public static IServiceCollection AddVerdictAsAService(
+        this IServiceCollection services,
+        IConfiguration configuration
+    )
     {
         var configurationSection = configuration.GetSection(SectionKey);
-        services
-            .AddOptions<VaasOptions>()
-            .Bind(configurationSection)
-            .ValidateDataAnnotations();
-        
+        services.AddOptions<VaasOptions>().Bind(configurationSection).ValidateDataAnnotations();
+
         services
             .AddSingleton<VaasOptions>(p => p.GetRequiredService<IOptions<VaasOptions>>().Value)
             .AddSingleton<ISystemClock, SystemClock>()
             .AddSingleton<IAuthenticator, Authenticator>();
-    
+
         services
             .AddTransient<BearerTokenHandler>()
             .AddHttpClient<IVaas, Vaas>()

@@ -5,8 +5,11 @@ namespace Vaas.Authentication;
 
 public class TokenResponse
 {
-    [JsonPropertyName("access_token")] public string AccessToken { get; init; }
-    [JsonPropertyName("expires_in")] public int? ExpiresInSeconds { get; init; }
+    [JsonPropertyName("access_token")]
+    public string AccessToken { get; init; }
+
+    [JsonPropertyName("expires_in")]
+    public int? ExpiresInSeconds { get; init; }
 
     public TokenResponse(string accessToken)
     {
