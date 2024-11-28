@@ -21,9 +21,9 @@ namespace Vaas;
 public class ForSha256Options
 {
     public bool UseCache { get; init; } = true;
-    
+
     public string? VaasRequestId { get; init; }
-    
+
     public static ForSha256Options Default { get; } = new();
 }
 
@@ -87,6 +87,7 @@ public interface IVaas
 public class Vaas : IVaas
 {
     private const string ProductName = "Cs";
+
     private static string ProductVersion =>
         Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString() ?? "0.0.0";
 
@@ -114,7 +115,7 @@ public class Vaas : IVaas
             Method = HttpMethod.Get,
         };
         using var activity = GetVaasActivity(options.VaasRequestId);
-        
+
         while (true)
         {
             await AddRequestHeadersAsync(request, cancellationToken);
@@ -142,58 +143,66 @@ public class Vaas : IVaas
     private static Activity? GetVaasActivity(string? vaasRequestId, [CallerMemberName] string name = "")
     {
         if (string.IsNullOrWhiteSpace(vaasRequestId)) return null;
-        
+
         var activity = Activity.Current;
         if (activity == null)
         {
             var listener = new ActivityListener()
             {
                 ShouldListenTo = (_) => true,
-                Sample = (ref ActivityCreationOptions<ActivityContext> options) => ActivitySamplingResult.AllDataAndRecorded,
+                Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
+                    ActivitySamplingResult.AllDataAndRecorded,
                 ActivityStarted = (activity) => Console.WriteLine($"Activity started: {activity.DisplayName}"),
                 ActivityStopped = (activity) => Console.WriteLine($"Activity stopped: {activity.DisplayName}")
-
             };
             ActivitySource.AddActivityListener(listener);
-            
+
             var activitySource = new ActivitySource("Vaas");
             activity = activitySource.StartActivity();
         }
-        
+
         var traceState = $"vaasrequestid={vaasRequestId}";
         var existingTraceState = activity.GetCustomProperty("tracestate") as string;
         if (!string.IsNullOrEmpty(existingTraceState))
         {
             traceState += $",{existingTraceState}";
         }
+
         activity.SetCustomProperty("tracestate", traceState);
         return activity;
     }
-    
+
     public async Task<VaasVerdict> ForFileAsync(string path, CancellationToken cancellationToken,
         ForFileOptions? options = null)
     {
+        options ??= ForFileOptions.Default;
+
         var sha256 = Sha256CheckSum(path);
-        var forSha256Options = new ForSha256Options();
-        if (options.UseHashLookup)
+
+        if (options.UseCache)
         {
-            forSha256Options = new ForSha256Options
+            var forSha256Options = new ForSha256Options
             {
-                VaasRequestId = options.VaasRequestId,
-                UseCache = options.UseCache
+                VaasRequestId = options.VaasRequestId
             };
-        }
 
-        var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
+            var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
 
-        // TODO: If detection && fileType && mimeType != null
-        if (response.Verdict != Verdict.Unknown)
-        {
-            return response;
+            var verdictWithoutDetection = response.Verdict is Verdict.Malicious or Verdict.Pup &&
+                                          string.IsNullOrEmpty(response.Detection);
+            if (response.Verdict != Verdict.Unknown && !verdictWithoutDetection &&
+                !string.IsNullOrWhiteSpace(response.FileType) && !string.IsNullOrEmpty(response.MimeType))
+            {
+                return response;
+            }
         }
 
         await using var stream = File.OpenRead(path);
-        return await ForStreamAsync(stream, cancellationToken);
+        var forStreamOptions = new ForStreamOptions
+        {
+            VaasRequestId = options.VaasRequestId
+        };
+        return await ForStreamAsync(stream, cancellationToken, forStreamOptions);
     }
 
     public async Task<VaasVerdict> ForStreamAsync(
@@ -204,7 +213,7 @@ public class Vaas : IVaas
     {
         options ??= ForStreamOptions.Default;
         var url = new Uri(_options.Url, "/files");
-        
+
         var request = new HttpRequestMessage()
         {
             RequestUri = url,
@@ -217,8 +226,8 @@ public class Vaas : IVaas
         response.EnsureSuccessStatusCode();
 
         var fileAnalysisStarted = await response.Content.ReadFromJsonAsync<FileAnalysisStarted>(cancellationToken);
-        
-        return await ForSha256Async(fileAnalysisStarted.Sha256, cancellationToken); 
+
+        return await ForSha256Async(fileAnalysisStarted.Sha256, cancellationToken);
     }
 
     public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
@@ -226,7 +235,7 @@ public class Vaas : IVaas
     {
         options ??= ForUrlOptions.Default;
         var urlAnalysisUri = new Uri(_options.Url, "/urls");
-        
+
         var urlAnalysisRequest = new HttpRequestMessage()
         {
             RequestUri = urlAnalysisUri,
@@ -237,12 +246,12 @@ public class Vaas : IVaas
                 useHashLookup = options.UseHashLookup
             })
         };
-        
+
         await AddRequestHeadersAsync(urlAnalysisRequest, cancellationToken);
         var urlAnalysisResponse = await _httpClient.SendAsync(urlAnalysisRequest, cancellationToken);
         urlAnalysisResponse.EnsureSuccessStatusCode();
         var id = (await urlAnalysisResponse.Content.ReadFromJsonAsync<UrlAnalysisResponse>(cancellationToken))?.Id;
-        
+
         while (true)
         {
             var reportUri = new Uri(_options.Url, $"/urls/{id}/report");
@@ -251,9 +260,9 @@ public class Vaas : IVaas
                 RequestUri = reportUri,
                 Method = HttpMethod.Get
             };
-            
+
             var reportResponse = await _httpClient.SendAsync(reportRequest, cancellationToken);
-            
+
             switch (reportResponse.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -300,7 +309,7 @@ public class Vaas : IVaas
             throw ProblemDetailsToException(problemDetails);
         }
     }
-    
+
     private static void EnsureSuccess(HttpStatusCode status)
     {
         switch ((int)status)
@@ -319,7 +328,7 @@ public class Vaas : IVaas
         await using var fileStream = File.OpenRead(path);
         await UploadStream(fileStream, url, token, cancellationToken);
     }
-    
+
     // TODO: Move to ChecksumSha256
     public static string Sha256CheckSum(string filePath)
     {

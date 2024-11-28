@@ -2,15 +2,18 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Moq.Contrib.HttpClient;
 using Vaas.Authentication;
+using Vaas.Messages;
 using Vaas.Test.Authentication;
 using Xunit;
 using Xunit.Abstractions;
@@ -183,6 +186,20 @@ public class VaasTest
         var actual = await _vaas.ForFileAsync("file.txt", CancellationToken.None);
 
         Assert.Equal(verdict, actual.Verdict);
+    }
+
+    [Fact]
+    public async Task ForFileAsync_IfForSha256DoesNotReturnDetectionEtc_UploadsFile()
+    {
+        var buffer = new byte[1024];
+        Random.Shared.NextBytes(buffer);
+        await File.WriteAllBytesAsync("file.txt", buffer);
+        var sha256 = new ChecksumSha256(SHA256.HashData(buffer));
+        // TODO: Mock response
+        
+        var actual = await _vaas.ForFileAsync("file.txt", CancellationToken.None);
+
+        actual.Should().BeEquivalentTo(new VaasVerdict { Sha256 = sha256, Detection = null, FileType = "data", MimeType = "application/octet-stream"});
     }
     
     [Fact]
