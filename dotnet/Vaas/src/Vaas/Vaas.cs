@@ -29,6 +29,8 @@ public class ForSha256Options
 
 public class ForFileOptions
 {
+    public bool UseCache { get; init; } = true;
+    public bool UseHashLookup { get; init; } = true;
     public string? VaasRequestId { get; init; }
 
     public static ForFileOptions Default { get; } = new();
@@ -172,7 +174,17 @@ public class Vaas : IVaas
         ForFileOptions? options = null)
     {
         var sha256 = Sha256CheckSum(path);
-        var response = await ForSha256Async(sha256, cancellationToken);
+        var forSha256Options = new ForSha256Options();
+        if (options.UseHashLookup)
+        {
+            forSha256Options = new ForSha256Options
+            {
+                VaasRequestId = options.VaasRequestId,
+                UseCache = options.UseCache
+            };
+        }
+
+        var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
 
         // TODO: If detection && fileType && mimeType != null
         if (response.Verdict != Verdict.Unknown)
