@@ -116,7 +116,15 @@ public class VaasTest
     [Fact]
     public async Task ForSha256Async_SendsUserAgent()
     {
-        throw new NotImplementedException();
+        ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+        var handler = UseHttpMessageHandlerMock();
+        handler.SetupRequest(new Uri(VaasUrl, "")).CallBase();
+
+        var verdictResponse = await _vaas.ForSha256Async(
+            sha256,
+            CancellationToken.None);
+        
+        handler.VerifyAll();
     }
     
     [Fact]

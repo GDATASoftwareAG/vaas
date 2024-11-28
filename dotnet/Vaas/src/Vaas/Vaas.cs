@@ -29,16 +29,22 @@ public class ForSha256Options
 
 public class ForFileOptions
 {
+    public string? VaasRequestId { get; init; }
+
     public static ForFileOptions Default { get; } = new();
 }
 
 public class ForStreamOptions
 {
+    public string? VaasRequestId { get; init; }
+
     public static ForStreamOptions Default { get; } = new();
 }
 
 public record ForUrlOptions
 {
+    public bool UseHashLookup { get; init; } = true;
+    public string? VaasRequestId { get; init; }
     public static ForUrlOptions Default { get; } = new();
 }
 
@@ -190,7 +196,48 @@ public class Vaas : IVaas
     public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,
         ForUrlOptions? options = null)
     {
-        throw new NotImplementedException();
+        options ??= ForUrlOptions.Default;
+        var urlAnalysisUri = new Uri(_options.Url, "/urls");
+        
+        var urlAnalysisRequest = new HttpRequestMessage()
+        {
+            RequestUri = urlAnalysisUri,
+            Method = HttpMethod.Post,
+            Content = JsonContent.Create(new UrlAnalysisRequest
+            {
+                url = uri,
+                useHashLookup = options.UseHashLookup
+            })
+        };
+        
+        await AddRequestHeadersAsync(urlAnalysisRequest, cancellationToken);
+        var urlAnalysisResponse = await _httpClient.SendAsync(urlAnalysisRequest, cancellationToken);
+        urlAnalysisResponse.EnsureSuccessStatusCode();
+        var id = (await urlAnalysisResponse.Content.ReadFromJsonAsync<UrlAnalysisResponse>(cancellationToken))?.Id;
+        
+        while (true)
+        {
+            var reportUri = new Uri(_options.Url, $"/urls/{id}/report");
+            var reportRequest = new HttpRequestMessage
+            {
+                RequestUri = reportUri,
+                Method = HttpMethod.Get
+            };
+            
+            var reportResponse = await _httpClient.SendAsync(reportRequest, cancellationToken);
+            
+            switch (reportResponse.StatusCode)
+            {
+                case HttpStatusCode.OK:
+                    var urlReport = await reportResponse.Content.ReadFromJsonAsync<UrlReport>(cancellationToken);
+                    return VaasVerdict.From(urlReport ?? throw new VaasServerException("TODO"));
+                case HttpStatusCode.Accepted:
+                    continue;
+                default:
+                    throw new NotImplementedException("Parse error here");
+                    break;
+            }
+        }
     }
 
     private static Exception ProblemDetailsToException(ProblemDetails? problemDetails) => problemDetails?.Type switch

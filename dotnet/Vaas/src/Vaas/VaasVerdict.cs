@@ -19,6 +19,19 @@ public class VaasVerdict
             FileType = fileReport.FileType,
         };
     }
+    
+    public static VaasVerdict From(UrlReport urlReport)
+    {
+        return new VaasVerdict
+        {
+            Sha256 = urlReport.Sha256,
+            Verdict = urlReport.Verdict,
+            Detection = urlReport.Detection,
+            MimeType = urlReport.MimeType,
+            FileType = urlReport.FileType,
+        };
+    }
+
 
     public static VaasVerdict From(VerdictResponse verdictResponse)
     {
