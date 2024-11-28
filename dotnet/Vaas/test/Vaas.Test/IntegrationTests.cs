@@ -39,24 +39,7 @@ public class IntegrationTests
             "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere",
             e.Message);
     }
-
-    [Fact]
-    public async Task ForStream_WithEicarString_ReturnsMalicious()
-    {
-        // Arrange
-        var vaas = await AuthenticateWithCredentials();
-        var targetStream = new MemoryStream();
-        var eicarBytes = System.Text.Encoding.UTF8.GetBytes("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*");
-        targetStream.Write(eicarBytes, 0, eicarBytes.Length);
-        targetStream.Position = 0;
-
-        // Act
-        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
-
-        // Assert
-        Assert.Equal(Verdict.Malicious, verdict.Verdict);
-    }
-
+    
     [Fact]
     public async Task ForStream_WithCleanString_ReturnsClean()
     {

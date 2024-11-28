@@ -190,7 +190,23 @@ public class Vaas : IVaas
         ForStreamOptions? options = null
     )
     {
-        throw new NotImplementedException();
+        options ??= ForStreamOptions.Default;
+        var url = new Uri(_options.Url, "/files");
+        
+        var request = new HttpRequestMessage()
+        {
+            RequestUri = url,
+            Method = HttpMethod.Post,
+            Content = new StreamContent(stream)
+        };
+        await AddRequestHeadersAsync(request, cancellationToken);
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var fileAnalysisStarted = await response.Content.ReadFromJsonAsync<FileAnalysisStarted>(cancellationToken);
+        
+        return await ForSha256Async(fileAnalysisStarted.Sha256, cancellationToken); 
     }
 
     public async Task<VaasVerdict> ForUrlAsync(Uri uri, CancellationToken cancellationToken,

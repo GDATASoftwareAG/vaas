@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -199,7 +200,11 @@ public class VaasTest
     [Fact]
     public async Task ForStreamAsync_ReturnsVerdict()
     {
-        throw new NotImplementedException();
+        var targetStream = new MemoryStream("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray());
+
+        var verdict = await _vaas.ForStreamAsync(targetStream, CancellationToken.None);
+
+        Assert.Equal(Verdict.Malicious, verdict.Verdict);
     }
     
     [Theory]
