@@ -29,40 +29,6 @@ public class IntegrationTests
     }
     
     [Fact]
-    public async Task GenerateFileUnknownHash()
-    {
-        var rnd = new Random();
-        var b = new byte[50];
-        rnd.NextBytes(b);
-        await File.WriteAllBytesAsync("test.txt", b);
-        var vaas = await AuthenticateWithCredentials();
-        var result = await vaas.ForFileAsync("test.txt", CancellationToken.None);
-        Assert.Equal(Verdict.Clean, result.Verdict);
-        Assert.Equal(Vaas.Sha256CheckSum("test.txt"), result.Sha256);
-    }
-    
-    // [Fact]
-    // public async Task FromSha256_ReturnsPup_ForAmtsoSample()
-    // {
-    //     var vaas = await AuthenticateWithCredentials();
-    //     var actual = await vaas.ForSha256Async(
-    //         new ChecksumSha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"),
-    //         CancellationToken.None);
-    //     Assert.Equal(Verdict.Pup, actual.Verdict);
-    //     Assert.Equal("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", actual.Sha256, true);
-    // }
-
-    [Theory]
-    [InlineData("https://www.gdatasoftware.com/oem/verdict-as-a-service", Verdict.Clean)]
-    [InlineData("https://secure.eicar.org/eicar.com", Verdict.Malicious)]
-    public async Task FromUrlReturnVerdict(string url, Verdict verdict)
-    {
-        var vaas = await AuthenticateWithCredentials();
-        var actual = await vaas.ForUrlAsync(new Uri(url), CancellationToken.None);
-        Assert.Equal(verdict, actual.Verdict);
-    }
-
-    [Fact]
     public async Task ForUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException()
     {
         var vaas = await AuthenticateWithCredentials();
@@ -170,16 +136,6 @@ public class IntegrationTests
         return services;
     }
 
-    [Fact]
-    public async Task UploadEmptyFile()
-    {
-        await File.WriteAllBytesAsync("empty.txt", Array.Empty<byte>());
-        var vaas = await AuthenticateWithCredentials();
-        var result = await vaas.ForFileAsync("empty.txt", CancellationToken.None);
-        Assert.Equal(Verdict.Clean, result.Verdict);
-        Assert.Equal(Vaas.Sha256CheckSum("empty.txt"), result.Sha256);
-    }
-    
     [Fact]
     public async Task ForStream_WithEicarUrl_ReturnsMaliciousWithDetectionsAndMimeType()
     {

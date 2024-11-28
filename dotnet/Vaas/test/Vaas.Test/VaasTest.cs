@@ -83,11 +83,12 @@ public class VaasTest
     //   _IfAuthenticatorThrowsAuthenticationException_ThrowsAuthenticationException
     //   _If401_ThrowsAuthenticationException
     //   _IfCancellationRequested_ThrowsOperationCancelledException
-    
+
     [Theory]
     [InlineData("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9", Verdict.Unknown)]
     [InlineData("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e", Verdict.Clean)]
     [InlineData("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2", Verdict.Malicious)]
+    // AMTSO
     [InlineData("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", Verdict.Pup)]
     public async Task ForSha256Async_ReturnsVerdict(ChecksumSha256 sha256, Verdict verdict)
     {
@@ -159,5 +160,46 @@ public class VaasTest
     public async Task ForSha256Async_IfCancellationRequested_ThrowsOperationCancelledException()
     {
         throw new NotImplementedException();
+    }
+
+    [Fact]
+    public async Task ForFileAsync_ReturnsVerdict()
+    {
+        throw new NotImplementedException();
+        
+        // var rnd = new Random();
+        // var b = new byte[50];
+        // rnd.NextBytes(b);
+        // await File.WriteAllBytesAsync("test.txt", b);
+        // var vaas = await AuthenticateWithCredentials();
+        // var result = await vaas.ForFileAsync("test.txt", CancellationToken.None);
+        // Assert.Equal(Verdict.Clean, result.Verdict);
+        // Assert.Equal(Vaas.Sha256CheckSum("test.txt"), result.Sha256);
+        //
+        //
+        // [Fact]
+        // public async Task UploadEmptyFile()
+        // {
+        //     await File.WriteAllBytesAsync("empty.txt", Array.Empty<byte>());
+        //     var vaas = await AuthenticateWithCredentials();
+        //     var result = await vaas.ForFileAsync("empty.txt", CancellationToken.None);
+        //     Assert.Equal(Verdict.Clean, result.Verdict);
+        //     Assert.Equal(Vaas.Sha256CheckSum("empty.txt"), result.Sha256);
+        // }
+    }
+    
+    [Fact]
+    public async Task ForStreamAsync_ReturnsVerdict()
+    {
+        throw new NotImplementedException();
+    }
+    
+    [Theory]
+    [InlineData("https://www.gdatasoftware.com/oem/verdict-as-a-service", Verdict.Clean)]
+    [InlineData("https://secure.eicar.org/eicar.com", Verdict.Malicious)]
+    public async Task ForUrlAsync_ReturnsVerdict(string url, Verdict verdict)
+    {
+        var actual = await _vaas.ForUrlAsync(new Uri(url), CancellationToken.None);
+        Assert.Equal(verdict, actual.Verdict);
     }
 }
