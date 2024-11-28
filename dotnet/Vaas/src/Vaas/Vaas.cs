@@ -21,6 +21,7 @@ namespace Vaas;
 public class ForSha256Options
 {
     public bool UseCache { get; init; } = true;
+    public bool UseHashLookup { get; init; } = true;
 
     public string? VaasRequestId { get; init; }
 
@@ -38,6 +39,7 @@ public class ForFileOptions
 
 public class ForStreamOptions
 {
+    public bool UseHashLookup { get; init; } = true;
     public string? VaasRequestId { get; init; }
 
     public static ForStreamOptions Default { get; } = new();
@@ -108,7 +110,7 @@ public class Vaas : IVaas
         ForSha256Options? options = null)
     {
         options ??= ForSha256Options.Default;
-        var reportUri = new Uri(_options.Url, $"/files/{sha256}/report");
+        var reportUri = new Uri(_options.Url, $"/files/{sha256}/report?useCache={JsonSerializer.Serialize(options.UseCache)}&useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}");
         var request = new HttpRequestMessage()
         {
             RequestUri = reportUri,
@@ -183,7 +185,8 @@ public class Vaas : IVaas
         {
             var forSha256Options = new ForSha256Options
             {
-                VaasRequestId = options.VaasRequestId
+                VaasRequestId = options.VaasRequestId,
+                UseHashLookup = options.UseHashLookup,
             };
 
             var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
@@ -200,7 +203,8 @@ public class Vaas : IVaas
         await using var stream = File.OpenRead(path);
         var forStreamOptions = new ForStreamOptions
         {
-            VaasRequestId = options.VaasRequestId
+            VaasRequestId = options.VaasRequestId,
+            UseHashLookup = options.UseHashLookup
         };
         return await ForStreamAsync(stream, cancellationToken, forStreamOptions);
     }
@@ -212,7 +216,7 @@ public class Vaas : IVaas
     )
     {
         options ??= ForStreamOptions.Default;
-        var url = new Uri(_options.Url, "/files");
+        var url = new Uri(_options.Url, $"/files?useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}");
 
         var request = new HttpRequestMessage()
         {
