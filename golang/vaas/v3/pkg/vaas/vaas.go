@@ -81,7 +81,7 @@ func parseVaasError(response *http.Response, responseBody []byte) error {
 		statusCode := response.StatusCode
 		switch {
 		case statusCode == 401:
-			baseErr = ErrVaasAuthentication
+			baseErr = errors.Join(ErrVaasAuthentication, errors.New("server did not accept token from identity provider. Check if you are using the correct identity provider"))
 		case statusCode >= 400 && statusCode < 500:
 			baseErr = ErrVaasClient
 		case statusCode >= 500:

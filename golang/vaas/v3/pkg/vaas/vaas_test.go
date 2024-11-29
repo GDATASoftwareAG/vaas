@@ -59,30 +59,30 @@ func (tf *testFixture) setUpWithVaasURL(vaasURLString string) Vaas {
 	if !exists {
 		log.Fatal("no Client Secret set")
 	}
-	vaasURL, err := url.Parse(vaasURLString)
-	if err != nil {
-		log.Fatal(err)
-	}
 	tokenEndpoint, exists := os.LookupEnv("TOKEN_URL")
 	if !exists {
 		log.Fatal("no token endpoint configured")
 	}
 
 	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
+	tf.setUpWithVaasURLAndAuthenticator(vaasURLString, auth)
+	return tf.vaasClient
+}
+
+func (tf *testFixture) setUpWithVaasURLAndAuthenticator(vaasURLString string, auth authenticator.Authenticator) Vaas {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("failed to load environment - %v", err)
+	}
+
+	vaasURL, err := url.Parse(vaasURLString)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	tf.vaasClient = New(vaasURL, auth)
 
 	return tf.vaasClient
 }
-
-// For all
-//   _SendsUserAgent
-//   _SendsOptions
-//   _IfVaasRequestIdIsSet_SendsTraceState
-//   _IfVaasClientException_ThrowsVaasClientException
-//   _IfVaasServerException_ThrowsVaasServerException
-//   _IfAuthenticatorThrowsAuthenticationException_ThrowsAuthenticationException
-//   _If401_ThrowsAuthenticationException
-//   _IfCancellationRequested_ThrowsOperationCancelledException
 
 func TestVaas_ForSha256(t *testing.T) {
 	const (
@@ -235,7 +235,7 @@ func Test_ForSha256_IfVaasServerException_ReturnErrVaasServer(t *testing.T) {
 	assert.ErrorIs(t, err, ErrVaasServer)
 }
 
-func Test_ForSha256_If401_ReturnErrVaasAuthentication(t *testing.T) {
+func Test_ForSha256_IfVaasReturns401_ReturnErrVaasAuthentication(t *testing.T) {
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 	})
@@ -246,6 +246,35 @@ func Test_ForSha256_If401_ReturnErrVaasAuthentication(t *testing.T) {
 	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, nil)
 
 	assert.ErrorIs(t, err, ErrVaasAuthentication)
+}
+
+func Test_ForSha256_IfAuthenticationFailure_ReturnErrVaasAuthentication(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+
+	vaasClient := fixture.setUpWithVaasURLAndAuthenticator(server.URL, mockFailureAuthenticator{})
+
+	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+	assert.ErrorContains(t, err, "placeholder error message")
+}
+
+type mockSuccessAuthenticator struct {
+}
+
+func (m mockSuccessAuthenticator) GetToken() (string, error) {
+	return "", nil
+}
+
+type mockFailureAuthenticator struct {
+}
+
+func (m mockFailureAuthenticator) GetToken() (string, error) {
+	return "", errors.New("placeholder error message")
 }
 
 func getHttpTestServer(handler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
