@@ -302,12 +302,12 @@ func defaultHttpHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	}
 	if r.URL.String() == "/urls/1/report" {
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"verdict":"Malicious"}`))
+		_, err := w.Write([]byte(fmt.Sprintf(`{"verdict":"Malicious","sha256":"%s","url":"%s"}`, eicarSha256, eicarUrl)))
 		assert.NoError(t, err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_, err := w.Write([]byte(`{"verdict":"Malicious"}`))
+	_, err := w.Write([]byte(fmt.Sprintf(`{"verdict":"Malicious","sha256":"%s"}`, eicarSha256)))
 	assert.NoError(t, err)
 }
 

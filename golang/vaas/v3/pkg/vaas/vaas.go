@@ -172,7 +172,7 @@ func (v *vaas) uploadUrl(ctx context.Context, url *url.URL, opts options.ForUrlO
 		return analysis, parseVaasError(response, body)
 	}
 
-	err = json.Unmarshal(body, &analysis)
+	err = msg.UnmarshalAndValidate(body, &analysis)
 	if err != nil {
 		return analysis, errors.Join(ErrVaasClient, err)
 	}
@@ -199,7 +199,7 @@ func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int
 		return analysis, parseVaasError(response, body)
 	}
 
-	err = json.Unmarshal(body, &analysis)
+	err = msg.UnmarshalAndValidate(body, &analysis)
 	if err != nil {
 		return analysis, errors.Join(ErrVaasClient, err)
 	}
@@ -226,7 +226,7 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string, opts options.For
 			continue
 		case http.StatusOK:
 			var report msg.URLReport
-			err := json.Unmarshal(body, &report)
+			err := msg.UnmarshalAndValidate(body, &report)
 			if err != nil {
 				return nil, errors.Join(ErrVaasClient, err)
 			}
@@ -263,7 +263,7 @@ func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts options.F
 			continue
 		case http.StatusOK:
 			var report msg.FileReport
-			err = json.Unmarshal(body, &report)
+			err = msg.UnmarshalAndValidate(body, &report)
 			if err != nil {
 				return nil, errors.Join(ErrVaasClient, err)
 			}
