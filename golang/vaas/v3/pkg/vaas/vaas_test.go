@@ -4,11 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/messages"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
-	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"math/rand"
 	"net/http"
@@ -19,6 +14,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/messages"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 )
 
 type testFixture struct {
@@ -139,10 +140,25 @@ func TestVaas_ForSha256(t *testing.T) {
 		})
 	}
 }
+func Test_ForSha256_IfVaasClientException_ReturnClientError(t *testing.T) {
+	server := getHttpTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForSha256(context.Background(), "")
+	assert.ErrorIs(t, err, ErrClientFailure)
+
+	// // TODO: verdict.Malicious !!!!
+	// assert.Equalf(t, msg.Malicious, verdict.Verdict, "Verdict is not malicious")
+
+}
 
 func Test_ForSha256_SendsUserAgent(t *testing.T) {
 	server := getHttpTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		t.Logf(r.URL.Path)
 		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
 	})
 	defer server.Close()
