@@ -8,9 +8,11 @@ import (
 	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/messages"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
 	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 	"log"
 	"math/rand"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -24,7 +26,24 @@ type testFixture struct {
 	errorChan  <-chan error
 }
 
+const (
+	eicarSha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+)
+
 func (tf *testFixture) setUp() Vaas {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("failed to load environment - %v", err)
+	}
+
+	vaasURLString, exists := os.LookupEnv("VAAS_URL")
+	if !exists {
+		log.Fatal("no vaas endpoint configured")
+	}
+
+	return tf.setUpWithVaasURL(vaasURLString)
+}
+
+func (tf *testFixture) setUpWithVaasURL(vaasURLString string) Vaas {
 	if err := godotenv.Load(); err != nil {
 		log.Printf("failed to load environment - %v", err)
 	}
@@ -36,10 +55,6 @@ func (tf *testFixture) setUp() Vaas {
 	clientSecret, exists := os.LookupEnv("CLIENT_SECRET")
 	if !exists {
 		log.Fatal("no Client Secret set")
-	}
-	vaasURLString, exists := os.LookupEnv("VAAS_URL")
-	if !exists {
-		log.Fatal("no vaas endpoint configured")
 	}
 	vaasURL, err := url.Parse(vaasURLString)
 	if err != nil {
@@ -59,6 +74,16 @@ func (tf *testFixture) setUp() Vaas {
 
 	return tf.vaasClient
 }
+
+// For all
+//   _SendsUserAgent
+//   _SendsOptions
+//   _IfVaasRequestIdIsSet_SendsTraceState
+//   _IfVaasClientException_ThrowsVaasClientException
+//   _IfVaasServerException_ThrowsVaasServerException
+//   _IfAuthenticatorThrowsAuthenticationException_ThrowsAuthenticationException
+//   _If401_ThrowsAuthenticationException
+//   _IfCancellationRequested_ThrowsOperationCancelledException
 
 func TestVaas_ForSha256(t *testing.T) {
 	const (
@@ -113,6 +138,33 @@ func TestVaas_ForSha256(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ForSha256_SendsUserAgent(t *testing.T) {
+	server := getHttpTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		t.Logf(r.URL.Path)
+		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	verdict, err := vaasClient.ForSha256(context.Background(), eicarSha256)
+	assert.NoError(t, err, "ForSha256 returned err")
+
+	// TODO: verdict.Malicious !!!!
+	assert.Equalf(t, msg.Malicious, verdict.Verdict, "Verdict is not malicious")
+}
+
+func getHttpTestServer(t *testing.T, handler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handler(w, r)
+
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"verdict":"Malicious"}`))
+		assert.NoError(t, err)
+	}))
 }
 
 func TestVaas_ForFile(t *testing.T) {

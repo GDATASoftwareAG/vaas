@@ -1,5 +1,6 @@
 package messages
 
+// TODO: Test for invalid verdict!!!
 type FileReport struct {
 	Sha256    string  `json:"sha256"`
 	Verdict   Verdict `json:"verdict"`
