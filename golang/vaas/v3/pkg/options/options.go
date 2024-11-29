@@ -10,9 +10,10 @@ type VaasOptions struct {
 type ForSha256Options struct {
 	UseHashLookup bool // UseHashLookup Controls whether SHA256 hash lookups are used.
 	UseCache      bool // UseCache enables or disables server-side caching.
+	VaasRequestId string
 }
 
-func (o *ForSha256Options) New() ForSha256Options {
+func New() ForSha256Options {
 	return ForSha256Options{UseCache: true, UseHashLookup: true}
 }
 

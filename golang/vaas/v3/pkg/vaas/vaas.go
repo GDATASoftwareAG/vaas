@@ -250,6 +250,10 @@ func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts *options.
 			return nil, err
 		}
 
+		if opts.VaasRequestId != "" {
+			req.Header.Add("tracestate", fmt.Sprintf("vaasrequestid=%v", opts.VaasRequestId))
+		}
+
 		response, body, err := readHttpResponse(v.httpClient, req)
 		if err != nil {
 			return nil, err

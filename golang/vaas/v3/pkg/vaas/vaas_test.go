@@ -143,6 +143,22 @@ func TestVaas_ForSha256(t *testing.T) {
 	}
 }
 
+func Test_ForSha256_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.Header.Get("tracestate"), "vaasrequestid=MyRequestId")
+		defaultHttpHandler(t, w, r)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	opts := options.New()
+	opts.VaasRequestId = "MyRequestId"
+	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, &opts)
+	assert.NoError(t, err, "ForSha256 returned err")
+}
+
 func Test_ForSha256_SendsUserAgent(t *testing.T) {
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
