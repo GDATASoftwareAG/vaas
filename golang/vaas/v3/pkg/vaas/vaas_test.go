@@ -86,7 +86,7 @@ func (tf *testFixture) setUpWithVaasURLAndAuthenticator(vaasURLString string, au
 	return tf.vaasClient
 }
 
-func TestVaas_ForSha256(t *testing.T) {
+func Test_ForSha256(t *testing.T) {
 	const (
 		cleanSha256     string = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"
 		maliciousSha256 string = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
@@ -265,7 +265,7 @@ func Test_ForSha256_IfAuthenticationFailure_ReturnErrVaasAuthentication(t *testi
 	assert.ErrorContains(t, err, "placeholder error message")
 }
 
-func TestVaas_ForSha256_WithDeadlineContext_Cancels(t *testing.T) {
+func Test_ForSha256_WithDeadlineContext_Cancels(t *testing.T) {
 	fixture := new(testFixture)
 	vaasClient := fixture.setUp()
 
@@ -510,7 +510,7 @@ func Test_ForFile_IfAuthenticationFailure_ReturnErrVaasAuthentication(t *testing
 	assert.ErrorContains(t, err, "placeholder error message")
 }
 
-func TestVaas_ForFile_WithDeadlineContext_Cancels(t *testing.T) {
+func Test_ForFile_WithDeadlineContext_Cancels(t *testing.T) {
 	eicar := createEicarFile(t)
 	fixture := new(testFixture)
 	vaasClient := fixture.setUp()
@@ -720,24 +720,7 @@ func Test_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 	}
 }
 
-//func TestVaas_ForStream_WithZeroContentLength_ReturnsError(t *testing.T) {
-//	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
-//
-//	fixture := new(testFixture)
-//	VaasClient := fixture.setUp(t)
-//
-//	_, err := VaasClient.ForStream(context.Background(), response.Body, 0)
-//
-//	if err == nil {
-//		t.Fatalf("expected error, got nil")
-//	}
-//
-//	if !errors.Is(err, ErrVaasClient) {
-//		t.Fatalf("expected error %v, got %v", ErrVaasClient, err)
-//	}
-//}
-
-func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMimeType(t *testing.T) {
+func Test_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMimeType(t *testing.T) {
 	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
 
 	fixture := new(testFixture)
@@ -766,7 +749,7 @@ func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMime
 	}
 }
 
-func TestVaas_ForUrl(t *testing.T) {
+func Test_ForUrl(t *testing.T) {
 	const (
 		cleanURL   string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
 		eicarURL   string = "https://secure.eicar.org/eicar.com"
