@@ -3,8 +3,10 @@ package vaas
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -30,7 +32,8 @@ type testFixture struct {
 }
 
 const (
-	eicarSha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+	eicarSha256              = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+	eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo"
 )
 
 func (tf *testFixture) setUp() Vaas {
@@ -298,9 +301,6 @@ func defaultHttpHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
 }
 
 func TestVaas_ForFile(t *testing.T) {
-	const (
-		eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo"
-	)
 	type args struct {
 		fileContent     string
 		expectedVerdict msg.Verdict
@@ -351,6 +351,177 @@ func TestVaas_ForFile(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ForFile_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.Header.Get("tracestate"), "vaasrequestid=MyRequestId")
+		defaultHttpHandler(t, w, r)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	opts := options.NewForFileOptions()
+	opts.VaasRequestId = "MyRequestId"
+	testFile := filepath.Join(t.TempDir(), "testfile")
+	decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+	if err := os.WriteFile(testFile, []byte(decodedEicarString), 0644); err != nil {
+		t.Fatalf("error while writing file: %v", err)
+	}
+	_, err := vaasClient.ForFile(context.Background(), testFile, &opts)
+	assert.NoError(t, err, "ForFile returned err")
+}
+
+func Test_ForFile_SendsUserAgent(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+		defaultHttpHandler(t, w, r)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	testFile := filepath.Join(t.TempDir(), "testfile")
+	decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+	if err := os.WriteFile(testFile, []byte(decodedEicarString), 0644); err != nil {
+		t.Fatalf("error while writing file: %v", err)
+	}
+
+	verdict, err := vaasClient.ForFile(context.Background(), testFile, nil)
+	assert.NoError(t, err, "ForFile returned err")
+	assert.Equalf(t, msg.Malicious, verdict.Verdict, "Verdict is not malicious")
+}
+
+func Test_ForFile_SendsOptions(t *testing.T) {
+	tests := []options.ForFileOptions{
+		{
+			UseHashLookup: true,
+			UseCache:      true,
+		},
+		{
+			UseHashLookup: true,
+			UseCache:      false,
+		},
+		{
+			UseHashLookup: false,
+			UseCache:      true,
+		},
+		{
+			UseHashLookup: false,
+			UseCache:      false,
+		},
+	}
+
+	for _, option := range tests {
+		t.Run(fmt.Sprintf("%v", option), func(t *testing.T) {
+			server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.String() == "/files" {
+					analysisRequest := msg.FileAnalysis{
+						Sha256: eicarSha256,
+					}
+					data, err := io.ReadAll(r.Body)
+					assert.NoError(t, err)
+					_ = json.Unmarshal(data, &analysisRequest)
+					assert.Equal(t, eicarSha256, analysisRequest.Sha256)
+
+				}
+				defaultHttpHandler(t, w, r)
+			})
+			defer server.Close()
+			fixture := new(testFixture)
+			vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+			testFile := filepath.Join(t.TempDir(), "testfile")
+			decodedEicarString, _ := base64.StdEncoding.DecodeString("")
+			if err := os.WriteFile(testFile, []byte(decodedEicarString), 0644); err != nil {
+				t.Fatalf("error while writing file: %v", err)
+			}
+
+			_, err := vaasClient.ForFile(context.Background(), testFile, &option)
+			assert.NoError(t, err, "ForFile returned err")
+		})
+	}
+}
+
+func Test_ForFile_IfVaasClientException_ReturnErrVaasClient(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	testFile := filepath.Join(t.TempDir(), "testfile")
+	decodedEicarString, _ := base64.StdEncoding.DecodeString("")
+	if err := os.WriteFile(testFile, []byte(decodedEicarString), 0644); err != nil {
+		t.Fatalf("error while writing file: %v", err)
+	}
+
+	_, err := vaasClient.ForFile(context.Background(), testFile, nil)
+
+	assert.ErrorIs(t, err, ErrVaasClient)
+}
+
+func Test_ForFile_IfVaasServerException_ReturnErrVaasServer(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	testFile := filepath.Join(t.TempDir(), "testfile")
+	decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+	if err := os.WriteFile(testFile, []byte(decodedEicarString), 0644); err != nil {
+		t.Fatalf("error while writing file: %v", err)
+	}
+
+	_, err := vaasClient.ForFile(context.Background(), testFile, nil)
+
+	assert.ErrorIs(t, err, ErrVaasServer)
+}
+
+func Test_ForFile_IfVaasReturns401_ReturnErrVaasAuthentication(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	testFile := filepath.Join(t.TempDir(), "testfile")
+	decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+	if err := os.WriteFile(testFile, []byte(decodedEicarString), 0644); err != nil {
+		t.Fatalf("error while writing file: %v", err)
+	}
+
+	_, err := vaasClient.ForFile(context.Background(), testFile, nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+}
+
+func Test_ForFile_IfAuthenticationFailure_ReturnErrVaasAuthentication(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+
+	vaasClient := fixture.setUpWithVaasURLAndAuthenticator(server.URL, mockFailureAuthenticator{})
+
+	testFile := filepath.Join(t.TempDir(), "testfile")
+	decodedEicarString, _ := base64.StdEncoding.DecodeString(eicarBase64String)
+	if err := os.WriteFile(testFile, []byte(decodedEicarString), 0644); err != nil {
+		t.Fatalf("error while writing file: %v", err)
+	}
+
+	_, err := vaasClient.ForFile(context.Background(), testFile, nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+	assert.ErrorContains(t, err, "placeholder error message")
 }
 
 func TestVaas_ForStream_WithStreamFromString(t *testing.T) {
