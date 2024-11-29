@@ -128,7 +128,7 @@ func TestVaas_ForSha256(t *testing.T) {
 			fixture := new(testFixture)
 			vaasClient := fixture.setUp()
 
-			verdict, err := vaasClient.ForSha256(context.Background(), tt.args.sha256)
+			verdict, err := vaasClient.ForSha256(context.Background(), tt.args.sha256, nil)
 
 			if !errors.Is(err, tt.expectedError) {
 				t.Fatalf("unexpected error, expected %v but got %v", tt.expectedError, err)
@@ -140,21 +140,9 @@ func TestVaas_ForSha256(t *testing.T) {
 		})
 	}
 }
-func Test_ForSha256_IfVaasClientException_ReturnClientError(t *testing.T) {
-	server := getHttpTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-	})
-	defer server.Close()
-
-	fixture := new(testFixture)
-	vaasClient := fixture.setUpWithVaasURL(server.URL)
-
-	_, err := vaasClient.ForSha256(context.Background(), "")
-	assert.ErrorIs(t, err, ErrClientFailure)
-}
 
 func Test_ForSha256_SendsUserAgent(t *testing.T) {
-	server := getHttpTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
 		defaultHttpHandler(t, w, r)
 	})
@@ -163,12 +151,65 @@ func Test_ForSha256_SendsUserAgent(t *testing.T) {
 	fixture := new(testFixture)
 	vaasClient := fixture.setUpWithVaasURL(server.URL)
 
-	verdict, err := vaasClient.ForSha256(context.Background(), eicarSha256)
+	verdict, err := vaasClient.ForSha256(context.Background(), eicarSha256, nil)
 	assert.NoError(t, err, "ForSha256 returned err")
 	assert.Equalf(t, msg.Malicious, verdict.Verdict, "Verdict is not malicious")
 }
 
-func getHttpTestServer(t *testing.T, handler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
+func Test_ForSha256_SendsOptions(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/files/275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f/report?useCache=true&use", r.URL.String())
+		defaultHttpHandler(t, w, r)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, nil)
+	assert.NoError(t, err, "ForSha256 returned err")
+}
+
+func Test_ForSha256_IfVaasClientException_ReturnErrVaasClient(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForSha256(context.Background(), "", nil)
+
+	assert.ErrorIs(t, err, ErrVaasClient)
+}
+
+func Test_ForSha256_IfVaasServerException_ReturnErrVaasServer(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, nil)
+
+	assert.ErrorIs(t, err, ErrVaasServer)
+}
+
+func Test_ForSha256_If401_ReturnErrVaasAuthentication(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+}
+
+func getHttpTestServer(handler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(handler))
 }
 
@@ -221,7 +262,7 @@ func TestVaas_ForFile(t *testing.T) {
 			}
 
 			// test disk file
-			verdict, err := vaasClient.ForFile(context.Background(), testFile)
+			verdict, err := vaasClient.ForFile(context.Background(), testFile, nil)
 
 			if !errors.Is(err, tt.expectedError) {
 				t.Fatalf("unexpected error, expected %v but got %v", tt.expectedError, err)
@@ -239,7 +280,7 @@ func TestVaas_ForStream_WithStreamFromString(t *testing.T) {
 	fixture := new(testFixture)
 	vaasClient := fixture.setUp()
 
-	verdict, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size())
+	verdict, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), nil)
 
 	if err != nil {
 		t.Fatalf("unexpected error - %v", err)
@@ -256,7 +297,7 @@ func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
 	fixture := new(testFixture)
 	vaasClient := fixture.setUp()
 
-	verdict, err := vaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
+	verdict, err := vaasClient.ForStream(context.Background(), response.Body, response.ContentLength, nil)
 
 	if err != nil {
 		t.Fatalf("unexpected error - %v", err)
@@ -275,7 +316,7 @@ func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 
 	cancelCtx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
 	defer cancel()
-	verdict, err := vaasClient.ForStream(cancelCtx, response.Body, response.ContentLength)
+	verdict, err := vaasClient.ForStream(cancelCtx, response.Body, response.ContentLength, nil)
 
 	if err == nil {
 		t.Fatalf("expected error got success instead (%v)", verdict)
@@ -298,8 +339,8 @@ func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 //		t.Fatalf("expected error, got nil")
 //	}
 //
-//	if !errors.Is(err, ErrClientFailure) {
-//		t.Fatalf("expected error %v, got %v", ErrClientFailure, err)
+//	if !errors.Is(err, ErrVaasClient) {
+//		t.Fatalf("expected error %v, got %v", ErrVaasClient, err)
 //	}
 //}
 
@@ -309,7 +350,7 @@ func TestVaas_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMime
 	fixture := new(testFixture)
 	VaasClient := fixture.setUp()
 
-	verdict, err := VaasClient.ForStream(context.Background(), response.Body, response.ContentLength)
+	verdict, err := VaasClient.ForStream(context.Background(), response.Body, response.ContentLength, nil)
 
 	if err != nil {
 		t.Fatalf("unexpected error - %v", err)
@@ -367,7 +408,7 @@ func TestVaas_ForUrl(t *testing.T) {
 				url:             invalidURL,
 				expectedVerdict: msg.Malicious,
 			},
-			expectedError: ErrClientFailure,
+			expectedError: ErrVaasClient,
 		},
 	}
 	for _, tt := range tests {
@@ -379,7 +420,7 @@ func TestVaas_ForUrl(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Cannot parse test testUrl - %v", err)
 			}
-			verdict, err := VaasClient.ForUrl(context.Background(), testUrl)
+			verdict, err := VaasClient.ForUrl(context.Background(), testUrl, nil)
 
 			if !errors.Is(err, tt.expectedError) {
 				t.Fatalf("unexpected error, expected %v but got %v", tt.expectedError, err)

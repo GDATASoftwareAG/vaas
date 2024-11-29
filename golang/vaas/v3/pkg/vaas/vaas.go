@@ -27,21 +27,20 @@ const (
 
 // Errors returned by the VaaS API
 var (
-	ErrClientFailure         = errors.New("client error")
-	ErrServerFailure         = errors.New("server reported an internal error")
-	ErrAuthenticationFailure = errors.New("VaaS authentication failed")
-	ErrConnectionProblem     = errors.New("could not connect to VaaS")
+	ErrVaasClient         = errors.New("client error")
+	ErrVaasServer         = errors.New("server reported an internal error")
+	ErrVaasAuthentication = errors.New("VaaS authentication failed")
+	ErrVaasConnection     = errors.New("could not connect to VaaS")
 )
 
 // Vaas provides various ForXXX-functions to send analysis requests to a VaaS server.
 // All kinds of requests can be canceled by the context.
 // Please refer to the individual function comments for more details on their usage and behavior.
 type Vaas interface {
-	ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error)
-	ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error)
-	ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error)
-	ForFile(ctx context.Context, path string) (msg.VaasVerdict, error)
-	SetOptions(options options.VaasOptions)
+	ForSha256(ctx context.Context, sha256 string, options *options.ForSha256Options) (msg.VaasVerdict, error)
+	ForFile(ctx context.Context, path string, options *options.ForFileOptions) (msg.VaasVerdict, error)
+	ForUrl(ctx context.Context, url *url.URL, options *options.ForUrlOptions) (msg.VaasVerdict, error)
+	ForStream(ctx context.Context, stream io.Reader, contentLength int64, options *options.ForStreamOptions) (msg.VaasVerdict, error)
 }
 
 // vaas provides the implementation of the Vaas interface.
@@ -84,13 +83,13 @@ func parseVaasError(response *http.Response, responseBody []byte) error {
 		statusCode := response.StatusCode
 		switch {
 		case statusCode == 401:
-			baseErr = ErrAuthenticationFailure
+			baseErr = ErrVaasAuthentication
 		case statusCode >= 400 && statusCode < 500:
-			baseErr = ErrClientFailure
+			baseErr = ErrVaasClient
 		case statusCode >= 500:
-			baseErr = ErrServerFailure
+			baseErr = ErrVaasServer
 		default:
-			baseErr = ErrServerFailure
+			baseErr = ErrVaasServer
 		}
 		// Server did not reply with a parseable error body, returning the HTTP code instead
 		return errors.Join(baseErr, errors.New("HTTP error: "+response.Status))
@@ -98,11 +97,11 @@ func parseVaasError(response *http.Response, responseBody []byte) error {
 
 	switch problemDetails.Type {
 	case "VaasClientException":
-		baseErr = ErrClientFailure
+		baseErr = ErrVaasClient
 	case "VaasServerException":
-		baseErr = ErrServerFailure
+		baseErr = ErrVaasServer
 	default:
-		baseErr = ErrServerFailure
+		baseErr = ErrVaasServer
 	}
 	return errors.Join(baseErr, errors.New(problemDetails.Detail))
 }
@@ -110,16 +109,16 @@ func parseVaasError(response *http.Response, responseBody []byte) error {
 func readHttpResponse(httpClient *http.Client, request *http.Request) (Response *http.Response, Body []byte, Error error) {
 	resp, err := httpClient.Do(request)
 	if err != nil {
-		return nil, nil, errors.Join(ErrConnectionProblem, err)
+		return nil, nil, errors.Join(ErrVaasConnection, err)
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return resp, nil, errors.Join(ErrClientFailure, err)
+		return resp, nil, errors.Join(ErrVaasClient, err)
 	}
 	err = resp.Body.Close()
 	if err != nil {
-		return resp, data, errors.Join(ErrClientFailure, err)
+		return resp, data, errors.Join(ErrVaasClient, err)
 	}
 	return resp, data, nil
 }
@@ -127,7 +126,7 @@ func readHttpResponse(httpClient *http.Client, request *http.Request) (Response 
 func encodeToJsonBuffer(data any) (*bytes.Buffer, error) {
 	encoded, err := json.Marshal(data)
 	if err != nil {
-		return nil, errors.Join(ErrClientFailure, err)
+		return nil, errors.Join(ErrVaasClient, err)
 	}
 	return bytes.NewBuffer(encoded), nil
 }
@@ -135,12 +134,12 @@ func encodeToJsonBuffer(data any) (*bytes.Buffer, error) {
 func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
 	token, err := v.authenticator.GetToken()
 	if err != nil {
-		return nil, errors.Join(ErrAuthenticationFailure, err)
+		return nil, errors.Join(ErrVaasAuthentication, err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
-		return nil, errors.Join(ErrClientFailure, err)
+		return nil, errors.Join(ErrVaasClient, err)
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("User-Agent", userAgent)
@@ -174,7 +173,7 @@ func (v *vaas) uploadUrl(ctx context.Context, url *url.URL) (msg.URLAnalysis, er
 
 	err = json.Unmarshal(body, &analysis)
 	if err != nil {
-		return analysis, errors.Join(ErrClientFailure, err)
+		return analysis, errors.Join(ErrVaasClient, err)
 	}
 	return analysis, nil
 }
@@ -199,7 +198,7 @@ func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int
 
 	err = json.Unmarshal(body, &analysis)
 	if err != nil {
-		return analysis, errors.Join(ErrClientFailure, err)
+		return analysis, errors.Join(ErrVaasClient, err)
 	}
 	return analysis, nil
 }
@@ -219,14 +218,14 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 
 		switch response.StatusCode {
 		case http.StatusNotFound:
-			return nil, errors.Join(ErrClientFailure, fmt.Errorf("url job %v not found", urlJobId))
+			return nil, errors.Join(ErrVaasClient, fmt.Errorf("url job %v not found", urlJobId))
 		case http.StatusAccepted:
 			continue
 		case http.StatusOK:
 			var report msg.URLReport
 			err := json.Unmarshal(body, &report)
 			if err != nil {
-				return nil, errors.Join(ErrClientFailure, err)
+				return nil, errors.Join(ErrVaasClient, err)
 			}
 			return &report, nil
 		default:
@@ -235,10 +234,10 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 	}
 }
 
-func (v *vaas) pollFile(ctx context.Context, sha256 string) (*msg.FileReport, error) {
+func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts *options.ForSha256Options) (*msg.FileReport, error) {
 	reportUrl := v.vaasURL.JoinPath("files", sha256, "report")
-	reportUrl.Query().Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
-	reportUrl.Query().Add("useCache", strconv.FormatBool(v.options.UseCache))
+	reportUrl.Query().Add("useCache", strconv.FormatBool(opts.UseCache))
+	reportUrl.Query().Add("useHashLookup", strconv.FormatBool(opts.UseHashLookup))
 	reportUrlString := reportUrl.String()
 	// Loop until we get 200 or an error
 	for {
@@ -261,7 +260,7 @@ func (v *vaas) pollFile(ctx context.Context, sha256 string) (*msg.FileReport, er
 			var report msg.FileReport
 			err = json.Unmarshal(body, &report)
 			if err != nil {
-				return nil, errors.Join(ErrClientFailure, err)
+				return nil, errors.Join(ErrVaasClient, err)
 			}
 			return &report, nil
 		default:
@@ -284,8 +283,12 @@ func (v *vaas) pollFile(ctx context.Context, sha256 string) (*msg.FileReport, er
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, error) {
-	report, err := v.pollFile(ctx, sha256)
+func (v *vaas) ForSha256(ctx context.Context, sha256 string, opts *options.ForSha256Options) (msg.VaasVerdict, error) {
+	if opts == nil {
+		opts = &options.ForSha256Options{}
+	}
+
+	report, err := v.pollFileReport(ctx, sha256, opts)
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
@@ -314,10 +317,10 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string) (msg.VaasVerdict, e
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, error) {
+func (v *vaas) ForFile(ctx context.Context, filePath string, options *options.ForFileOptions) (msg.VaasVerdict, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
+		return msg.VaasVerdict{}, errors.Join(ErrVaasClient, err)
 	}
 	defer func() {
 		_ = file.Close()
@@ -325,25 +328,25 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 
 	sha256, err := hash.CalculateSha256(file)
 	if err != nil {
-		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
+		return msg.VaasVerdict{}, errors.Join(ErrVaasClient, err)
 	}
 
-	verdict, err := v.ForSha256(ctx, sha256)
+	verdict, err := v.ForSha256(ctx, sha256, nil)
 	// We only care about the hash lookup if it's not failed and has actionable verdict
 	if err == nil && verdict.Verdict != msg.Unknown {
 		return verdict, nil
 	}
 
 	if _, err = file.Seek(0, io.SeekStart); err != nil {
-		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
+		return msg.VaasVerdict{}, errors.Join(ErrVaasClient, err)
 	}
 
 	stat, err := file.Stat()
 	if err != nil {
-		return msg.VaasVerdict{}, errors.Join(ErrClientFailure, err)
+		return msg.VaasVerdict{}, errors.Join(ErrVaasClient, err)
 	}
 
-	return v.ForStream(ctx, file, stat.Size())
+	return v.ForStream(ctx, file, stat.Size(), nil)
 }
 
 // ForUrl sends an analysis request for a file URL to the VaaS server and returns the verdict.
@@ -360,7 +363,7 @@ func (v *vaas) ForFile(ctx context.Context, filePath string) (msg.VaasVerdict, e
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error) {
+func (v *vaas) ForUrl(ctx context.Context, url *url.URL, options *options.ForUrlOptions) (msg.VaasVerdict, error) {
 	analysis, err := v.uploadUrl(ctx, url)
 	if err != nil {
 		return msg.VaasVerdict{}, err
@@ -387,16 +390,11 @@ func (v *vaas) ForUrl(ctx context.Context, url *url.URL) (msg.VaasVerdict, error
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64) (msg.VaasVerdict, error) {
+func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64, options *options.ForStreamOptions) (msg.VaasVerdict, error) {
 	analysis, err := v.uploadFile(ctx, stream, contentLength)
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
 
-	return v.ForSha256(ctx, analysis.Sha256)
-}
-
-// SetOptions changes the request configuration. The new options will become effective for the next and subsequent requests.
-func (v *vaas) SetOptions(options options.VaasOptions) {
-	v.options = options
+	return v.ForSha256(ctx, analysis.Sha256, nil)
 }
