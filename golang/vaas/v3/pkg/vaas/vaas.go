@@ -77,7 +77,7 @@ func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authentic
 
 func parseVaasError(response *http.Response, responseBody []byte) error {
 	var problemDetails msg.ProblemDetails
-	err := json.Unmarshal(responseBody, &problemDetails)
+	err := msg.UnmarshalAndValidate(responseBody, &problemDetails)
 	var baseErr error
 	if err != nil {
 		statusCode := response.StatusCode

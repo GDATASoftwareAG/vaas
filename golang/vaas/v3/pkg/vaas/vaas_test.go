@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -157,17 +159,42 @@ func Test_ForSha256_SendsUserAgent(t *testing.T) {
 }
 
 func Test_ForSha256_SendsOptions(t *testing.T) {
-	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/files/275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f/report?useCache=true&useHashLookup=false", r.URL.String())
-		defaultHttpHandler(t, w, r)
-	})
-	defer server.Close()
+	tests := []options.ForSha256Options{
+		{
+			UseHashLookup: true,
+			UseCache:      true,
+		},
+		{
+			UseHashLookup: true,
+			UseCache:      false,
+		},
+		{
+			UseHashLookup: false,
+			UseCache:      true,
+		},
+		{
+			UseHashLookup: false,
+			UseCache:      false,
+		},
+	}
 
-	fixture := new(testFixture)
-	vaasClient := fixture.setUpWithVaasURL(server.URL)
+	for _, option := range tests {
+		t.Run(fmt.Sprintf("%v", option), func(t *testing.T) {
+			server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+				useCache := strconv.FormatBool(option.UseCache)
+				useHashLookup := strconv.FormatBool(option.UseHashLookup)
+				expectedUrl := fmt.Sprintf("/files/275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f/report?useCache=%s&useHashLookup=%s", useCache, useHashLookup)
+				assert.Equal(t, expectedUrl, r.URL.String())
+				defaultHttpHandler(t, w, r)
+			})
+			defer server.Close()
+			fixture := new(testFixture)
+			vaasClient := fixture.setUpWithVaasURL(server.URL)
 
-	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, nil)
-	assert.NoError(t, err, "ForSha256 returned err")
+			_, err := vaasClient.ForSha256(context.Background(), eicarSha256, &option)
+			assert.NoError(t, err, "ForSha256 returned err")
+		})
+	}
 }
 
 func Test_ForSha256_IfVaasClientException_ReturnErrVaasClient(t *testing.T) {
