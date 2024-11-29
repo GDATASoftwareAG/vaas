@@ -393,7 +393,10 @@ func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength in
 		return msg.VaasVerdict{}, err
 	}
 
-	return v.ForSha256(ctx, analysis.Sha256, nil)
+	sha256Opts := options.NewForSha256Options()
+	sha256Opts.UseHashLookup = opts.UseHashLookup
+	sha256Opts.VaasRequestId = opts.VaasRequestId
+	return v.ForSha256(ctx, analysis.Sha256, &sha256Opts)
 }
 
 // ForUrl sends an analysis request for a file URL to the VaaS server and returns the verdict.

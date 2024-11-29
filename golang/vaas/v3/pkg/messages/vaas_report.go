@@ -1,6 +1,7 @@
 package messages
 
 // TODO: Test for invalid verdict!!!
+// TODO: sha256 + verdict are mandatory fields
 type FileReport struct {
 	Sha256    string  `json:"sha256"`
 	Verdict   Verdict `json:"verdict"`
@@ -19,6 +20,7 @@ func (r *FileReport) ConvertToVaasVerdict() VaasVerdict {
 	}
 }
 
+// TODO: sha256, verdict and URL are mandatory fields
 type URLReport struct {
 	Sha256    string  `json:"sha256"`
 	Verdict   Verdict `json:"verdict"`

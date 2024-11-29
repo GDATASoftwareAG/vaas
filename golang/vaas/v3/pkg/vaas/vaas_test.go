@@ -5,6 +5,11 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
+	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/messages"
+	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
+	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 	"log"
 	"math/rand"
 	"net/http"
@@ -16,12 +21,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
-	msg "github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/messages"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
-	"github.com/joho/godotenv"
-	"github.com/stretchr/testify/assert"
 )
 
 type testFixture struct {
@@ -353,7 +352,7 @@ func TestVaas_ForFile(t *testing.T) {
 	}
 }
 
-func TestVaas_ForStream_WithStreamFromString(t *testing.T) {
+func Test_ForStream_WithEicarString_ReturnsMalicious(t *testing.T) {
 	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
 	fixture := new(testFixture)
 	vaasClient := fixture.setUp()
@@ -369,7 +368,7 @@ func TestVaas_ForStream_WithStreamFromString(t *testing.T) {
 	}
 }
 
-func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
+func Test_ForStream_WitEicarFromUrl_ReturnsMalicious(t *testing.T) {
 	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
 
 	fixture := new(testFixture)
@@ -386,7 +385,140 @@ func TestVaas_ForStream_WithStreamFromUrl(t *testing.T) {
 	}
 }
 
-func TestVaas_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
+func Test_ForStream_SendsUserAgent(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+		defaultHttpHandler(t, w, r)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	verdict, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), nil)
+	assert.NoError(t, err, "ForStream returned err")
+	assert.Equalf(t, msg.Malicious, verdict.Verdict, "Verdict is not malicious")
+}
+
+func Test_ForStream_SendsOptions(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	tests := []options.ForStreamOptions{
+		{
+			UseHashLookup: true,
+		},
+		{
+			UseHashLookup: false,
+		},
+	}
+
+	for _, option := range tests {
+		t.Run(fmt.Sprintf("%v", option), func(t *testing.T) {
+			server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+				if strings.Contains(r.URL.Path, "/report") {
+					defaultHttpHandler(t, w, r)
+				} else {
+					useHashLookup := strconv.FormatBool(option.UseHashLookup)
+					expectedUrl := fmt.Sprintf("/files?useHashLookup=%s", useHashLookup)
+					assert.Equal(t, expectedUrl, r.URL.String())
+					w.WriteHeader(http.StatusCreated)
+					_, err := w.Write([]byte(`{"sha256": "12345"}`))
+					assert.NoError(t, err)
+				}
+			})
+			defer server.Close()
+			fixture := new(testFixture)
+			vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+			_, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), &option)
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func Test_ForStream_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/report") {
+			assert.Equal(t, r.Header.Get("tracestate"), "vaasrequestid=MyRequestId")
+			defaultHttpHandler(t, w, r)
+		} else {
+			assert.Equal(t, r.Header.Get("tracestate"), "vaasrequestid=MyRequestId")
+			w.WriteHeader(http.StatusCreated)
+			_, err := w.Write([]byte(`{"sha256": "12345"}`))
+			assert.NoError(t, err)
+		}
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	opts := options.NewForStreamOptions()
+	opts.VaasRequestId = "MyRequestId"
+	_, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), &opts)
+	assert.NoError(t, err)
+}
+
+func Test_ForStream_IfVaasClientException_ReturnErrVaasClient(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), nil)
+
+	assert.ErrorIs(t, err, ErrVaasClient)
+}
+
+func Test_ForStream_IfVaasServerException_ReturnErrVaasServer(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), nil)
+
+	assert.ErrorIs(t, err, ErrVaasServer)
+}
+
+func Test_ForStream_IfVaasReturns401_ReturnErrVaasAuthentication(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	_, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+}
+
+func Test_ForStream_IfAuthenticationFailure_ReturnErrVaasAuthentication(t *testing.T) {
+	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+
+	vaasClient := fixture.setUpWithVaasURLAndAuthenticator(server.URL, mockFailureAuthenticator{})
+
+	_, err := vaasClient.ForStream(context.Background(), eicarReader, eicarReader.Size(), nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+	assert.ErrorContains(t, err, "placeholder error message")
+}
+
+func Test_ForStream_WithDeadlineContext_Cancels(t *testing.T) {
 	response, _ := http.Get("https://secure.eicar.org/eicar.com.txt")
 
 	fixture := new(testFixture)
