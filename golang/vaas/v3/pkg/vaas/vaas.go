@@ -79,26 +79,23 @@ func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authentic
 func parseVaasError(response *http.Response, responseBody []byte) error {
 	var problemDetails msg.ProblemDetails
 	err := json.Unmarshal(responseBody, &problemDetails)
-	var httpErr error
+	var baseErr error
 	if err != nil {
 		statusCode := response.StatusCode
 		switch {
-		case statusCode == 400:
-			httpErr = ErrClientFailure
 		case statusCode == 401:
-			httpErr = ErrAuthenticationFailure
-		case statusCode == 403:
-			httpErr = ErrClientFailure
+			baseErr = ErrAuthenticationFailure
+		case statusCode >= 400 && statusCode < 500:
+			baseErr = ErrClientFailure
 		case statusCode >= 500:
-			httpErr = ErrServerFailure
+			baseErr = ErrServerFailure
 		default:
-			httpErr = ErrServerFailure
+			baseErr = ErrServerFailure
 		}
 		// Server did not reply with a parseable error body, returning the HTTP code instead
-		return errors.Join(httpErr, errors.New("HTTP error: "+response.Status))
+		return errors.Join(baseErr, errors.New("HTTP error: "+response.Status))
 	}
 
-	var baseErr error
 	switch problemDetails.Type {
 	case "VaasClientException":
 		baseErr = ErrClientFailure

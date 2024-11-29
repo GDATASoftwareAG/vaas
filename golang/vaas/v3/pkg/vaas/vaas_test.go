@@ -151,15 +151,12 @@ func Test_ForSha256_IfVaasClientException_ReturnClientError(t *testing.T) {
 
 	_, err := vaasClient.ForSha256(context.Background(), "")
 	assert.ErrorIs(t, err, ErrClientFailure)
-
-	// // TODO: verdict.Malicious !!!!
-	// assert.Equalf(t, msg.Malicious, verdict.Verdict, "Verdict is not malicious")
-
 }
 
 func Test_ForSha256_SendsUserAgent(t *testing.T) {
 	server := getHttpTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+		defaultHttpHandler(t, w, r)
 	})
 	defer server.Close()
 
@@ -168,19 +165,17 @@ func Test_ForSha256_SendsUserAgent(t *testing.T) {
 
 	verdict, err := vaasClient.ForSha256(context.Background(), eicarSha256)
 	assert.NoError(t, err, "ForSha256 returned err")
-
-	// TODO: verdict.Malicious !!!!
 	assert.Equalf(t, msg.Malicious, verdict.Verdict, "Verdict is not malicious")
 }
 
 func getHttpTestServer(t *testing.T, handler func(w http.ResponseWriter, r *http.Request)) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler(w, r)
+	return httptest.NewServer(http.HandlerFunc(handler))
+}
 
-		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"verdict":"Malicious"}`))
-		assert.NoError(t, err)
-	}))
+func defaultHttpHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write([]byte(`{"verdict":"Malicious"}`))
+	assert.NoError(t, err)
 }
 
 func TestVaas_ForFile(t *testing.T) {
