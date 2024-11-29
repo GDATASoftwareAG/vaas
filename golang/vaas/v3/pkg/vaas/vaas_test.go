@@ -159,7 +159,7 @@ func Test_ForSha256_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
 
 func Test_ForSha256_SendsUserAgent(t *testing.T) {
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+		assert.Equal(t, r.Header.Get("User-Agent"), userAgent)
 		defaultHttpHandler(t, w, r)
 	})
 	defer server.Close()
@@ -398,7 +398,7 @@ func Test_ForFile_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
 func Test_ForFile_SendsUserAgent(t *testing.T) {
 	eicar := createEicarFile(t)
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+		assert.Equal(t, r.Header.Get("User-Agent"), userAgent)
 		defaultHttpHandler(t, w, r)
 	})
 	defer server.Close()
@@ -565,10 +565,10 @@ func Test_ForStream_SendsUserAgent(t *testing.T) {
 	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/report") {
-			assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+			assert.Equal(t, r.Header.Get("User-Agent"), userAgent)
 			defaultHttpHandler(t, w, r)
 		} else {
-			assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+			assert.Equal(t, r.Header.Get("User-Agent"), userAgent)
 			w.WriteHeader(http.StatusCreated)
 			_, err := w.Write([]byte(`{"sha256": "12345"}`))
 			assert.NoError(t, err)
@@ -828,7 +828,7 @@ func Test_ForUrl_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
 
 func Test_ForUrl_SendsUserAgent(t *testing.T) {
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+		assert.Equal(t, r.Header.Get("User-Agent"), userAgent)
 		defaultHttpHandler(t, w, r)
 	})
 	defer server.Close()
