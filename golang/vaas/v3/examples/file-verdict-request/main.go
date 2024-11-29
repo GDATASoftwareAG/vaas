@@ -13,7 +13,6 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/vaas"
 )
 
@@ -54,17 +53,14 @@ func main() {
 	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
 
 	// Create a new VaaS client with default options
-	vaasClient := vaas.New(options.VaasOptions{
-		UseHashLookup: true,
-		UseCache:      false,
-	}, vaasURL, auth)
+	vaasClient := vaas.New(vaasURL, auth)
 
 	// Create a context with a timeout for the analysis
 	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer analysisCancel()
 
 	// Request a verdict for a specific file
-	result, err := vaasClient.ForFile(analysisCtx, scanPath)
+	result, err := vaasClient.ForFile(analysisCtx, scanPath, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

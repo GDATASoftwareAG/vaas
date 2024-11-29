@@ -12,7 +12,6 @@ import (
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/messages"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/vaas"
 )
 
@@ -74,7 +73,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	vaas := vaas.New(options.DefaultOptions(), vaasURL, vaasAuthenticator)
+	vaas := vaas.New(vaasURL, vaasAuthenticator)
 	ctx, webSocketCancel := context.WithCancel(context.Background())
 	var maliciousFileFound bool
 	for _, file := range files {
@@ -86,7 +85,7 @@ func main() {
 		}
 		log.Println("checking file: ", file)
 		pathToFile := filepath.Join(rootDirectory, file)
-		verdict, err := vaas.ForFile(ctx, pathToFile)
+		verdict, err := vaas.ForFile(ctx, pathToFile, nil)
 		if err != nil {
 			log.Fatalln(err)
 		}

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
-	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/vaas"
 )
 
@@ -49,10 +48,7 @@ func main() {
 
 	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
 
-	vaasClient := vaas.New(options.VaasOptions{
-		UseHashLookup: true,
-		UseCache:      false,
-	}, vaasURL, auth)
+	vaasClient := vaas.New(vaasURL, auth)
 
 	analysisCtx, analysisCancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer analysisCancel()
@@ -85,7 +81,7 @@ func checkFile(ctx context.Context, fileList []string, vaasClient vaas.Vaas) err
 	}
 
 	for _, file := range fileList {
-		result, err := vaasClient.ForFile(ctx, file)
+		result, err := vaasClient.ForFile(ctx, file, nil)
 		if err != nil {
 			log.Printf("%s: %s", file, err.Error())
 			continue
@@ -100,7 +96,7 @@ func checkSha256(ctx context.Context, sha256List []string, vaasClient vaas.Vaas)
 		log.Fatal("no sha256 entered in arguments")
 	}
 	for _, sha256 := range sha256List {
-		result, err := vaasClient.ForSha256(ctx, sha256)
+		result, err := vaasClient.ForSha256(ctx, sha256, nil)
 		if err != nil {
 			log.Printf("%s: %s", sha256, err.Error())
 			continue
@@ -121,7 +117,7 @@ func checkURL(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error
 		if err != nil {
 			return err
 		}
-		result, err := vaasClient.ForUrl(ctx, checkUrl)
+		result, err := vaasClient.ForUrl(ctx, checkUrl, nil)
 		if err != nil {
 			return err
 		}
@@ -137,7 +133,7 @@ func checkURL(ctx context.Context, urlList []string, vaasClient vaas.Vaas) error
 			}
 			go func(checkUrl *url.URL) {
 				defer waitGroup.Done()
-				result, err := vaasClient.ForUrl(ctx, checkUrl)
+				result, err := vaasClient.ForUrl(ctx, checkUrl, nil)
 				if err != nil {
 					fmt.Println(err)
 				} else {
