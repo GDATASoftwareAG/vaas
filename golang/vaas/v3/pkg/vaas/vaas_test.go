@@ -388,8 +388,15 @@ func Test_ForStream_WitEicarFromUrl_ReturnsMalicious(t *testing.T) {
 func Test_ForStream_SendsUserAgent(t *testing.T) {
 	eicarReader := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
-		defaultHttpHandler(t, w, r)
+		if strings.Contains(r.URL.Path, "/report") {
+			assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+			defaultHttpHandler(t, w, r)
+		} else {
+			assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+			w.WriteHeader(http.StatusCreated)
+			_, err := w.Write([]byte(`{"sha256": "12345"}`))
+			assert.NoError(t, err)
+		}
 	})
 	defer server.Close()
 
