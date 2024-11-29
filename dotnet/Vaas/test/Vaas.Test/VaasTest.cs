@@ -111,14 +111,19 @@ public class VaasTest
         Assert.Equal(sha256, verdictResponse.Sha256, true);
     }
 
-    [Fact]
-    public async Task ForSha256Async_IfOptionsAreSet_SendsOptions()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ForSha256Async_SendsOptions(bool useCache, bool useHashLookup)
     {
         ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
         var handler = UseHttpMessageHandlerMock();
         handler.SetupRequest(new Uri(VaasUrl, "")).CallBase();
+        var options = new ForSha256Options { UseCache = useCache, UseHashLookup = useHashLookup };
 
-        var verdictResponse = await _vaas.ForSha256Async(sha256, CancellationToken.None);
+        var verdictResponse = await _vaas.ForSha256Async(sha256, CancellationToken.None, options);
 
         handler.VerifyAll();
     }
