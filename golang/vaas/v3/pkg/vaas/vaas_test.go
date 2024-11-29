@@ -3,6 +3,7 @@ package vaas
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/authenticator"
@@ -10,6 +11,7 @@ import (
 	"github.com/GDATASoftwareAG/vaas/golang/vaas/v3/pkg/options"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"log"
 	"math/rand"
 	"net/http"
@@ -30,6 +32,7 @@ type testFixture struct {
 
 const (
 	eicarSha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+	eicarUrl    = "https://secure.eicar.org/eicar.com"
 )
 
 func (tf *testFixture) setUp() Vaas {
@@ -291,6 +294,18 @@ func getHttpTestServer(handler func(w http.ResponseWriter, r *http.Request)) *ht
 }
 
 func defaultHttpHandler(t *testing.T, w http.ResponseWriter, r *http.Request) {
+	if r.URL.String() == "/urls" {
+		w.WriteHeader(http.StatusCreated)
+		_, err := w.Write([]byte(`{"id":"1"}`))
+		assert.NoError(t, err)
+		return
+	}
+	if r.URL.String() == "/urls/1/report" {
+		w.WriteHeader(http.StatusOK)
+		_, err := w.Write([]byte(`{"verdict":"Malicious"}`))
+		assert.NoError(t, err)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte(`{"verdict":"Malicious"}`))
 	assert.NoError(t, err)
@@ -647,6 +662,151 @@ func TestVaas_ForUrl(t *testing.T) {
 				t.Errorf("verdict should be %v, got %v", tt.args.expectedVerdict, verdict.Verdict)
 			}
 		})
+	}
+}
+
+func Test_ForUrl_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.Header.Get("tracestate"), "vaasrequestid=MyRequestId")
+		defaultHttpHandler(t, w, r)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	opts := options.NewForUrlOptions()
+	opts.VaasRequestId = "MyRequestId"
+	u, err := url.Parse(eicarUrl)
+	_, err = vaasClient.ForUrl(context.Background(), u, &opts)
+	assert.NoError(t, err, "ForUrl returned err")
+}
+
+func Test_ForUrl_SendsUserAgent(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, r.Header.Get("User-Agent"), "Go/3.0.10-alpha")
+		defaultHttpHandler(t, w, r)
+	})
+	defer server.Close()
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	u, err := url.Parse(eicarUrl)
+	_, err = vaasClient.ForUrl(context.Background(), u, nil)
+	assert.NoError(t, err, "ForUrl returned err")
+}
+
+func Test_ForUrl_SendsOptions(t *testing.T) {
+	tests := []options.ForUrlOptions{
+		{
+			UseHashLookup: false,
+		},
+		{
+			UseHashLookup: true,
+		},
+	}
+
+	for _, option := range tests {
+		t.Run(fmt.Sprintf("%v", option), func(t *testing.T) {
+			server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.String() == "/urls" {
+					analysisRequest := msg.URLAnalysisRequest{
+						Url:           eicarUrl,
+						UseHashLookup: option.UseHashLookup,
+					}
+					data, err := io.ReadAll(r.Body)
+					assert.NoError(t, err)
+					err = json.Unmarshal(data, &analysisRequest)
+					assert.Equal(t, option.UseHashLookup, analysisRequest.UseHashLookup)
+
+				}
+				defaultHttpHandler(t, w, r)
+			})
+			defer server.Close()
+			fixture := new(testFixture)
+			vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+			u, err := url.Parse(eicarUrl)
+			_, err = vaasClient.ForUrl(context.Background(), u, &option)
+			assert.NoError(t, err, "ForUrl returned err")
+		})
+	}
+}
+
+func Test_ForUrl_IfVaasClientException_ReturnErrVaasClient(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	u, err := url.Parse(eicarUrl)
+	_, err = vaasClient.ForUrl(context.Background(), u, nil)
+
+	assert.ErrorIs(t, err, ErrVaasClient)
+}
+
+func Test_ForUrl_IfVaasServerException_ReturnErrVaasServer(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	u, err := url.Parse(eicarUrl)
+	_, err = vaasClient.ForUrl(context.Background(), u, nil)
+
+	assert.ErrorIs(t, err, ErrVaasServer)
+}
+
+func Test_ForUrl_IfVaasReturns401_ReturnErrVaasAuthentication(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+	vaasClient := fixture.setUpWithVaasURL(server.URL)
+
+	u, err := url.Parse(eicarUrl)
+	_, err = vaasClient.ForUrl(context.Background(), u, nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+}
+
+func Test_ForUrl_IfAuthenticationFailure_ReturnErrVaasAuthentication(t *testing.T) {
+	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	})
+	defer server.Close()
+	fixture := new(testFixture)
+
+	vaasClient := fixture.setUpWithVaasURLAndAuthenticator(server.URL, mockFailureAuthenticator{})
+
+	u, err := url.Parse(eicarUrl)
+	_, err = vaasClient.ForUrl(context.Background(), u, nil)
+
+	assert.ErrorIs(t, err, ErrVaasAuthentication)
+	assert.ErrorContains(t, err, "placeholder error message")
+}
+
+func Test_ForUrl_WithDeadlineContext_Cancels(t *testing.T) {
+	fixture := new(testFixture)
+	vaasClient := fixture.setUp()
+
+	cancelCtx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+	defer cancel()
+	u, err := url.Parse(eicarUrl)
+	verdict, err := vaasClient.ForUrl(cancelCtx, u, nil)
+
+	if err == nil {
+		t.Fatalf("expected error got success instead (%v)", verdict)
+	}
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected cancelled error, got %v", err)
 	}
 }
 
