@@ -158,7 +158,7 @@ func Test_ForSha256_SendsUserAgent(t *testing.T) {
 
 func Test_ForSha256_SendsOptions(t *testing.T) {
 	server := getHttpTestServer(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/files/275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f/report?useCache=true&use", r.URL.String())
+		assert.Equal(t, "/files/275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f/report?useCache=true&useHashLookup=false", r.URL.String())
 		defaultHttpHandler(t, w, r)
 	})
 	defer server.Close()

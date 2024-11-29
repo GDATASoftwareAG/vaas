@@ -181,7 +181,9 @@ func (v *vaas) uploadUrl(ctx context.Context, url *url.URL) (msg.URLAnalysis, er
 func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int64) (msg.FileAnalysis, error) {
 	var analysis = msg.FileAnalysis{}
 	uploadUrl := v.vaasURL.JoinPath("files")
-	uploadUrl.Query().Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
+	params := url.Values{}
+	params.Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
+	uploadUrl.RawQuery = params.Encode()
 	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, uploadUrl.String(), file)
 	if err != nil {
 		return analysis, err
@@ -236,8 +238,10 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 
 func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts *options.ForSha256Options) (*msg.FileReport, error) {
 	reportUrl := v.vaasURL.JoinPath("files", sha256, "report")
-	reportUrl.Query().Add("useCache", strconv.FormatBool(opts.UseCache))
-	reportUrl.Query().Add("useHashLookup", strconv.FormatBool(opts.UseHashLookup))
+	params := url.Values{}
+	params.Add("useCache", strconv.FormatBool(opts.UseCache))
+	params.Add("useHashLookup", strconv.FormatBool(opts.UseHashLookup))
+	reportUrl.RawQuery = params.Encode()
 	reportUrlString := reportUrl.String()
 	// Loop until we get 200 or an error
 	for {
