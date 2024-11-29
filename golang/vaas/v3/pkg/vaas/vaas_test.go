@@ -263,11 +263,21 @@ func Test_ForSha256_IfAuthenticationFailure_ReturnErrVaasAuthentication(t *testi
 	assert.ErrorContains(t, err, "placeholder error message")
 }
 
-type mockSuccessAuthenticator struct {
-}
+func TestVaas_ForSha256_WithDeadlineContext_Cancels(t *testing.T) {
+	fixture := new(testFixture)
+	vaasClient := fixture.setUp()
 
-func (m mockSuccessAuthenticator) GetToken() (string, error) {
-	return "", nil
+	cancelCtx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+	defer cancel()
+	verdict, err := vaasClient.ForSha256(cancelCtx, eicarSha256, nil)
+
+	if err == nil {
+		t.Fatalf("expected error got success instead (%v)", verdict)
+	}
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("expected cancelled error, got %v", err)
+	}
 }
 
 type mockFailureAuthenticator struct {
