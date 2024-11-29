@@ -39,23 +39,21 @@ var (
 type Vaas interface {
 	ForSha256(ctx context.Context, sha256 string, options *options.ForSha256Options) (msg.VaasVerdict, error)
 	ForFile(ctx context.Context, path string, options *options.ForFileOptions) (msg.VaasVerdict, error)
-	ForUrl(ctx context.Context, url *url.URL, options *options.ForUrlOptions) (msg.VaasVerdict, error)
 	ForStream(ctx context.Context, stream io.Reader, contentLength int64, options *options.ForStreamOptions) (msg.VaasVerdict, error)
+	ForUrl(ctx context.Context, url *url.URL, options *options.ForUrlOptions) (msg.VaasVerdict, error)
 }
 
 // vaas provides the implementation of the Vaas interface.
 type vaas struct {
 	vaasURL       *url.URL
-	options       options.VaasOptions
 	authenticator authenticator.Authenticator
 	httpClient    *http.Client
 }
 
 // New creates a new instance of the Vaas struct, which represents a client for interacting with a Vaas service.
 // The vaasURL parameter specifies the endpoint for the VaaS service.
-func New(options options.VaasOptions, vaasURL *url.URL, authenticator authenticator.Authenticator) Vaas {
+func New(vaasURL *url.URL, authenticator authenticator.Authenticator) Vaas {
 	client := &vaas{
-		options:       options,
 		vaasURL:       vaasURL,
 		authenticator: authenticator,
 		httpClient: &http.Client{
@@ -70,9 +68,9 @@ func New(options options.VaasOptions, vaasURL *url.URL, authenticator authentica
 
 // NewWithDefaultEndpoint creates a new instance of the Vaas struct with a default endpoint.
 // It represents a client for interacting with a Vaas service.
-func NewWithDefaultEndpoint(options options.VaasOptions, authenticator authenticator.Authenticator) Vaas {
+func NewWithDefaultEndpoint(authenticator authenticator.Authenticator) Vaas {
 	vaasURL, _ := url.Parse("https://gateway.production.vaas.gdatasecurity.de")
-	return New(options, vaasURL, authenticator)
+	return New(vaasURL, authenticator)
 }
 
 func parseVaasError(response *http.Response, responseBody []byte) error {
@@ -131,7 +129,7 @@ func encodeToJsonBuffer(data any) (*bytes.Buffer, error) {
 	return bytes.NewBuffer(encoded), nil
 }
 
-func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
+func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, requestId string, url string, body io.Reader) (*http.Request, error) {
 	token, err := v.authenticator.GetToken()
 	if err != nil {
 		return nil, errors.Join(ErrVaasAuthentication, err)
@@ -143,21 +141,24 @@ func (v *vaas) newAuthenticatedRequest(ctx context.Context, method string, url s
 	}
 	req.Header.Add("Authorization", "Bearer "+token)
 	req.Header.Add("User-Agent", userAgent)
+	if requestId != "" {
+		req.Header.Add("tracestate", fmt.Sprintf("vaasrequestid=%v", requestId))
+	}
 	return req, nil
 }
 
-func (v *vaas) uploadUrl(ctx context.Context, url *url.URL) (msg.URLAnalysis, error) {
+func (v *vaas) uploadUrl(ctx context.Context, url *url.URL, opts options.ForUrlOptions) (msg.URLAnalysis, error) {
 	var analysis = msg.URLAnalysis{}
 	submitUrl := v.vaasURL.JoinPath("urls").String()
 	var analysisRequest = msg.URLAnalysisRequest{
 		Url:           url.String(),
-		UseHashLookup: v.options.UseHashLookup,
+		UseHashLookup: opts.UseHashLookup,
 	}
 	buffer, err := encodeToJsonBuffer(&analysisRequest)
 	if err != nil {
 		return analysis, err
 	}
-	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, submitUrl, buffer)
+	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, opts.VaasRequestId, submitUrl, buffer)
 	if err != nil {
 		return analysis, err
 	}
@@ -178,13 +179,13 @@ func (v *vaas) uploadUrl(ctx context.Context, url *url.URL) (msg.URLAnalysis, er
 	return analysis, nil
 }
 
-func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int64) (msg.FileAnalysis, error) {
+func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int64, opts options.ForStreamOptions) (msg.FileAnalysis, error) {
 	var analysis = msg.FileAnalysis{}
 	uploadUrl := v.vaasURL.JoinPath("files")
 	params := url.Values{}
-	params.Add("useHashLookup", strconv.FormatBool(v.options.UseHashLookup))
+	params.Add("useHashLookup", strconv.FormatBool(opts.UseHashLookup))
 	uploadUrl.RawQuery = params.Encode()
-	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, uploadUrl.String(), file)
+	req, err := v.newAuthenticatedRequest(ctx, http.MethodPost, opts.VaasRequestId, uploadUrl.String(), file)
 	if err != nil {
 		return analysis, err
 	}
@@ -205,11 +206,11 @@ func (v *vaas) uploadFile(ctx context.Context, file io.Reader, contentLength int
 	return analysis, nil
 }
 
-func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport, error) {
+func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string, opts options.ForUrlOptions) (*msg.URLReport, error) {
 	submitUrl := v.vaasURL.JoinPath("urls", urlJobId, "report").String()
 	// Loop until 200 or error
 	for {
-		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, submitUrl, nil)
+		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, opts.VaasRequestId, submitUrl, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -236,7 +237,7 @@ func (v *vaas) pollUrlJob(ctx context.Context, urlJobId string) (*msg.URLReport,
 	}
 }
 
-func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts *options.ForSha256Options) (*msg.FileReport, error) {
+func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts options.ForSha256Options) (*msg.FileReport, error) {
 	reportUrl := v.vaasURL.JoinPath("files", sha256, "report")
 	params := url.Values{}
 	params.Add("useCache", strconv.FormatBool(opts.UseCache))
@@ -245,13 +246,9 @@ func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts *options.
 	reportUrlString := reportUrl.String()
 	// Loop until we get 200 or an error
 	for {
-		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, reportUrlString, nil)
+		req, err := v.newAuthenticatedRequest(ctx, http.MethodGet, opts.VaasRequestId, reportUrlString, nil)
 		if err != nil {
 			return nil, err
-		}
-
-		if opts.VaasRequestId != "" {
-			req.Header.Add("tracestate", fmt.Sprintf("vaasrequestid=%v", opts.VaasRequestId))
 		}
 
 		response, body, err := readHttpResponse(v.httpClient, req)
@@ -293,10 +290,11 @@ func (v *vaas) pollFileReport(ctx context.Context, sha256 string, opts *options.
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
 func (v *vaas) ForSha256(ctx context.Context, sha256 string, opts *options.ForSha256Options) (msg.VaasVerdict, error) {
 	if opts == nil {
-		opts = &options.ForSha256Options{}
+		newOpts := options.NewForSha256Options()
+		opts = &newOpts
 	}
 
-	report, err := v.pollFileReport(ctx, sha256, opts)
+	report, err := v.pollFileReport(ctx, sha256, *opts)
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
@@ -325,7 +323,12 @@ func (v *vaas) ForSha256(ctx context.Context, sha256 string, opts *options.ForSh
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForFile(ctx context.Context, filePath string, options *options.ForFileOptions) (msg.VaasVerdict, error) {
+func (v *vaas) ForFile(ctx context.Context, filePath string, opts *options.ForFileOptions) (msg.VaasVerdict, error) {
+	if opts == nil {
+		newOpts := options.NewForFileOptions()
+		opts = &newOpts
+	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return msg.VaasVerdict{}, errors.Join(ErrVaasClient, err)
@@ -339,7 +342,11 @@ func (v *vaas) ForFile(ctx context.Context, filePath string, options *options.Fo
 		return msg.VaasVerdict{}, errors.Join(ErrVaasClient, err)
 	}
 
-	verdict, err := v.ForSha256(ctx, sha256, nil)
+	shaOpts := options.NewForSha256Options()
+	shaOpts.UseCache = opts.UseCache
+	shaOpts.UseHashLookup = opts.UseHashLookup
+	shaOpts.VaasRequestId = opts.VaasRequestId
+	verdict, err := v.ForSha256(ctx, sha256, &shaOpts)
 	// We only care about the hash lookup if it's not failed and has actionable verdict
 	if err == nil && verdict.Verdict != msg.Unknown {
 		return verdict, nil
@@ -354,33 +361,10 @@ func (v *vaas) ForFile(ctx context.Context, filePath string, options *options.Fo
 		return msg.VaasVerdict{}, errors.Join(ErrVaasClient, err)
 	}
 
-	return v.ForStream(ctx, file, stat.Size(), nil)
-}
-
-// ForUrl sends an analysis request for a file URL to the VaaS server and returns the verdict.
-// The analysis can be canceled using the provided context.
-//
-// Example usage:
-//
-//	vaasClient := vaas.NewWithDefaultEndpoint(options, auth)
-//	ctx := context.Background()
-//	myUrl, _ := url.Parse("https://example.com/examplefile")
-//	verdict, err := vaasClient.ForUrl(ctx, myUrl)
-//	if err != nil {
-//	    log.Fatalf("Failed to get verdict: %v", err)
-//	}
-//	fmt.Printf("Verdict: %s\n", verdict.Verdict)
-//	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForUrl(ctx context.Context, url *url.URL, options *options.ForUrlOptions) (msg.VaasVerdict, error) {
-	analysis, err := v.uploadUrl(ctx, url)
-	if err != nil {
-		return msg.VaasVerdict{}, err
-	}
-	report, err := v.pollUrlJob(ctx, analysis.JobId)
-	if err != nil {
-		return msg.VaasVerdict{}, err
-	}
-	return report.ConvertToVaasVerdict(), nil
+	streamOpts := options.NewForStreamOptions()
+	streamOpts.UseHashLookup = opts.UseHashLookup
+	streamOpts.VaasRequestId = opts.VaasRequestId
+	return v.ForStream(ctx, file, stat.Size(), &streamOpts)
 }
 
 // ForStream sends an analysis request for a file stream to the VaaS server and returns the verdict.
@@ -398,11 +382,47 @@ func (v *vaas) ForUrl(ctx context.Context, url *url.URL, options *options.ForUrl
 //	}
 //	fmt.Printf("Verdict: %s\n", verdict.Verdict)
 //	fmt.Printf("SHA256: %s\n", verdict.Sha256)
-func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64, options *options.ForStreamOptions) (msg.VaasVerdict, error) {
-	analysis, err := v.uploadFile(ctx, stream, contentLength)
+func (v *vaas) ForStream(ctx context.Context, stream io.Reader, contentLength int64, opts *options.ForStreamOptions) (msg.VaasVerdict, error) {
+	if opts == nil {
+		newOpts := options.NewForStreamOptions()
+		opts = &newOpts
+	}
+
+	analysis, err := v.uploadFile(ctx, stream, contentLength, *opts)
 	if err != nil {
 		return msg.VaasVerdict{}, err
 	}
 
 	return v.ForSha256(ctx, analysis.Sha256, nil)
+}
+
+// ForUrl sends an analysis request for a file URL to the VaaS server and returns the verdict.
+// The analysis can be canceled using the provided context.
+//
+// Example usage:
+//
+//	vaasClient := vaas.NewWithDefaultEndpoint(options, auth)
+//	ctx := context.Background()
+//	myUrl, _ := url.Parse("https://example.com/examplefile")
+//	verdict, err := vaasClient.ForUrl(ctx, myUrl)
+//	if err != nil {
+//	    log.Fatalf("Failed to get verdict: %v", err)
+//	}
+//	fmt.Printf("Verdict: %s\n", verdict.Verdict)
+//	fmt.Printf("SHA256: %s\n", verdict.Sha256)
+func (v *vaas) ForUrl(ctx context.Context, url *url.URL, opts *options.ForUrlOptions) (msg.VaasVerdict, error) {
+	if opts == nil {
+		newOpts := options.NewForUrlOptions()
+		opts = &newOpts
+	}
+
+	analysis, err := v.uploadUrl(ctx, url, *opts)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	report, err := v.pollUrlJob(ctx, analysis.JobId, *opts)
+	if err != nil {
+		return msg.VaasVerdict{}, err
+	}
+	return report.ConvertToVaasVerdict(), nil
 }

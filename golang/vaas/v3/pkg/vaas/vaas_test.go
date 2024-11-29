@@ -68,12 +68,8 @@ func (tf *testFixture) setUpWithVaasURL(vaasURLString string) Vaas {
 		log.Fatal("no token endpoint configured")
 	}
 
-	testingOptions := options.VaasOptions{
-		UseHashLookup: true,
-		UseCache:      false,
-	}
 	auth := authenticator.New(clientID, clientSecret, tokenEndpoint)
-	tf.vaasClient = New(testingOptions, vaasURL, auth)
+	tf.vaasClient = New(vaasURL, auth)
 
 	return tf.vaasClient
 }
@@ -153,7 +149,7 @@ func Test_ForSha256_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
 	fixture := new(testFixture)
 	vaasClient := fixture.setUpWithVaasURL(server.URL)
 
-	opts := options.New()
+	opts := options.NewForSha256Options()
 	opts.VaasRequestId = "MyRequestId"
 	_, err := vaasClient.ForSha256(context.Background(), eicarSha256, &opts)
 	assert.NoError(t, err, "ForSha256 returned err")
