@@ -12,8 +12,8 @@ importers:
         specifier: 22.10.1
         version: 22.10.1
       gdata-vaas:
-        specifier: 7.5.9
-        version: 7.5.9
+        specifier: 7.6.0
+        version: 7.6.0
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.10.1)(typescript@5.7.2)
@@ -85,8 +85,8 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  axios@1.7.7:
-    resolution: {integrity: sha512-S4kL7XrjgBmvdGut0sN3yJxqYzrDOnivkBiN0OFs6hLiUam3UPvswUo0kqGyhqUZGEOytHyumEdXsAkgCOUf3Q==}
+  axios@1.7.8:
+    resolution: {integrity: sha512-Uu0wb7KNqK2t5K+YQyVCLM76prD5sRFjKHbJYCP1J7JFGEQ6nN7HWn9+04LAeiJ3ji54lgS/gZCH1oxyrf1SPw==}
 
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
@@ -123,8 +123,8 @@ packages:
     resolution: {integrity: sha512-ETEklSGi5t0QMZuiXoA/Q6vcnxcLQP5vdugSpuAyi6SVGi2clPPp+xgEhuMaHC+zGgn31Kd235W35f7Hykkaww==}
     engines: {node: '>= 6'}
 
-  gdata-vaas@7.5.9:
-    resolution: {integrity: sha512-cCs5ygkyUF+N4+a1WSi2wY7XevSMKZ24ODmBDWhiHK1CqPwGai0IOE1WLzpncZ7mGPDvJMubky5lVLG0k5lEJQ==}
+  gdata-vaas@7.6.0:
+    resolution: {integrity: sha512-77/S67n5Cno7jgPEKjNmPksF9XuDS8lrPJqnCpx6rUPjGfU2PGF6duByo5aJMDxyRqArpkZ1frfNcd2rQVqbeA==}
 
   make-error@1.3.6:
     resolution: {integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==}
@@ -243,7 +243,7 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.7.7:
+  axios@1.7.8:
     dependencies:
       follow-redirects: 1.15.6
       form-data: 4.0.0
@@ -273,13 +273,13 @@ snapshots:
       combined-stream: 1.0.8
       mime-types: 2.1.35
 
-  gdata-vaas@7.5.9:
+  gdata-vaas@7.6.0:
     dependencies:
       '@d-fischer/isomorphic-ws': 7.0.2(ws@8.18.0)
       '@types/uuid': 10.0.0
       '@types/ws': 8.5.13
       '@ungap/url-search-params': 0.2.2
-      axios: 1.7.7
+      axios: 1.7.8
       fast-sha256: 1.3.0
       typescript-json-serializer: 6.0.1
       uuid: 11.0.3
