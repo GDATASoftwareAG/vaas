@@ -128,13 +128,15 @@ public class Vaas : IVaas
             _options.Url,
             $"/files/{sha256}/report?useCache={JsonSerializer.Serialize(options.UseCache)}&useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
         );
-        var request = new HttpRequestMessage() { RequestUri = reportUri, Method = HttpMethod.Get };
+        var request = new HttpRequestMessage { RequestUri = reportUri, Method = HttpMethod.Get };
         using var activity = GetVaasActivity(options.VaasRequestId);
 
         while (true)
         {
             await AddRequestHeadersAsync(request, cancellationToken);
             var response = await _httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                await ParseVaasError(response);
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -144,6 +146,8 @@ public class Vaas : IVaas
                     return VaasVerdict.From(fileReport ?? throw new VaasServerException("TODO"));
                 case HttpStatusCode.Accepted:
                     continue;
+                case HttpStatusCode.Unauthorized:
+                    throw new VaasAuthenticationException();
                 default:
                     throw new NotImplementedException("Parse error here");
                     break;
@@ -332,7 +336,7 @@ public class Vaas : IVaas
         problemDetails?.Type switch
         {
             "VaasClientException" => new VaasClientException(problemDetails.Detail),
-            _ => new VaasServerException(problemDetails?.Detail),
+            _ => new VaasServerException(problemDetails?.Detail)
         };
 
     private async Task UploadStream(
@@ -383,6 +387,22 @@ public class Vaas : IVaas
         }
     }
 
+    private static async Task ParseVaasError(HttpResponseMessage response)
+    {
+        var responseBody = await response.Content.ReadAsStringAsync();
+        ProblemDetails? problemDetails;
+        try
+        {
+            problemDetails = JsonSerializer.Deserialize<ProblemDetails>(responseBody);
+        }
+        catch (JsonException)
+        {
+            throw new VaasServerException("Server did not return proper ProblemDetails with status code " + (int)response.StatusCode);
+        }
+
+        throw ProblemDetailsToException(problemDetails);
+    }
+        
     private async Task UploadFile(
         string path,
         string url,

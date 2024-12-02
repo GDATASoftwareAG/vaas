@@ -5,7 +5,7 @@ namespace Vaas.Test.Authentication;
 public static class AuthenticationEnvironment
 {
     public static Uri TokenUrl =>
-        new Uri(
+        new(
             DotNetEnv.Env.GetString(
                 "TOKEN_URL",
                 "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
