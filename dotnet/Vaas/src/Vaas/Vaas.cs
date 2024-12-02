@@ -135,8 +135,6 @@ public class Vaas : IVaas
         {
             await AddRequestHeadersAsync(request, cancellationToken);
             var response = await _httpClient.SendAsync(request, cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                await ParseVaasError(response);
             switch (response.StatusCode)
             {
                 case HttpStatusCode.OK:
@@ -149,8 +147,7 @@ public class Vaas : IVaas
                 case HttpStatusCode.Unauthorized:
                     throw new VaasAuthenticationException();
                 default:
-                    throw new NotImplementedException("Parse error here");
-                    break;
+                    throw await ParseVaasError(response);
             }
         }
     }
@@ -336,7 +333,7 @@ public class Vaas : IVaas
         problemDetails?.Type switch
         {
             "VaasClientException" => new VaasClientException(problemDetails.Detail),
-            _ => new VaasServerException(problemDetails?.Detail)
+            _ => new VaasServerException(problemDetails?.Detail),
         };
 
     private async Task UploadStream(
@@ -371,23 +368,7 @@ public class Vaas : IVaas
         }
     }
 
-    private static void EnsureSuccess(HttpStatusCode status)
-    {
-        switch ((int)status)
-        {
-            case 401
-            or 403:
-                throw new VaasAuthenticationException();
-            case >= 400
-            and < 500:
-                throw new VaasClientException("Client-side error");
-            case >= 500
-            and < 600:
-                throw new VaasServerException("Server-side error");
-        }
-    }
-
-    private static async Task ParseVaasError(HttpResponseMessage response)
+    private static async Task<Exception> ParseVaasError(HttpResponseMessage response)
     {
         var responseBody = await response.Content.ReadAsStringAsync();
         ProblemDetails? problemDetails;
@@ -397,12 +378,15 @@ public class Vaas : IVaas
         }
         catch (JsonException)
         {
-            throw new VaasServerException("Server did not return proper ProblemDetails with status code " + (int)response.StatusCode);
+            throw new VaasServerException(
+                "Server did not return proper ProblemDetails with status code "
+                    + (int)response.StatusCode
+            );
         }
 
         throw ProblemDetailsToException(problemDetails);
     }
-        
+
     private async Task UploadFile(
         string path,
         string url,

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
@@ -66,7 +67,10 @@ public class VaasTest
             {
                 { "VerdictAsAService:Url", VaasUrl.ToString() },
                 { "VerdictAsAService:TokenUrl", AuthenticationEnvironment.TokenUrl.ToString() },
-                { "VerdictAsAService:Credentials:GrantType", GrantType.ClientCredentials.ToString() },
+                {
+                    "VerdictAsAService:Credentials:GrantType",
+                    GrantType.ClientCredentials.ToString()
+                },
                 { "VerdictAsAService:Credentials:ClientId", AuthenticationEnvironment.ClientId },
                 {
                     "VerdictAsAService:Credentials:ClientSecret",
@@ -168,21 +172,38 @@ public class VaasTest
     [InlineData(HttpStatusCode.HttpVersionNotSupported)]
     [InlineData(HttpStatusCode.BadGateway)]
     [InlineData(HttpStatusCode.ServiceUnavailable)]
-    public async Task ForSha256Async_IfVaasServerException_ThrowsVaasServerException(HttpStatusCode serverError)
+    public async Task ForSha256Async_IfVaasServerException_ThrowsVaasServerException(
+        HttpStatusCode serverError
+    )
     {
         var services = GetServices();
         ServiceCollectionTools.Output(_output, services);
 
         var handlerMock = new Mock<HttpMessageHandler>();
-        handlerMock.SetupRequest(request => request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256))
-            .ReturnsResponse(serverError);
-        services.AddHttpClient<IVaas, Vaas>()
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256)
+            )
+            .ReturnsResponse(
+                statusCode: serverError,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked server-side error",
+                            Type = "VaasServerException",
+                        }
+                    );
+                }
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
             .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas
-            .Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
             .Should()
             .ThrowAsync<VaasServerException>();
     }
@@ -194,14 +215,15 @@ public class VaasTest
         ServiceCollectionTools.Output(_output, services);
 
         var handlerMock = new Mock<IAuthenticator>();
-        handlerMock.Setup(a => a.GetTokenAsync(CancellationToken.None)).Throws<AuthenticationException>();
+        handlerMock
+            .Setup(a => a.GetTokenAsync(CancellationToken.None))
+            .Throws<AuthenticationException>();
         services.RemoveAll<IAuthenticator>();
         services.AddSingleton(handlerMock.Object);
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas
-            .Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
             .Should()
             .ThrowAsync<AuthenticationException>();
     }
@@ -213,15 +235,18 @@ public class VaasTest
         ServiceCollectionTools.Output(_output, services);
 
         var handlerMock = new Mock<HttpMessageHandler>();
-        handlerMock.SetupRequest(request => request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256))
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256)
+            )
             .ReturnsResponse(HttpStatusCode.Unauthorized);
-        services.AddHttpClient<IVaas, Vaas>()
+        services
+            .AddHttpClient<IVaas, Vaas>()
             .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas
-            .Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
             .Should()
             .ThrowAsync<VaasAuthenticationException>();
     }
