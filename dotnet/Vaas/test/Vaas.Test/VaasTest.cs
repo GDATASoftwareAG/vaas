@@ -176,27 +176,23 @@ public class VaasTest
     public async Task ForSha256Async_If401_ThrowsAuthenticationException()
     {
         var services = GetServices();
-        var httpClientBuilder = services.AddHttpClient<IVaas, Vaas>();
-        httpClientBuilder.AddHttpMessageHandler(() => UseHttpMessageHandlerMock())
-            var httpMock = new Mock<HttpClient>();
-        var systemClock = new SystemClock();
-        var vaasOptions = new VaasOptions();
-        var authenticator = new Authenticator(new HttpClient(), systemClock, vaasOptions);
+        ServiceCollectionTools.Output(_output, services);
 
-        var bearerTokenHandler = new BearerTokenHandler(authenticator);
-        bearerTokenHandler.InnerHandler = new HttpClientHandler();
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.SetupRequest(request => {
+                return request.RequestUri.ToString().Contains(eicarSha256);
+            })
+            .ReturnsResponse(HttpStatusCode.Unauthorized);
+        services.AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
 
-        httpMock
-            .Setup(x => x.SendAsync(It.IsAny<HttpRequestMessage>(), It.IsAny<CancellationToken>()))
-            .Returns(
-                Task.FromResult(
-                    new HttpResponseMessage { StatusCode = HttpStatusCode.Unauthorized }
-                )
-            );
-        var vaas = new Vaas(httpMock.Object, authenticator, vaasOptions);
-        await Assert.ThrowsAsync<VaasAuthenticationException>(
-            async () => await vaas.ForSha256Async(eicarSha256, CancellationToken.None)
-        );
+
+        await vaas
+            .Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasAuthenticationException>();
     }
 
     [Fact]
