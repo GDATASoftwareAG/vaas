@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -129,11 +127,10 @@ public class Vaas : IVaas
             $"/files/{sha256}/report?useCache={JsonSerializer.Serialize(options.UseCache)}&useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
         );
         var request = new HttpRequestMessage { RequestUri = reportUri, Method = HttpMethod.Get };
-        using var activity = GetVaasActivity(options.VaasRequestId);
 
         while (true)
         {
-            await AddRequestHeadersAsync(request, cancellationToken);
+            await AddRequestHeadersAsync(request, cancellationToken, options.VaasRequestId);
             var response = await _httpClient.SendAsync(request, cancellationToken);
             switch (response.StatusCode)
             {
@@ -154,49 +151,14 @@ public class Vaas : IVaas
 
     private async Task AddRequestHeadersAsync(
         HttpRequestMessage request,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        string requestId = ""
     )
     {
         var token = await _authenticator.GetTokenAsync(cancellationToken);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-    }
-
-    private static Activity? GetVaasActivity(
-        string? vaasRequestId,
-        [CallerMemberName] string name = ""
-    )
-    {
-        if (string.IsNullOrWhiteSpace(vaasRequestId))
-            return null;
-
-        var activity = Activity.Current;
-        if (activity == null)
-        {
-            var listener = new ActivityListener()
-            {
-                ShouldListenTo = (_) => true,
-                Sample = (ref ActivityCreationOptions<ActivityContext> options) =>
-                    ActivitySamplingResult.AllDataAndRecorded,
-                ActivityStarted = (activity) =>
-                    Console.WriteLine($"Activity started: {activity.DisplayName}"),
-                ActivityStopped = (activity) =>
-                    Console.WriteLine($"Activity stopped: {activity.DisplayName}"),
-            };
-            ActivitySource.AddActivityListener(listener);
-
-            var activitySource = new ActivitySource("Vaas");
-            activity = activitySource.StartActivity();
-        }
-
-        var traceState = $"vaasrequestid={vaasRequestId}";
-        var existingTraceState = activity.GetCustomProperty("tracestate") as string;
-        if (!string.IsNullOrEmpty(existingTraceState))
-        {
-            traceState += $",{existingTraceState}";
-        }
-
-        activity.SetCustomProperty("tracestate", traceState);
-        return activity;
+        if (!string.IsNullOrWhiteSpace(requestId))
+            request.Headers.Add("tracestate", $"vaasrequestid={requestId}");
     }
 
     public async Task<VaasVerdict> ForFileAsync(
@@ -209,28 +171,26 @@ public class Vaas : IVaas
 
         var sha256 = Sha256CheckSum(path);
 
-        if (options.UseCache)
+        var forSha256Options = new ForSha256Options
         {
-            var forSha256Options = new ForSha256Options
-            {
-                VaasRequestId = options.VaasRequestId,
-                UseHashLookup = options.UseHashLookup,
-            };
+            VaasRequestId = options.VaasRequestId,
+            UseHashLookup = options.UseHashLookup,
+            UseCache = options.UseCache,
+        };
 
-            var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
+        var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
 
-            var verdictWithoutDetection =
-                response.Verdict is Verdict.Malicious or Verdict.Pup
-                && string.IsNullOrEmpty(response.Detection);
-            if (
-                response.Verdict != Verdict.Unknown
-                && !verdictWithoutDetection
-                && !string.IsNullOrWhiteSpace(response.FileType)
-                && !string.IsNullOrEmpty(response.MimeType)
-            )
-            {
-                return response;
-            }
+        var verdictWithoutDetection =
+            response.Verdict is Verdict.Malicious or Verdict.Pup
+            && string.IsNullOrEmpty(response.Detection);
+        if (
+            response.Verdict != Verdict.Unknown
+            && !verdictWithoutDetection
+            && !string.IsNullOrWhiteSpace(response.FileType)
+            && !string.IsNullOrEmpty(response.MimeType)
+        )
+        {
+            return response;
         }
 
         await using var stream = File.OpenRead(path);
@@ -260,7 +220,7 @@ public class Vaas : IVaas
             Method = HttpMethod.Post,
             Content = new StreamContent(stream),
         };
-        await AddRequestHeadersAsync(request, cancellationToken);
+        await AddRequestHeadersAsync(request, cancellationToken, options.VaasRequestId);
 
         var response = await _httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -269,7 +229,17 @@ public class Vaas : IVaas
             cancellationToken
         );
 
-        return await ForSha256Async(fileAnalysisStarted.Sha256, cancellationToken);
+        var forSha256Options = new ForSha256Options
+        {
+            VaasRequestId = options.VaasRequestId,
+            UseHashLookup = options.UseHashLookup,
+        };
+
+        return await ForSha256Async(
+            fileAnalysisStarted.Sha256,
+            cancellationToken,
+            forSha256Options
+        );
     }
 
     public async Task<VaasVerdict> ForUrlAsync(
@@ -290,7 +260,7 @@ public class Vaas : IVaas
             ),
         };
 
-        await AddRequestHeadersAsync(urlAnalysisRequest, cancellationToken);
+        await AddRequestHeadersAsync(urlAnalysisRequest, cancellationToken, options.VaasRequestId);
         var urlAnalysisResponse = await _httpClient.SendAsync(
             urlAnalysisRequest,
             cancellationToken

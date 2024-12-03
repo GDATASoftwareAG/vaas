@@ -1,9 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
@@ -176,6 +179,7 @@ public class VaasTest
         await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
 
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
         handlerMock
             .SetupRequest(request =>
                 request.RequestUri != null
@@ -189,8 +193,38 @@ public class VaasTest
                     .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
             )
             .ReturnsResponse(
-                JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Malicious))
+                JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
             );
+
+        if (!useCache)
+        {
+            handlerMock
+                .SetupRequest(request =>
+                    request.RequestUri != null
+                    && request.Method == HttpMethod.Get
+                    && request.RequestUri.ToString().Contains(sha256)
+                    && request
+                        .RequestUri.ToString()
+                        .Contains("useCache=" + JsonSerializer.Serialize(true))
+                    && request
+                        .RequestUri.ToString()
+                        .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+                )
+                .ReturnsResponse(
+                    JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
+                );
+        }
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/files")
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = sha256 }));
         services
             .AddHttpClient<IVaas, Vaas>()
             .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
@@ -210,23 +244,72 @@ public class VaasTest
     public async Task ForSha256Async_SendsUserAgent()
     {
         ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
-        var handler = UseHttpMessageHandlerMock();
-        handler.SetupRequest(new Uri(VaasUrl, "")).CallBase();
 
-        var verdictResponse = await _vaas.ForSha256Async(sha256, CancellationToken.None);
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
 
-        handler.VerifyAll();
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.RequestUri.ToString().Contains(sha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(true))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.UserAgent.ToString()
+                    == new ProductInfoHeaderValue(
+                        "Cs",
+                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
+                    ).ToString()
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Clean)));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForSha256Async(sha256, CancellationToken.None);
+
+        handlerMock.VerifyAll();
     }
 
     [Fact]
     public async Task ForSha256Async_IfVaasRequestIdIsSet_SendsTraceState()
     {
         ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
-        var options = new ForSha256Options { VaasRequestId = "MyRequestId" };
 
-        var verdictResponse = await _vaas.ForSha256Async(sha256, CancellationToken.None, options);
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
 
-        throw new NotImplementedException();
+        var handlerMock = new Mock<HttpMessageHandler>();
+        const string requestId = "foobar";
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.RequestUri.ToString().Contains(sha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(true))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Clean)));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+        var sha256Options = new ForSha256Options { VaasRequestId = requestId };
+
+        await vaas.ForSha256Async(sha256, CancellationToken.None, sha256Options);
+
+        handlerMock.VerifyAll();
     }
 
     [Fact]
