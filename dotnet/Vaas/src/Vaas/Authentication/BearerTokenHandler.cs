@@ -20,6 +20,7 @@ public class BearerTokenHandler : DelegatingHandler
             "Bearer",
             await _authenticator.GetTokenAsync(cancellationToken)
         );
+
         return await base.SendAsync(request, cancellationToken);
     }
 }

@@ -1,6 +1,8 @@
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Vaas.Authentication;
 
@@ -19,7 +21,7 @@ public static class ServiceCollectionExtensions
         services.AddOptions<VaasOptions>().Bind(configurationSection).ValidateDataAnnotations();
 
         services
-            .AddSingleton<VaasOptions>(p => p.GetRequiredService<IOptions<VaasOptions>>().Value)
+            .AddSingleton(p => p.GetRequiredService<IOptions<VaasOptions>>().Value)
             .AddSingleton<ISystemClock, SystemClock>()
             .AddSingleton<IAuthenticator, Authenticator>();
 

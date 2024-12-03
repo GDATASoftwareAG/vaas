@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Castle.Core.Logging;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
@@ -128,13 +129,31 @@ public class VaasTest
     public async Task ForSha256Async_SendsOptions(bool useCache, bool useHashLookup)
     {
         ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
-        var handler = UseHttpMessageHandlerMock();
-        handler.SetupRequest(new Uri(VaasUrl, "")).CallBase();
-        var options = new ForSha256Options { UseCache = useCache, UseHashLookup = useHashLookup };
 
-        var verdictResponse = await _vaas.ForSha256Async(sha256, CancellationToken.None, options);
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
 
-        handler.VerifyAll();
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(
+                request => request.RequestUri != null 
+                && request.RequestUri.ToString().Contains(sha256)
+                && request.RequestUri.ToString().Contains("useCache=" + useCache)
+                && request.RequestUri.ToString().Contains("useHashLookup=" + useHashLookup)
+            )
+            .CallBase();
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForSha256Async(eicarSha256, CancellationToken.None, new ForSha256Options {
+            UseCache = useCache,
+            UseHashLookup = useHashLookup,
+        });
+
+        handlerMock.VerifyAll();
     }
 
     [Fact]
