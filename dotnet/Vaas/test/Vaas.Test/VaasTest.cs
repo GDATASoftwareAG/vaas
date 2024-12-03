@@ -94,7 +94,7 @@ public class VaasTest
         services.AddVerdictAsAService(configuration);
         return services;
     }
-    
+
     [Theory]
     [InlineData(
         "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9",
@@ -148,82 +148,6 @@ public class VaasTest
             sha256,
             CancellationToken.None,
             new ForSha256Options { UseCache = useCache, UseHashLookup = useHashLookup }
-        );
-
-        handlerMock.VerifyAll();
-    }
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task ForFileOptions_SendsOptions(bool useCache, bool useHashLookup)
-    {
-        var services = GetServices();
-        ServiceCollectionTools.Output(_output, services);
-        const string content =
-            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-        const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
-
-        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
-
-        handlerMock
-            .SetupRequest(request =>
-                request.RequestUri != null
-                && request.Method == HttpMethod.Get
-                && request.RequestUri.ToString().Contains(sha256)
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useCache=" + JsonSerializer.Serialize(useCache))
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
-            )
-            .ReturnsResponse(
-                JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
-            );
-
-        if (!useCache)
-        {
-            handlerMock
-                .SetupRequest(request =>
-                    request.RequestUri != null
-                    && request.Method == HttpMethod.Get
-                    && request.RequestUri.ToString().Contains(sha256)
-                    && request
-                        .RequestUri.ToString()
-                        .Contains("useCache=" + JsonSerializer.Serialize(true))
-                    && request
-                        .RequestUri.ToString()
-                        .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
-                )
-                .ReturnsResponse(
-                    JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
-                );
-        }
-
-        handlerMock
-            .SetupRequest(request =>
-                request.RequestUri != null
-                && request.Method == HttpMethod.Post
-                && request.RequestUri.ToString().Contains("/files")
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
-            )
-            .ReturnsResponse(JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = sha256 }));
-        services
-            .AddHttpClient<IVaas, Vaas>()
-            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
-        var provider = services.BuildServiceProvider();
-        var vaas = provider.GetRequiredService<IVaas>();
-
-        await vaas.ForFileAsync(
-            "file.txt",
-            CancellationToken.None,
-            new ForFileOptions { UseCache = useCache, UseHashLookup = useHashLookup }
         );
 
         handlerMock.VerifyAll();
@@ -448,6 +372,338 @@ public class VaasTest
         var actual = await _vaas.ForFileAsync("file.txt", CancellationToken.None);
 
         Assert.Equal(verdict, actual.Verdict);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ForFileOptions_SendsOptions(bool useCache, bool useHashLookup)
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Get
+                && request.RequestUri.ToString().Contains(sha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(useCache))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
+            );
+
+        if (!useCache)
+        {
+            handlerMock
+                .SetupRequest(request =>
+                    request.RequestUri != null
+                    && request.Method == HttpMethod.Get
+                    && request.RequestUri.ToString().Contains(sha256)
+                    && request
+                        .RequestUri.ToString()
+                        .Contains("useCache=" + JsonSerializer.Serialize(true))
+                    && request
+                        .RequestUri.ToString()
+                        .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+                )
+                .ReturnsResponse(
+                    JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
+                );
+        }
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/files")
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = sha256 }));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForFileAsync(
+            "file.txt",
+            CancellationToken.None,
+            new ForFileOptions { UseCache = useCache, UseHashLookup = useHashLookup }
+        );
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForFileAsync_SendsUserAgent()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.RequestUri.ToString().Contains(sha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(true))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.UserAgent.ToString()
+                    == new ProductInfoHeaderValue(
+                        "Cs",
+                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
+                    ).ToString()
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/files")
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.UserAgent.ToString()
+                    == new ProductInfoHeaderValue(
+                        "Cs",
+                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
+                    ).ToString()
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = sha256 }));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForFileAsync("file.txt", CancellationToken.None);
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForFileAsync_IfVaasRequestIdIsSet_SendsTraceState()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        const string requestId = "foobar";
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.RequestUri.ToString().Contains(sha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(true))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Unknown))
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/files")
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = sha256 }));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+        var forFileOptions = new ForFileOptions() { VaasRequestId = requestId };
+
+        await vaas.ForFileAsync("file.txt", CancellationToken.None, forFileOptions);
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForFileAsync_IfVaasClientException_ThrowsVaasClientException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains("/files")
+            )
+            .ReturnsResponse(
+                statusCode: HttpStatusCode.BadRequest,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked client-side error",
+                            Type = "VaasClientException",
+                        }
+                    );
+                }
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForFileAsync("file.txt", CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasClientException>();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.GatewayTimeout)]
+    [InlineData(HttpStatusCode.HttpVersionNotSupported)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task ForFileAsync_IfVaasServerException_ThrowsVaasServerException(
+        HttpStatusCode serverError
+    )
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains("/files")
+            )
+            .ReturnsResponse(
+                statusCode: serverError,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked server-side error",
+                            Type = "VaasServerException",
+                        }
+                    );
+                }
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForFileAsync("file.txt", CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasServerException>();
+    }
+
+    [Fact]
+    public async Task ForFileAsync_IfAuthenticatorThrowsAuthenticationException_ThrowsAuthenticationException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<IAuthenticator>();
+        handlerMock
+            .Setup(a => a.GetTokenAsync(CancellationToken.None))
+            .Throws<AuthenticationException>();
+        services.RemoveAll<IAuthenticator>();
+        services.AddSingleton(handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForFileAsync("file.txt", CancellationToken.None))
+            .Should()
+            .ThrowAsync<AuthenticationException>();
+    }
+
+    [Fact]
+    public async Task ForFileAsync_If401_ThrowsAuthenticationException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains("/files")
+            )
+            .ReturnsResponse(HttpStatusCode.Unauthorized);
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForFileAsync("file.txt", CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasAuthenticationException>();
+    }
+
+    [Fact]
+    public async Task ForFileAsync_IfCancellationRequested_ThrowsOperationCancelledException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var ct = new CancellationToken(true);
+
+        await _vaas
+            .Invoking(async v => await v.ForFileAsync("file.txt", ct))
+            .Should()
+            .ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]
