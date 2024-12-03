@@ -7,9 +7,9 @@ using System.Net.Http.Json;
 using System.Security.Authentication;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Castle.Core.Logging;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.Memory;
@@ -126,7 +126,7 @@ public class VaasTest
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ForSha256Async_SendsOptions(bool useCache, bool useHashLookup)
+    public async Task ForSha256Options_SendsOptions(bool useCache, bool useHashLookup)
     {
         ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
 
@@ -135,23 +135,73 @@ public class VaasTest
 
         var handlerMock = new Mock<HttpMessageHandler>();
         handlerMock
-            .SetupRequest(
-                request => request.RequestUri != null 
+            .SetupRequest(request =>
+                request.RequestUri != null
                 && request.RequestUri.ToString().Contains(sha256)
-                && request.RequestUri.ToString().Contains("useCache=" + useCache)
-                && request.RequestUri.ToString().Contains("useHashLookup=" + useHashLookup)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(useCache))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
             )
-            .CallBase();
+            .ReturnsResponse(JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Clean)));
         services
             .AddHttpClient<IVaas, Vaas>()
             .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas.ForSha256Async(eicarSha256, CancellationToken.None, new ForSha256Options {
-            UseCache = useCache,
-            UseHashLookup = useHashLookup,
-        });
+        await vaas.ForSha256Async(
+            sha256,
+            CancellationToken.None,
+            new ForSha256Options { UseCache = useCache, UseHashLookup = useHashLookup }
+        );
+
+        handlerMock.VerifyAll();
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task ForFileOptions_SendsOptions(bool useCache, bool useHashLookup)
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        const string content =
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+        const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Get
+                && request.RequestUri.ToString().Contains(sha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(useCache))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new VerdictResponse(sha256, Verdict.Malicious))
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForFileAsync(
+            "file.txt",
+            CancellationToken.None,
+            new ForFileOptions { UseCache = useCache, UseHashLookup = useHashLookup }
+        );
 
         handlerMock.VerifyAll();
     }
