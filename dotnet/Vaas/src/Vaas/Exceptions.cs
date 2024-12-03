@@ -12,6 +12,9 @@ public class VaasAuthenticationException : Exception
 {
     public VaasAuthenticationException()
         : base("Authentication failed") { }
+    public VaasAuthenticationException(string message)
+        : base(message) { }
+
 }
 
 public class VaasConnectionClosedException : Exception

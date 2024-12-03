@@ -143,6 +143,7 @@ public class Vaas : IVaas
                     continue;
                 case HttpStatusCode.Unauthorized:
                     throw new VaasAuthenticationException();
+                case HttpStatusCode.BadRequest:
                 default:
                     throw await ParseVaasError(response);
             }
@@ -341,20 +342,22 @@ public class Vaas : IVaas
     private static async Task<Exception> ParseVaasError(HttpResponseMessage response)
     {
         var responseBody = await response.Content.ReadAsStringAsync();
-        ProblemDetails? problemDetails;
         try
         {
-            problemDetails = JsonSerializer.Deserialize<ProblemDetails>(responseBody);
+            var problemDetails = JsonSerializer.Deserialize<ProblemDetails>(responseBody);
+            throw ProblemDetailsToException(problemDetails);
         }
         catch (JsonException)
         {
-            throw new VaasServerException(
-                "Server did not return proper ProblemDetails with status code "
-                    + (int)response.StatusCode
-            );
+            throw (int)response.StatusCode switch
+            {
+                401 => new VaasAuthenticationException("server did not accept token from identity provider. Check if you are using the correct identity provider"),
+                >= 400 and <= 500 => new VaasClientException(
+                                        "HTTP Error: " + (int)response.StatusCode),
+                _ => new VaasServerException(
+                                        "HTTP Error: " + (int)response.StatusCode),
+            };
         }
-
-        throw ProblemDetailsToException(problemDetails);
     }
 
     private async Task UploadFile(

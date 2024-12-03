@@ -94,17 +94,7 @@ public class VaasTest
         services.AddVerdictAsAService(configuration);
         return services;
     }
-
-    // For all
-    //   _SendsUserAgent
-    //   _IfOptionsAreSet_SendsOptions
-    //   _IfVaasRequestIdIsSet_SendsTraceState
-    //   _IfVaasClientException_ThrowsVaasClientException
-    //   _IfVaasServerException_ThrowsVaasServerException
-    //   _IfAuthenticatorThrowsAuthenticationException_ThrowsAuthenticationException
-    //   _If401_ThrowsAuthenticationException
-    //   _IfCancellationRequested_ThrowsOperationCancelledException
-
+    
     [Theory]
     [InlineData(
         "110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe9",
@@ -115,7 +105,6 @@ public class VaasTest
         "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
         Verdict.Malicious
     )]
-    // AMTSO
     [InlineData("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", Verdict.Pup)]
     public async Task ForSha256Async_ReturnsVerdict(ChecksumSha256 sha256, Verdict verdict)
     {
@@ -129,7 +118,7 @@ public class VaasTest
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task ForSha256Options_SendsOptions(bool useCache, bool useHashLookup)
+    public async Task ForSha256Async_SendsOptions(bool useCache, bool useHashLookup)
     {
         ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
 
@@ -315,7 +304,36 @@ public class VaasTest
     [Fact]
     public async Task ForSha256Async_IfVaasClientException_ThrowsVaasClientException()
     {
-        throw new NotImplementedException();
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256)
+            )
+            .ReturnsResponse(
+                statusCode: HttpStatusCode.BadRequest,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked client-side error",
+                            Type = "VaasClientException",
+                        }
+                    );
+                }
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasClientException>();
     }
 
     [Theory]
