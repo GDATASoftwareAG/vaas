@@ -743,11 +743,625 @@ public class VaasTest
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ForStreamOptions_SendsOptions(bool useHashLookup)
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Get
+                && request.RequestUri.ToString().Contains(eicarSha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(true))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new VerdictResponse(eicarSha256, Verdict.Unknown))
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/files")
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = eicarSha256 })
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForStreamAsync(
+            targetStream,
+            CancellationToken.None,
+            new ForStreamOptions { UseHashLookup = useHashLookup }
+        );
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForStreamAsync_SendsUserAgent()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.RequestUri.ToString().Contains(eicarSha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(true))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.UserAgent.ToString()
+                    == new ProductInfoHeaderValue(
+                        "Cs",
+                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
+                    ).ToString()
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new VerdictResponse(eicarSha256, Verdict.Unknown))
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/files")
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.UserAgent.ToString()
+                    == new ProductInfoHeaderValue(
+                        "Cs",
+                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
+                    ).ToString()
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = eicarSha256 })
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForStreamAsync_IfVaasRequestIdIsSet_SendsTraceState()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        const string requestId = "foobar";
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.RequestUri.ToString().Contains(eicarSha256)
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useCache=" + JsonSerializer.Serialize(true))
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+                && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new VerdictResponse(eicarSha256, Verdict.Unknown))
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/files")
+                && request
+                    .RequestUri.ToString()
+                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = eicarSha256 })
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+        var forStreamOptions = new ForStreamOptions() { VaasRequestId = requestId };
+
+        await vaas.ForStreamAsync(targetStream, CancellationToken.None, forStreamOptions);
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForStreamAsync_IfVaasClientException_ThrowsVaasClientException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains("/files")
+            )
+            .ReturnsResponse(
+                statusCode: HttpStatusCode.BadRequest,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked client-side error",
+                            Type = "VaasClientException",
+                        }
+                    );
+                }
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForStreamAsync(targetStream, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasClientException>();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.GatewayTimeout)]
+    [InlineData(HttpStatusCode.HttpVersionNotSupported)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task ForStreamAsync_IfVaasServerException_ThrowsVaasServerException(
+        HttpStatusCode serverError
+    )
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains("/files")
+            )
+            .ReturnsResponse(
+                statusCode: serverError,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked server-side error",
+                            Type = "VaasServerException",
+                        }
+                    );
+                }
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForStreamAsync(targetStream, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasServerException>();
+    }
+
+    [Fact]
+    public async Task ForStreamAsync_IfAuthenticatorThrowsAuthenticationException_ThrowsAuthenticationException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var handlerMock = new Mock<IAuthenticator>();
+        handlerMock
+            .Setup(a => a.GetTokenAsync(CancellationToken.None))
+            .Throws<AuthenticationException>();
+        services.RemoveAll<IAuthenticator>();
+        services.AddSingleton(handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForStreamAsync(targetStream, CancellationToken.None))
+            .Should()
+            .ThrowAsync<AuthenticationException>();
+    }
+
+    [Fact]
+    public async Task ForStreamAsync_If401_ThrowsAuthenticationException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null && request.RequestUri.ToString().Contains("/files")
+            )
+            .ReturnsResponse(HttpStatusCode.Unauthorized);
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForStreamAsync(targetStream, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasAuthenticationException>();
+    }
+
+    [Fact]
+    public async Task ForStreamAsync_IfCancellationRequested_ThrowsOperationCancelledException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var targetStream = new MemoryStream(
+            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"u8.ToArray()
+        );
+
+        var ct = new CancellationToken(true);
+
+        await _vaas
+            .Invoking(async v => await v.ForStreamAsync(targetStream, ct))
+            .Should()
+            .ThrowAsync<OperationCanceledException>();
+    }
+
+    [Theory]
     [InlineData("https://www.gdatasoftware.com/oem/verdict-as-a-service", Verdict.Clean)]
     [InlineData("https://secure.eicar.org/eicar.com", Verdict.Malicious)]
     public async Task ForUrlAsync_ReturnsVerdict(string url, Verdict verdict)
     {
         var actual = await _vaas.ForUrlAsync(new Uri(url), CancellationToken.None);
         Assert.Equal(verdict, actual.Verdict);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ForUrlOptions_SendsOptions(bool useHashLookup)
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+        var urlAnalysisStarted = new UrlAnalysisStarted { Id = Guid.NewGuid().ToString() };
+
+        var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Get
+                && request.RequestUri.ToString().Contains(urlAnalysisStarted.Id)
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(
+                    new UrlReport
+                    {
+                        Sha256 = eicarSha256,
+                        Verdict = Verdict.Unknown,
+                        Url = url,
+                    }
+                )
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/urls")
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(urlAnalysisStarted));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForUrlAsync(
+            url,
+            CancellationToken.None,
+            new ForUrlOptions { UseHashLookup = useHashLookup }
+        );
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_SendsUserAgent()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+        var urlAnalysisStarted = new UrlAnalysisStarted { Id = Guid.NewGuid().ToString() };
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Get
+                && request.RequestUri.ToString().Contains(urlAnalysisStarted.Id)
+                && request.Headers.UserAgent.ToString()
+                    == new ProductInfoHeaderValue(
+                        "Cs",
+                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
+                    ).ToString()
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(
+                    new UrlReport
+                    {
+                        Sha256 = eicarSha256,
+                        Verdict = Verdict.Unknown,
+                        Url = url,
+                    }
+                )
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/urls")
+                && request.Headers.UserAgent.ToString()
+                    == new ProductInfoHeaderValue(
+                        "Cs",
+                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
+                    ).ToString()
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(urlAnalysisStarted));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.ForUrlAsync(url, CancellationToken.None);
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_IfVaasRequestIdIsSet_SendsTraceState()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+        var urlAnalysisStarted = new UrlAnalysisStarted { Id = Guid.NewGuid().ToString() };
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        const string requestId = "foobar";
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Get
+                && request.RequestUri.ToString().Contains(urlAnalysisStarted.Id)
+                && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
+            )
+            .ReturnsResponse(
+                JsonSerializer.Serialize(
+                    new UrlReport
+                    {
+                        Sha256 = eicarSha256,
+                        Verdict = Verdict.Unknown,
+                        Url = url,
+                    }
+                )
+            );
+
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/urls")
+                && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
+            )
+            .ReturnsResponse(JsonSerializer.Serialize(urlAnalysisStarted));
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+        var forUrlOptions = new ForUrlOptions() { VaasRequestId = requestId };
+
+        await vaas.ForUrlAsync(url, CancellationToken.None, forUrlOptions);
+
+        handlerMock.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_IfVaasClientException_ThrowsVaasClientException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/urls")
+            )
+            .ReturnsResponse(
+                statusCode: HttpStatusCode.BadRequest,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked client-side error",
+                            Type = "VaasClientException",
+                        }
+                    );
+                }
+            );
+
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForUrlAsync(url, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasClientException>();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.GatewayTimeout)]
+    [InlineData(HttpStatusCode.HttpVersionNotSupported)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task ForUrlAsync_IfVaasServerException_ThrowsVaasServerException(
+        HttpStatusCode serverError
+    )
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/urls")
+            )
+            .ReturnsResponse(
+                statusCode: serverError,
+                configure: message =>
+                {
+                    message.Content = JsonContent.Create(
+                        new ProblemDetails
+                        {
+                            Detail = "Mocked server-side error",
+                            Type = "VaasServerException",
+                        }
+                    );
+                }
+            );
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForUrlAsync(url, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasServerException>();
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_IfAuthenticatorThrowsAuthenticationException_ThrowsAuthenticationException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+
+        var handlerMock = new Mock<IAuthenticator>();
+        handlerMock
+            .Setup(a => a.GetTokenAsync(CancellationToken.None))
+            .Throws<AuthenticationException>();
+        services.RemoveAll<IAuthenticator>();
+        services.AddSingleton(handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForUrlAsync(url, CancellationToken.None))
+            .Should()
+            .ThrowAsync<AuthenticationException>();
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_If401_ThrowsAuthenticationException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock
+            .SetupRequest(request =>
+                request.RequestUri != null
+                && request.Method == HttpMethod.Post
+                && request.RequestUri.ToString().Contains("/urls")
+            )
+            .ReturnsResponse(HttpStatusCode.Unauthorized);
+        services
+            .AddHttpClient<IVaas, Vaas>()
+            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
+        var provider = services.BuildServiceProvider();
+        var vaas = provider.GetRequiredService<IVaas>();
+
+        await vaas.Invoking(async v => await v.ForUrlAsync(url, CancellationToken.None))
+            .Should()
+            .ThrowAsync<VaasAuthenticationException>();
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_IfCancellationRequested_ThrowsOperationCancelledException()
+    {
+        var services = GetServices();
+        ServiceCollectionTools.Output(_output, services);
+        var url = new Uri("https://secure.eicar.org/eicar.com");
+
+        var ct = new CancellationToken(true);
+
+        await _vaas
+            .Invoking(async v => await v.ForUrlAsync(url, ct))
+            .Should()
+            .ThrowAsync<OperationCanceledException>();
     }
 }

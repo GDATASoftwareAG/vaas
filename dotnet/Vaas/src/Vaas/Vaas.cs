@@ -224,7 +224,8 @@ public class Vaas : IVaas
         await AddRequestHeadersAsync(request, cancellationToken, options.VaasRequestId);
 
         var response = await _httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+            await ParseVaasError(response);
 
         var fileAnalysisStarted = await response.Content.ReadFromJsonAsync<FileAnalysisStarted>(
             cancellationToken
@@ -266,9 +267,11 @@ public class Vaas : IVaas
             urlAnalysisRequest,
             cancellationToken
         );
-        urlAnalysisResponse.EnsureSuccessStatusCode();
+        if (!urlAnalysisResponse.IsSuccessStatusCode)
+            await ParseVaasError(urlAnalysisResponse);
+
         var id = (
-            await urlAnalysisResponse.Content.ReadFromJsonAsync<UrlAnalysisResponse>(
+            await urlAnalysisResponse.Content.ReadFromJsonAsync<UrlAnalysisStarted>(
                 cancellationToken
             )
         )?.Id;
@@ -282,6 +285,7 @@ public class Vaas : IVaas
                 Method = HttpMethod.Get,
             };
 
+            await AddRequestHeadersAsync(reportRequest, cancellationToken, options.VaasRequestId);
             var reportResponse = await _httpClient.SendAsync(reportRequest, cancellationToken);
 
             switch (reportResponse.StatusCode)
@@ -351,11 +355,13 @@ public class Vaas : IVaas
         {
             throw (int)response.StatusCode switch
             {
-                401 => new VaasAuthenticationException("server did not accept token from identity provider. Check if you are using the correct identity provider"),
+                401 => new VaasAuthenticationException(
+                    "server did not accept token from identity provider. Check if you are using the correct identity provider"
+                ),
                 >= 400 and <= 500 => new VaasClientException(
-                                        "HTTP Error: " + (int)response.StatusCode),
-                _ => new VaasServerException(
-                                        "HTTP Error: " + (int)response.StatusCode),
+                    "HTTP Error: " + (int)response.StatusCode
+                ),
+                _ => new VaasServerException("HTTP Error: " + (int)response.StatusCode),
             };
         }
     }

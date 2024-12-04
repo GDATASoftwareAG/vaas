@@ -1,6 +1,6 @@
 namespace Vaas.Messages;
 
-public class UrlAnalysisResponse
+public class UrlAnalysisStarted
 {
     public required string Id { get; set; }
 }
