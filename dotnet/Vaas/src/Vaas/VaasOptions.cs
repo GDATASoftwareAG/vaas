@@ -12,7 +12,7 @@ public class VaasOptions
 
     public Uri TokenUrl { get; set; } =
         new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
-    
+
     [Required]
     [CustomValidation(typeof(TokenRequest), nameof(TokenRequest.IsValid))]
     public TokenRequest Credentials { get; set; } = null!;

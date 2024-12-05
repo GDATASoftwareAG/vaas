@@ -13,7 +13,8 @@ public static class ServiceCollectionTools
         foreach (var s in sortedServices)
         {
             output.WriteLine(
-                $"{GetNameWithTypeParameters(s.ServiceType)} {GetImplementationName(s)}");
+                $"{GetNameWithTypeParameters(s.ServiceType)} {GetImplementationName(s)}"
+            );
         }
     }
 
@@ -36,11 +37,12 @@ public static class ServiceCollectionTools
 
         throw new ArgumentException("Unknown type of service descriptor", nameof(s));
     }
-    
+
     private static string GetNameWithTypeParameters(Type type)
     {
-        if (!type.IsGenericType) return type.Name;
-        
+        if (!type.IsGenericType)
+            return type.Name;
+
         string genericArguments = type.GetGenericArguments()
             .Select(x => x.Name)
             .Aggregate((x1, x2) => $"{x1}, {x2}");
@@ -49,7 +51,6 @@ public static class ServiceCollectionTools
         {
             return type.Name;
         }
-        return $"{type.Name.Substring(0, indexOfBacktick)}"
-               + $"<{genericArguments}>";
+        return $"{type.Name.Substring(0, indexOfBacktick)}" + $"<{genericArguments}>";
     }
 }

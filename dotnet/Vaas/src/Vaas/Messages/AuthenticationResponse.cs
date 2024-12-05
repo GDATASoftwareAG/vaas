@@ -18,6 +18,6 @@ public class AuthenticationResponse
     public string? Text { get; init; }
 
     [MemberNotNullWhen(true, nameof(SessionId), nameof(Text))]
-    public bool IsValid => !string.IsNullOrWhiteSpace(SessionId)
-                           && !string.IsNullOrWhiteSpace(Text);
+    public bool IsValid =>
+        !string.IsNullOrWhiteSpace(SessionId) && !string.IsNullOrWhiteSpace(Text);
 }
