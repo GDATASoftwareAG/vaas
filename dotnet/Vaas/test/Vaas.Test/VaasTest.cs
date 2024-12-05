@@ -106,7 +106,7 @@ public class VaasTest
         Verdict.Malicious
     )]
     [InlineData("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad", Verdict.Pup)]
-    public async Task ForSha256Async_ReturnsVerdict(ChecksumSha256 sha256, Verdict verdict)
+    public async Task ForSha256Async_ReturnsVerdict(string sha256, Verdict verdict)
     {
         var verdictResponse = await _vaas.ForSha256Async(sha256, CancellationToken.None);
         Assert.Equal(verdict, verdictResponse.Verdict);
@@ -367,9 +367,12 @@ public class VaasTest
     )]
     public async Task ForFileAsync_ReturnsVerdict(string content, Verdict verdict)
     {
-        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+        var fileName = Guid.NewGuid().ToString()+".txt";
+        await File.WriteAllBytesAsync(fileName, Encoding.UTF8.GetBytes(content));
 
-        var actual = await _vaas.ForFileAsync("file.txt", CancellationToken.None);
+        var actual = await _vaas.ForFileAsync(fileName, CancellationToken.None);
+
+        File.Delete(fileName);
 
         Assert.Equal(verdict, actual.Verdict);
     }
@@ -386,7 +389,9 @@ public class VaasTest
         const string content =
             "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
         const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
+        var fileName = Guid.NewGuid().ToString()+".txt";
+
+        await File.WriteAllBytesAsync(fileName, Encoding.UTF8.GetBytes(content));
 
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
@@ -446,6 +451,7 @@ public class VaasTest
             CancellationToken.None,
             new ForFileOptions { UseCache = useCache, UseHashLookup = useHashLookup }
         );
+        File.Delete(fileName);
 
         handlerMock.VerifyAll();
     }
