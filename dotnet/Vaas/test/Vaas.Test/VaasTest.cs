@@ -57,13 +57,6 @@ public class VaasTest
         _vaas = provider.GetRequiredService<IVaas>();
     }
 
-    private Mock<HttpMessageHandler> UseHttpMessageHandlerMock()
-    {
-        var handlerMock = new Mock<HttpMessageHandler>();
-        _handler.InnerHandler = handlerMock.Object;
-        return handlerMock;
-    }
-
     private static IServiceCollection GetServices()
     {
         return GetServices(
