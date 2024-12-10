@@ -3,8 +3,6 @@ package de.gdata.vaas.messages;
 import lombok.Getter;
 import lombok.NonNull;
 
-import java.util.ArrayList;
-
 public class VaasVerdict {
     @Getter
     @NonNull
@@ -25,5 +23,17 @@ public class VaasVerdict {
         this.detection = verdictResponse.detection;
         this.fileType = verdictResponse.fileType;
         this.mimeType = verdictResponse.mimeType;
+    }
+
+    public VaasVerdict(UrlReport urlReport) {
+        this.sha256 = urlReport.sha256;
+        this.verdict = urlReport.verdict;
+        this.detection = urlReport.detection;
+        this.fileType = urlReport.fileType;
+        this.mimeType = urlReport.mimeType;
+    }
+
+    public static VaasVerdict From(UrlReport fileReport) {
+        return new VaasVerdict(fileReport);
     }
 }

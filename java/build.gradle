@@ -18,6 +18,7 @@ java {
 }
 
 dependencies {
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.4.1'
     implementation 'org.projectlombok:lombok:1.18.36'
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.java-websocket:Java-WebSocket:1.5.7'

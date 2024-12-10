@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 import lombok.NonNull;
-import java.util.ArrayList;
 
 public class VerdictResponse extends MessageType {
     @Getter
