@@ -6,6 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -54,47 +58,54 @@ public class VaasTests {
         var vaas = new Vaas(config, authenticator);
         return vaas;
     }
+
     @Test
-    public void forSha256SingleMaliciousHash() throws Exception {
-        var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
+    public void forSha256_ReturnsVerdict() throws Exception {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
 
         var verdict = vaas.forSha256(sha256).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(verdict.getSha256()));
     }
 
     @Test
-    public void forFileSingleMaliciousHash() throws Exception {
-        var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
+    public void forFile_ReturnsVerdict() throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "eicar.txt");
+        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
 
-        var verdict = vaas.forSha256(sha256).join();
+        var verdict = vaas.forFile(tmpFile).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(verdict.getSha256()));
     }
-    
-    @Test
-    public void forStreamSingleMaliciousHash() throws Exception {
-        var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
 
-        var verdict = vaas.forSha256(sha256).join();
+    @Test
+    public void forStream_ReturnsVerdict() throws Exception {
+        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+
+        var verdict = vaas.forStream(inputStream).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(verdict.getSha256()));
     }
-    
-    @Test
-    public void forUrlSingleMaliciousHash() throws Exception {
-        var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
 
-        var verdict = vaas.forSha256(sha256).join();
+    @Test
+    public void forUrl_ReturnsVerdict() throws Exception {
+        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+
+        var verdict = vaas.forUrl(url).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(verdict.getSha256()));
-    }    
+    }
 }

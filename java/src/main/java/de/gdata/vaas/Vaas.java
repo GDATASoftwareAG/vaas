@@ -15,6 +15,7 @@ import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
@@ -234,7 +235,7 @@ public class Vaas implements AutoCloseable, IVaas {
             throws URISyntaxException, IOException, InterruptedException, ParseException {
                 var forStreamOptions = new ForStreamOptions();
                 forStreamOptions.setUseHashLookup(true);
-                return forStream(stream);
+                return forStream(stream, forStreamOptions);
             }
 
     @Override
@@ -282,7 +283,7 @@ public class Vaas implements AutoCloseable, IVaas {
 
         var httpPost = new HttpPost(urlAnalysisUri);
         var urlAnalysisRequest = new UrlAnalysisRequest(url.toString(), options.isUseHashLookup());
-        var stringEntity = new StringEntity(UrlAnalysisRequest.ToJson(urlAnalysisRequest)); 
+        var stringEntity = new StringEntity(UrlAnalysisRequest.ToJson(urlAnalysisRequest), ContentType.APPLICATION_JSON);
         httpPost.setEntity(stringEntity);
         var urlAnalysisResponse = this.SendRequest(urlAnalysisUri, httpPost, options.getVaasRequestId());
         var statusCode = urlAnalysisResponse.getCode();
