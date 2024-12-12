@@ -3,6 +3,7 @@
 namespace VaasSdk;
 
 use Amp\ByteStream\BufferException;
+use Amp\ByteStream\ReadableStream;
 use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
 use Amp\File\File;
@@ -66,7 +67,19 @@ class Vaas
     public function forSha256Async(string $sha256, ?ForSha256Options $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($sha256, $options, $cancellation) {
-            $options = $options ?? ForSha256Options::default();
+            if (!preg_match('/^[a-f0-9]{64}$/', $sha256)) {
+                throw new VaasClientException('Invalid SHA256 hash');
+            }
+            
+            if ($options === null) {
+                $options = new ForSha256Options(
+                    [
+                        'vaasRequestId' => null,
+                        'useHashLookup' => $this->options->useHashLookup ?? true,
+                        'useCache' => $this->options->useCache ?? true,
+                    ]
+                );
+            }
             $url = sprintf('%s/files/%s/report/?useCache=%s&useHashLookup=%s',
                 $this->options->url,
                 $sha256,
@@ -111,20 +124,32 @@ class Vaas
     public function forFileAsync(string $path, ?ForFileOptions $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($path, $options, $cancellation) {
-            $options = $options ?? ForFileOptions::default();
-            $sha256 = $this->sha256CheckSum($path);
-
-            $forSha256Options = new ForSha256Options([
-                'vaasRequestId' => $options->vaasRequestId,
-                'useHashLookup' => $options->useHashLookup,
-                'useCache' => $options->useCache,
-            ]);
-
-            $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
-
-            $isVerdictWithoutDetection = ($response->verdict === 'Malicious' || $response->verdict === 'Pup') && !empty($response->detection);
-            if ($response->verdict !== 'Unknown' && !empty($response->fileType) && !empty($response->mimeType) && !$isVerdictWithoutDetection) {
-                return $response;
+            if (!file_exists($path)) {
+                throw new VaasClientException('File does not exist');
+            }
+            
+            if ($options === null) {
+                $options = new ForFileOptions(
+                    [
+                        'vaasRequestId' => null,
+                        'useHashLookup' => $this->options->useHashLookup ?? true,
+                        'useCache' => $this->options->useCache ?? true,
+                    ]
+                );
+            }
+            
+            if ($options->useCache || $options->useHashLookup) {
+                $sha256 = $this->sha256CheckSum($path);
+                $forSha256Options = new ForSha256Options([
+                    'vaasRequestId' => $options->vaasRequestId,
+                    'useHashLookup' => $options->useHashLookup,
+                    'useCache' => $options->useCache,
+                ]);
+                $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
+                $isVerdictWithoutDetection = ($response->verdict === 'Malicious' || $response->verdict === 'Pup') && !empty($response->detection);
+                if ($response->verdict !== 'Unknown' && !empty($response->fileType) && !empty($response->mimeType) && !$isVerdictWithoutDetection) {
+                    return $response;
+                }
             }
 
             $stream = openFile($path, 'r');
@@ -144,10 +169,19 @@ class Vaas
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
      */
-    public function forStreamAsync(File $stream, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
+    public function forStreamAsync(ReadableStream $stream, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($stream, $options, $cancellation) {
-            $options = $options ?? ForStreamOptions::default();
+            if (!$stream->isReadable() || $stream->isClosed()) { throw new VaasClientException('Stream is not readable'); }
+            
+            if ($options === null) {
+                $options = new ForStreamOptions(
+                    [
+                        'vaasRequestId' => null,
+                        'useHashLookup' => $this->options->useHashLookup ?? true,
+                    ]
+                );
+            }
             $url = sprintf('%s/files?useHashLookup=%s', $this->options->url, json_encode($options->useHashLookup));
 
             $request = new Request($url, 'POST');
@@ -188,7 +222,19 @@ class Vaas
     public function forUrlAsync(string $uri, ?ForUrlOptions $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($uri, $options, $cancellation) {
-            $options = $options ?? ForUrlOptions::default();
+            // Validate the URI according to RFC 2369 (https://datatracker.ietf.org/doc/html/rfc2396)
+            if (!filter_var($uri, FILTER_VALIDATE_URL)) {
+                throw new VaasClientException('Invalid URL');
+            }
+            
+            if ($options === null) {
+                $options = new ForUrlOptions(
+                    [
+                        'vaasRequestId' => null,
+                        'useHashLookup' => $this->options->useHashLookup ?? true,
+                    ]
+                );
+            }
             $urlAnalysisUri = sprintf('%s/urls', $this->options->url);
 
             $urlAnalysisRequest = new Request($urlAnalysisUri, 'POST');
@@ -198,6 +244,7 @@ class Vaas
             ]));
 
             $this->addRequestHeadersAsync($urlAnalysisRequest, $options->vaasRequestId)->await($cancellation);
+            $urlAnalysisRequest->setHeader('Content-Type', 'application/json');
             $urlAnalysisResponse = $this->httpClient->request($urlAnalysisRequest, $cancellation);
 
             switch ($urlAnalysisResponse->getStatus()) {
