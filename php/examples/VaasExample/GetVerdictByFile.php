@@ -22,4 +22,4 @@ $vaas = new Vaas($authenticator);
 $scanPath = getenv("SCAN_PATH");
 $vaasVerdict = $vaas->forFileAsync($scanPath)->await();
 
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is " . $vaasVerdict->Verdict->value . " \n");
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict . " \n");
