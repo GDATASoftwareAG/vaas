@@ -40,7 +40,7 @@ class Vaas
      * @param VaasOptions|null $options Options for the Vaas instance to set usage of cache and hash lookup
      * @param HttpClient|null $httpClient HTTP client to use for requests
      */
-    public function __construct(Authenticator $authenticator, ?VaasOptions $options,  ?HttpClient $httpClient = null)
+    public function __construct(Authenticator $authenticator, ?VaasOptions $options = null,  ?HttpClient $httpClient = null)
     {
         $this->authenticator = $authenticator;
         
