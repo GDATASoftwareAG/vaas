@@ -9,6 +9,7 @@ use VaasSdk\Authentication\Authenticator;
 use VaasSdk\Authentication\GrantType;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Options\AuthenticationOptions;
+use VaasSdk\Options\VaasOptions;
 
 final class AuthenticatorTest extends TestCase
 {
@@ -39,15 +40,23 @@ final class AuthenticatorTest extends TestCase
         if (getenv("VAAS_CLIENT_ID") !== false) {
             $_ENV["VAAS_CLIENT_ID"] = getenv("VAAS_CLIENT_ID");
         }
+        
+        $this->assertNotNull($_ENV["CLIENT_ID"]);
+        $this->assertNotNull($_ENV["CLIENT_SECRET"]);
+        $this->assertNotNull($_ENV["VAAS_USER_NAME"]);
+        $this->assertNotNull($_ENV["VAAS_PASSWORD"]);
+        $this->assertNotNull($_ENV["VAAS_URL"]);
+        $this->assertNotNull($_ENV["TOKEN_URL"]);
+        $this->assertNotNull($_ENV["VAAS_CLIENT_ID"]);
     }
 
     public function testAuthenticatorWithInvalidClientCredentials_ThrowsAccessDeniedException(): void
     {
         $this->expectException(VaasAuthenticationException::class);
         $credentials = new AuthenticationOptions(
-            GrantType::CLIENT_CREDENTIALS,
-            "invalid",
-            "invalid"
+            grantType: GrantType::CLIENT_CREDENTIALS,
+            clientId: "invalid",
+            clientSecret: "invalid"
         );
         
         $authenticator = new Authenticator($credentials);
@@ -71,12 +80,17 @@ final class AuthenticatorTest extends TestCase
     public function testAuthenticatorWithValidClientCredentials_ReturnsToken(): void
     {
         $credentials = new AuthenticationOptions(
-            GrantType::CLIENT_CREDENTIALS,
-            $_ENV["CLIENT_ID"],
-            $_ENV["CLIENT_SECRET"]
+            grantType: GrantType::CLIENT_CREDENTIALS,
+            clientId: $_ENV["CLIENT_ID"],
+            clientSecret: $_ENV["CLIENT_SECRET"]
+        );
+        
+        $options = new VaasOptions(
+            url: $_ENV["VAAS_URL"],
+            tokenUrl: $_ENV["TOKEN_URL"]
         );
 
-        $authenticator = new Authenticator($credentials);
+        $authenticator = new Authenticator($credentials, $options);
         $token = $authenticator->getTokenAsync()->await();
 
         $this->assertNotNull($token);
@@ -86,12 +100,17 @@ final class AuthenticatorTest extends TestCase
     {
         $credentials = new AuthenticationOptions(
             grantType: GrantType::PASSWORD,
-            clientId: $_ENV["CLIENT_ID"],
+            clientId: $_ENV["VAAS_CLIENT_ID"],
             userName: $_ENV["VAAS_USER_NAME"],
             password: $_ENV["VAAS_PASSWORD"]
         );
 
-        $authenticator = new Authenticator($credentials);
+        $options = new VaasOptions(
+            url: $_ENV["VAAS_URL"],
+            tokenUrl: $_ENV["TOKEN_URL"]
+        );
+
+        $authenticator = new Authenticator($credentials, $options);
         $token = $authenticator->getTokenAsync()->await();
 
         $this->assertNotNull($token);

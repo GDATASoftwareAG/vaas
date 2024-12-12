@@ -86,6 +86,7 @@ class Authenticator
             $form = $this->tokenRequestToForm();
             $request = new Request($this->options->tokenUrl, 'POST');
             $request->setBody($form);
+            $request->setHeader('Content-Type', 'application/x-www-form-urlencoded');
 
             try {
                 $response = $this->httpClient->request($request, $cancellation);
