@@ -21,7 +21,7 @@ $vaas = new Vaas($authenticator);
 
 // EICAR
 $vaasVerdict = $vaas->forUrlAsync("https://secure.eicar.org/eicar.com")->await();
-fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict . " \n");
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");
 // SOMEFILE
 $vaasVerdict = $vaas->forUrlAsync("https://www.gdatasoftware.com/oem/verdict-as-a-service")->await();
-fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict . " \n");
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");
