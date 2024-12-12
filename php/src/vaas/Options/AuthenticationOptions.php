@@ -1,10 +1,11 @@
 <?php
 
-namespace VaasSdk\Authentication;
+namespace VaasSdk\Options;
 
 use InvalidArgumentException;
+use VaasSdk\Authentication\GrantType;
 
-class TokenRequest
+class AuthenticationOptions
 {
     public string $grantType;
     public string $clientId;

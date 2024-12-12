@@ -1,6 +1,6 @@
 <?php
 
-namespace VaasSdk\Message;
+namespace VaasSdk;
 
 enum Verdict: string
 {
