@@ -5,7 +5,7 @@ namespace VaasSdk;
 class VaasVerdict
 {
     public string $sha256;
-    public string $verdict;
+    public Verdict $verdict;
     public ?string $detection;
     public ?string $fileType;
     public ?string $mimeType;
