@@ -12,6 +12,7 @@ use Amp\Sync\Mutex;
 use Exception;
 use InvalidArgumentException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
+use VaasSdk\Options\AuthenticationOptions;
 use VaasSdk\Options\VaasOptions;
 use function Amp\async;
 use function Amp\delay;
@@ -20,14 +21,16 @@ class Authenticator
 {
     private HttpClient $httpClient;
     private VaasOptions $options;
+    private AuthenticationOptions $credentials;
     private Mutex $mutex;
     private ?TokenResponse $lastTokenResponse = null;
     private int $validTo = 0;
     private ?int $lastRequestTime = null;
 
-    public function __construct(TokenRequest $credentials, ?VaasOptions $options = null, ?HttpClient $httpClient = null)
+    public function __construct(AuthenticationOptions $credentials, ?VaasOptions $options = null, ?HttpClient $httpClient = null)
     {
-        $this->options = $options ?? new VaasOptions($credentials);
+        $this->credentials = $credentials;
+        $this->options = $options ?? new VaasOptions();
         $this->httpClient = $httpClient ?? HttpClientBuilder::buildDefault();
         $this->mutex = new LocalMutex();
     }
@@ -42,8 +45,8 @@ class Authenticator
     public function getTokenAsync(?Cancellation $cancellation = null): Future
     {
         return async(function () use ($cancellation) {
+            $lock = $this->mutex->acquire();
             try {
-                $this->mutex->acquire(); // TODO: Check if this is the correct way to use the mutex
                 $now = time();
                 if ($this->lastTokenResponse !== null && $this->validTo > $now) {
                     return $this->lastTokenResponse->accessToken;
@@ -64,10 +67,10 @@ class Authenticator
                 return $this->lastTokenResponse->accessToken;
             }
             catch (Exception $ex) {
-                throw new VaasAuthenticationException("Failed to get token", $ex);
+                throw new VaasAuthenticationException("Failed to get token", $ex->getCode(), $ex);
             }
             finally {
-                $this->mutex->acquire(); // TODO: Check if this is the correct way to use the mutex
+                $lock->release();
             }
         });
     }
@@ -87,7 +90,7 @@ class Authenticator
             try {
                 $response = $this->httpClient->request($request, $cancellation);
             } catch (Exception $ex) {
-                throw new VaasAuthenticationException("Failed to request token", $ex);
+                throw new VaasAuthenticationException("Failed to request token", $ex->getCode(), $ex);
             }
 
             $stringResponse = $response->getBody()->buffer($cancellation);
@@ -117,19 +120,18 @@ class Authenticator
      */
     private function tokenRequestToForm(): string
     {
-        $credentials = $this->options->credentials;
-        if ($credentials->grantType === GrantType::CLIENT_CREDENTIALS) {
+        if ($this->credentials->grantType === GrantType::CLIENT_CREDENTIALS) {
             return http_build_query([
-                'client_id' => $credentials->clientId,
-                'client_secret' => $credentials->clientSecret ?? throw new InvalidArgumentException(),
+                'client_id' => $this->credentials->clientId,
+                'client_secret' => $this->credentials->clientSecret ?? throw new InvalidArgumentException(),
                 'grant_type' => 'client_credentials',
             ]);
         }
 
         return http_build_query([
-            'client_id' => $credentials->clientId,
-            'username' => $credentials->userName ?? throw new InvalidArgumentException(),
-            'password' => $credentials->password ?? throw new InvalidArgumentException(),
+            'client_id' => $this->credentials->clientId,
+            'username' => $this->credentials->userName ?? throw new InvalidArgumentException(),
+            'password' => $this->credentials->password ?? throw new InvalidArgumentException(),
             'grant_type' => 'password',
         ]);
     }

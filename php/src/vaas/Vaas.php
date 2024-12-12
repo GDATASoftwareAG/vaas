@@ -2,385 +2,314 @@
 
 namespace VaasSdk;
 
-use Amp\ByteStream\ReadableStream;
-use Amp\CompositeCancellation;
-use Amp\DeferredCancellation;
-use Amp\DeferredFuture;
+use Amp\ByteStream\BufferException;
+use Amp\ByteStream\StreamException;
+use Amp\Cancellation;
+use Amp\File\File;
+use Amp\Future;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
-use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
-use Amp\Http\Client\StreamedContent;
-use Amp\TimeoutCancellation;
-use InvalidArgumentException;
-use JsonMapper_Exception;
-use Ramsey\Uuid\Rfc4122\UuidV4;
-use VaasSdk\Exceptions\TimeoutException;
-use VaasSdk\Exceptions\UploadFailedException;
-use VaasSdk\Exceptions\VaasInvalidStateException;
-use VaasSdk\Exceptions\VaasServerException;
-use VaasSdk\Message\Verdict;
-use VaasSdk\Message\VerdictRequest;
-use VaasSdk\Message\VerdictRequestForStream;
-use VaasSdk\Message\VerdictResponse;
-use VaasSdk\Message\VerdictRequestForUrl;
-use VaasSdk\VaasOptions;
-use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
-use Revolt\EventLoop;
-use VaasSdk\Authentication\AuthenticatorInterface;
+use Amp\Http\Client\Response;
+use Exception;
+use VaasSdk\Authentication\Authenticator;
+use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
-use VaasSdk\Message\VaasVerdict;
-use WebSocket\BadOpcodeException;
+use VaasSdk\Exceptions\VaasServerException;
+use VaasSdk\Options\ForFileOptions;
+use VaasSdk\Options\ForSha256Options;
+use VaasSdk\Options\ForStreamOptions;
+use VaasSdk\Options\ForUrlOptions;
+use VaasSdk\Options\VaasOptions;
+use function Amp\async;
+use function Amp\File\openFile;
 
 class Vaas
 {
-    private VaasConnection $vaasConnection;
-    private int $uploadTimeoutInSeconds = 600;
-    private VaasOptions $options;
+    private const PRODUCT_NAME = 'Php';
+    private const PRODUCT_VERSION = '0.0.0';
+
     private HttpClient $httpClient;
-    private ?AuthenticatorInterface $authenticator = null;
-    private ?LoggerInterface $logger;
-    private ?string $vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de";
+    private Authenticator $authenticator;
+    private VaasOptions $options;
 
-    public function __destruct() {
-        if (isset($this->vaasConnection)) {
-            $this->vaasConnection->close();
-        }
-    }
-
-    public function withOptions(VaasOptions $options): self
-    {
-        $this->options = $options;
-        return $this;
-    }
-
-    public function withHtttpClient(HttpClient $httpClient): self
-    {
-        $this->httpClient = $httpClient;
-        return $this;
-    }
-
-    public function withAuthenticator(AuthenticatorInterface $authenticator): self
+    /**
+     * Create a new Vaas instance
+     * @param Authenticator $authenticator Authenticator to use for fetching tokens
+     * @param VaasOptions|null $options Options for the Vaas instance to set usage of cache and hash lookup
+     * @param HttpClient|null $httpClient HTTP client to use for requests
+     */
+    public function __construct(Authenticator $authenticator, ?VaasOptions $options,  ?HttpClient $httpClient = null)
     {
         $this->authenticator = $authenticator;
-        return $this;
-    }
-
-    public function withLogger(LoggerInterface $logger): self
-    {
-        $this->logger = $logger;
-        return $this;
-    }
-
-    public function withUrl(string $vaasUrl): self
-    {
-        $this->vaasUrl = $vaasUrl;
-        return $this;
-    }
-
-    public function withVaasConnection(VaasConnection $vaasConnection): self
-    {
-        $this->vaasConnection = $vaasConnection;
-        return $this;
-    }
-
-    public function build(): self
-    {
-        if (!isset($this->logger)) {
-            $this->logger = new NullLogger();
-        }
-        if (!isset($this->vaasConnection) && isset($this->authenticator)) {
-            $this->vaasConnection = (new VaasConnection())
-                ->withAuthenticator($this->authenticator)
-                ->withUrl($this->vaasUrl)
-                ->withLogger($this->logger)
-                ->build();
-        } else if (!isset($this->vaasConnection)) {
-            $this->vaasConnection = (new VaasConnection())
-                ->withUrl($this->vaasUrl)
-                ->withLogger($this->logger)
-                ->build();    
-        }
-        if (!isset($this->options)) {
+        
+        if ($options === null) {
             $this->options = new VaasOptions();
+        } else {
+            $this->options = $options;
         }
-        if (!isset($this->httpClient)) {
+        
+        if ($httpClient === null) {
             $this->httpClient = HttpClientBuilder::buildDefault();
+        } else {
+            $this->httpClient = $httpClient;
         }
-        return $this;
-    }
-
-    public function Connect(string $token = "") {
-        if (!isset($this->vaasConnection)) {
-            throw new VaasInvalidStateException("No VaasConnection given and build() was not called");
-        }
-        $this->vaasConnection->Connect($token);
     }
 
     /**
-     * Gets verdict by hashstring
-     *
-     * @param string $hashString the hash to get the verdict for
-     * @param string $uuid       unique identifier
-     * 
-     * @throws Exceptions\InvalidSha256Exception
-     * @throws Exceptions\TimeoutException
-     * 
-     * @return VaasVerdict the verdict
+     * Get the verdict for a file by its SHA256 hash
+     * @param string $sha256 The SHA256 hash of the file to check
+     * @param ForSha256Options|null $options Options for the request
+     * @param Cancellation|null $cancellation Cancellation token
+     * @return Future A future that resolves to a VaasVerdict
      */
-    public function ForSha256(string $hashString, string $uuid = null): VaasVerdict {
-        $this->logger->debug("ForSha256WithFlags", ["Sha256" => $hashString]);
-
-        $sha256 = Sha256::TryFromString($hashString);
-
-        return new VaasVerdict(
-            $this->_verdictResponseForSha256(
+    public function forSha256Async(string $sha256, ?ForSha256Options $options = null, ?Cancellation $cancellation = null): Future
+    {
+        return async(function () use ($sha256, $options, $cancellation) {
+            $options = $options ?? ForSha256Options::default();
+            $url = sprintf('%s/files/%s/report/?useCache=%s&useHashLookup=%s',
+                $this->options->url,
                 $sha256,
-                $uuid
-            )
-        );
+                json_encode($options->useCache),
+                json_encode($options->useHashLookup
+            ));
+
+            $request = new Request($url, 'GET');
+
+            while (7 + 7 === 14) {
+                $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await($cancellation);
+                $response = $this->httpClient->request($request, $cancellation);
+
+                switch ($response->getStatus()) {
+                    case 200:
+                        $report = json_decode($response->getBody()->buffer($cancellation), true);
+                        return VaasVerdict::from($report);
+                    case 202:
+                        break;
+                    case 400:
+                        throw new VaasClientException("Bad request. The format of the SHA256 is wrong.");
+                    case 401:
+                        throw new VaasAuthenticationException("Unauthorized. Check your credentials.");
+                    case 403:
+                        throw new VaasClientException("Forbidden. You are not allowed to use this endpoint.");
+                    default:
+                        throw $this->parseVaasError($response);
+                }
+            }
+
+            throw new Exception('This should never happen');
+        }, $cancellation);
     }
 
     /**
-     * Gets verdict by url
-     *
-     * @param string|null $url url to get the verdict for
-     * @param string|null $uuid unique identifier
-     *
-     * @return VaasVerdict the verdict
-     *
-     * @throws TimeoutException
-     * @throws InvalidArgumentException
+     * Get the verdict for a File
+     * @param string $path Path to the file
+     * @param ForFileOptions|null $options Options for the request
+     * @param Cancellation|null $cancellation Cancellation token
+     * @return Future A future that resolves to a VaasVerdict
      */
-    public function ForUrl(?string $url, string $uuid = null): VaasVerdict
+    public function forFileAsync(string $path, ?ForFileOptions $options = null, ?Cancellation $cancellation = null): Future
     {
-        $this->logger->debug("ForUrlWithFlags", ["URL:" => $url]);
+        return async(function () use ($path, $options, $cancellation) {
+            $options = $options ?? ForFileOptions::default();
+            $sha256 = $this->sha256CheckSum($path);
 
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            throw new \InvalidArgumentException("Url is not valid");
-        }
+            $forSha256Options = new ForSha256Options([
+                'vaasRequestId' => $options->vaasRequestId,
+                'useHashLookup' => $options->useHashLookup,
+                'useCache' => $options->useCache,
+            ]);
 
-        return new VaasVerdict($this->_verdictResponseForUrl(
-            $url,
-            $uuid
-        ));
-    }
+            $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
 
-    /**
-     * Gets verdict by file
-     *
-     * @param string $path   the path to get the verdict for
-     * @param bool   $upload should the file be uploaded if initial verdict is unknown
-     * @param string $uuid   unique identifier
-     * 
-     * @throws Exceptions\TimeoutException
-     * @throws Exceptions\FileDoesNotExistException
-     * @throws Exceptions\InvalidSha256Exception
-     * @throws Exceptions\UploadFailedException
-     * 
-     * @return VaasVerdict the verdict
-     */
-    public function ForFile(string $path, $upload = true, string $uuid = null): VaasVerdict
-    {
-        $this->logger->debug("ForFileWithFlags", ["File" => $path]);
+            $isVerdictWithoutDetection = ($response->verdict === 'Malicious' || $response->verdict === 'Pup') && !empty($response->detection);
+            if ($response->verdict !== 'Unknown' && !empty($response->fileType) && !empty($response->mimeType) && !$isVerdictWithoutDetection) {
+                return $response;
+            }
 
-        $sha256 = Sha256::TryFromFile($path);
-        $this->logger->debug("Calculated Hash", ["Sha256" => $sha256]);
+            $stream = openFile($path, 'r');
+            $forStreamOptions = new ForStreamOptions([
+                'vaasRequestId' => $options->vaasRequestId,
+                'useHashLookup' => $options->useHashLookup,
+            ]);
 
-        $verdictResponse = $this->_verdictResponseForSha256(
-            $sha256,
-            $uuid
-        );
-        if ($verdictResponse->verdict == Verdict::UNKNOWN && $upload === true) {
-            $this->logger->debug("UploadToken", ["UploadToken" => $verdictResponse->upload_token]);
-
-            $fileStream = \Amp\File\openFile($path, 'r');
-            $fileSize = \filesize($path);
-            
-            $verdict = new VaasVerdict(
-                $this->UploadStream(
-                    $fileStream,
-                    $verdictResponse->url,
-                    $verdictResponse->upload_token,
-                    $fileSize,
-                    $verdictResponse->guid)
-            );
-
-            $fileStream->close();
-
-            return $verdict;
-        }
-
-        return new VaasVerdict($verdictResponse);
-    }
-
-    /**
-     * Gets verdict by stream
-     *
-     * @param ReadableStream $stream   the path to get the verdict for
-     * @param bool   $upload should the file be uploaded if initial verdict is unknown
-     * @param string $uuid   unique identifier
-     * 
-     * @throws JsonMapper_Exception
-     * @throws VaasClientException
-     * @throws TimeoutException
-     * @throws VaasServerException
-     * @throws BadOpcodeException
-     * @throws VaasInvalidStateException
-     * @throws UploadFailedException
-     */
-    public function ForStream(ReadableStream $stream, int $size = 0, string $uuid = null): VaasVerdict
-    {
-        $this->logger->debug("uuid: ".var_export($uuid, true));
-        $uuid = $uuid ?? UuidV4::getFactory()->uuid4()->toString();
-        $this->logger->debug("uuid: ".var_export($uuid, true));
-        $verdictResponse = $this->_verdictResponseForStream($uuid);
-
-        if ($verdictResponse->verdict != Verdict::UNKNOWN) {
-            throw new VaasServerException("Server returned verdict without receiving content.");
-        }
-        if ($verdictResponse->upload_token == null || $verdictResponse->upload_token == "") {
-            throw new JsonMapper_Exception("VerdictResponse missing UploadToken for stream upload.");
-        }
-        if ($verdictResponse->url == null || $verdictResponse->url == "") {
-            throw new JsonMapper_Exception("VerdictResponse missing URL for stream upload.");
-        }
-
-        return new VaasVerdict(
-            $this->UploadStream(
-                $stream,
-                $verdictResponse->url,
-                $verdictResponse->upload_token,
-                $size,
-                $uuid)
-        );
-    }
-  
-    /**
-     * @throws TimeoutException
-     * 
-     * @return VerdictResponse
-     */
-    private function _verdictResponseForSha256(Sha256 $sha256, string $uuid = null): VerdictResponse
-    {
-        $this->logger->debug("_verdictResponseForSha256");
-
-        if (!isset($this->vaasConnection->SessionId)) {
-            throw new VaasInvalidStateException("No Authenticator given and connect() was not called");
-        }
-        $request = new VerdictRequest(strtolower($sha256), $uuid, $this->vaasConnection->SessionId);
-        $request->use_cache = $this->options->UseCache;
-        $request->use_hash_lookup = $this->options->UseHashLookup;
-        return $this->vaasConnection->SendRequest(json_encode($request), $request->guid)->await();
-    }
-
-    /**
-     * @throws TimeoutException
-     * 
-     * @return VerdictResponse
-     */
-    private function _verdictResponseForUrl(string $url, string $uuid = null): VerdictResponse
-    {
-        $this->logger->debug("_verdictResponseForUrl");
-
-        if (!isset($this->vaasConnection->SessionId)) {
-            throw new VaasInvalidStateException("No Authenticator given and connect() was not called");
-        }
-        $request = new VerdictRequestForUrl($url, $uuid, $this->vaasConnection->SessionId);
-        $request->use_cache = $this->options->UseCache;
-        $request->use_hash_lookup = $this->options->UseHashLookup;
-        return $this->vaasConnection->SendRequest(json_encode($request), $request->guid)->await();
-    }
-
-    /**
-     * @throws JsonMapper_Exception
-     * @throws VaasClientException
-     * @throws TimeoutException
-     * @throws VaasServerException
-     * @throws BadOpcodeException
-     * @throws VaasInvalidStateException
-     */
-    private function _verdictResponseForStream(string $uuid = null): VerdictResponse
-    {
-        $this->logger->debug("_verdictResponseForStream");
-
-        if (!isset($this->vaasConnection->SessionId)) {
-            throw new VaasInvalidStateException("No Authenticator given and connect() was not called");
-        }
-        $request = new VerdictRequestForStream($this->vaasConnection->SessionId, $uuid);
-        $request->use_cache = $this->options->UseCache;
-        $request->use_hash_lookup = $this->options->UseHashLookup;
-        return $this->vaasConnection->SendRequest(json_encode($request), $request->guid)->await();
-    }
-
-    /**
-     * Sets the timeout in seconds the websocket client can take for one receive
-     *
-     * @param int $timeoutInSeconds timeout for the websocket
-     * 
-     * @return void
-     */
-    public function setWebsocketTimeOut(int $timeoutInSeconds): void
-    {
-        $this->vaasConnection->setTimeout($timeoutInSeconds);
-    }
-
-    /**
-     * Set the timeout for the httpclient (for the upload) in seconds
-     *
-     * @param int $UploadTimeoutInSeconds upload timeout
-     * 
-     * @return Vaas
-     */
-    public function setUploadTimeout(int $UploadTimeoutInSeconds): self
-    {
-        $this->uploadTimeoutInSeconds = $UploadTimeoutInSeconds;
-        return $this;
-    }
-
-    private function UploadStream(
-        ReadableStream $fileStream, 
-        string $url, string $uploadToken, int $fileSize,
-        string $requestId): VerdictResponse
-    {
-        $cancellation = new DeferredCancellation();
-        $times = 0;
-        $pingTimer = EventLoop::repeat(5, function () use(&$times) {
-            $this->logger->debug("pinging " . $times++);
-            $websocket = $this->vaasConnection->GetAuthenticatedWebsocket();
-            $websocket->ping();
+            return $this->forStreamAsync($stream, $forStreamOptions)->await();
         });
+    }
 
-        $futureResponse = $this->vaasConnection->GetResponse($requestId);
+    /**
+     * Get the verdict for a stream
+     * @param File $stream The stream to check
+     * @param ForStreamOptions|null $options Options for the request
+     * @param Cancellation|null $cancellation Cancellation token
+     * @return Future A future that resolves to a VaasVerdict
+     */
+    public function forStreamAsync(File $stream, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
+    {
+        return async(function () use ($stream, $options, $cancellation) {
+            $options = $options ?? ForStreamOptions::default();
+            $url = sprintf('%s/files?useHashLookup=%s', $this->options->url, json_encode($options->useHashLookup));
+
+            $request = new Request($url, 'POST');
+            $request->setBody($stream->read());
+            $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
+
+            $response = $this->httpClient->request($request);
+            switch ($response->getStatus()) {
+                case 201:
+                    $fileAnalysisStarted = json_decode($response->getBody()->buffer(), true);
+                    break;
+                case 400:
+                    throw new VaasClientException("Bad request. The header content-length is missing or the content-type is not \"application/octet-stream\".");
+                case 401:
+                    throw new VaasAuthenticationException("Unauthorized. Check your credentials.");
+                case 403:
+                    throw new VaasClientException("Forbidden. You are not allowed to use this endpoint.");
+                default:
+                    throw $this->parseVaasError($response);
+            }
+
+            $forSha256Options = new ForSha256Options([
+                'vaasRequestId' => $options->vaasRequestId,
+                'useHashLookup' => $options->useHashLookup,
+            ]);
+
+            return $this->forSha256Async($fileAnalysisStarted['sha256'], $forSha256Options)->await();
+        });
+    }
+
+    /**
+     * Get the verdict for a URL
+     * @param string $uri The URL to check
+     * @param ForUrlOptions|null $options Options for the request
+     * @param Cancellation|null $cancellation Cancellation token
+     * @return Future A future that resolves to a VaasVerdict
+     */
+    public function forUrlAsync(string $uri, ?ForUrlOptions $options = null, ?Cancellation $cancellation = null): Future
+    {
+        return async(function () use ($uri, $options, $cancellation) {
+            $options = $options ?? ForUrlOptions::default();
+            $urlAnalysisUri = sprintf('%s/urls', $this->options->url);
+
+            $urlAnalysisRequest = new Request($urlAnalysisUri, 'POST');
+            $urlAnalysisRequest->setBody(json_encode([
+                'url' => $uri,
+                'useHashLookup' => $options->useHashLookup,
+            ]));
+
+            $this->addRequestHeadersAsync($urlAnalysisRequest, $options->vaasRequestId)->await($cancellation);
+            $urlAnalysisResponse = $this->httpClient->request($urlAnalysisRequest, $cancellation);
+
+            switch ($urlAnalysisResponse->getStatus()) {
+                case 201:
+                    $urlAnalysisStarted = json_decode($urlAnalysisResponse->getBody()->buffer($cancellation), true);
+                    $id = $urlAnalysisStarted['id'] ?? null;
+                    break;
+                case 400:
+                    throw new VaasClientException('Bad request.');
+                case 401:
+                    throw new VaasAuthenticationException('Unauthorized. Check your credentials.');
+                case 403:
+                    throw new VaasClientException('Forbidden. You are not allowed to use this endpoint.');
+                default:
+                    throw $this->parseVaasError($urlAnalysisResponse);
+            }
+
+            if ($id === null) {
+                throw new VaasServerException('Unexpected response from the server');
+            }
+
+            while (1 - 8 === -7) {
+                $reportUri = sprintf('%s/urls/%s/report', $this->options->url, $id);
+                $reportRequest = new Request($reportUri, 'GET');
+
+                $this->addRequestHeadersAsync($reportRequest, $options->vaasRequestId)->await($cancellation);
+                $reportResponse = $this->httpClient->request($reportRequest, $cancellation);
+
+                switch ($reportResponse->getStatus()) {
+                    case 200:
+                        $urlReport = json_decode($reportResponse->getBody()->buffer($cancellation), true) 
+                            ?? throw new VaasServerException('Unexpected response from the server');
+                        return VaasVerdict::from($urlReport);
+                    case 202:
+                        break;
+                    default:
+                        throw $this->parseVaasError($reportResponse);
+                }
+            }
+            
+            throw new Exception('This should never happen');
+        }, $cancellation);
+    }
+
+    /**
+     * Add the necessary headers to a request:
+     * - Authorization (Bearer token)
+     * - User-Agent
+     * - tracestate
+     * @param Request $request The request to add headers to
+     * @param string|null $requestId The request ID to add to the headers
+     * @return Future A future that resolves when the headers have been added
+     */
+    private function addRequestHeadersAsync(Request $request, ?string $requestId = ''): Future
+    {
+        return async(function () use ($request, $requestId) {
+            $request->setHeader('Authorization', 'Bearer ' . $this->authenticator->getTokenAsync()->await());
+            $request->setHeader('User-Agent', sprintf('%s/%s', self::PRODUCT_NAME, self::PRODUCT_VERSION));
+            if (!empty($requestId)) {
+                $request->setHeader('tracestate', 'vaasrequestid=' . $requestId);
+            }
+        });
+    }
+
+    /**
+     * Parse a Vaas error response
+     * @param Response $response The response to parse
+     * @return Exception The exception to throw
+     * @throws VaasAuthenticationException If the server did not accept the token from the identity provider
+     * @throws VaasClientException If the error was caused by the client
+     * @throws VaasServerException If the error was caused by the server
+     * @throws BufferException If the response body could not be read
+     * @throws StreamException If the response body could not be read
+     */
+    private function parseVaasError(Response $response): Exception
+    {
+        $responseBody = $response->getBody()->buffer();
         try {
-            $request = new Request($url, 'PUT');
-            $request->setProtocolVersions(["1.1"]);
-            $request->setTransferTimeout($this->uploadTimeoutInSeconds);
-            $request->setBody(StreamedContent::fromStream($fileStream, $fileSize));
-            $request->addHeader("Content-Length", $fileSize);
-            $request->addHeader("Authorization", $uploadToken);
-            $timeoutCancellation = new TimeoutCancellation($this->uploadTimeoutInSeconds);
-            $response = $this->httpClient->request($request,
-                new CompositeCancellation($timeoutCancellation, $cancellation->getCancellation()));
-            if ($response->getStatus() > 399) {
-                $reason = $response->getBody()->buffer($cancellation->getCancellation());
-                throw new UploadFailedException($reason, $response->getStatus());
+            $problemDetails = json_decode($responseBody, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                throw match ($problemDetails['type'] ?? '') {
+                    'VaasClientException' => new VaasClientException($problemDetails['detail'] ?? 'Unknown client error'),
+                    default => new VaasServerException($problemDetails['detail'] ?? 'Unknown server error'),
+                };
+            } else {
+                throw new Exception('Invalid JSON response');
             }
-        } catch (\Exception $e) {
-            $this->vaasConnection->RemoveResponse($requestId);
-            if ($e instanceof HttpException) {
-                $uploadFailedException = new UploadFailedException($e->getMessage(), $e->getCode());
-                $futureResponse->getFuture()->error($uploadFailedException);
-                throw new $uploadFailedException;
+        } catch (Exception) {
+            if ($response->getStatus() == 401) {
+                throw new VaasAuthenticationException(
+                    'Server did not accept token from identity provider. Check if you are using the correct identity provider and credentials.'
+                );
+            } elseif ($response->isClientError()) {
+                throw new VaasClientException('HTTP Error: ' . $response->getStatus() . ' ' . $response->getReason());
+            } else {
+                throw new VaasServerException('HTTP Error: ' . $response->getStatus() . ' ' . $response->getReason());
             }
-            $vaasClientException = new VaasClientException($e->getMessage());
-            $futureResponse->getFuture()->error($vaasClientException);
-            throw $vaasClientException;
-        } finally {
-            EventLoop::cancel($pingTimer);
-            $cancellation->cancel();
-            return $futureResponse->getFuture()->await();
         }
+    }
+
+    /**
+     * Calculate the SHA256 hash of a file
+     * @param string $filePath Path to the file
+     * @return string SHA256 hash of the file
+     * @throws VaasClientException If the hash could not be calculated
+     */
+    private function sha256CheckSum(string $filePath): string
+    {
+        $hash = hash_file('sha256', $filePath);
+        if ($hash === false) {
+            throw new VaasClientException('Could not calculate SHA256 hash');
+        }
+        return $hash;
     }
 }
