@@ -14,7 +14,7 @@ class VaasVerdict
     {
         $verdict = new self();
         $verdict->sha256 = $data['sha256'];
-        $verdict->verdict = $data['verdict'];
+        $verdict->verdict = Verdict::from($data['verdict']);
         $verdict->detection = $data['detection'] ?? null;
         $verdict->fileType = $data['fileType'] ?? null;
         $verdict->mimeType = $data['mimeType'] ?? null;

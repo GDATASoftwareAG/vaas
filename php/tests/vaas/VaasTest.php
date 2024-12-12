@@ -35,6 +35,11 @@ final class VaasTest extends TestCase
         if (getenv("TOKEN_URL") !== false) {
             $_ENV["TOKEN_URL"] = getenv("TOKEN_URL");
         }
+        
+        $this->assertNotNull($_ENV["CLIENT_ID"]);
+        $this->assertNotNull($_ENV["CLIENT_SECRET"]);
+        $this->assertNotNull($_ENV["VAAS_URL"]);
+        $this->assertNotNull($_ENV["TOKEN_URL"]);
     }
 
     private function getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
@@ -63,7 +68,7 @@ final class VaasTest extends TestCase
         
         $verdict = $vaas->forSha256Async(self::MALICIOUS_HASH)->await();
 
-        $this->assertEquals(Verdict::MALICIOUS, $verdict->Verdict);
-        $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->Sha256);
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
+        $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->sha256);
     }
 }
