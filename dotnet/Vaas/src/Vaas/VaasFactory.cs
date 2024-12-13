@@ -5,8 +5,8 @@ namespace Vaas;
 
 public static class VaasFactory
 {
-    private static readonly HttpClient HttpClient = new ();
-    
+    private static readonly HttpClient HttpClient = new();
+
     public static IVaas Create(VaasOptions vaasOptions)
     {
         var systemClock = new SystemClock();

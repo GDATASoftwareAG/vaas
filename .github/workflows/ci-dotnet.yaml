@@ -28,7 +28,7 @@ on:
 env:
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
-  VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+  VAAS_URL: "https://gateway.production.vaas.gdatasecurity.de"
   TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
@@ -56,7 +56,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -67,7 +67,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
