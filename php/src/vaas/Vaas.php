@@ -12,6 +12,7 @@ use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
+use Amp\Http\Client\StreamedContent;
 use Exception;
 use VaasSdk\Authentication\Authenticator;
 use VaasSdk\Exceptions\VaasAuthenticationException;
@@ -158,7 +159,7 @@ class Vaas
                 'useHashLookup' => $options->useHashLookup,
             ]);
 
-            return $this->forStreamAsync($stream, $forStreamOptions)->await();
+            return $this->forStreamAsync($stream, filesize($path), $forStreamOptions)->await();
         });
     }
 
@@ -169,15 +170,16 @@ class Vaas
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
      */
-    public function forStreamAsync(ReadableStream $stream, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
+    public function forStreamAsync(ReadableStream $stream, int $fileSize, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
     {
-        return async(function () use ($stream, $options, $cancellation) {
+        return async(function () use ($stream, $fileSize, $options, $cancellation) {
             if (!$stream->isReadable() || $stream->isClosed()) { throw new VaasClientException('Stream is not readable'); }
             
             if ($options === null) {
                 $options = new ForStreamOptions(
                     [
                         'vaasRequestId' => null,
+                        'timeout' => $this->options->timeout ?? 300,
                         'useHashLookup' => $this->options->useHashLookup ?? true,
                     ]
                 );
@@ -185,9 +187,10 @@ class Vaas
             $url = sprintf('%s/files?useHashLookup=%s', $this->options->url, json_encode($options->useHashLookup));
 
             $request = new Request($url, 'POST');
-            $request->setBody($stream->read());
+            
+            $request->setBody(StreamedContent::fromStream($stream, $fileSize));
+            $request->setTransferTimeout($options->timeout);
             $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
-
             $response = $this->httpClient->request($request);
             switch ($response->getStatus()) {
                 case 201:

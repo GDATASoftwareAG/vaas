@@ -56,7 +56,7 @@ final class VaasTest extends TestCase
         $this->vaas = $this->getVaas();
     }
 
-    private function getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
+    private function getVaas(bool $useCache = false, bool $useHashLookup = false): Vaas
     {
         $credentials = new AuthenticationOptions(
             GrantType::CLIENT_CREDENTIALS,
@@ -166,10 +166,6 @@ final class VaasTest extends TestCase
         $this->assertEqualsIgnoringCase(self::EICAR_HASH, $verdict->sha256);
     }
 
-    // TODO: Check why the sha256 hash is different
-    /**
-     * @group exclude
-     */
     public function testForFile_WithPupFile_GetsPupResponse(): void
     {
         $file = file_get_contents(self::PUP_URL);
@@ -198,8 +194,9 @@ final class VaasTest extends TestCase
             $this->fail($e->getMessage());
         }
         $sha256 = hash_file("sha256", __DIR__ . "/composer.json");
+        $fileSize = filesize(__DIR__ . "/composer.json");
         
-        $verdict = $this->vaas->forStreamAsync($stream)->await();
+        $verdict = $this->vaas->forStreamAsync($stream, $fileSize)->await();
         
         $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
         $this->assertEqualsIgnoringCase($sha256, $verdict->sha256);
@@ -209,6 +206,7 @@ final class VaasTest extends TestCase
     {
         $file = file_get_contents(self::MALICIOUS_URL);
         file_put_contents(__DIR__ . "/eicar.com.txt", $file);
+        $fileSize = filesize(__DIR__ . "/eicar.com.txt");
         
         try {
             $stream = openFile(__DIR__ . "/eicar.com.txt", "r");
@@ -216,17 +214,13 @@ final class VaasTest extends TestCase
             $this->fail($e->getMessage());
         }
         
-        $verdict = $this->vaas->forStreamAsync($stream)->await();
+        $verdict = $this->vaas->forStreamAsync($stream, $fileSize)->await();
         unlink(__DIR__ . "/eicar.com.txt");
         
         $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
         $this->assertEqualsIgnoringCase(self::EICAR_HASH, $verdict->sha256);
     }
     
-    // TODO: Check why the sha256 hash is different
-    /**
-     * @group exclude
-     */
     public function testForStream_WithPupStream_GetsPupResponse(): void
     {
         $file = file_get_contents(self::PUP_URL);
@@ -236,8 +230,8 @@ final class VaasTest extends TestCase
         } catch (FilesystemException $e) {
             $this->fail($e->getMessage());
         }
-        
-        $verdict = $this->vaas->forStreamAsync($stream)->await();
+        $fileSize = filesize(__DIR__ . "/PotentiallyUnwanted.exe");
+        $verdict = $this->vaas->forStreamAsync($stream, $fileSize)->await();
         unlink(__DIR__ . "/PotentiallyUnwanted.exe");
 
         $this->assertEqualsIgnoringCase(self::PUP_HASH, $verdict->sha256);
@@ -255,7 +249,8 @@ final class VaasTest extends TestCase
             $this->fail($e->getMessage());
         }
         $stream->close();
+        $fileSize = filesize(__DIR__ . "/composer.json");
         
-        $this->vaas->forStreamAsync($stream)->await();
+        $this->vaas->forStreamAsync($stream, $fileSize)->await();
     }
 }
