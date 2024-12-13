@@ -1,4 +1,6 @@
-namespace Vaas.Messages;
+using Vaas.Messages;
+
+namespace Vaas;
 
 public class VaasVerdict
 {
@@ -29,18 +31,6 @@ public class VaasVerdict
             Detection = urlReport.Detection,
             MimeType = urlReport.MimeType,
             FileType = urlReport.FileType,
-        };
-    }
-
-    public static VaasVerdict From(VerdictResponse verdictResponse)
-    {
-        return new VaasVerdict
-        {
-            Sha256 = verdictResponse.Sha256 ?? "",
-            Verdict = verdictResponse.Verdict,
-            Detection = verdictResponse.Detection,
-            MimeType = verdictResponse.MimeType,
-            FileType = verdictResponse.FileType,
         };
     }
 }

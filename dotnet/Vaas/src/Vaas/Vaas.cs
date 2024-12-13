@@ -6,7 +6,6 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Security.Authentication;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -138,7 +137,7 @@ public class Vaas : IVaas
                     var fileReport = await response.Content.ReadFromJsonAsync<FileReport>(
                         cancellationToken
                     );
-                    return VaasVerdict.From(fileReport ?? throw new VaasServerException("TODO"));
+                    return VaasVerdict.From(fileReport ?? throw new VaasServerException($"Unable to deserialize FileReport {fileReport}"));
                 case HttpStatusCode.Accepted:
                     continue;
                 case HttpStatusCode.Unauthorized:
@@ -170,7 +169,7 @@ public class Vaas : IVaas
     {
         options ??= ForFileOptions.Default;
 
-        var sha256 = Sha256CheckSum(path);
+        var sha256 = ChecksumSha256.Sha256CheckSum(path);
 
         var forSha256Options = new ForSha256Options
         {
@@ -294,12 +293,14 @@ public class Vaas : IVaas
                     var urlReport = await reportResponse.Content.ReadFromJsonAsync<UrlReport>(
                         cancellationToken
                     );
-                    return VaasVerdict.From(urlReport ?? throw new VaasServerException("TODO"));
+                    return VaasVerdict.From(urlReport ?? throw new VaasServerException($"Unable to deserialize UrlReport {urlReport}"));
                 case HttpStatusCode.Accepted:
                     continue;
+                case HttpStatusCode.Unauthorized:
+                    throw new VaasAuthenticationException();
+                case HttpStatusCode.BadRequest:
                 default:
-                    throw new NotImplementedException("Parse error here");
-                    break;
+                    throw await ParseVaasError(reportResponse);
             }
         }
     }
@@ -310,38 +311,6 @@ public class Vaas : IVaas
             "VaasClientException" => new VaasClientException(problemDetails.Detail),
             _ => new VaasServerException(problemDetails?.Detail),
         };
-
-    private async Task UploadStream(
-        Stream stream,
-        string url,
-        string token,
-        CancellationToken cancellationToken
-    )
-    {
-        using var requestContent = new StreamContent(stream);
-        using var requestMessage = new HttpRequestMessage(HttpMethod.Put, url);
-        requestMessage.Version = HttpVersion.Version11;
-        requestMessage.VersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
-        requestMessage.Content = requestContent;
-        requestMessage.Headers.Authorization = new AuthenticationHeaderValue(token);
-
-        var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
-        if (!response.IsSuccessStatusCode)
-        {
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            ProblemDetails? problemDetails;
-            try
-            {
-                problemDetails = JsonSerializer.Deserialize<ProblemDetails>(responseBody);
-            }
-            catch (JsonException)
-            {
-                throw new VaasServerException("Server did not return proper ProblemDetails");
-            }
-
-            throw ProblemDetailsToException(problemDetails);
-        }
-    }
 
     private static async Task<Exception> ParseVaasError(HttpResponseMessage response)
     {
@@ -364,24 +333,5 @@ public class Vaas : IVaas
                 _ => new VaasServerException("HTTP Error: " + (int)response.StatusCode),
             };
         }
-    }
-
-    private async Task UploadFile(
-        string path,
-        string url,
-        string token,
-        CancellationToken cancellationToken
-    )
-    {
-        await using var fileStream = File.OpenRead(path);
-        await UploadStream(fileStream, url, token, cancellationToken);
-    }
-
-    // TODO: Move to ChecksumSha256
-    public static string Sha256CheckSum(string filePath)
-    {
-        using var sha256 = SHA256.Create();
-        using var fileStream = File.OpenRead(filePath);
-        return Convert.ToHexString(sha256.ComputeHash(fileStream)).ToLower();
     }
 }

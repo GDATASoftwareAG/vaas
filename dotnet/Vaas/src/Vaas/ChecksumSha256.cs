@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -47,6 +49,13 @@ public class ChecksumSha256
             result = default;
             return false;
         }
+    }
+    
+    public static string Sha256CheckSum(string filePath)
+    {
+        using var sha256 = SHA256.Create();
+        using var fileStream = File.OpenRead(filePath);
+        return Convert.ToHexString(sha256.ComputeHash(fileStream)).ToLower();
     }
 
     public static implicit operator ChecksumSha256(string sha256) => new(sha256);
