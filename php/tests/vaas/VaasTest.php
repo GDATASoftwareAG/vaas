@@ -56,7 +56,7 @@ final class VaasTest extends TestCase
         $this->vaas = $this->getVaas();
     }
 
-    private function getVaas(bool $useCache = false, bool $useHashLookup = false): Vaas
+    private function getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
     {
         $credentials = new AuthenticationOptions(
             GrantType::CLIENT_CREDENTIALS,
