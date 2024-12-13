@@ -22,6 +22,7 @@ import de.gdata.vaas.Vaas;
 import de.gdata.vaas.VaasConfig;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.options.ForStreamOptions;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class VaasTests {
@@ -90,8 +91,10 @@ public class VaasTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+        var forStreamOptions = new ForStreamOptions(true, "foobar");
 
-        var verdict = vaas.forStream(inputStream).join();
+        var verdict = vaas.forStream(inputStream, contentLength, forStreamOptions).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"

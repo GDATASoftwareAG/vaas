@@ -28,7 +28,7 @@ public class FileReport {
         this.mimeType = mimeType;
     }
 
-    public static UrlReport fromJson(String json) {
-        return new Gson().fromJson(json, UrlReport.class);
+    public static FileReport fromJson(String json) {
+        return new Gson().fromJson(json, FileReport.class);
     }
 }

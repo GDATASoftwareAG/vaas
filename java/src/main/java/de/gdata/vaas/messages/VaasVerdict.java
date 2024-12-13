@@ -33,7 +33,19 @@ public class VaasVerdict {
         this.mimeType = urlReport.mimeType;
     }
 
-    public static VaasVerdict From(UrlReport fileReport) {
+    public VaasVerdict(FileReport fileReport) {
+        this.sha256 = fileReport.sha256;
+        this.verdict = fileReport.verdict;
+        this.detection = fileReport.detection;
+        this.fileType = fileReport.fileType;
+        this.mimeType = fileReport.mimeType;
+    }
+
+    public static VaasVerdict From(UrlReport urlReport) {
+        return new VaasVerdict(urlReport);
+    }
+
+    public static VaasVerdict From(FileReport fileReport) {
         return new VaasVerdict(fileReport);
     }
 }
