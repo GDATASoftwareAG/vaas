@@ -3,7 +3,7 @@ module GDATACyberDefense/cleanup-packages
 go 1.22
 
 require (
-	github.com/docker/docker v27.3.1+incompatible
+	github.com/docker/docker v27.4.0+incompatible
 	github.com/gofri/go-github-ratelimit v1.1.0
 	github.com/google/go-github/v66 v66.0.0
 	github.com/google/go-github/v67 v67.0.0
