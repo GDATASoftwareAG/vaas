@@ -2,8 +2,8 @@
 
 namespace VaasSdk\Authentication;
 
-class GrantType
+enum GrantType: string 
 {
-    const CLIENT_CREDENTIALS = 'client_credentials';
-    const PASSWORD = 'password';
+    case CLIENT_CREDENTIALS = 'client_credentials';
+    case PASSWORD = 'password';
 }
