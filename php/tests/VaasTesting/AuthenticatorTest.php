@@ -56,7 +56,7 @@ final class AuthenticatorTest extends TestCase
             clientSecret: "invalid"
         );
         
-        $authenticator->getTokenAsync()->await();
+        $authenticator->getTokenAsync();
     }
 
     public function testResourceOwnerPasswordGrantAuthenticator_withInvalidCredentials_ThrowsAccessDeniedException(): void
@@ -68,7 +68,7 @@ final class AuthenticatorTest extends TestCase
             password: "invalid"
         );
 
-        $authenticator->getTokenAsync()->await();
+        $authenticator->getTokenAsync();
     }
 
     public function testClientCredentialsGrantAuthenticator_withValidCredentials_ReturnsToken(): void
