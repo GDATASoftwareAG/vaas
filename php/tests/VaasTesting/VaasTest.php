@@ -77,7 +77,7 @@ final class VaasTest extends TestCase
             $_ENV["TOKEN_URL"]
         );
 
-        return (new Vaas())
+        return Vaas::builder()
             ->withAuthenticator($authenticator)
             ->withOptions($options)
             ->withLogger($this->logger)

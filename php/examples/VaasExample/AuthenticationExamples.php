@@ -26,7 +26,7 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
     tokenUrl: getenv("TOKEN_URL")
 );
 
-$vaas = (new Vaas())
+$vaas = Vaas::builder()
     ->withAuthenticator($authenticator)
     ->build();
 

@@ -8,13 +8,11 @@ use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
 use Amp\Future;
 use Amp\Http\Client\HttpClient;
-use Amp\Http\Client\HttpClientBuilder;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Http\Client\StreamedContent;
 use Exception;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 use VaasSdk\Authentication\AuthenticatorInterface;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
@@ -36,76 +34,38 @@ class Vaas
     private AuthenticatorInterface $authenticator;
     private VaasOptions $options;
     private LoggerInterface $logger;
+    
+    private function __construct() {}
 
-    /**
-     * Optional parameters for the Vaas client like
-     * - the URL of the VaaS backend
-     * - whether to use the cache (default: true)
-     * - whether to use the G DATA cloud for hash lookups (default: true)
-     * - the timeout in seconds for the file upload to the VaaS backend (default: 300)
-     * @param VaasOptions $options Options for the Vaas client
-     * @return $this
-     */
+    public static function builder(): VaasBuilder {
+        return new VaasBuilder();
+    }
+
+    public static function createInstance(): Vaas {
+        return new self();
+    }
+
     public function withOptions(VaasOptions $options): self
     {
         $this->options = $options;
         return $this;
     }
 
-    /**
-     * @param HttpClient $httpClient Your optional custom http client.
-     * @return $this
-     */
     public function withHttpClient(HttpClient $httpClient): self
     {
         $this->httpClient = $httpClient;
         return $this;
     }
 
-    /**
-     * Either use the `ClientCredentialsGrantAuthenticator` or `ResourceOwnerPasswordGrantAuthenticator`
-     * Use the `ClientCredentialsGrantAuthenticator` if you have a client id and client secret.
-     * Use the `ResourceOwnerPasswordGrantAuthenticator` if you have a username and password.
-     * Last one is the choice if you have registered yourself on https://vaas.gdata.de/login. In this case, the client id is `vaas-customer`.
-     * @param AuthenticatorInterface $authenticator The authenticator to use
-     * @return $this
-     */
     public function withAuthenticator(AuthenticatorInterface $authenticator): self
     {
         $this->authenticator = $authenticator;
         return $this;
     }
 
-    /**
-     * Set the logger to use
-     * @param LoggerInterface $logger The logger to use
-     * @return $this
-     */
     public function withLogger(LoggerInterface $logger): self
     {
         $this->logger = $logger;
-        return $this;
-    }
-
-    /**
-     * Build the Vaas client
-     * @return $this
-     * @throws VaasClientException If the authenticator is not set
-     */
-    public function build(): self
-    {
-        if (!isset($this->logger)) {
-            $this->logger = new NullLogger();
-        }
-        if (!isset($this->authenticator)) {
-            throw new VaasClientException('Authenticator is required');
-        }
-        if (!isset($this->httpClient)) {
-            $this->httpClient = HttpClientBuilder::buildDefault();
-        }
-        if (!isset($this->options)) {
-            $this->options = new VaasOptions();
-        }
         return $this;
     }
 
