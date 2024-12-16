@@ -141,7 +141,7 @@ class Vaas
 
             while (true) {
                 $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await($cancellation);
-                $this->logger->debug("Send request for SHA256: $request->getUri()");
+                $this->logger->debug("Send request for SHA256: " . self::logUri($request));
                 $response = $this->httpClient->request($request, $cancellation);
 
                 switch ($response->getStatus()) {
@@ -261,7 +261,7 @@ class Vaas
             $request->setBody(StreamedContent::fromStream($stream, $fileSize));
             $request->setTransferTimeout($options->timeout);
             $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
-            $this->logger->debug("Send request for file stream: $request->getUri()");
+            $this->logger->debug("Send request for file stream: " . self::logUri($request));
             $response = $this->httpClient->request($request);
             $stream->close();
             switch ($response->getStatus()) {
@@ -334,7 +334,7 @@ class Vaas
 
             $this->addRequestHeadersAsync($urlAnalysisRequest, $options->vaasRequestId)->await($cancellation);
             $urlAnalysisRequest->setHeader('Content-Type', 'application/json');
-            $this->logger->debug("Send request for url analysis: $urlAnalysisRequest->getUri()");
+            $this->logger->debug("Send request for url analysis: " . self::logUri($urlAnalysisRequest));
             $urlAnalysisResponse = $this->httpClient->request($urlAnalysisRequest, $cancellation);
 
             switch ($urlAnalysisResponse->getStatus()) {
@@ -444,5 +444,13 @@ class Vaas
                 throw new VaasServerException('HTTP Error: ' . $response->getStatus() . ' ' . $response->getReason());
             }
         }
+    }
+    
+    private static function logUri(Request $request): string
+    {
+        $uri = $request->getUri()->getScheme() . '://' . $request->getUri()->getHost() . $request->getUri()->getPort() . $request->getUri()->getPath();
+        $query = $request->getUri()->getQuery();
+        $fragment = $request->getUri()->getFragment();
+        return $uri . (!empty($query) ? '?' . $query : '') . (!empty($fragment) ? '#' . $fragment : '');
     }
 }
