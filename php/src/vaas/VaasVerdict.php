@@ -20,4 +20,15 @@ class VaasVerdict
         $verdict->mimeType = $data['mimeType'] ?? null;
         return $verdict;
     }
+    
+    public function __toString(): string
+    {
+        return json_encode([
+            'sha256' => $this->sha256,
+            'verdict' => $this->verdict,
+            'detection' => $this->detection,
+            'fileType' => $this->fileType,
+            'mimeType' => $this->mimeType
+        ]);
+    }
 }
