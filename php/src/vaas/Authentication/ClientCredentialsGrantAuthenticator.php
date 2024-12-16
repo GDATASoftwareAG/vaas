@@ -3,10 +3,8 @@
 namespace VaasSdk\Authentication;
 
 use Amp\Cancellation;
-use Amp\Future;
 use Amp\Http\Client\HttpClient;
 use VaasSdk\Options\AuthenticationOptions;
-use function Amp\async;
 
 class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
 {
@@ -35,12 +33,10 @@ class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
      * If the token is still valid, it will be returned immediately.
      * If the token is expired, a new token will be requested.
      * @param Cancellation|null $cancellation Cancellation token
-     * @return Future Future that resolves to the access token string
+     * @return string The access token string
      */
-    public function getTokenAsync(?Cancellation $cancellation = null): Future
+    public function getTokenAsync(?Cancellation $cancellation = null): string
     {
-        return async(function () use ($cancellation) {
-            return $this->tokenReceiver->getTokenAsync($cancellation)->await();
-        });
+        return $this->tokenReceiver->getTokenAsync($cancellation)->await();
     }
 }

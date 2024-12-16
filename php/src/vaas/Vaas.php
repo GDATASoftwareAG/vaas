@@ -137,9 +137,8 @@ class Vaas
                 json_encode($options->useHashLookup
             ));
 
-            $request = new Request($url, 'GET');
-
             while (true) {
+                $request = new Request($url, 'GET');
                 $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await($cancellation);
                 $this->logger->debug("Send request for SHA256: " . self::logUri($request));
                 $response = $this->httpClient->request($request, $cancellation);
@@ -211,11 +210,9 @@ class Vaas
                     $this->logger->debug("File $path is already known from cache or G DATA cloud by its SHA256: $sha256");
                     return $response;
                 }
-                $this->logger->debug("File $path is not known from cache or G DATA cloud by its SHA256: $sha256");
             }
 
             $stream = openFile($path, 'r');
-            $stream->onClose(fn() => $stream->close());
 
             $forStreamOptions = new ForStreamOptions([
                 'vaasRequestId' => $options->vaasRequestId,
@@ -238,32 +235,35 @@ class Vaas
     public function forStreamAsync(ReadableStream $stream, int $fileSize, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($stream, $fileSize, $options, $cancellation) {
-            $this->logger->debug("Requesting verdict for stream");
+            try {
+                $this->logger->debug("Requesting verdict for stream");
 
-            if (!$stream->isReadable() || $stream->isClosed()) {
-                $this->logger->error("Stream is not readable");
-                throw new VaasClientException('Stream is not readable');
+                if (!$stream->isReadable() || $stream->isClosed()) {
+                    $this->logger->error("Stream is not readable");
+                    throw new VaasClientException('Stream is not readable');
+                }
+
+                if ($options === null) {
+                    $options = new ForStreamOptions(
+                        [
+                            'vaasRequestId' => null,
+                            'timeout' => $this->options->timeout,
+                            'useHashLookup' => $this->options->useHashLookup ?? true,
+                        ]
+                    );
+                }
+                $url = sprintf('%s/files?useHashLookup=%s', $this->options->vaasUrl, json_encode($options->useHashLookup));
+
+                $request = new Request($url, 'POST');
+
+                $request->setBody(StreamedContent::fromStream($stream, $fileSize));
+                $request->setTransferTimeout($options->timeout);
+                $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
+                $this->logger->debug("Send request for file stream: " . self::logUri($request));
+                $response = $this->httpClient->request($request);
+            } finally {
+                $stream->close();
             }
-
-            if ($options === null) {
-                $options = new ForStreamOptions(
-                    [
-                        'vaasRequestId' => null,
-                        'timeout' => $this->options->timeout,
-                        'useHashLookup' => $this->options->useHashLookup ?? true,
-                    ]
-                );
-            }
-            $url = sprintf('%s/files?useHashLookup=%s', $this->options->vaasUrl, json_encode($options->useHashLookup));
-
-            $request = new Request($url, 'POST');
-
-            $request->setBody(StreamedContent::fromStream($stream, $fileSize));
-            $request->setTransferTimeout($options->timeout);
-            $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
-            $this->logger->debug("Send request for file stream: " . self::logUri($request));
-            $response = $this->httpClient->request($request);
-            $stream->close();
             switch ($response->getStatus()) {
                 case 201:
                     $fileAnalysisStarted = json_decode($response->getBody()->buffer(), true);
@@ -310,11 +310,7 @@ class Vaas
     {
         return async(function () use ($uri, $options, $cancellation) {
             $this->logger->debug("Requesting verdict for URL: $uri");
-
-            if (!filter_var($uri, FILTER_VALIDATE_URL)) {
-                $this->logger->error("Invalid URL: $uri");
-                throw new VaasClientException('Invalid URL');
-            }
+            $uri = Vaas::validUri($uri);
 
             if ($options === null) {
                 $options = new ForUrlOptions(
@@ -400,7 +396,7 @@ class Vaas
     {
         return async(function () use ($request, $requestId) {
             $this->logger->debug("Add request headers");
-            $request->setHeader('Authorization', 'Bearer ' . $this->authenticator->getTokenAsync()->await());
+            $request->setHeader('Authorization', 'Bearer ' . $this->authenticator->getTokenAsync());
             $this->logger->debug("Successfully added authorization header with bearer token");
             $request->setHeader('User-Agent', sprintf('%s/%s', self::PRODUCT_NAME, self::PRODUCT_VERSION));
             if (!empty($requestId)) {
@@ -452,5 +448,19 @@ class Vaas
         $query = $request->getUri()->getQuery();
         $fragment = $request->getUri()->getFragment();
         return $uri . (!empty($query) ? '?' . $query : '') . (!empty($fragment) ? '#' . $fragment : '');
+    }
+
+    /**
+     * Validate the URI per RFC 2396 (https://datatracker.ietf.org/doc/html/rfc2396)
+     * @param string $uri The URI to validate
+     * @return string The validated URI
+     * @throws VaasClientException If the URI is invalid
+     */
+    private static function validUri(string $uri): string
+    {
+        if (!filter_var($uri, FILTER_VALIDATE_URL)) {
+            throw new VaasClientException('Invalid URI');
+        }
+        return $uri;
     }
 }

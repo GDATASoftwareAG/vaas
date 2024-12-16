@@ -79,7 +79,7 @@ final class AuthenticatorTest extends TestCase
             tokenUrl: $_ENV["TOKEN_URL"]
         );
         
-        $token = $authenticator->getTokenAsync()->await();
+        $token = $authenticator->getTokenAsync();
 
         $this->assertNotNull($token);
     }
@@ -93,7 +93,7 @@ final class AuthenticatorTest extends TestCase
             tokenUrl: $_ENV["TOKEN_URL"]
         );
 
-        $token = $authenticator->getTokenAsync()->await();
+        $token = $authenticator->getTokenAsync();
 
         $this->assertNotNull($token);
     }

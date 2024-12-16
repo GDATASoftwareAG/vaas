@@ -199,7 +199,7 @@ final class VaasTest extends TestCase
     public function testForUrl_WithInvalidUrl_ThrowsVaasClientException(): void
     {
         $this->expectException(VaasClientException::class);
-        $this->expectExceptionMessage("Invalid URL");
+        $this->expectExceptionMessage("Invalid URI");
 
         $this->vaas->forUrlAsync("invalid")->await();
     }
