@@ -82,12 +82,12 @@ jobs:
       - name: install php dependencies
         uses: php-actions/composer@v6
         with:
-          working_dir: php/tests/vaas
+          working_dir: php/tests/VaasTesting
           php_version: ${{ matrix.version }}
 
       - name: run tests
         run: ./vendor/bin/phpunit --colors --testdox --exclude-group exclude
-        working-directory: php/tests/vaas
+        working-directory: php/tests/VaasTesting
 
       - name: install example requirements
         run: composer install
