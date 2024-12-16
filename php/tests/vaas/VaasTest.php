@@ -6,11 +6,11 @@ use Amp\File\FilesystemException;
 use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
-use VaasSdk\Authentication\Authenticator;
-use VaasSdk\Authentication\GrantType;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\VaasClientException;
-use VaasSdk\Options\AuthenticationOptions;
 use VaasSdk\Options\VaasOptions;
+use VaasSdk\Sha256;
 use VaasSdk\Vaas;
 use VaasSdk\Verdict;
 use function Amp\File\openFile;
@@ -58,27 +58,27 @@ final class VaasTest extends TestCase
 
     private function getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
     {
-        $credentials = new AuthenticationOptions(
-            GrantType::CLIENT_CREDENTIALS,
-            $_ENV["CLIENT_ID"],
-            $_ENV["CLIENT_SECRET"]
+        $options = new VaasOptions(
+            useHashLookup: $useHashLookup,
+            useCache: $useCache,
+            vaasUrl: $_ENV["VAAS_URL"] 
         );
 
-        $options = new VaasOptions(
-            $useHashLookup,
-            $useCache,
-            $_ENV["VAAS_URL"],
+        $authenticator = new ClientCredentialsGrantAuthenticator(
+            $_ENV["CLIENT_ID"],
+            $_ENV["CLIENT_SECRET"],
             $_ENV["TOKEN_URL"]
         );
 
-        $authenticator = new Authenticator($credentials, $options);
-
-        return new Vaas($authenticator, $options);
+        return (new Vaas())
+            ->withAuthenticator($authenticator)
+            ->withOptions($options)
+            ->build();
     }
 
     public function testForSha256_WithMaliciousSha256_GetsMaliciousResponse(): void
     {
-        $verdict = $this->vaas->forSha256Async(self::MALICIOUS_HASH)->await();
+        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::MALICIOUS_HASH))->await();
 
         $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->sha256);
@@ -86,36 +86,36 @@ final class VaasTest extends TestCase
     
     public function testForSha256_WithPupSha256_GetsPupResponse(): void
     {
-        $verdict = $this->vaas->forSha256Async(self::PUP_HASH)->await();
-        
-        $this->assertEquals(Verdict::PUP, $verdict->verdict);
+        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::PUP_HASH))->await();
+
         $this->assertEqualsIgnoringCase(self::PUP_HASH, $verdict->sha256);
+        $this->assertEquals(Verdict::PUP, $verdict->verdict);
     }
     
     public function testForSha256_WithCleanSha256_GetsCleanResponse(): void
     {
-        $verdict = $this->vaas->forSha256Async(self::CLEAN_HASH)->await();
-        
-        $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
+        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::CLEAN_HASH))->await();
+
         $this->assertEqualsIgnoringCase(self::CLEAN_HASH, $verdict->sha256);
+        $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
     }
     
     public function testForSha256_WithUnknownSha256_GetsUnknownResponse(): void
     {
         $vaas = $this->getVaas(false, false);
         
-        $verdict = $vaas->forSha256Async(self::UNKNOWN_HASH)->await();
-        
-        $this->assertEquals(Verdict::UNKNOWN, $verdict->verdict);
+        $verdict = $vaas->forSha256Async(Sha256::TryFromString(self::UNKNOWN_HASH))->await();
+
         $this->assertEqualsIgnoringCase(self::UNKNOWN_HASH, $verdict->sha256);
+        $this->assertEquals(Verdict::UNKNOWN, $verdict->verdict);
     }
     
-    public function testForSha256_WithInvalidSha256_ThrowsVaasClientException(): void
+    public function testForSha256_WithInvalidSha256_ThrowsInvalidSha256Exception(): void
     {
-        $this->expectException(VaasClientException::class);
+        $this->expectException(InvalidSha256Exception::class);
         $this->expectExceptionMessage("Invalid SHA256 hash");
         
-        $this->vaas->forSha256Async("invalid")->await();
+        $this->vaas->forSha256Async(Sha256::TryFromString("invalid"))->await();
     }
     
     public function testForUrl_WithMaliciousUrl_GetsMaliciousResponse(): void

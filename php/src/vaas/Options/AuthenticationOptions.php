@@ -7,25 +7,14 @@ use VaasSdk\Authentication\GrantType;
 
 class AuthenticationOptions
 {
-    public string $grantType;
-    public string $clientId;
-    public ?string $clientSecret;
-    public ?string $userName;
-    public ?string $password;
-
     public function __construct(
-        string $grantType,
-        string $clientId,
-        ?string $clientSecret = null,
-        ?string $userName = null,
-        ?string $password = null
+        public GrantType $grantType,
+        public string $clientId,
+        public string $tokenUrl,
+        public ?string $clientSecret = null,
+        public ?string $userName = null,
+        public ?string $password = null
     ) {
-        $this->grantType = $grantType;
-        $this->clientId = $clientId;
-        $this->clientSecret = $clientSecret;
-        $this->userName = $userName;
-        $this->password = $password;
-
         $this->validate();
     }
 

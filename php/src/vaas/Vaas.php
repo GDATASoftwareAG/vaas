@@ -14,7 +14,9 @@ use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Http\Client\StreamedContent;
 use Exception;
-use VaasSdk\Authentication\Authenticator;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use VaasSdk\Authentication\AuthenticatorInterface;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Exceptions\VaasClientException;
 use VaasSdk\Exceptions\VaasServerException;
@@ -32,46 +34,92 @@ class Vaas
     private const PRODUCT_VERSION = '0.0.0';
 
     private HttpClient $httpClient;
-    private Authenticator $authenticator;
+    private AuthenticatorInterface $authenticator;
     private VaasOptions $options;
+    private LoggerInterface $logger;
 
     /**
-     * Create a new Vaas instance
-     * @param Authenticator $authenticator Authenticator to use for fetching tokens
-     * @param VaasOptions|null $options Options for the Vaas instance to set usage of cache and hash lookup
-     * @param HttpClient|null $httpClient HTTP client to use for requests
+     * Optional parameters for the Vaas client like
+     * - the URL of the VaaS backend
+     * - whether to use the cache (default: true)
+     * - whether to use the G DATA cloud for hash lookups (default: true)
+     * - the timeout in seconds for the file upload to the VaaS backend (default: 300)
+     * @param VaasOptions $options Options for the Vaas client
+     * @return $this
      */
-    public function __construct(Authenticator $authenticator, ?VaasOptions $options = null,  ?HttpClient $httpClient = null)
+    public function withOptions(VaasOptions $options): self
+    {
+        $this->options = $options;
+        return $this;
+    }
+
+    /**
+     * @param HttpClient $httpClient Your optional custom http client.
+     * @return $this
+     */
+    public function withHttpClient(HttpClient $httpClient): self
+    {
+        $this->httpClient = $httpClient;
+        return $this;
+    }
+
+    /**
+     * Either use the `ClientCredentialsGrantAuthenticator` or `ResourceOwnerPasswordGrantAuthenticator`
+     * Use the `ClientCredentialsGrantAuthenticator` if you have a client id and client secret.
+     * Use the `ResourceOwnerPasswordGrantAuthenticator` if you have a username and password.
+     * Last one is the choice if you have registered yourself on https://vaas.gdata.de/login. In this case, the client id is `vaas-customer`.
+     * @param AuthenticatorInterface $authenticator The authenticator to use
+     * @return $this
+     */
+    public function withAuthenticator(AuthenticatorInterface $authenticator): self
     {
         $this->authenticator = $authenticator;
-        
-        if ($options === null) {
-            $this->options = new VaasOptions();
-        } else {
-            $this->options = $options;
+        return $this;
+    }
+
+    /**
+     * Set the logger to use
+     * @param LoggerInterface $logger The logger to use
+     * @return $this
+     */
+    public function withLogger(LoggerInterface $logger): self
+    {
+        $this->logger = $logger;
+        return $this;
+    }
+
+    /**
+     * Build the Vaas client
+     * @return $this
+     * @throws VaasClientException If the authenticator is not set
+     */
+    public function build(): self
+    {
+        if (!isset($this->logger)) {
+            $this->logger = new NullLogger();
         }
-        
-        if ($httpClient === null) {
+        if (!isset($this->authenticator)) {
+            throw new VaasClientException('Authenticator is required');
+        }
+        if (!isset($this->httpClient)) {
             $this->httpClient = HttpClientBuilder::buildDefault();
-        } else {
-            $this->httpClient = $httpClient;
         }
+        if (!isset($this->options)) {
+            $this->options = new VaasOptions();
+        }
+        return $this;
     }
 
     /**
      * Get the verdict for a file by its SHA256 hash
-     * @param string $sha256 The SHA256 hash of the file to check
+     * @param Sha256 $sha256 The SHA256 hash of the file to check
      * @param ForSha256Options|null $options Options for the request
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
      */
-    public function forSha256Async(string $sha256, ?ForSha256Options $options = null, ?Cancellation $cancellation = null): Future
+    public function forSha256Async(Sha256 $sha256, ?ForSha256Options $options = null, ?Cancellation $cancellation = null): Future
     {
-        return async(function () use ($sha256, $options, $cancellation) {
-            if (!preg_match('/^[a-f0-9]{64}$/', $sha256)) {
-                throw new VaasClientException('Invalid SHA256 hash');
-            }
-            
+        return async(function () use ($sha256, $options, $cancellation) {            
             if ($options === null) {
                 $options = new ForSha256Options(
                     [
@@ -82,7 +130,7 @@ class Vaas
                 );
             }
             $url = sprintf('%s/files/%s/report/?useCache=%s&useHashLookup=%s',
-                $this->options->url,
+                $this->options->vaasUrl,
                 $sha256,
                 json_encode($options->useCache),
                 json_encode($options->useHashLookup
@@ -90,7 +138,7 @@ class Vaas
 
             $request = new Request($url, 'GET');
 
-            while (7 + 7 === 14) {
+            while (true) {
                 $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await($cancellation);
                 $response = $this->httpClient->request($request, $cancellation);
 
@@ -110,8 +158,6 @@ class Vaas
                         throw $this->parseVaasError($response);
                 }
             }
-
-            throw new Exception('This should never happen');
         }, $cancellation);
     }
 
@@ -140,12 +186,12 @@ class Vaas
             }
             
             if ($options->useCache || $options->useHashLookup) {
-                $sha256 = $this->sha256CheckSum($path);
                 $forSha256Options = new ForSha256Options([
                     'vaasRequestId' => $options->vaasRequestId,
                     'useHashLookup' => $options->useHashLookup,
                     'useCache' => $options->useCache,
                 ]);
+                $sha256 = Sha256::TryFromFile($path);
                 $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
                 $isVerdictWithoutDetection = ($response->verdict === 'Malicious' || $response->verdict === 'Pup') && !empty($response->detection);
                 if ($response->verdict !== 'Unknown' && !empty($response->fileType) && !empty($response->mimeType) && !$isVerdictWithoutDetection) {
@@ -154,6 +200,8 @@ class Vaas
             }
 
             $stream = openFile($path, 'r');
+            $stream->onClose(fn() => $stream->close());
+            
             $forStreamOptions = new ForStreamOptions([
                 'vaasRequestId' => $options->vaasRequestId,
                 'useHashLookup' => $options->useHashLookup,
@@ -179,12 +227,12 @@ class Vaas
                 $options = new ForStreamOptions(
                     [
                         'vaasRequestId' => null,
-                        'timeout' => $this->options->timeout ?? 300,
+                        'timeout' => $this->options->timeout,
                         'useHashLookup' => $this->options->useHashLookup ?? true,
                     ]
                 );
             }
-            $url = sprintf('%s/files?useHashLookup=%s', $this->options->url, json_encode($options->useHashLookup));
+            $url = sprintf('%s/files?useHashLookup=%s', $this->options->vaasUrl, json_encode($options->useHashLookup));
 
             $request = new Request($url, 'POST');
             
@@ -192,6 +240,7 @@ class Vaas
             $request->setTransferTimeout($options->timeout);
             $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
             $response = $this->httpClient->request($request);
+            $stream->close();
             switch ($response->getStatus()) {
                 case 201:
                     $fileAnalysisStarted = json_decode($response->getBody()->buffer(), true);
@@ -210,8 +259,13 @@ class Vaas
                 'vaasRequestId' => $options->vaasRequestId,
                 'useHashLookup' => $options->useHashLookup,
             ]);
-
-            return $this->forSha256Async($fileAnalysisStarted['sha256'], $forSha256Options)->await();
+            
+            if (!isset($fileAnalysisStarted['sha256'])) {
+                throw new VaasServerException('Unexpected response from the server');
+            }
+            $sha256 = Sha256::TryFromString($fileAnalysisStarted['sha256']);
+            
+            return $this->forSha256Async($sha256, $forSha256Options)->await();
         });
     }
 
@@ -238,7 +292,7 @@ class Vaas
                     ]
                 );
             }
-            $urlAnalysisUri = sprintf('%s/urls', $this->options->url);
+            $urlAnalysisUri = sprintf('%s/urls', $this->options->vaasUrl);
 
             $urlAnalysisRequest = new Request($urlAnalysisUri, 'POST');
             $urlAnalysisRequest->setBody(json_encode([
@@ -269,8 +323,8 @@ class Vaas
                 throw new VaasServerException('Unexpected response from the server');
             }
 
-            while (1 - 8 === -7) {
-                $reportUri = sprintf('%s/urls/%s/report', $this->options->url, $id);
+            while (true) {
+                $reportUri = sprintf('%s/urls/%s/report', $this->options->vaasUrl, $id);
                 $reportRequest = new Request($reportUri, 'GET');
 
                 $this->addRequestHeadersAsync($reportRequest, $options->vaasRequestId)->await($cancellation);
@@ -287,8 +341,6 @@ class Vaas
                         throw $this->parseVaasError($reportResponse);
                 }
             }
-            
-            throw new Exception('This should never happen');
         }, $cancellation);
     }
 
@@ -346,20 +398,5 @@ class Vaas
                 throw new VaasServerException('HTTP Error: ' . $response->getStatus() . ' ' . $response->getReason());
             }
         }
-    }
-
-    /**
-     * Calculate the SHA256 hash of a file
-     * @param string $filePath Path to the file
-     * @return string SHA256 hash of the file
-     * @throws VaasClientException If the hash could not be calculated
-     */
-    private function sha256CheckSum(string $filePath): string
-    {
-        $hash = hash_file('sha256', $filePath);
-        if ($hash === false) {
-            throw new VaasClientException('Could not calculate SHA256 hash');
-        }
-        return $hash;
     }
 }

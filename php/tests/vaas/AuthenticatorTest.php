@@ -5,11 +5,9 @@ namespace VaasTesting;
 use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
-use VaasSdk\Authentication\Authenticator;
-use VaasSdk\Authentication\GrantType;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Authentication\ResourceOwnerPasswordGrantAuthenticator;
 use VaasSdk\Exceptions\VaasAuthenticationException;
-use VaasSdk\Options\AuthenticationOptions;
-use VaasSdk\Options\VaasOptions;
 
 final class AuthenticatorTest extends TestCase
 {
@@ -50,67 +48,51 @@ final class AuthenticatorTest extends TestCase
         $this->assertNotNull($_ENV["VAAS_CLIENT_ID"]);
     }
 
-    public function testAuthenticatorWithInvalidClientCredentials_ThrowsAccessDeniedException(): void
+    public function testClientCredentialsGrantAuthenticator_withInvalidCredentials_ThrowsAccessDeniedException(): void
     {
         $this->expectException(VaasAuthenticationException::class);
-        $credentials = new AuthenticationOptions(
-            grantType: GrantType::CLIENT_CREDENTIALS,
+        $authenticator = new ClientCredentialsGrantAuthenticator(
             clientId: "invalid",
             clientSecret: "invalid"
         );
         
-        $authenticator = new Authenticator($credentials);
         $authenticator->getTokenAsync()->await();
     }
 
-    public function testAuthenticatorWithInvalidPassword_ThrowsAccessDeniedException(): void
+    public function testResourceOwnerPasswordGrantAuthenticator_withInvalidCredentials_ThrowsAccessDeniedException(): void
     {
         $this->expectException(VaasAuthenticationException::class);
-        $credentials = new AuthenticationOptions(
-            GrantType::PASSWORD,
+        $authenticator = new ResourceOwnerPasswordGrantAuthenticator(
             clientId: "invalid",
             userName: "invalid",
             password: "invalid"
         );
 
-        $authenticator = new Authenticator($credentials);
         $authenticator->getTokenAsync()->await();
     }
 
-    public function testAuthenticatorWithValidClientCredentials_ReturnsToken(): void
+    public function testClientCredentialsGrantAuthenticator_withValidCredentials_ReturnsToken(): void
     {
-        $credentials = new AuthenticationOptions(
-            grantType: GrantType::CLIENT_CREDENTIALS,
+        $authenticator = new ClientCredentialsGrantAuthenticator(
             clientId: $_ENV["CLIENT_ID"],
-            clientSecret: $_ENV["CLIENT_SECRET"]
-        );
-        
-        $options = new VaasOptions(
-            url: $_ENV["VAAS_URL"],
+            clientSecret: $_ENV["CLIENT_SECRET"],
             tokenUrl: $_ENV["TOKEN_URL"]
         );
-
-        $authenticator = new Authenticator($credentials, $options);
+        
         $token = $authenticator->getTokenAsync()->await();
 
         $this->assertNotNull($token);
     }
 
-    public function testAuthenticatorWithValidPassword_ReturnsToken(): void
+    public function testResourceOwnerPasswordGrantAuthenticator_withValidCredentials_ReturnsToken(): void
     {
-        $credentials = new AuthenticationOptions(
-            grantType: GrantType::PASSWORD,
+        $authenticator = new ResourceOwnerPasswordGrantAuthenticator(
             clientId: $_ENV["VAAS_CLIENT_ID"],
             userName: $_ENV["VAAS_USER_NAME"],
-            password: $_ENV["VAAS_PASSWORD"]
-        );
-
-        $options = new VaasOptions(
-            url: $_ENV["VAAS_URL"],
+            password: $_ENV["VAAS_PASSWORD"],
             tokenUrl: $_ENV["TOKEN_URL"]
         );
 
-        $authenticator = new Authenticator($credentials, $options);
         $token = $authenticator->getTokenAsync()->await();
 
         $this->assertNotNull($token);
