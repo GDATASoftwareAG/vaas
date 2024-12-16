@@ -2,22 +2,22 @@
 
 namespace VaasExamples;
 
-use VaasSdk\Authentication\Authenticator;
-use VaasSdk\Authentication\GrantType;
-use VaasSdk\Options\AuthenticationOptions;
+use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Vaas;
 
 include_once("./vendor/autoload.php");
 
-$credentials = new AuthenticationOptions(
-    grantType: GrantType::CLIENT_CREDENTIALS,
+
+$authenticator = new ClientCredentialsGrantAuthenticator(
     clientId: getenv("CLIENT_ID"),
-    clientSecret: getenv("CLIENT_SECRET")
+    clientSecret: getenv("CLIENT_SECRET"),
+    tokenUrl: getenv("TOKEN_URL")
 );
 
-$authenticator = new Authenticator($credentials);
+$vaas = (new Vaas())
+    ->withAuthenticator($authenticator)
+    ->build();
 
-$vaas = new Vaas($authenticator);
 
 $scanPath = getenv("SCAN_PATH");
 $vaasVerdict = $vaas->forFileAsync($scanPath)->await();

@@ -13,24 +13,21 @@ use Exception;
 use InvalidArgumentException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use VaasSdk\Options\AuthenticationOptions;
-use VaasSdk\Options\VaasOptions;
 use function Amp\async;
 use function Amp\delay;
 
-class Authenticator
+class TokenReceiver
 {
     private HttpClient $httpClient;
-    private VaasOptions $options;
-    private AuthenticationOptions $credentials;
+    private AuthenticationOptions $authenticationOptions;
     private Mutex $mutex;
     private ?TokenResponse $lastTokenResponse = null;
     private int $validTo = 0;
     private ?int $lastRequestTime = null;
 
-    public function __construct(AuthenticationOptions $credentials, ?VaasOptions $options = null, ?HttpClient $httpClient = null)
+    public function __construct(AuthenticationOptions $options, ?HttpClient $httpClient = null)
     {
-        $this->credentials = $credentials;
-        $this->options = $options ?? new VaasOptions();
+        $this->authenticationOptions = $options;
         $this->httpClient = $httpClient ?? HttpClientBuilder::buildDefault();
         $this->mutex = new LocalMutex();
     }
@@ -84,7 +81,7 @@ class Authenticator
     {
         return async(function () use ($cancellation) {
             $form = $this->tokenRequestToForm();
-            $request = new Request($this->options->tokenUrl, 'POST');
+            $request = new Request($this->authenticationOptions->tokenUrl, 'POST');
             $request->setBody($form);
             $request->setHeader('Content-Type', 'application/x-www-form-urlencoded');
 
@@ -121,18 +118,18 @@ class Authenticator
      */
     private function tokenRequestToForm(): string
     {
-        if ($this->credentials->grantType === GrantType::CLIENT_CREDENTIALS) {
+        if ($this->authenticationOptions->grantType == GrantType::CLIENT_CREDENTIALS) {
             return http_build_query([
-                'client_id' => $this->credentials->clientId,
-                'client_secret' => $this->credentials->clientSecret ?? throw new InvalidArgumentException(),
+                'client_id' => $this->authenticationOptions->clientId,
+                'client_secret' => $this->authenticationOptions->clientSecret ?? throw new InvalidArgumentException(),
                 'grant_type' => 'client_credentials',
             ]);
         }
 
         return http_build_query([
-            'client_id' => $this->credentials->clientId,
-            'username' => $this->credentials->userName ?? throw new InvalidArgumentException(),
-            'password' => $this->credentials->password ?? throw new InvalidArgumentException(),
+            'client_id' => $this->authenticationOptions->clientId,
+            'username' => $this->authenticationOptions->userName ?? throw new InvalidArgumentException(),
+            'password' => $this->authenticationOptions->password ?? throw new InvalidArgumentException(),
             'grant_type' => 'password',
         ]);
     }
