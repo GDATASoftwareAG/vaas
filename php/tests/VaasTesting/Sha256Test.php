@@ -3,9 +3,9 @@
 namespace VaasTesting;
 
 use PHPUnit\Framework\TestCase;
-use VaasSdk\Sha256;
-use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\FileDoesNotExistException;
+use VaasSdk\Exceptions\InvalidSha256Exception;
+use VaasSdk\Sha256;
 
 final class Sha256Test extends TestCase
 {
