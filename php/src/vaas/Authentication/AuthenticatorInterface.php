@@ -3,9 +3,8 @@
 namespace VaasSdk\Authentication;
 
 use Amp\Cancellation;
-use Amp\Future;
 
 interface AuthenticatorInterface
 {
-    public function getTokenAsync(?Cancellation $cancellation = null): Future;
+    public function getTokenAsync(?Cancellation $cancellation = null): string;
 }
