@@ -6,7 +6,6 @@ use Amp\ByteStream\BufferException;
 use Amp\ByteStream\ReadableStream;
 use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
-use Amp\File\File;
 use Amp\Future;
 use Amp\Http\Client\HttpClient;
 use Amp\Http\Client\HttpClientBuilder;
@@ -119,7 +118,9 @@ class Vaas
      */
     public function forSha256Async(Sha256 $sha256, ?ForSha256Options $options = null, ?Cancellation $cancellation = null): Future
     {
-        return async(function () use ($sha256, $options, $cancellation) {            
+        return async(function () use ($sha256, $options, $cancellation) {
+            $this->logger->debug("Requesting verdict for SHA256: $sha256");
+
             if ($options === null) {
                 $options = new ForSha256Options(
                     [
@@ -140,21 +141,29 @@ class Vaas
 
             while (true) {
                 $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await($cancellation);
+                $this->logger->debug("Send request for SHA256: $request->getUri()");
                 $response = $this->httpClient->request($request, $cancellation);
 
                 switch ($response->getStatus()) {
                     case 200:
                         $report = json_decode($response->getBody()->buffer($cancellation), true);
-                        return VaasVerdict::from($report);
+                        $verdict = VaasVerdict::from($report);
+                        $this->logger->info("Received verdict for $sha256: $verdict");
+                        return $verdict;
                     case 202:
+                        $this->logger->debug("Verdict for $sha256 is not ready yet, retrying...");
                         break;
                     case 400:
+                        $this->logger->error("Bad request for SHA256: $sha256");
                         throw new VaasClientException("Bad request. The format of the SHA256 is wrong.");
                     case 401:
+                        $this->logger->error("Unauthorized request for SHA256: $sha256");
                         throw new VaasAuthenticationException("Unauthorized. Check your credentials.");
                     case 403:
+                        $this->logger->error("Forbidden request for SHA256: $sha256");
                         throw new VaasClientException("Forbidden. You are not allowed to use this endpoint.");
                     default:
+                        $this->logger->error("Error requesting verdict for SHA256: $sha256");
                         throw $this->parseVaasError($response);
                 }
             }
@@ -171,10 +180,13 @@ class Vaas
     public function forFileAsync(string $path, ?ForFileOptions $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($path, $options, $cancellation) {
+            $this->logger->debug("Requesting verdict for file: $path");
+
             if (!file_exists($path)) {
+                $this->logger->error("File does not exist: $path");
                 throw new VaasClientException('File does not exist');
             }
-            
+
             if ($options === null) {
                 $options = new ForFileOptions(
                     [
@@ -184,7 +196,7 @@ class Vaas
                     ]
                 );
             }
-            
+
             if ($options->useCache || $options->useHashLookup) {
                 $forSha256Options = new ForSha256Options([
                     'vaasRequestId' => $options->vaasRequestId,
@@ -192,28 +204,33 @@ class Vaas
                     'useCache' => $options->useCache,
                 ]);
                 $sha256 = Sha256::TryFromFile($path);
+                $this->logger->debug("Check if file $path is already known by its SHA256: $sha256");
                 $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
                 $isVerdictWithoutDetection = ($response->verdict === 'Malicious' || $response->verdict === 'Pup') && !empty($response->detection);
                 if ($response->verdict !== 'Unknown' && !empty($response->fileType) && !empty($response->mimeType) && !$isVerdictWithoutDetection) {
+                    $this->logger->debug("File $path is already known from cache or G DATA cloud by its SHA256: $sha256");
                     return $response;
                 }
+                $this->logger->debug("File $path is not known from cache or G DATA cloud by its SHA256: $sha256");
             }
 
             $stream = openFile($path, 'r');
             $stream->onClose(fn() => $stream->close());
-            
+
             $forStreamOptions = new ForStreamOptions([
                 'vaasRequestId' => $options->vaasRequestId,
                 'useHashLookup' => $options->useHashLookup,
             ]);
 
+            $this->logger->debug("Requesting verdict for $path as file stream");
             return $this->forStreamAsync($stream, filesize($path), $forStreamOptions)->await();
         });
     }
 
     /**
      * Get the verdict for a stream
-     * @param File $stream The stream to check
+     * @param ReadableStream $stream The stream to check
+     * @param int $fileSize The size of the file in bytes
      * @param ForStreamOptions|null $options Options for the request
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
@@ -221,8 +238,13 @@ class Vaas
     public function forStreamAsync(ReadableStream $stream, int $fileSize, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($stream, $fileSize, $options, $cancellation) {
-            if (!$stream->isReadable() || $stream->isClosed()) { throw new VaasClientException('Stream is not readable'); }
-            
+            $this->logger->debug("Requesting verdict for stream");
+
+            if (!$stream->isReadable() || $stream->isClosed()) {
+                $this->logger->error("Stream is not readable");
+                throw new VaasClientException('Stream is not readable');
+            }
+
             if ($options === null) {
                 $options = new ForStreamOptions(
                     [
@@ -235,23 +257,29 @@ class Vaas
             $url = sprintf('%s/files?useHashLookup=%s', $this->options->vaasUrl, json_encode($options->useHashLookup));
 
             $request = new Request($url, 'POST');
-            
+
             $request->setBody(StreamedContent::fromStream($stream, $fileSize));
             $request->setTransferTimeout($options->timeout);
             $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
+            $this->logger->debug("Send request for file stream: $request->getUri()");
             $response = $this->httpClient->request($request);
             $stream->close();
             switch ($response->getStatus()) {
                 case 201:
                     $fileAnalysisStarted = json_decode($response->getBody()->buffer(), true);
+                    $this->logger->debug("File uploaded successfully and analysis started");
                     break;
                 case 400:
+                    $this->logger->error("Bad request for stream");
                     throw new VaasClientException("Bad request. The header content-length is missing or the content-type is not \"application/octet-stream\".");
                 case 401:
+                    $this->logger->error("Unauthorized request for stream");
                     throw new VaasAuthenticationException("Unauthorized. Check your credentials.");
                 case 403:
+                    $this->logger->error("Forbidden request for stream");
                     throw new VaasClientException("Forbidden. You are not allowed to use this endpoint.");
                 default:
+                    $this->logger->error("Error requesting verdict for stream");
                     throw $this->parseVaasError($response);
             }
 
@@ -259,12 +287,14 @@ class Vaas
                 'vaasRequestId' => $options->vaasRequestId,
                 'useHashLookup' => $options->useHashLookup,
             ]);
-            
+
             if (!isset($fileAnalysisStarted['sha256'])) {
+                $this->logger->error("Unexpected response from the server for stream");
                 throw new VaasServerException('Unexpected response from the server');
             }
             $sha256 = Sha256::TryFromString($fileAnalysisStarted['sha256']);
-            
+
+            $this->logger->debug("Requesting verdict for uploaded file with SHA256: $sha256");
             return $this->forSha256Async($sha256, $forSha256Options)->await();
         });
     }
@@ -279,11 +309,13 @@ class Vaas
     public function forUrlAsync(string $uri, ?ForUrlOptions $options = null, ?Cancellation $cancellation = null): Future
     {
         return async(function () use ($uri, $options, $cancellation) {
-            // Validate the URI according to RFC 2369 (https://datatracker.ietf.org/doc/html/rfc2396)
+            $this->logger->debug("Requesting verdict for URL: $uri");
+
             if (!filter_var($uri, FILTER_VALIDATE_URL)) {
+                $this->logger->error("Invalid URL: $uri");
                 throw new VaasClientException('Invalid URL');
             }
-            
+
             if ($options === null) {
                 $options = new ForUrlOptions(
                     [
@@ -302,24 +334,31 @@ class Vaas
 
             $this->addRequestHeadersAsync($urlAnalysisRequest, $options->vaasRequestId)->await($cancellation);
             $urlAnalysisRequest->setHeader('Content-Type', 'application/json');
+            $this->logger->debug("Send request for url analysis: $urlAnalysisRequest->getUri()");
             $urlAnalysisResponse = $this->httpClient->request($urlAnalysisRequest, $cancellation);
 
             switch ($urlAnalysisResponse->getStatus()) {
                 case 201:
                     $urlAnalysisStarted = json_decode($urlAnalysisResponse->getBody()->buffer($cancellation), true);
                     $id = $urlAnalysisStarted['id'] ?? null;
+                    $this->logger->debug("URL analysis started for: $uri");
                     break;
                 case 400:
+                    $this->logger->error("Bad request for URL: $uri");
                     throw new VaasClientException('Bad request.');
                 case 401:
+                    $this->logger->error("Unauthorized request for URL: $uri");
                     throw new VaasAuthenticationException('Unauthorized. Check your credentials.');
                 case 403:
+                    $this->logger->error("Forbidden request for URL: $uri");
                     throw new VaasClientException('Forbidden. You are not allowed to use this endpoint.');
                 default:
+                    $this->logger->error("Error requesting verdict for URL: $uri");
                     throw $this->parseVaasError($urlAnalysisResponse);
             }
 
             if ($id === null) {
+                $this->logger->error("Unexpected response from the server for URL: $uri");
                 throw new VaasServerException('Unexpected response from the server');
             }
 
@@ -332,12 +371,16 @@ class Vaas
 
                 switch ($reportResponse->getStatus()) {
                     case 200:
-                        $urlReport = json_decode($reportResponse->getBody()->buffer($cancellation), true) 
+                        $urlReport = json_decode($reportResponse->getBody()->buffer($cancellation), true)
                             ?? throw new VaasServerException('Unexpected response from the server');
-                        return VaasVerdict::from($urlReport);
+                        $verdict = VaasVerdict::from($urlReport);
+                        $this->logger->info("Received verdict for $uri: $verdict");
+                        return $verdict;
                     case 202:
+                        $this->logger->debug("Verdict for URL: $uri is not ready yet, retrying...");
                         break;
                     default:
+                        $this->logger->error("Error requesting verdict for URL: $uri");
                         throw $this->parseVaasError($reportResponse);
                 }
             }
@@ -356,10 +399,13 @@ class Vaas
     private function addRequestHeadersAsync(Request $request, ?string $requestId = ''): Future
     {
         return async(function () use ($request, $requestId) {
+            $this->logger->debug("Add request headers");
             $request->setHeader('Authorization', 'Bearer ' . $this->authenticator->getTokenAsync()->await());
+            $this->logger->debug("Successfully added authorization header with bearer token");
             $request->setHeader('User-Agent', sprintf('%s/%s', self::PRODUCT_NAME, self::PRODUCT_VERSION));
             if (!empty($requestId)) {
                 $request->setHeader('tracestate', 'vaasrequestid=' . $requestId);
+                $this->logger->debug("Request ID added to headers: $requestId");
             }
         });
     }

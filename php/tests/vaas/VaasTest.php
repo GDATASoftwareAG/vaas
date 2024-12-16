@@ -4,8 +4,13 @@ namespace VaasTesting;
 
 use Amp\File\FilesystemException;
 use Dotenv\Dotenv;
+use Monolog\Formatter\JsonFormatter;
+use Monolog\Handler\StreamHandler;
+use Monolog\Level;
+use Monolog\Logger;
 use PHPUnit\Framework\TestCase;
 use Prophecy\PhpUnit\ProphecyTrait;
+use Psr\Log\LoggerInterface;
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\VaasClientException;
@@ -20,6 +25,7 @@ final class VaasTest extends TestCase
     use ProphecyTrait;
     
     private Vaas $vaas;
+    private LoggerInterface $logger;
 
     const MALICIOUS_HASH = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2";
     const EICAR_HASH = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
@@ -52,7 +58,8 @@ final class VaasTest extends TestCase
         $this->assertNotNull($_ENV["CLIENT_SECRET"]);
         $this->assertNotNull($_ENV["VAAS_URL"]);
         $this->assertNotNull($_ENV["TOKEN_URL"]);
-        
+
+        $this->logger = $this->_getDebugLogger();
         $this->vaas = $this->getVaas();
     }
 
@@ -73,6 +80,7 @@ final class VaasTest extends TestCase
         return (new Vaas())
             ->withAuthenticator($authenticator)
             ->withOptions($options)
+            ->withLogger($this->logger)
             ->build();
     }
 
@@ -80,88 +88,150 @@ final class VaasTest extends TestCase
     {
         $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::MALICIOUS_HASH))->await();
 
+        $this->logger->info('Test for malicious SHA256', [
+            'expected' => Verdict::MALICIOUS,
+            'actual' => $verdict->verdict,
+            'sha256' => $verdict->sha256
+        ]);
+
         $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->sha256);
     }
-    
+
     public function testForSha256_WithPupSha256_GetsPupResponse(): void
     {
         $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::PUP_HASH))->await();
 
+        $this->logger->info('Test for PUP SHA256', [
+            'expected' => Verdict::PUP,
+            'actual' => $verdict->verdict,
+            'sha256' => $verdict->sha256
+        ]);
+
         $this->assertEqualsIgnoringCase(self::PUP_HASH, $verdict->sha256);
         $this->assertEquals(Verdict::PUP, $verdict->verdict);
     }
-    
+
     public function testForSha256_WithCleanSha256_GetsCleanResponse(): void
     {
         $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::CLEAN_HASH))->await();
 
+        $this->logger->info('Test for clean SHA256', [
+            'expected' => Verdict::CLEAN,
+            'actual' => $verdict->verdict,
+            'sha256' => $verdict->sha256
+        ]);
+
         $this->assertEqualsIgnoringCase(self::CLEAN_HASH, $verdict->sha256);
         $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
     }
-    
+
     public function testForSha256_WithUnknownSha256_GetsUnknownResponse(): void
     {
         $vaas = $this->getVaas(false, false);
-        
+
         $verdict = $vaas->forSha256Async(Sha256::TryFromString(self::UNKNOWN_HASH))->await();
+
+        $this->logger->info('Test for unknown SHA256', [
+            'expected' => Verdict::UNKNOWN,
+            'actual' => $verdict->verdict,
+            'sha256' => $verdict->sha256
+        ]);
 
         $this->assertEqualsIgnoringCase(self::UNKNOWN_HASH, $verdict->sha256);
         $this->assertEquals(Verdict::UNKNOWN, $verdict->verdict);
     }
-    
+
     public function testForSha256_WithInvalidSha256_ThrowsInvalidSha256Exception(): void
     {
         $this->expectException(InvalidSha256Exception::class);
         $this->expectExceptionMessage("Invalid SHA256 hash");
-        
-        $this->vaas->forSha256Async(Sha256::TryFromString("invalid"))->await();
+
+        try {
+            $this->vaas->forSha256Async(Sha256::TryFromString("invalid"))->await();
+        } catch (InvalidSha256Exception $e) {
+            $this->logger->error('Test for invalid SHA256', [
+                'exception' => $e->getMessage()
+            ]);
+            throw $e;
+        }
     }
-    
+
     public function testForUrl_WithMaliciousUrl_GetsMaliciousResponse(): void
-    {        
+    {
         $verdict = $this->vaas->forUrlAsync(self::MALICIOUS_URL)->await();
-        
+
+        $this->logger->info('Test for malicious URL', [
+            'expected' => Verdict::MALICIOUS,
+            'actual' => $verdict->verdict,
+            'url' => self::MALICIOUS_URL
+        ]);
+
         $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
     }
-    
+
     public function testForUrl_WithPupUrl_GetsPupResponse(): void
     {
         $verdict = $this->vaas->forUrlAsync(self::PUP_URL)->await();
-        
+
+        $this->logger->info('Test for PUP URL', [
+            'expected' => Verdict::PUP,
+            'actual' => $verdict->verdict,
+            'url' => self::PUP_URL
+        ]);
+
         $this->assertEquals(Verdict::PUP, $verdict->verdict);
     }
 
     public function testForUrl_WithCleanUrl_GetsCleanResponse(): void
     {
         $verdict = $this->vaas->forUrlAsync(self::CLEAN_URL)->await();
-        
+
+        $this->logger->info('Test for clean URL', [
+            'expected' => Verdict::CLEAN,
+            'actual' => $verdict->verdict,
+            'url' => self::CLEAN_URL
+        ]);
+
         $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
     }
-    
+
     public function testForUrl_WithInvalidUrl_ThrowsVaasClientException(): void
     {
         $this->expectException(VaasClientException::class);
         $this->expectExceptionMessage("Invalid URL");
-        
+
         $this->vaas->forUrlAsync("invalid")->await();
     }
-    
+
     public function testForFile_WithCleanFile_GetsCleanResponse(): void
     {
         $verdict = $this->vaas->forFileAsync(__DIR__ . "/composer.json")->await();
-        
+
+        $this->logger->info('Test for clean file', [
+            'expected' => Verdict::CLEAN,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/composer.json"
+        ]);
+
         $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
     }
-    
+
     public function testForFile_WithMaliciousFile_GetsMaliciousResponse(): void
     {
         $file = file_get_contents(self::MALICIOUS_URL);
         file_put_contents(__DIR__ . "/eicar.com.txt", $file);
-        
+
         $verdict = $this->vaas->forFileAsync(__DIR__ . "/eicar.com.txt")->await();
         unlink(__DIR__ . "/eicar.com.txt");
-        
+
+        $this->logger->info('Test for malicious file', [
+            'expected' => Verdict::MALICIOUS,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/eicar.com.txt",
+            'sha256' => $verdict->sha256
+        ]);
+
         $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
         $this->assertEqualsIgnoringCase(self::EICAR_HASH, $verdict->sha256);
     }
@@ -170,19 +240,26 @@ final class VaasTest extends TestCase
     {
         $file = file_get_contents(self::PUP_URL);
         file_put_contents(__DIR__ . "/PotentiallyUnwanted.exe", $file);
-        
+
         $verdict = $this->vaas->forFileAsync(__DIR__ . "/PotentiallyUnwanted.exe")->await();
         unlink(__DIR__ . "/PotentiallyUnwanted.exe");
+
+        $this->logger->info('Test for PUP file', [
+            'expected' => Verdict::PUP,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/PotentiallyUnwanted.exe",
+            'sha256' => $verdict->sha256
+        ]);
 
         $this->assertEqualsIgnoringCase(self::PUP_HASH, $verdict->sha256);
         $this->assertEquals(Verdict::PUP, $verdict->verdict);
     }
-    
+
     public function testForFile_WithInvalidFile_ThrowsVaasClientException(): void
     {
         $this->expectException(VaasClientException::class);
         $this->expectExceptionMessage("File does not exist");
-        
+
         $this->vaas->forFileAsync(__DIR__ . "/invalid")->await();
     }
 
@@ -195,32 +272,46 @@ final class VaasTest extends TestCase
         }
         $sha256 = hash_file("sha256", __DIR__ . "/composer.json");
         $fileSize = filesize(__DIR__ . "/composer.json");
-        
+
         $verdict = $this->vaas->forStreamAsync($stream, $fileSize)->await();
-        
+
+        $this->logger->info('Test for clean stream', [
+            'expected' => Verdict::CLEAN,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/composer.json",
+            'sha256' => $verdict->sha256
+        ]);
+
         $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
         $this->assertEqualsIgnoringCase($sha256, $verdict->sha256);
     }
-    
+
     public function testForStream_WithMaliciousStream_GetsMaliciousResponse(): void
     {
         $file = file_get_contents(self::MALICIOUS_URL);
         file_put_contents(__DIR__ . "/eicar.com.txt", $file);
         $fileSize = filesize(__DIR__ . "/eicar.com.txt");
-        
+
         try {
             $stream = openFile(__DIR__ . "/eicar.com.txt", "r");
         } catch (FilesystemException $e) {
             $this->fail($e->getMessage());
         }
-        
+
         $verdict = $this->vaas->forStreamAsync($stream, $fileSize)->await();
         unlink(__DIR__ . "/eicar.com.txt");
-        
+
+        $this->logger->info('Test for malicious stream', [
+            'expected' => Verdict::MALICIOUS,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/eicar.com.txt",
+            'sha256' => $verdict->sha256
+        ]);
+
         $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
         $this->assertEqualsIgnoringCase(self::EICAR_HASH, $verdict->sha256);
     }
-    
+
     public function testForStream_WithPupStream_GetsPupResponse(): void
     {
         $file = file_get_contents(self::PUP_URL);
@@ -234,10 +325,17 @@ final class VaasTest extends TestCase
         $verdict = $this->vaas->forStreamAsync($stream, $fileSize)->await();
         unlink(__DIR__ . "/PotentiallyUnwanted.exe");
 
+        $this->logger->info('Test for PUP stream', [
+            'expected' => Verdict::PUP,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/PotentiallyUnwanted.exe",
+            'sha256' => $verdict->sha256
+        ]);
+
         $this->assertEqualsIgnoringCase(self::PUP_HASH, $verdict->sha256);
         $this->assertEquals(Verdict::PUP, $verdict->verdict);
     }
-    
+
     public function testForStream_WithClosedStream_ThrowsVaasClientException(): void
     {
         $this->expectException(VaasClientException::class);
@@ -250,7 +348,28 @@ final class VaasTest extends TestCase
         }
         $stream->close();
         $fileSize = filesize(__DIR__ . "/composer.json");
-        
+
         $this->vaas->forStreamAsync($stream, $fileSize)->await();
+    }
+
+    private function _getDebugLogger(): LoggerInterface
+    {
+        global $argv;
+        $monoLogger = new Logger("VaaS");
+
+        if (in_array("--debug", $argv) === true) {
+            $streamHandler = new StreamHandler(
+                STDOUT,
+                Level::Debug
+            );
+        } else {
+            $streamHandler = new StreamHandler(
+                STDOUT,
+                Level::Info
+            );
+        }
+        $streamHandler->setFormatter(new JsonFormatter());
+        $monoLogger->pushHandler($streamHandler);
+        return $monoLogger;
     }
 }
