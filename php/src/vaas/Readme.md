@@ -60,7 +60,7 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
     tokenUrl: getenv("TOKEN_URL")
 );
 
-$vaas = (new Vaas())
+$vaas = Vaas::builder()
     ->withAuthenticator($authenticator)
     ->build();
 ```
@@ -88,6 +88,9 @@ fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->v
 ## <a name="interested"></a>I'm interested in VaaS
 
 You need credentials to use the service in your application. If you are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
+You can create your test credentials at `https://vaas.gdata.de/login` for free.
+
+There is also the option of hosting the VaaS backend yourself. Just take a look here at the [Helm Chart repository](https://github.com/GDATASoftwareAG/vaas-helm).
 
 ## Developing with Visual Studio Code
 
