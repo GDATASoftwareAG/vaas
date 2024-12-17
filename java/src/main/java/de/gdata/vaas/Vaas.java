@@ -37,30 +37,26 @@ import java.util.function.Function;
 public class Vaas implements AutoCloseable, IVaas {
     private static final int connectionRetryDelayInMs = 1000;
     private static final int connectionTimeoutInMs = 10000;
+    private static final String userAgent = "Java/9.0.0";
 
     @Getter
     @NonNull
     private final VaasConfig config;
 
-    @Getter
-    @NonNull
-    private VaasOptions options;
-
     private final IAuthenticator authenticator;
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient;
     private WebSocketClient client;
 
     public Vaas(@NonNull VaasConfig config, @NonNull IAuthenticator authenticator) {
         this.config = config;
         this.authenticator = authenticator;
-        this.options = new VaasOptions();
+        this.httpClient = HttpClient.newHttpClient();
     }
 
-    public Vaas(VaasConfig config, IAuthenticator authenticator,
-            VaasOptions options) {
+    public Vaas(VaasConfig config, IAuthenticator authenticator, HttpClient httpClient) {
         this.config = config;
         this.authenticator = authenticator;
-        this.options = options;
+        this.httpClient = httpClient;
     }
 
     /**
@@ -165,15 +161,21 @@ public class Vaas implements AutoCloseable, IVaas {
                     switch (response.statusCode()) {
                         case 200:
                             var fileReport = FileReport.fromJson(response.body());
+                            System.out.println("Get filereport with Verdict" + fileReport.getVerdict());
                             return CompletableFuture.completedFuture(VaasVerdict.From(fileReport));
                         case 201:
-                        case 400:
-                        case 401:
-                        default:
+                            System.out.println("Request acceptet");
                             return sendFileWithRetry(httpClient, request);
+                        case 400:
+                            return CompletableFuture.failedFuture(new VaasClientException(response.body()));
+                        case 401:
+                            return CompletableFuture.failedFuture(new VaasAuthenticationException());
+                        default:
+                            return CompletableFuture.failedFuture(new VaasServerException(response.body()));
                     }
                 });
     }
+ 
 
     private static CompletableFuture<VaasVerdict> sendUrlWithRetry(HttpClient httpClient, HttpRequest request) {
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
@@ -183,26 +185,30 @@ public class Vaas implements AutoCloseable, IVaas {
                             var urlReport = UrlReport.fromJson(response.body());
                             return CompletableFuture.completedFuture(VaasVerdict.From(urlReport));
                         case 201:
+                            return sendUrlWithRetry(httpClient, request);
                         case 400:
+                            return CompletableFuture.failedFuture(new VaasClientException("foobar"));
                         case 401:
+                            return CompletableFuture.failedFuture(new VaasAuthenticationException());
                         default:
-                            return sendFileWithRetry(httpClient, request);
+                            return CompletableFuture.failedFuture(new VaasServerException("foobar2"));
                     }
                 });
     }
 
-    public HttpRequest.Builder CreateHttpRequestBuilderWithHeaders(URI uri, String requestId) throws IOException, InterruptedException {
+    public HttpRequest.Builder CreateHttpRequestBuilderWithHeaders(URI uri, String requestId)
+            throws IOException, InterruptedException, VaasAuthenticationException {
         var token = this.authenticator.getToken();
         return HttpRequest.newBuilder()
                 .uri(uri)
                 .header("Authorization", "Bearer " + token)
-                .header("User-Agent", "useragent")
+                .header("User-Agent", userAgent)
                 .header("tracestate", "vaasrequestid=" + requestId);
     }
 
     @Override
     public CompletableFuture<VaasVerdict> forSha256(Sha256 sha256)
-            throws URISyntaxException, IOException, InterruptedException {
+            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException {
         var forSha256Options = new ForSha256Options();
         forSha256Options.setUseCache(true);
         forSha256Options.setUseHashLookup(true);
@@ -211,19 +217,20 @@ public class Vaas implements AutoCloseable, IVaas {
 
     @Override
     public CompletableFuture<VaasVerdict> forSha256(Sha256 sha256, ForSha256Options options)
-            throws IOException, InterruptedException {
+            throws IOException, InterruptedException, VaasAuthenticationException {
 
+        System.out.println("Start processing SHA256" + sha256);
         var params = Map.of(
-                "useCache", String.valueOf(this.options.isUseCache()),
-                "useHashLookup", String.valueOf(this.options.isUseHashLookup()));
+                "useCache", String.valueOf(options.isUseCache()),
+                "useHashLookup", String.valueOf(options.isUseHashLookup()));
 
-        var filesReportUri =
-                this.config.getUrl() + String.format("/files/%s/report?", sha256.getValue()) + encodeParams(params);
+        var filesReportUri = this.config.getUrl() + String.format("/files/%s/report?", sha256.getValue())
+                + encodeParams(params);
 
+        System.out.println("Create request with url " + filesReportUri);
         var request = CreateHttpRequestBuilderWithHeaders(URI.create(filesReportUri), options.getVaasRequestId())
                 .GET()
                 .build();
-
 
         if (options.getVaasRequestId() == null || options.getVaasRequestId().isBlank()) {
             options.setVaasRequestId(UUID.randomUUID().toString());
@@ -234,119 +241,123 @@ public class Vaas implements AutoCloseable, IVaas {
 
     @Override
     public CompletableFuture<VaasVerdict> forFile(Path file)
-            throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException {
-                var forFileOptions = new ForFileOptions();
-                forFileOptions.setUseCache(true);
-                forFileOptions.setUseHashLookup(true);
-                return forFile(file, forFileOptions);
-            }
+            throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException, VaasAuthenticationException {
+        var forFileOptions = new ForFileOptions();
+        forFileOptions.setUseCache(true);
+        forFileOptions.setUseHashLookup(true);
+        return forFile(file, forFileOptions);
+    }
 
     @Override
     public CompletableFuture<VaasVerdict> forFile(Path file, ForFileOptions options)
-            throws NoSuchAlgorithmException, IOException, InterruptedException {
+            throws NoSuchAlgorithmException, IOException, InterruptedException, VaasAuthenticationException {
         var sha256 = new Sha256(file);
         var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
                 options.getVaasRequestId());
-    
-        return forSha256(sha256, forSha256Options)
-            .thenCompose(handleException(vaasVerdict -> {
-                var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
-                        || (vaasVerdict.getVerdict() == Verdict.PUP && vaasVerdict.getDetection() == null)
-                        || (vaasVerdict.getDetection() != null && vaasVerdict.getDetection().isBlank());
-    
-                if (vaasVerdict.getVerdict() != Verdict.UNKNOWN && verdictWithoutDetection
-                        && vaasVerdict.getFileType() != null
-                        && !vaasVerdict.getFileType().isBlank()
-                        && vaasVerdict.getMimeType() != null
-                        && !vaasVerdict.getMimeType().isEmpty()) {
-                    // Direkt zurückgeben, wenn alle Bedingungen erfüllt sind
-                    return CompletableFuture.completedFuture(vaasVerdict);
-                } else {
-                    var inputstream = Files.newInputStream(file, StandardOpenOption.READ);
-                    var forStreamOptions = new ForStreamOptions();
-                    forStreamOptions.setUseHashLookup(options.isUseHashLookup());
-                    forStreamOptions.setVaasRequestId(options.getVaasRequestId());
 
-                    return forStream(inputstream, file.toFile().length(), forStreamOptions);
-                }
-            }));
+        return forSha256(sha256, forSha256Options)
+                .thenCompose(handleException(vaasVerdict -> {
+                    var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
+                            || (vaasVerdict.getVerdict() == Verdict.PUP && vaasVerdict.getDetection() == null)
+                            || (vaasVerdict.getDetection() != null && vaasVerdict.getDetection().isBlank());
+
+                    if (vaasVerdict.getVerdict() != Verdict.UNKNOWN && verdictWithoutDetection
+                            && vaasVerdict.getFileType() != null
+                            && !vaasVerdict.getFileType().isBlank()
+                            && vaasVerdict.getMimeType() != null
+                            && !vaasVerdict.getMimeType().isEmpty()) {
+                        return CompletableFuture.completedFuture(vaasVerdict);
+                    } else {
+                        var inputstream = Files.newInputStream(file, StandardOpenOption.READ);
+                        var forStreamOptions = new ForStreamOptions();
+                        forStreamOptions.setUseHashLookup(options.isUseHashLookup());
+                        forStreamOptions.setVaasRequestId(options.getVaasRequestId());
+
+                        return forStream(inputstream, file.toFile().length(), forStreamOptions);
+                    }
+                }));
     }
 
     @Override
     public CompletableFuture<VaasVerdict> forStream(InputStream stream, long contentLength)
-            throws URISyntaxException, IOException, InterruptedException {
-                var forStreamOptions = new ForStreamOptions();
-                forStreamOptions.setUseHashLookup(true);
-                return forStream(stream, contentLength, forStreamOptions);
-            }
+            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException {
+        var forStreamOptions = new ForStreamOptions();
+        forStreamOptions.setUseHashLookup(true);
+        return forStream(stream, contentLength, forStreamOptions);
+    }
 
     @Override
-    public CompletableFuture<VaasVerdict> forStream(InputStream inputStream, long contentLength, ForStreamOptions options)
-            throws IOException, InterruptedException {
-        var params = Map.of("useHashLookup", String.valueOf(this.options.isUseHashLookup()));
-    
+    public CompletableFuture<VaasVerdict> forStream(InputStream inputStream, long contentLength,
+            ForStreamOptions options)
+            throws IOException, InterruptedException, VaasAuthenticationException {
+        var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
+
         var filesUri = this.config.getUrl() + "/files?" + encodeParams(params);
 
-        var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(() -> inputStream), contentLength);    
+        var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(() -> inputStream),
+                contentLength);
         var request = CreateHttpRequestBuilderWithHeaders(URI.create(filesUri), options.getVaasRequestId())
                 .POST(bodyPublisher)
                 .header("Content-Type", "application/octet-stream ")
                 .build();
-    
+
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            .thenCompose(handleException(response -> {
-                var statusCode = response.statusCode();
-                if (statusCode < 200 || statusCode >= 300) {
-                    throw new RuntimeException("Unexpected response status: " + statusCode);
-                }
+                .thenCompose(handleException(response -> {
+                    var statusCode = response.statusCode();
+                    if (statusCode < 200 || statusCode >= 300) {
+                        throw new RuntimeException("Unexpected response status: " + statusCode);
+                    }
                     var fileResponseStarted = FileAnalysisStarted.fromJson(response.body());
-                var sha256 = new Sha256(fileResponseStarted.getSha256());
-                var forSha256Options = new ForSha256Options();
-                forSha256Options.setUseHashLookup(options.isUseHashLookup());
-                forSha256Options.setVaasRequestId(options.getVaasRequestId());
-    
-                return forSha256(sha256, forSha256Options);
-            }));
+                    var sha256 = new Sha256(fileResponseStarted.getSha256());
+                    var forSha256Options = new ForSha256Options();
+                    forSha256Options.setUseHashLookup(options.isUseHashLookup());
+                    forSha256Options.setVaasRequestId(options.getVaasRequestId());
+
+                    return forSha256(sha256, forSha256Options);
+                }));
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forUrl(URL url) throws URISyntaxException, IOException, InterruptedException {
+    public CompletableFuture<VaasVerdict> forUrl(URL url) throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException {
         var forUrlOptions = new ForUrlOptions();
         forUrlOptions.setUseHashLookup(true);
         return forUrl(url, forUrlOptions);
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forUrl(URL url, ForUrlOptions options) throws IOException, InterruptedException {
-        var params = Map.of("useHashLookup", String.valueOf(this.options.isUseHashLookup()));
+    public CompletableFuture<VaasVerdict> forUrl(URL url, ForUrlOptions options)
+            throws IOException, InterruptedException, VaasAuthenticationException {
+        var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var urlsUri = this.config.getUrl() + "/urls?" + encodeParams(params);
         var urlAnalysisRequest = new UrlAnalysisRequest(url.toString(), options.isUseHashLookup());
         var request = CreateHttpRequestBuilderWithHeaders(URI.create(urlsUri), options.getVaasRequestId())
                 .POST(HttpRequest.BodyPublishers.ofString(UrlAnalysisRequest.ToJson(urlAnalysisRequest)))
                 .header("Content-Type", "application/json")
                 .build();
-    
+
         // Return a fully resolved CompletableFuture
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-            .thenApply(response -> {
-                var statusCode = response.statusCode();
-                if (statusCode < 200 || statusCode >= 300) {
-                    throw new RuntimeException("Unexpected response status: " + statusCode);
-                }
-                return UrlAnalysisStarted.fromJson(response.body());
-            })
-            .thenCompose(handleException(urlAnalysisStarted -> {
-                var urlsReportUri = this.config.getUrl() + String.format("/urls/%s/report?", urlAnalysisStarted.getId()) + encodeParams(params);
-                if (options.getVaasRequestId() == null || options.getVaasRequestId().isBlank()) {
-                    options.setVaasRequestId(UUID.randomUUID().toString());
-                }
-                var request2 = CreateHttpRequestBuilderWithHeaders(URI.create(urlsReportUri), options.getVaasRequestId())
-                        .GET()
-                        .build();
-                return sendUrlWithRetry(httpClient, request2);
-            }))
-            .thenApply(vaasVerdict -> {
-                return vaasVerdict;
-            });
+                .thenApply(response -> {
+                    var statusCode = response.statusCode();
+                    if (statusCode < 200 || statusCode >= 300) {
+                        throw new RuntimeException("Unexpected response status: " + statusCode);
+                    }
+                    return UrlAnalysisStarted.fromJson(response.body());
+                })
+                .thenCompose(handleException(urlAnalysisStarted -> {
+                    var urlsReportUri = this.config.getUrl()
+                            + String.format("/urls/%s/report?", urlAnalysisStarted.getId()) + encodeParams(params);
+                    if (options.getVaasRequestId() == null || options.getVaasRequestId().isBlank()) {
+                        options.setVaasRequestId(UUID.randomUUID().toString());
+                    }
+                    var request2 = CreateHttpRequestBuilderWithHeaders(URI.create(urlsReportUri),
+                            options.getVaasRequestId())
+                            .GET()
+                            .build();
+                    return sendUrlWithRetry(httpClient, request2);
+                }))
+                .thenApply(vaasVerdict -> {
+                    return vaasVerdict;
+                });
     }
 }

@@ -1,6 +1,8 @@
 package de.gdata.vaas;
 
 import com.google.gson.JsonParser;
+
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import lombok.Getter;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
@@ -27,13 +29,21 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
     @NonNull
     private final URI tokenEndpoint;
 
-    private static final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient;
 
 
     public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, @NotNull URI tokenEndpoint) {
         this.tokenEndpoint = tokenEndpoint;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
+        this.httpClient = HttpClient.newHttpClient();
+    }
+
+    public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, @NotNull URI tokenEndpoint, HttpClient httpClient) {
+        this.tokenEndpoint = tokenEndpoint;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+        this.httpClient = httpClient;
     }
 
     public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret)
@@ -45,7 +55,7 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    public String getToken() throws IOException, InterruptedException {
+    public String getToken() throws IOException, InterruptedException, VaasAuthenticationException {
         Map<String, String> requestParams = new HashMap<>();
         requestParams.put("client_id", this.clientId);
         requestParams.put("grant_type", "client_credentials");
@@ -69,8 +79,7 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
                 .send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
-            throw new IOException("Failed to upload file. HTTP Status Code: " + response.statusCode() + " Error: "
-                    + response.body());
+            throw new VaasAuthenticationException();
         }
         var bodyJsonObject = JsonParser.parseString(response.body()).getAsJsonObject();
         var tokenJsonElement = bodyJsonObject.get("access_token");
