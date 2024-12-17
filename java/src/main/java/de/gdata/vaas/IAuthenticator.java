@@ -2,6 +2,8 @@ package de.gdata.vaas;
 
 import java.io.IOException;
 
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
+
 public interface IAuthenticator {
     /**
      * Get access token from identity provider
@@ -10,6 +12,7 @@ public interface IAuthenticator {
      *                              request
      * @throws InterruptedException if the operation is interrupted
      * @return the access token
+     * @throws VaasAuthenticationException 
      */
-    public String getToken() throws IOException, InterruptedException;
+    public String getToken() throws IOException, InterruptedException, VaasAuthenticationException;
 }
