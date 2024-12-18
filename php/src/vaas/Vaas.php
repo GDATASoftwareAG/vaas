@@ -220,7 +220,7 @@ class Vaas
                 $request->setTransferTimeout($options->timeout);
                 $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
                 $this->logger->debug("Send request for file stream: " . self::logUri($request));
-                $response = $this->httpClient->request($request);
+                $response = $this->httpClient->request($request, $cancellation);
             } finally {
                 $stream->close();
             }
