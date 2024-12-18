@@ -4,14 +4,9 @@ namespace VaasSdk\Options;
 
 class ForUrlOptions
 {
-    public bool $useHashLookup;
-    public ?string $vaasRequestId;
-
-    public function __construct(array $options = [])
-    {
-        $this->useHashLookup = $options['useHashLookup'] ?? true;
-        $this->vaasRequestId = $options['vaasRequestId'] ?? null;
-    }
+    public function __construct(
+        public bool $useHashLookup = true,
+        public ?string $vaasRequestId = null) {}
 
     public static function default(): self
     {
