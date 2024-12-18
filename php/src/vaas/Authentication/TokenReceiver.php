@@ -12,22 +12,22 @@ use Amp\Sync\Mutex;
 use Exception;
 use InvalidArgumentException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
-use VaasSdk\Options\AuthenticationOptions;
 use function Amp\async;
 use function Amp\delay;
 
 class TokenReceiver
 {
-    private HttpClient $httpClient;
-    private AuthenticationOptions $authenticationOptions;
     private Mutex $mutex;
     private ?TokenResponse $lastTokenResponse = null;
     private int $validTo = 0;
     private ?int $lastRequestTime = null;
 
-    public function __construct(AuthenticationOptions $options, ?HttpClient $httpClient = null)
+    public function __construct(
+        public AuthenticatorInterface $authenticator,
+        public ?string $tokenUrl = null,
+        public ?HttpClient $httpClient = null)
     {
-        $this->authenticationOptions = $options;
+        $this->tokenUrl = $tokenUrl ?? 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token';
         $this->httpClient = $httpClient ?? HttpClientBuilder::buildDefault();
         $this->mutex = new LocalMutex();
     }
@@ -81,7 +81,7 @@ class TokenReceiver
     {
         return async(function () use ($cancellation) {
             $form = $this->tokenRequestToForm();
-            $request = new Request($this->authenticationOptions->tokenUrl, 'POST');
+            $request = new Request($this->tokenUrl, 'POST');
             $request->setBody($form);
             $request->setHeader('Content-Type', 'application/x-www-form-urlencoded');
 
@@ -118,19 +118,20 @@ class TokenReceiver
      */
     private function tokenRequestToForm(): string
     {
-        if ($this->authenticationOptions->grantType == GrantType::CLIENT_CREDENTIALS) {
-            return http_build_query([
-                'client_id' => $this->authenticationOptions->clientId,
-                'client_secret' => $this->authenticationOptions->clientSecret ?? throw new InvalidArgumentException(),
+        return match (true) 
+        {
+            $this->authenticator instanceof ClientCredentialsGrantAuthenticator =>  http_build_query([
+                'client_id' => $this->authenticator->clientId,
+                'client_secret' => $this->authenticator->clientSecret,
                 'grant_type' => 'client_credentials',
-            ]);
-        }
-
-        return http_build_query([
-            'client_id' => $this->authenticationOptions->clientId,
-            'username' => $this->authenticationOptions->userName ?? throw new InvalidArgumentException(),
-            'password' => $this->authenticationOptions->password ?? throw new InvalidArgumentException(),
+            ]),
+            $this->authenticator instanceof ResourceOwnerPasswordGrantAuthenticator =>  http_build_query([
+                'client_id' => $this->authenticator->clientId,
+                'username' => $this->authenticator->userName,
+                'password' => $this->authenticator->password,
             'grant_type' => 'password',
-        ]);
+            ]),
+            default => throw new InvalidArgumentException("Unknown authenticator type")
+        };
     }
 }

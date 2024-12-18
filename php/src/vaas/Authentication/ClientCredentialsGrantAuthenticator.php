@@ -4,7 +4,6 @@ namespace VaasSdk\Authentication;
 
 use Amp\Cancellation;
 use Amp\Http\Client\HttpClient;
-use VaasSdk\Options\AuthenticationOptions;
 
 class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
 {
@@ -17,15 +16,9 @@ class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
      * @param string|null $tokenUrl The optional token url. Defaults to 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token'
      * @param HttpClient|null $httpClient Your optional custom http client.
      */
-    public function __construct(string $clientId, string $clientSecret, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
+    public function __construct(public string $clientId, public string $clientSecret, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
     {
-        $options = new AuthenticationOptions(
-            grantType: GrantType::CLIENT_CREDENTIALS,
-            clientId: $clientId,
-            tokenUrl: $tokenUrl ?? 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token',
-            clientSecret: $clientSecret
-        );
-        $this->tokenReceiver = new TokenReceiver($options, $httpClient);
+        $this->tokenReceiver = new TokenReceiver($this, $tokenUrl, $httpClient);
     }
 
     /**
