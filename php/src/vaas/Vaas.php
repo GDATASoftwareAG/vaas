@@ -81,15 +81,8 @@ class Vaas
         return async(function () use ($sha256, $options, $cancellation) {
             $this->logger->debug("Requesting verdict for SHA256: $sha256");
 
-            if ($options === null) {
-                $options = new ForSha256Options(
-                    [
-                        'vaasRequestId' => null,
-                        'useHashLookup' => $this->options->useHashLookup ?? true,
-                        'useCache' => $this->options->useCache ?? true,
-                    ]
-                );
-            }
+            $options = $options ?? ForSha256Options::fromVaasOptions($this->options);
+
             $url = sprintf('%s/files/%s/report/?useCache=%s&useHashLookup=%s',
                 $this->options->vaasUrl,
                 $sha256,
@@ -146,22 +139,11 @@ class Vaas
                 throw new VaasClientException('File does not exist');
             }
 
-            if ($options === null) {
-                $options = new ForFileOptions(
-                    [
-                        'vaasRequestId' => null,
-                        'useHashLookup' => $this->options->useHashLookup ?? true,
-                        'useCache' => $this->options->useCache ?? true,
-                    ]
-                );
-            }
+            $options = $options ?? ForFileOptions::fromVaasOptions($this->options);
 
             if ($options->useCache || $options->useHashLookup) {
-                $forSha256Options = new ForSha256Options([
-                    'vaasRequestId' => $options->vaasRequestId,
-                    'useHashLookup' => $options->useHashLookup,
-                    'useCache' => $options->useCache,
-                ]);
+                $forSha256Options = new ForSha256Options(
+                    $options->useCache, $options->useHashLookup, $options->vaasRequestId);
                 $sha256 = Sha256::TryFromFile($path);
                 $this->logger->debug("Check if file $path is already known by its SHA256: $sha256");
                 $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
@@ -174,10 +156,7 @@ class Vaas
 
             $stream = openFile($path, 'r');
 
-            $forStreamOptions = new ForStreamOptions([
-                'vaasRequestId' => $options->vaasRequestId,
-                'useHashLookup' => $options->useHashLookup,
-            ]);
+            $forStreamOptions = new ForStreamOptions($options->useHashLookup, 300, $options->vaasRequestId);
 
             $this->logger->debug("Requesting verdict for $path as file stream");
             return $this->forStreamAsync($stream, filesize($path), $forStreamOptions)->await();
@@ -203,15 +182,8 @@ class Vaas
                     throw new VaasClientException('Stream is not readable');
                 }
 
-                if ($options === null) {
-                    $options = new ForStreamOptions(
-                        [
-                            'vaasRequestId' => null,
-                            'timeout' => $this->options->timeout,
-                            'useHashLookup' => $this->options->useHashLookup ?? true,
-                        ]
-                    );
-                }
+                $options = $options ?? ForStreamOptions::fromVaasOptions($this->options);
+                
                 $url = sprintf('%s/files?useHashLookup=%s', $this->options->vaasUrl, json_encode($options->useHashLookup));
 
                 $request = new Request($url, 'POST');
@@ -243,10 +215,7 @@ class Vaas
                     throw $this->parseVaasError($response);
             }
 
-            $forSha256Options = new ForSha256Options([
-                'vaasRequestId' => $options->vaasRequestId,
-                'useHashLookup' => $options->useHashLookup,
-            ]);
+            $forSha256Options = new ForSha256Options(true, $options->useHashLookup, $options->vaasRequestId);
 
             if (!isset($fileAnalysisStarted['sha256'])) {
                 $this->logger->error("Unexpected response from the server for stream");
@@ -272,14 +241,8 @@ class Vaas
             $this->logger->debug("Requesting verdict for URL: $uri");
             $uri = Vaas::validUri($uri);
 
-            if ($options === null) {
-                $options = new ForUrlOptions(
-                    [
-                        'vaasRequestId' => null,
-                        'useHashLookup' => $this->options->useHashLookup ?? true,
-                    ]
-                );
-            }
+            $options = $options ?? ForUrlOptions::fromVaasOptions($this->options);
+
             $urlAnalysisUri = sprintf('%s/urls', $this->options->vaasUrl);
 
             $urlAnalysisRequest = new Request($urlAnalysisUri, 'POST');

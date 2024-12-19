@@ -4,19 +4,19 @@ namespace VaasSdk\Options;
 
 class ForFileOptions
 {
-    public bool $useCache;
-    public bool $useHashLookup;
-    public ?string $vaasRequestId;
+    const DEFAULT_REQUEST_ID = null;
+    
+    public function __construct(
+        public bool $useCache = true,
+        public bool $useHashLookup = true,
+        public ?string $vaasRequestId = self::DEFAULT_REQUEST_ID) {}
 
-    public function __construct(array $options = [])
+    public static function fromVaasOptions(VaasOptions $options): self
     {
-        $this->useCache = $options['useCache'] ?? true;
-        $this->useHashLookup = $options['useHashLookup'] ?? true;
-        $this->vaasRequestId = $options['vaasRequestId'] ?? null;
-    }
-
-    public static function default(): self
-    {
-        return new self();
+        return new self(
+            $options->useCache,
+            $options->useHashLookup,
+            self::DEFAULT_REQUEST_ID
+        );
     }
 }
