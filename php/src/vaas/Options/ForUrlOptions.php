@@ -4,17 +4,17 @@ namespace VaasSdk\Options;
 
 class ForUrlOptions
 {
-    public bool $useHashLookup;
-    public ?string $vaasRequestId;
+    const DEFAULT_REQUEST_ID = null;
 
-    public function __construct(array $options = [])
-    {
-        $this->useHashLookup = $options['useHashLookup'] ?? true;
-        $this->vaasRequestId = $options['vaasRequestId'] ?? null;
-    }
+    public function __construct(
+        public bool $useHashLookup = true,
+        public ?string $vaasRequestId = self::DEFAULT_REQUEST_ID) {}
 
-    public static function default(): self
+    public static function fromVaasOptions(VaasOptions $options): self
     {
-        return new self();
+        return new self(
+            $options->useHashLookup,
+            self::DEFAULT_REQUEST_ID
+        );
     }
 }
