@@ -3,18 +3,18 @@
 namespace VaasTesting;
 
 use PHPUnit\Framework\TestCase;
-use VaasSdk\Sha256;
-use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\FileDoesNotExistException;
+use VaasSdk\Exceptions\InvalidSha256Exception;
+use VaasSdk\Sha256;
 
 final class Sha256Test extends TestCase
 {
-    const VALIDSHA256 = "df6f184e0235c88868668c3f9434528a59377cedb18e305abdb1adea19e93be1";
-    const VALIDFILE   = __DIR__ . "/testfile";
+    const VALID_SHA256 = "df6f184e0235c88868668c3f9434528a59377cedb18e305abdb1adea19e93be1";
+    const VALID_FILE   = __DIR__ . "/testfile";
 
     public function testIsValidGetsValidSha256ReturnsTrue(): void
     {
-        $this->assertTrue(Sha256::IsValid(Sha256Test::VALIDSHA256));
+        $this->assertTrue(Sha256::IsValid(Sha256Test::VALID_SHA256));
     }
 
     public function testIsValidGetsInvalidSha256ReturnsFalse(): void
@@ -24,8 +24,8 @@ final class Sha256Test extends TestCase
 
     public function testTryFromStringGetsValidSha256ReturnsCorrectSha256(): void
     {
-        $calculatedSha256 = Sha256::TryFromString(Sha256Test::VALIDSHA256);
-        $this->assertEquals(Sha256Test::VALIDSHA256, $calculatedSha256);
+        $calculatedSha256 = Sha256::TryFromString(Sha256Test::VALID_SHA256);
+        $this->assertEquals(Sha256Test::VALID_SHA256, $calculatedSha256);
     }
 
     public function testTryFromStringGetsInvalidSha256ThrowsInvalidSha256Exception(): void
@@ -36,8 +36,8 @@ final class Sha256Test extends TestCase
 
     public function testTryFromFileGetsValidSha256ReturnsTrue(): void
     {
-        $calculatedSha256 = Sha256::TryFromFile(Sha256Test::VALIDFILE);
-        $this->assertEquals(Sha256Test::VALIDSHA256, $calculatedSha256);
+        $calculatedSha256 = Sha256::TryFromFile(Sha256Test::VALID_FILE);
+        $this->assertEquals(Sha256Test::VALID_SHA256, $calculatedSha256);
     }
 
     public function testTryFromFileGetsInvalidPathThrowsFileDoesNotExistException(): void
