@@ -10,6 +10,7 @@ import java.util.concurrent.CompletableFuture;
 
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
+import de.gdata.vaas.exceptions.VaasServerException;
 import de.gdata.vaas.messages.VaasVerdict;
 import de.gdata.vaas.options.ForFileOptions;
 import de.gdata.vaas.options.ForSha256Options;
@@ -23,7 +24,7 @@ public interface IVaas {
     public CompletableFuture<VaasVerdict> forStream(InputStream stream, long contentLength, ForStreamOptions options) throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException;
     public CompletableFuture<VaasVerdict> forFile(Path file) throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException, VaasAuthenticationException;
     public CompletableFuture<VaasVerdict> forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException, VaasAuthenticationException;
-    public CompletableFuture<VaasVerdict> forUrl(URL url) throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException;
-    public CompletableFuture<VaasVerdict> forUrl(URL url, ForUrlOptions options) throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException;
+    public CompletableFuture<VaasVerdict> forUrl(URL url) throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException, VaasClientException, VaasServerException;
+    public CompletableFuture<VaasVerdict> forUrl(URL url, ForUrlOptions options) throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException, VaasClientException, VaasServerException;
 
 }
