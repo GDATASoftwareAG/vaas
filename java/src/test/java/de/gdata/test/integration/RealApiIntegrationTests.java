@@ -75,6 +75,7 @@ public class RealApiIntegrationTests {
     @BeforeAll
     public static void setUpAll() throws URISyntaxException, InterruptedException, IOException, ExecutionException,
             TimeoutException, VaasAuthenticationException {
+        System.out.println("VAAS_URL=" + getEnvironmentKey("VAAS_URL"));
         vaas = getVaasWithCredentials();
     }
 
