@@ -1,0 +1,9 @@
+<phpunit bootstrap="vendor/autoload.php">
+  <testsuites>
+    <testsuite name="VaasTesting" >
+      <file>VaasTest.php</file>
+      <file>AuthenticatorTest.php</file>
+      <file>Sha256Test.php</file>
+    </testsuite>
+  </testsuites>
+</phpunit>

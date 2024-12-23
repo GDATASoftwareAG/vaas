@@ -12,12 +12,8 @@ use Exception;
  */
 class VaasServerException extends Exception
 {
-    public function __construct(?string $message)
+    public function __construct(string $message = 'Server error', int $code = 0, Exception $previous = null)
     {
-        if ($message == null) {
-            parent::__construct("Server Error");
-        } else {
-            parent::__construct($message);
-        }
+        parent::__construct($message, $code, $previous);
     }
 }
