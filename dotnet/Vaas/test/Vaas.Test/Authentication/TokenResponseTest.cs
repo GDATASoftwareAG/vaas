@@ -1,10 +1,9 @@
 using System;
 using System.Text.Json;
 using Vaas.Authentication;
-using Vaas.Messages;
 using Xunit;
 
-namespace Vaas.Test;
+namespace Vaas.Test.Authentication;
 
 public class TokenResponseTest
 {

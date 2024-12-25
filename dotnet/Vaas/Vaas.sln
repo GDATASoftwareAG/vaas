@@ -8,6 +8,9 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vaas", "src\Vaas\Vaas.csproj", "{F83EA992-9DB1-43FF-89F2-836F4B325345}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{59EEE214-8910-4FBC-AA18-F7070B700D49}"
+	ProjectSection(SolutionItems) = preProject
+		test\.env = test\.env
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vaas.Test", "test\Vaas.Test\Vaas.Test.csproj", "{5C11F0F4-1483-4850-BB24-4A04E7EED14A}"
 EndProject

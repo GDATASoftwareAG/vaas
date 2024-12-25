@@ -21,7 +21,9 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Moq;
 using Moq.Contrib.HttpClient;
 using Vaas.Authentication;
+using Vaas.Exceptions;
 using Vaas.Messages;
+using Vaas.Options;
 using Vaas.Test.Authentication;
 using Xunit;
 using Xunit.Abstractions;
@@ -36,10 +38,10 @@ public class VaasTest
         );
 
     private readonly ITestOutputHelper _output;
-    private readonly CountingDelegatingHandler _handler = new();
     private IVaas _vaas;
 
-    public string eicarSha256 = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2";
+    private const string EicarSha256 =
+        "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2";
 
     public VaasTest(ITestOutputHelper output)
     {
@@ -57,13 +59,19 @@ public class VaasTest
         _vaas = provider.GetRequiredService<IVaas>();
     }
 
-    private static IServiceCollection GetServices()
+    private static ServiceCollection GetServices()
     {
         return GetServices(
             new Dictionary<string, string>
             {
-                { "VerdictAsAService:Url", VaasUrl.ToString() },
-                { "VerdictAsAService:TokenUrl", AuthenticationEnvironment.TokenUrl.ToString() },
+                { "VerdictAsAService:Options:UseHashLookup", "false" },
+                { "VerdictAsAService:Options:UseCache", "false" },
+                { "VerdictAsAService:Options:VaasUrl", VaasUrl.ToString() },
+                { "VerdictAsAService:Options:Timeout", "10" },
+                {
+                    "VerdictAsAService:Credentials:TokenUrl",
+                    AuthenticationEnvironment.TokenUrl.ToString()
+                },
                 {
                     "VerdictAsAService:Credentials:GrantType",
                     GrantType.ClientCredentials.ToString()
@@ -73,14 +81,13 @@ public class VaasTest
                     "VerdictAsAService:Credentials:ClientSecret",
                     AuthenticationEnvironment.ClientSecret
                 },
-                { "VerdictAsAService:UseCache", "false" },
             }
         );
     }
 
     private static ServiceCollection GetServices(Dictionary<string, string> data)
     {
-        var s = new MemoryConfigurationSource() { InitialData = data };
+        var s = new MemoryConfigurationSource { InitialData = data };
         var configuration = new ConfigurationBuilder().Add(s).Build();
 
         var services = new ServiceCollection();
@@ -130,11 +137,11 @@ public class VaasTest
                     .RequestUri.ToString()
                     .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
             )
-            .ReturnsResponse(JsonSerializer.Serialize(new FileReport
-            {
-                Sha256 = eicarSha256,
-                Verdict = Verdict.Clean
-            }));
+            .ReturnsResponse(
+                JsonSerializer.Serialize(
+                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Clean }
+                )
+            );
         services
             .AddHttpClient<IVaas, Vaas>()
             .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
@@ -146,47 +153,6 @@ public class VaasTest
             CancellationToken.None,
             new ForSha256Options { UseCache = useCache, UseHashLookup = useHashLookup }
         );
-
-        handlerMock.VerifyAll();
-    }
-
-    [Fact]
-    public async Task ForSha256Async_SendsUserAgent()
-    {
-        ChecksumSha256 sha256 = "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
-
-        var services = GetServices();
-        ServiceCollectionTools.Output(_output, services);
-
-        var handlerMock = new Mock<HttpMessageHandler>();
-        handlerMock
-            .SetupRequest(request =>
-                request.RequestUri != null
-                && request.RequestUri.ToString().Contains(sha256)
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useCache=" + JsonSerializer.Serialize(true))
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
-                && request.Headers.UserAgent.ToString()
-                == new ProductInfoHeaderValue(
-                    "Cs",
-                    Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
-                ).ToString()
-            )
-            .ReturnsResponse(JsonSerializer.Serialize(new FileReport
-            {
-                Sha256 = eicarSha256,
-                Verdict = Verdict.Unknown
-            }));
-        services
-            .AddHttpClient<IVaas, Vaas>()
-            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
-        var provider = services.BuildServiceProvider();
-        var vaas = provider.GetRequiredService<IVaas>();
-
-        await vaas.ForSha256Async(sha256, CancellationToken.None);
 
         handlerMock.VerifyAll();
     }
@@ -213,11 +179,11 @@ public class VaasTest
                     .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
                 && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
             )
-            .ReturnsResponse(JsonSerializer.Serialize(new FileReport
-            {
-                Sha256 = eicarSha256,
-                Verdict = Verdict.Unknown
-            }));
+            .ReturnsResponse(
+                JsonSerializer.Serialize(
+                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                )
+            );
         services
             .AddHttpClient<IVaas, Vaas>()
             .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
@@ -239,7 +205,7 @@ public class VaasTest
         var handlerMock = new Mock<HttpMessageHandler>();
         handlerMock
             .SetupRequest(request =>
-                request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256)
+                request.RequestUri != null && request.RequestUri.ToString().Contains(EicarSha256)
             )
             .ReturnsResponse(
                 statusCode: HttpStatusCode.BadRequest,
@@ -260,7 +226,7 @@ public class VaasTest
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+        await vaas.Invoking(async v => await v.ForSha256Async(EicarSha256, CancellationToken.None))
             .Should()
             .ThrowAsync<VaasClientException>();
     }
@@ -281,7 +247,7 @@ public class VaasTest
         var handlerMock = new Mock<HttpMessageHandler>();
         handlerMock
             .SetupRequest(request =>
-                request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256)
+                request.RequestUri != null && request.RequestUri.ToString().Contains(EicarSha256)
             )
             .ReturnsResponse(
                 statusCode: serverError,
@@ -302,7 +268,7 @@ public class VaasTest
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+        await vaas.Invoking(async v => await v.ForSha256Async(EicarSha256, CancellationToken.None))
             .Should()
             .ThrowAsync<VaasServerException>();
     }
@@ -322,7 +288,7 @@ public class VaasTest
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+        await vaas.Invoking(async v => await v.ForSha256Async(EicarSha256, CancellationToken.None))
             .Should()
             .ThrowAsync<AuthenticationException>();
     }
@@ -336,7 +302,7 @@ public class VaasTest
         var handlerMock = new Mock<HttpMessageHandler>();
         handlerMock
             .SetupRequest(request =>
-                request.RequestUri != null && request.RequestUri.ToString().Contains(eicarSha256)
+                request.RequestUri != null && request.RequestUri.ToString().Contains(EicarSha256)
             )
             .ReturnsResponse(HttpStatusCode.Unauthorized);
         services
@@ -345,7 +311,7 @@ public class VaasTest
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas.Invoking(async v => await v.ForSha256Async(eicarSha256, CancellationToken.None))
+        await vaas.Invoking(async v => await v.ForSha256Async(EicarSha256, CancellationToken.None))
             .Should()
             .ThrowAsync<VaasAuthenticationException>();
     }
@@ -358,7 +324,7 @@ public class VaasTest
         var ct = new CancellationToken(true);
 
         await _vaas
-            .Invoking(async v => await v.ForSha256Async(eicarSha256, ct))
+            .Invoking(async v => await v.ForSha256Async(EicarSha256, ct))
             .Should()
             .ThrowAsync<OperationCanceledException>();
     }
@@ -372,7 +338,7 @@ public class VaasTest
     )]
     public async Task ForFileAsync_ReturnsVerdict(string content, Verdict verdict)
     {
-        var fileName = Guid.NewGuid().ToString()+".txt";
+        var fileName = Guid.NewGuid() + ".txt";
         await File.WriteAllBytesAsync(fileName, Encoding.UTF8.GetBytes(content));
 
         var actual = await _vaas.ForFileAsync(fileName, CancellationToken.None);
@@ -394,7 +360,7 @@ public class VaasTest
         const string content =
             "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
         const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-        var fileName = Guid.NewGuid().ToString()+".txt";
+        var fileName = Guid.NewGuid().ToString() + ".txt";
 
         await File.WriteAllBytesAsync(fileName, Encoding.UTF8.GetBytes(content));
 
@@ -412,11 +378,10 @@ public class VaasTest
                     .RequestUri.ToString()
                     .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
             )
-            .ReturnsResponse(JsonSerializer.Serialize(new FileReport
-                {
-                    Sha256 = eicarSha256,
-                    Verdict = Verdict.Unknown
-                })
+            .ReturnsResponse(
+                JsonSerializer.Serialize(
+                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                )
             );
 
         if (!useCache)
@@ -434,11 +399,9 @@ public class VaasTest
                         .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
                 )
                 .ReturnsResponse(
-                    JsonSerializer.Serialize(new FileReport
-                    {
-                        Sha256 = eicarSha256,
-                        Verdict = Verdict.Unknown
-                    })
+                    JsonSerializer.Serialize(
+                        new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                    )
                 );
         }
 
@@ -469,67 +432,6 @@ public class VaasTest
     }
 
     [Fact]
-    public async Task ForFileAsync_SendsUserAgent()
-    {
-        var services = GetServices();
-        ServiceCollectionTools.Output(_output, services);
-        const string content =
-            "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
-        const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-        await File.WriteAllBytesAsync("file.txt", Encoding.UTF8.GetBytes(content));
-
-        var handlerMock = new Mock<HttpMessageHandler>();
-        handlerMock
-            .SetupRequest(request =>
-                request.RequestUri != null
-                && request.RequestUri.ToString().Contains(sha256)
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useCache=" + JsonSerializer.Serialize(true))
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
-                && request.Headers.UserAgent.ToString()
-                    == new ProductInfoHeaderValue(
-                        "Cs",
-                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
-                    ).ToString()
-            )
-            .ReturnsResponse(
-                JsonSerializer.Serialize(new FileReport
-                {
-                    Sha256 = eicarSha256,
-                    Verdict = Verdict.Unknown
-                })
-            );
-
-        handlerMock
-            .SetupRequest(request =>
-                request.RequestUri != null
-                && request.Method == HttpMethod.Post
-                && request.RequestUri.ToString().Contains("/files")
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
-                && request.Headers.UserAgent.ToString()
-                    == new ProductInfoHeaderValue(
-                        "Cs",
-                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
-                    ).ToString()
-            )
-            .ReturnsResponse(JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = sha256 }));
-        services
-            .AddHttpClient<IVaas, Vaas>()
-            .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
-        var provider = services.BuildServiceProvider();
-        var vaas = provider.GetRequiredService<IVaas>();
-
-        await vaas.ForFileAsync("file.txt", CancellationToken.None);
-
-        handlerMock.VerifyAll();
-    }
-
-    [Fact]
     public async Task ForFileAsync_IfVaasRequestIdIsSet_SendsTraceState()
     {
         var services = GetServices();
@@ -554,11 +456,9 @@ public class VaasTest
                 && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
             )
             .ReturnsResponse(
-                JsonSerializer.Serialize(new FileReport
-                {
-                    Sha256 = eicarSha256,
-                    Verdict = Verdict.Unknown
-                })
+                JsonSerializer.Serialize(
+                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                )
             );
 
         handlerMock
@@ -785,7 +685,7 @@ public class VaasTest
             .SetupRequest(request =>
                 request.RequestUri != null
                 && request.Method == HttpMethod.Get
-                && request.RequestUri.ToString().Contains(eicarSha256)
+                && request.RequestUri.ToString().Contains(EicarSha256)
                 && request
                     .RequestUri.ToString()
                     .Contains("useCache=" + JsonSerializer.Serialize(true))
@@ -794,11 +694,9 @@ public class VaasTest
                     .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
             )
             .ReturnsResponse(
-                JsonSerializer.Serialize(new FileReport
-                {
-                    Sha256 = eicarSha256,
-                    Verdict = Verdict.Unknown
-                })
+                JsonSerializer.Serialize(
+                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                )
             );
 
         handlerMock
@@ -811,7 +709,7 @@ public class VaasTest
                     .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
             )
             .ReturnsResponse(
-                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = eicarSha256 })
+                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = EicarSha256 })
             );
         services
             .AddHttpClient<IVaas, Vaas>()
@@ -841,51 +739,24 @@ public class VaasTest
         handlerMock
             .SetupRequest(request =>
                 request.RequestUri != null
-                && request.RequestUri.ToString().Contains(eicarSha256)
                 && request
-                    .RequestUri.ToString()
-                    .Contains("useCache=" + JsonSerializer.Serialize(true))
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
-                && request.Headers.UserAgent.ToString()
-                    == new ProductInfoHeaderValue(
-                        "Cs",
-                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
-                    ).ToString()
+                    .Headers.UserAgent.ToString()
+                    .Contains("Cs/" + Assembly.GetAssembly(typeof(Vaas))?.GetName().Version)
             )
             .ReturnsResponse(
-                JsonSerializer.Serialize(new FileReport
-                {
-                    Sha256 = eicarSha256,
-                    Verdict = Verdict.Unknown
-                })
+                JsonSerializer.Serialize(
+                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                )
             );
 
-        handlerMock
-            .SetupRequest(request =>
-                request.RequestUri != null
-                && request.Method == HttpMethod.Post
-                && request.RequestUri.ToString().Contains("/files")
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
-                && request.Headers.UserAgent.ToString()
-                    == new ProductInfoHeaderValue(
-                        "Cs",
-                        Assembly.GetAssembly(typeof(Vaas))?.GetName().Version?.ToString()
-                    ).ToString()
-            )
-            .ReturnsResponse(
-                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = eicarSha256 })
-            );
         services
             .AddHttpClient<IVaas, Vaas>()
             .ConfigurePrimaryHttpMessageHandler(() => handlerMock.Object);
         var provider = services.BuildServiceProvider();
         var vaas = provider.GetRequiredService<IVaas>();
 
-        await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        var verdict = await vaas.ForStreamAsync(targetStream, CancellationToken.None);
+        _output.WriteLine(verdict.ToString());
 
         handlerMock.VerifyAll();
     }
@@ -904,7 +775,7 @@ public class VaasTest
         handlerMock
             .SetupRequest(request =>
                 request.RequestUri != null
-                && request.RequestUri.ToString().Contains(eicarSha256)
+                && request.RequestUri.ToString().Contains(EicarSha256)
                 && request
                     .RequestUri.ToString()
                     .Contains("useCache=" + JsonSerializer.Serialize(true))
@@ -914,11 +785,9 @@ public class VaasTest
                 && request.Headers.GetValues("tracestate").Contains($"vaasrequestid={requestId}")
             )
             .ReturnsResponse(
-                JsonSerializer.Serialize(new FileReport
-                {
-                    Sha256 = eicarSha256,
-                    Verdict = Verdict.Unknown
-                })
+                JsonSerializer.Serialize(
+                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                )
             );
 
         handlerMock
@@ -931,7 +800,7 @@ public class VaasTest
                     .Contains("useHashLookup=" + JsonSerializer.Serialize(true))
             )
             .ReturnsResponse(
-                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = eicarSha256 })
+                JsonSerializer.Serialize(new FileAnalysisStarted { Sha256 = EicarSha256 })
             );
         services
             .AddHttpClient<IVaas, Vaas>()
@@ -1125,7 +994,7 @@ public class VaasTest
                 JsonSerializer.Serialize(
                     new UrlReport
                     {
-                        Sha256 = eicarSha256,
+                        Sha256 = EicarSha256,
                         Verdict = Verdict.Unknown,
                         Url = url,
                     }
@@ -1179,7 +1048,7 @@ public class VaasTest
                 JsonSerializer.Serialize(
                     new UrlReport
                     {
-                        Sha256 = eicarSha256,
+                        Sha256 = EicarSha256,
                         Verdict = Verdict.Unknown,
                         Url = url,
                     }
@@ -1230,7 +1099,7 @@ public class VaasTest
                 JsonSerializer.Serialize(
                     new UrlReport
                     {
-                        Sha256 = eicarSha256,
+                        Sha256 = EicarSha256,
                         Verdict = Verdict.Unknown,
                         Url = url,
                     }

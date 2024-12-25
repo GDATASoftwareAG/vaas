@@ -8,22 +8,22 @@ using System.Threading.Tasks;
 
 namespace Vaas.Authentication;
 
-public class Authenticator : IAuthenticator, IDisposable
+internal class TokenReceiver(
+    IAuthenticator authenticator,
+    Uri? tokenUrl = null,
+    HttpClient? httpClient = null,
+    ISystemClock? systemClock = null
+) : IAuthenticator, IDisposable
 {
-    private readonly HttpClient _httpClient;
-    private readonly ISystemClock _systemClock;
-    private readonly VaasOptions _options;
+    private readonly Uri _tokenUrl =
+        tokenUrl
+        ?? new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
+    private readonly HttpClient _httpClient = httpClient ?? new HttpClient();
     private readonly SemaphoreSlim _semaphore = new(1);
+    private readonly ISystemClock _systemClock = systemClock ?? new SystemClock();
     private TokenResponse? _lastResponse;
     private DateTime _validTo;
     private DateTime? _lastRequestTime;
-
-    public Authenticator(HttpClient httpClient, ISystemClock systemClock, VaasOptions options)
-    {
-        _httpClient = httpClient;
-        _systemClock = systemClock;
-        _options = options;
-    }
 
     public async Task<string> GetTokenAsync(CancellationToken cancellationToken)
     {
@@ -65,7 +65,7 @@ public class Authenticator : IAuthenticator, IDisposable
         HttpResponseMessage response;
         try
         {
-            response = await _httpClient.PostAsync(_options.TokenUrl, form, cancellationToken);
+            response = await _httpClient.PostAsync(_tokenUrl, form, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -109,36 +109,36 @@ public class Authenticator : IAuthenticator, IDisposable
 
     private FormUrlEncodedContent TokenRequestToForm()
     {
-        if (_options.Credentials.GrantType == GrantType.ClientCredentials)
+        return authenticator switch
         {
-            return new FormUrlEncodedContent(
+            ClientCredentialsGrantAuthenticator grantAuthenticator => new FormUrlEncodedContent(
                 new List<KeyValuePair<string, string>>
                 {
-                    new("client_id", _options.Credentials.ClientId),
+                    new("client_id", grantAuthenticator.ClientId),
                     new(
                         "client_secret",
-                        _options.Credentials.ClientSecret ?? throw new InvalidOperationException()
+                        grantAuthenticator.ClientSecret ?? throw new InvalidOperationException()
                     ),
                     new("grant_type", "client_credentials"),
                 }
-            );
-        }
-
-        return new FormUrlEncodedContent(
-            new List<KeyValuePair<string, string>>
-            {
-                new("client_id", _options.Credentials.ClientId),
-                new(
-                    "username",
-                    _options.Credentials.UserName ?? throw new InvalidOperationException()
-                ),
-                new(
-                    "password",
-                    _options.Credentials.Password ?? throw new InvalidOperationException()
-                ),
-                new("grant_type", "password"),
-            }
-        );
+            ),
+            ResourceOwnerPasswordGrantAuthenticator grantAuthenticator => new FormUrlEncodedContent(
+                new List<KeyValuePair<string, string>>
+                {
+                    new("client_id", grantAuthenticator.ClientId),
+                    new(
+                        "username",
+                        grantAuthenticator.UserName ?? throw new InvalidOperationException()
+                    ),
+                    new(
+                        "password",
+                        grantAuthenticator.Password ?? throw new InvalidOperationException()
+                    ),
+                    new("grant_type", "password"),
+                }
+            ),
+            _ => throw new InvalidOperationException("Unknown authenticator type"),
+        };
     }
 
     public void Dispose()

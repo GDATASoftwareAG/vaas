@@ -1,5 +1,6 @@
 ﻿using Vaas;
 using Vaas.Authentication;
+using Vaas.Options;
 
 if (args.Length == 0)
 {
@@ -7,7 +8,7 @@ if (args.Length == 0)
     Environment.Exit(1);
 }
 
-var vaas = await AuthenticateWithCredentials();
+var vaas = AuthenticateWithCredentials();
 
 foreach (var path in args)
 {
@@ -16,10 +17,15 @@ foreach (var path in args)
     Console.WriteLine($"Tested {path}: Verdict {verdict}");
 }
 
-static async Task<IVaas> AuthenticateWithCredentials()
+return;
+
+static IVaas AuthenticateWithCredentials()
 {
     DotNetEnv.Env.NoClobber().TraversePath().Load();
-    var url = DotNetEnv.Env.GetString("VAAS_URL", "wss://gateway.production.vaas.gdatasecurity.de");
+    var url = DotNetEnv.Env.GetString(
+        "VAAS_URL",
+        "https://gateway.production.vaas.gdatasecurity.de"
+    );
     var tokenEndpoint = new Uri(
         DotNetEnv.Env.GetString(
             "TOKEN_URL",
@@ -29,19 +35,13 @@ static async Task<IVaas> AuthenticateWithCredentials()
     var clientId = DotNetEnv.Env.GetString("CLIENT_ID");
     var clientSecret = DotNetEnv.Env.GetString("CLIENT_SECRET");
 
-    var vaas = VaasFactory.Create(
-        new VaasOptions()
-        {
-            Url = new Uri(url),
-            TokenUrl = tokenEndpoint,
-            Credentials = new TokenRequest
-            {
-                GrantType = GrantType.ClientCredentials,
-                ClientId = clientId,
-                ClientSecret = clientSecret,
-            },
-        }
+    var authenticator = new ClientCredentialsGrantAuthenticator(
+        clientId,
+        clientSecret,
+        tokenEndpoint
     );
+
+    var vaas = VaasFactory.Create(authenticator, new VaasOptions { VaasUrl = new Uri(url) });
 
     return vaas;
 }

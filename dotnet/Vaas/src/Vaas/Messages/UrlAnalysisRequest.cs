@@ -4,6 +4,6 @@ namespace Vaas.Messages;
 
 public class UrlAnalysisRequest
 {
-    public Uri url { get; set; }
-    public bool? useHashLookup { get; set; } = true;
+    public required Uri Url { get; set; }
+    public bool? UseHashLookup { get; set; } = true;
 }
