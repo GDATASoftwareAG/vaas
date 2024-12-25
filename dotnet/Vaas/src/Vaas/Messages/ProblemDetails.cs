@@ -5,8 +5,8 @@ namespace Vaas.Messages;
 public class ProblemDetails
 {
     [JsonPropertyName("type")]
-    public string? Type { get; set; }
+    public string? Type { get; init; }
 
     [JsonPropertyName("detail")]
-    public string? Detail { get; set; }
+    public string? Detail { get; init; }
 }

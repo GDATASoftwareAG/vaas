@@ -32,7 +32,7 @@ public class AuthenticatorTest
     private readonly CountingDelegatingHandler _handler = new();
     private readonly Mock<ISystemClock> _systemClock = new();
     private readonly HttpClient _httpClient;
-    private readonly Authenticator _authenticator;
+    private readonly ClientCredentialsGrantAuthenticator _authenticator;
 
     public AuthenticatorTest()
     {
@@ -40,59 +40,49 @@ public class AuthenticatorTest
         _handler.InnerHandler = new HttpClientHandler();
         _httpClient = new HttpClient(_handler);
         _systemClock.Setup(x => x.UtcNow).Returns(() => DateTimeOffset.UtcNow);
-        _authenticator = new Authenticator(
+        _authenticator = GetClientCredentialsGrantAuthenticator();
+    }
+
+    private ClientCredentialsGrantAuthenticator GetClientCredentialsGrantAuthenticator()
+    {
+        return new ClientCredentialsGrantAuthenticator(
+            AuthenticationEnvironment.ClientId,
+            AuthenticationEnvironment.ClientSecret,
+            AuthenticationEnvironment.TokenUrl,
             _httpClient,
-            _systemClock.Object,
-            GetVaasOptionsForClientCredentials()
+            _systemClock.Object
         );
     }
 
-    private VaasOptions GetVaasOptionsForClientCredentials() =>
-        new()
-        {
-            TokenUrl = AuthenticationEnvironment.TokenUrl,
-            Credentials = new()
-            {
-                GrantType = GrantType.ClientCredentials,
-                ClientId = AuthenticationEnvironment.ClientId,
-                ClientSecret = AuthenticationEnvironment.ClientSecret,
-            },
-        };
-
-    private VaasOptions GetVaasOptionsForPassword() =>
-        new()
-        {
-            TokenUrl = AuthenticationEnvironment.TokenUrl,
-            Credentials = new()
-            {
-                GrantType = GrantType.Password,
-                ClientId = AuthenticationEnvironment.ClientIdForResourceOwnerPasswordGrant,
-                UserName = AuthenticationEnvironment.UserName,
-                Password = AuthenticationEnvironment.Password,
-            },
-        };
+    private ResourceOwnerPasswordGrantAuthenticator GetResourceOwnerPasswordGrantAuthenticator()
+    {
+        return new ResourceOwnerPasswordGrantAuthenticator(
+            AuthenticationEnvironment.ClientIdForResourceOwnerPasswordGrant,
+            AuthenticationEnvironment.UserName,
+            AuthenticationEnvironment.Password,
+            AuthenticationEnvironment.TokenUrl,
+            _httpClient,
+            _systemClock.Object
+        );
+    }
 
     [Fact]
     public async Task GetTokenAsync_WithClientCredentials_ReturnsToken()
     {
-        var authenticator = new Authenticator(
-            _httpClient,
-            _systemClock.Object,
-            GetVaasOptionsForClientCredentials()
-        );
+        var authenticator = GetClientCredentialsGrantAuthenticator();
+
         _ = await authenticator.GetTokenAsync(CancellationToken.None);
+
         Assert.Equal(1, _handler.Requests);
     }
 
     [Fact]
     public async Task GetTokenAsync_WithPassword_ReturnsToken()
     {
-        var authenticator = new Authenticator(
-            _httpClient,
-            _systemClock.Object,
-            GetVaasOptionsForPassword()
-        );
+        var authenticator = GetResourceOwnerPasswordGrantAuthenticator();
+
         _ = await authenticator.GetTokenAsync(CancellationToken.None);
+
         Assert.Equal(1, _handler.Requests);
     }
 
@@ -101,6 +91,7 @@ public class AuthenticatorTest
     {
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
+
         Assert.Equal(1, _handler.Requests);
     }
 
@@ -111,7 +102,9 @@ public class AuthenticatorTest
         _systemClock
             .Setup(x => x.UtcNow)
             .Returns(() => DateTimeOffset.UtcNow + TimeSpan.FromHours(1));
+
         _ = await _authenticator.GetTokenAsync(CancellationToken.None);
+
         Assert.Equal(2, _handler.Requests);
     }
 
@@ -131,7 +124,7 @@ public class AuthenticatorTest
     {
         var handlerMock = UseHttpMessageHandlerMock();
         handlerMock
-            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+            .SetupRequest(HttpMethod.Post, AuthenticationEnvironment.TokenUrl)
             .ReturnsResponse("""{"access_token": "My great token"}""");
 
         var e = await Assert.ThrowsAsync<AuthenticationException>(
@@ -157,10 +150,10 @@ public class AuthenticatorTest
             );
     }
 
-    private void MockUnauthorizedClient(Mock<HttpMessageHandler> handlerMock)
+    private static void MockUnauthorizedClient(Mock<HttpMessageHandler> handlerMock)
     {
         handlerMock
-            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+            .SetupRequest(HttpMethod.Post, AuthenticationEnvironment.TokenUrl)
             .ReturnsResponse(
                 """{"error":"unauthorized_client","error_description":"Invalid client or Invalid client credentials"}""",
                 configure: response =>
@@ -175,7 +168,7 @@ public class AuthenticatorTest
     {
         var handlerMock = UseHttpMessageHandlerMock();
         handlerMock
-            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+            .SetupRequest(HttpMethod.Post, AuthenticationEnvironment.TokenUrl)
             .ReturnsResponse(HttpStatusCode.InternalServerError);
 
         var e = await Assert.ThrowsAsync<AuthenticationException>(
@@ -193,7 +186,7 @@ public class AuthenticatorTest
     {
         var handlerMock = UseHttpMessageHandlerMock();
         handlerMock
-            .SetupRequest(HttpMethod.Post, GetVaasOptionsForClientCredentials().TokenUrl)
+            .SetupRequest(HttpMethod.Post, AuthenticationEnvironment.TokenUrl)
             .Throws(
                 new HttpRequestException(
                     "Name or service not known (dsdkfsdufsdufoweuiruierlknclxoijfiowejf.de:80)"

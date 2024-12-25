@@ -1,10 +1,11 @@
+using System.Text.Json;
 using Vaas.Messages;
 
 namespace Vaas;
 
 public class VaasVerdict
 {
-    public string Sha256 { get; init; }
+    public required string Sha256 { get; init; }
     public Verdict Verdict { get; init; }
     public string? Detection { get; init; }
     public string? MimeType { get; init; }
@@ -33,4 +34,6 @@ public class VaasVerdict
             FileType = urlReport.FileType,
         };
     }
+
+    public override string ToString() => JsonSerializer.Serialize(this);
 }

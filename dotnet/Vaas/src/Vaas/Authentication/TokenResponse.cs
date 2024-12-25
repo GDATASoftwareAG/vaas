@@ -11,9 +11,10 @@ public class TokenResponse
     [JsonPropertyName("expires_in")]
     public int? ExpiresInSeconds { get; init; }
 
-    public TokenResponse(string accessToken)
+    public TokenResponse(string accessToken, int? expiresInSeconds)
     {
         Guard.IsNotNullOrEmpty(accessToken);
         AccessToken = accessToken;
+        ExpiresInSeconds = expiresInSeconds;
     }
 }
