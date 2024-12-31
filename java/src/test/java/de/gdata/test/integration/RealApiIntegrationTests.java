@@ -345,6 +345,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("secure.eicar.org is down. Disable for now.")
     public void forUrlMultipleMaliciousUrls() throws Exception {
         var url_1 = new URL("https://secure.eicar.org/eicar.com");
         var url_2 = new URL("https://secure.eicar.org/eicar.com.txt");
@@ -480,6 +481,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("secure.eicar.org is down. Disable for now.")
     public void forStream_WithEicarUrl_ReturnsMaliciousVerdict() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
@@ -527,6 +529,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("secure.eicar.org is down. Disable for now.")
     public void forStream_WithEicarFile_ReturnsMaliciousVerdictWithDetections() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
