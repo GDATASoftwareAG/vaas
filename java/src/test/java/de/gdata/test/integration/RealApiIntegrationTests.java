@@ -28,7 +28,6 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
-import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -393,11 +392,11 @@ public class RealApiIntegrationTests {
                 argThat(getRequest -> getRequest != null
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains(
-                                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                                .contains("useCache=" + Boolean.toString(useCache))
+                        .contains("useCache=" + Boolean.toString(useCache))
                         && getRequest.uri().toString().contains(
-                                "useHashLookup=" + Boolean.toString(useHashLookup))),
+                        "useHashLookup=" + Boolean.toString(useHashLookup))),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -406,12 +405,12 @@ public class RealApiIntegrationTests {
                     argThat(getRequest -> getRequest != null
                             && getRequest.method().equals("GET")
                             && getRequest.uri().toString().contains(
-                                    "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                            "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                             && getRequest.uri().toString()
-                                    .contains("useCache=" + Boolean.toString(true))
+                            .contains("useCache=" + Boolean.toString(true))
                             && getRequest.uri().toString()
-                                    .contains("useHashLookup=" + Boolean
-                                            .toString(useHashLookup))),
+                            .contains("useHashLookup=" + Boolean
+                                    .toString(useHashLookup))),
                     any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
         }
@@ -421,7 +420,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString().contains(
-                                "useHashLookup=" + Boolean.toString(useHashLookup))),
+                        "useHashLookup=" + Boolean.toString(useHashLookup))),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -471,13 +470,13 @@ public class RealApiIntegrationTests {
                 argThat(getRequest -> getRequest != null
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains(
-                                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                                .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + Boolean.toString(true))
                         && getRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && getRequest.headers().firstValue("User-Agent").toString()
-                                .contains("Java")),
+                        .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -486,9 +485,9 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && postRequest.headers().firstValue("User-Agent").toString()
-                                .contains("Java")),
+                        .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -534,13 +533,13 @@ public class RealApiIntegrationTests {
                 argThat(getRequest -> getRequest != null
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains(
-                                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                                .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + Boolean.toString(true))
                         && getRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && getRequest.headers().firstValue("tracestate").toString()
-                                .contains("foobar")),
+                        .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -549,9 +548,9 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && postRequest.headers().firstValue("tracestate").toString()
-                                .contains("foobar")),
+                        .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -684,6 +683,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
         when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
                         && postRequest.method().equals("POST")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
@@ -784,12 +784,12 @@ public class RealApiIntegrationTests {
                 argThat(getRequest -> getRequest != null
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains(
-                                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                                .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + Boolean.toString(true))
                         && getRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean
-                                        .toString(useHashLookup))),
+                        .contains("useHashLookup=" + Boolean
+                                .toString(useHashLookup))),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -798,7 +798,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString().contains(
-                                "useHashLookup=" + Boolean.toString(useHashLookup))),
+                        "useHashLookup=" + Boolean.toString(useHashLookup))),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -843,20 +843,24 @@ public class RealApiIntegrationTests {
                 argThat(getRequest -> getRequest != null
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains(
-                                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                                .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + Boolean.toString(true))
                         && getRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && getRequest.headers().firstValue("User-Agent").toString()
+                        .contains("Java")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
         when(mockHttpClient.sendAsync(
                 argThat(postRequest -> postRequest != null
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && postRequest.headers().firstValue("User-Agent").toString()
-                                .contains("Java")),
+                        .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -899,13 +903,13 @@ public class RealApiIntegrationTests {
                 argThat(getRequest -> getRequest != null
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains(
-                                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                                .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + Boolean.toString(true))
                         && getRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && getRequest.headers().firstValue("tracestate").toString()
-                                .contains("foobar")),
+                        .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -914,9 +918,9 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                                .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + Boolean.toString(true))
                         && postRequest.headers().firstValue("tracestate").toString()
-                                .contains("foobar")),
+                        .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -1185,7 +1189,7 @@ public class RealApiIntegrationTests {
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains("id")
                         && getRequest.headers().firstValue("User-Agent").toString()
-                                .contains("Java")),
+                        .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -1194,7 +1198,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("urls")
                         && postRequest.headers().firstValue("User-Agent").toString()
-                                .contains("Java")),
+                        .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -1235,7 +1239,7 @@ public class RealApiIntegrationTests {
                         && getRequest.method().equals("GET")
                         && getRequest.uri().toString().contains("id")
                         && getRequest.headers().firstValue("tracestate").toString()
-                                .contains("foobar")),
+                        .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -1244,7 +1248,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("urls")
                         && postRequest.headers().firstValue("tracestate").toString()
-                                .contains("foobar")),
+                        .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
