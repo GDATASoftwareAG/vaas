@@ -46,6 +46,7 @@ test {
       exceptionFormat "full"
       showCauses true
       showStackTraces true
+      showStandardStreams true
     }
 }
 
@@ -60,6 +61,7 @@ tasks.register('testWithoutErrorLogProducer', Test) {
         exceptionFormat "full"
         showCauses true
         showStackTraces true
+        showStandardStreams true
     }
 }
 

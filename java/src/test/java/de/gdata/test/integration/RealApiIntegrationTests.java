@@ -28,6 +28,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -683,7 +684,6 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
         when(mockHttpClient.sendAsync(
-                argThat(postRequest -> postRequest != null
                         && postRequest.method().equals("POST")),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
@@ -849,10 +849,6 @@ public class RealApiIntegrationTests {
                         && getRequest.uri().toString()
                                 .contains("useHashLookup=" + Boolean.toString(true))
                         && getRequest.headers().firstValue("User-Agent").toString()
-                                .contains("Java")),
-                any(HttpResponse.BodyHandler.class)))
-                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
-
         when(mockHttpClient.sendAsync(
                 argThat(postRequest -> postRequest != null
                         && postRequest.method().equals("POST")
