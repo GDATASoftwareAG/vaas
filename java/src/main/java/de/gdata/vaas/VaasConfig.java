@@ -23,17 +23,11 @@ public class VaasConfig {
     Duration defaultTimeout = Duration.ofMinutes(10);
 
     public VaasConfig() throws URISyntaxException {
-        this(
-                new URI("wss://gateway.production.vaas.gdatasecurity.de"));
+        this(new URI("https://gateway.production.vaas.gdatasecurity.de"));
     }
 
     public VaasConfig(URI url) {
         this.url = url;
         this.PullDelayMs = 100;
-    }
-
-    public VaasConfig(URI url, Duration timeout) {
-        this.url = url;
-        this.defaultTimeout = timeout;
     }
 }

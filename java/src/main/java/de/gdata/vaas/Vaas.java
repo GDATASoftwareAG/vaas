@@ -8,13 +8,9 @@ import de.gdata.vaas.options.ForUrlOptions;
 import de.gdata.vaas.exceptions.*;
 import lombok.Getter;
 import lombok.NonNull;
-
-import org.java_websocket.exceptions.WebsocketNotConnectedException;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -29,15 +25,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 
-public class Vaas implements AutoCloseable, IVaas {
-    private static final int connectionRetryDelayInMs = 1000;
-    private static final int connectionTimeoutInMs = 10000;
+public class Vaas implements IVaas {
     private static final String userAgent = "Java/9.0.0";
 
     @Getter
@@ -46,7 +36,6 @@ public class Vaas implements AutoCloseable, IVaas {
 
     private final IAuthenticator authenticator;
     private final HttpClient httpClient;
-    private WebSocketClient client;
 
     public Vaas(@NonNull VaasConfig config, @NonNull IAuthenticator authenticator) {
         this.config = config;
@@ -60,80 +49,13 @@ public class Vaas implements AutoCloseable, IVaas {
         this.httpClient = httpClient;
     }
 
-    /**
-     * Connect and authenticate with the VaaS Backend
-     * 
-     * @throws IOException                 if an I/O error occurs when getting the
-     *                                     token from the identity provider
-     * @throws InterruptedException        if the operation is interrupted by
-     *                                     Thread.interrupt()
-     * @throws VaasAuthenticationException if the token returned by the identity
-     *                                     provider is invalid
-     * @throws TimeoutException            if the connection or authentication to
-     *                                     the VaaS backend takes too long
-     */
-    public void connect() throws IOException, InterruptedException, VaasAuthenticationException, TimeoutException {
-        var timer = new SimpleTimer(connectionTimeoutInMs, TimeUnit.MILLISECONDS);
-        while (true) {
-            if (this.client != null) {
-                this.client.close();
-            }
-            this.client = new WebSocketClient(this.getConfig(), authenticator);
-            if (this.client.connectBlocking(timer.getRemainingMs(), TimeUnit.MILLISECONDS)) {
-                try {
-                    this.client.Authenticate(timer.getRemainingMs(), TimeUnit.MILLISECONDS);
-                    break;
-                } catch (WebsocketNotConnectedException ignored) {
-                } catch (ExecutionException e) {
-                    throw new VaasAuthenticationException();
-                }
-            }
-            TimeUnit.MILLISECONDS.sleep(connectionRetryDelayInMs);
-        }
-    }
-
-    /**
-     * Disconnect from the Vaas backend
-     *
-     * @throws InterruptedException if the operation is interrupted by
-     *                              Thread.interrupt()
-     */
-    public void disconnect() throws InterruptedException {
-        if (this.client != null) {
-            this.client.closeBlocking();
-        }
-    }
-
-    private void throwVaasException(ExecutionException e) throws VaasClientException, VaasServerException {
-        var errorCause = e.getCause();
-        if (errorCause instanceof VaasClientException) {
-            throw (VaasClientException) errorCause;
-        } else if (errorCause instanceof VaasServerException) {
-            throw (VaasServerException) errorCause;
-        }
-        throw new VaasClientException("Unexpected error.");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <E extends Throwable> void throwAsUnchecked(Exception exception) throws E {
-        throw (E) exception;
-    }
-
-    @Override
-    public void close() throws Exception {
-        try {
-            this.disconnect();
-        } catch (Exception e) {
-            // ignored
-        }
-    }
-
-    private static <T, R> Function<T, R> handleException(ThrowingFunction<T, R> function) {
+    private static <T, R> Function<T, CompletableFuture<R>> handleException(
+            ThrowingFunction<T, CompletableFuture<R>> function) {
         return input -> {
             try {
                 return function.apply(input);
             } catch (Exception e) {
-                throw new RuntimeException(e); // Wrappen in eine RuntimeException
+                return CompletableFuture.failedFuture(e);
             }
         };
     }
@@ -156,9 +78,8 @@ public class Vaas implements AutoCloseable, IVaas {
         return encodedParams.toString();
     }
 
-    private static CompletableFuture<VaasVerdict> parseVaasError(HttpResponse response)
-            throws VaasClientException, VaasServerException, VaasAuthenticationException {
-        var problemDetails = response.body() != null ? ProblemDetails.fromJson(response.body().toString()) : new ProblemDetails();
+    private static CompletableFuture<VaasVerdict> parseVaasError(HttpResponse<String> response) {
+        var problemDetails = response.body() != null ? ProblemDetails.fromJson(response.body()) : new ProblemDetails();
         switch (response.statusCode()) {
             case 400:
                 return CompletableFuture.failedFuture(new VaasClientException(problemDetails.detail));
@@ -211,7 +132,7 @@ public class Vaas implements AutoCloseable, IVaas {
 
     @Override
     public CompletableFuture<VaasVerdict> forSha256(Sha256 sha256)
-            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException {
+            throws IOException, InterruptedException, VaasAuthenticationException {
         var forSha256Options = new ForSha256Options();
         forSha256Options.setUseCache(true);
         forSha256Options.setUseHashLookup(true);
@@ -239,7 +160,7 @@ public class Vaas implements AutoCloseable, IVaas {
 
     @Override
     public CompletableFuture<VaasVerdict> forFile(Path file)
-            throws NoSuchAlgorithmException, IOException, URISyntaxException, InterruptedException,
+            throws NoSuchAlgorithmException, IOException, InterruptedException,
             VaasAuthenticationException {
         var forFileOptions = new ForFileOptions();
         forFileOptions.setUseCache(true);
@@ -279,7 +200,7 @@ public class Vaas implements AutoCloseable, IVaas {
 
     @Override
     public CompletableFuture<VaasVerdict> forStream(InputStream stream, long contentLength)
-            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException {
+            throws IOException, InterruptedException, VaasAuthenticationException {
         var forStreamOptions = new ForStreamOptions();
         forStreamOptions.setUseHashLookup(true);
         return forStream(stream, contentLength, forStreamOptions);
@@ -317,8 +238,8 @@ public class Vaas implements AutoCloseable, IVaas {
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forUrl(URL url) throws URISyntaxException, IOException, InterruptedException,
-            VaasAuthenticationException, VaasClientException, VaasServerException {
+    public CompletableFuture<VaasVerdict> forUrl(URL url) throws IOException, InterruptedException,
+            VaasAuthenticationException {
         var forUrlOptions = new ForUrlOptions();
         forUrlOptions.setUseHashLookup(true);
         return forUrl(url, forUrlOptions);
@@ -326,38 +247,32 @@ public class Vaas implements AutoCloseable, IVaas {
 
     @Override
     public CompletableFuture<VaasVerdict> forUrl(URL url, ForUrlOptions options)
-            throws IOException, InterruptedException, VaasAuthenticationException, VaasClientException,
-            VaasServerException {
+            throws IOException, InterruptedException, VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var urlsUri = this.config.getUrl() + "/urls";
         var urlAnalysisRequest = new UrlAnalysisRequest(url.toString(), options.isUseHashLookup());
-        var request = CreateHttpRequestBuilderWithHeaders(URI.create(urlsUri), options.getVaasRequestId())
+        var postRequest = CreateHttpRequestBuilderWithHeaders(URI.create(urlsUri), options.getVaasRequestId())
                 .POST(HttpRequest.BodyPublishers.ofString(UrlAnalysisRequest.ToJson(urlAnalysisRequest)))
                 .header("Content-Type", "application/json")
                 .build();
 
-        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(handleException(response -> {
+        return httpClient.sendAsync(postRequest, HttpResponse.BodyHandlers.ofString())
+                .thenCompose(handleException(response -> {
                     var statusCode = response.statusCode();
                     if (statusCode < 200 || statusCode >= 300) {
-                        parseVaasError(response);
+                        return parseVaasError(response);
                     }
-                    return UrlAnalysisStarted.fromJson(response.body());
-                }))
-                .thenCompose(handleException(urlAnalysisStarted -> {
+                    var urlAnalysisStarted = UrlAnalysisStarted.fromJson(response.body());
                     var urlsReportUri = this.config.getUrl()
                             + String.format("/urls/%s/report?", urlAnalysisStarted.getId()) + encodeParams(params);
                     if (options.getVaasRequestId() == null || options.getVaasRequestId().isBlank()) {
                         options.setVaasRequestId(UUID.randomUUID().toString());
                     }
-                    var request2 = CreateHttpRequestBuilderWithHeaders(URI.create(urlsReportUri),
+                    var getRequest = CreateHttpRequestBuilderWithHeaders(URI.create(urlsReportUri),
                             options.getVaasRequestId())
                             .GET()
                             .build();
-                    return sendUrlWithRetry(httpClient, request2);
-                }))
-                .thenApply(vaasVerdict -> {
-                    return vaasVerdict;
-                });
+                    return sendUrlWithRetry(httpClient, getRequest);
+                }));
     }
 }
