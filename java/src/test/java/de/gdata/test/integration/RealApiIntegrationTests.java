@@ -160,7 +160,7 @@ public class RealApiIntegrationTests {
         var sha256sum = new Sha256(sha256);
         vaas = getVaasWithCredentials();
 
-        var vaasVerdict = vaas.forSha256(sha256sum).join();
+        var vaasVerdict = vaas.forSha256Async(sha256sum).join();
 
         assertEquals(sha256, vaasVerdict.getSha256());
         assertEquals(verdict, vaasVerdict.getVerdict());
@@ -189,7 +189,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forSha256(sha256, forSha256Options).join();
+        var vaasVerdict = vaas.forSha256Async(sha256, forSha256Options).join();
         verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
         var capturedUri = requestCaptor.getValue().uri();
 
@@ -217,7 +217,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forSha256(sha256).join();
+        var vaasVerdict = vaas.forSha256Async(sha256).join();
         verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
         var capturedUserAgent = requestCaptor.getValue().headers().firstValue("User-Agent");
 
@@ -244,7 +244,7 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
         var forSha256Options = new ForSha256Options(true, true, "foobar");
-        var vaasVerdict = vaas.forSha256(sha256, forSha256Options).join();
+        var vaasVerdict = vaas.forSha256Async(sha256, forSha256Options).join();
 
         verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
         var capturedTraceState = requestCaptor.getValue().headers().firstValue("tracestate");
@@ -268,7 +268,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forSha256(sha256).join();
+            vaas.forSha256Async(sha256).join();
         });
         assertTrue(exception.getCause() instanceof VaasClientException);
     }
@@ -286,7 +286,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forSha256(sha256).join();
+            vaas.forSha256Async(sha256).join();
         });
         assertTrue(exception.getCause() instanceof VaasServerException);
     }
@@ -304,7 +304,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forSha256(sha256).join();
+            vaas.forSha256Async(sha256).join();
         });
         assertTrue(exception.getCause() instanceof VaasAuthenticationException);
     }
@@ -323,7 +323,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forSha256(sha256).join();
+            vaas.forSha256Async(sha256).join();
         });
     }
 
@@ -332,7 +332,7 @@ public class RealApiIntegrationTests {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         vaas = getVaasWithCredentials();
 
-        var future = vaas.forSha256(sha256);
+        var future = vaas.forSha256Async(sha256);
 
         var result = future.cancel(true);
         assertTrue(result);
@@ -353,7 +353,7 @@ public class RealApiIntegrationTests {
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
 
         vaas = getVaasWithCredentials();
-        var vaasVerdict = vaas.forFile(tmpFile).join();
+        var vaasVerdict = vaas.forFileAsync(tmpFile).join();
 
         assertEquals(verdict, vaasVerdict.getVerdict());
     }
@@ -425,7 +425,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forFile(tmpFile, forFileOptions).join();
+        var vaasVerdict = vaas.forFileAsync(tmpFile, forFileOptions).join();
         verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestUri = requestCaptor.getAllValues().get(0).uri();
@@ -492,7 +492,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forFile(tmpFile).join();
+        var vaasVerdict = vaas.forFileAsync(tmpFile).join();
         verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("User-Agent");
@@ -556,7 +556,7 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
         var forFileOptions = new ForFileOptions(true, true, "foobar");
-        var vaasVerdict = vaas.forFile(tmpFile, forFileOptions).join();
+        var vaasVerdict = vaas.forFileAsync(tmpFile, forFileOptions).join();
         verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("tracestate");
@@ -607,7 +607,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forFile(tmpFile).join();
+            vaas.forFileAsync(tmpFile).join();
         });
         assertTrue(exception.getCause() instanceof VaasClientException);
     }
@@ -649,7 +649,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forFile(tmpFile).join();
+            vaas.forFileAsync(tmpFile).join();
         });
         assertTrue(exception.getCause() instanceof VaasServerException);
     }
@@ -691,7 +691,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forFile(tmpFile).join();
+            vaas.forFileAsync(tmpFile).join();
         });
         assertTrue(exception.getCause() instanceof VaasAuthenticationException);
     }
@@ -716,7 +716,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forFile(tmpFile).join();
+            vaas.forFileAsync(tmpFile).join();
         });
     }
 
@@ -730,7 +730,7 @@ public class RealApiIntegrationTests {
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
         vaas = getVaasWithCredentials();
 
-        var future = vaas.forFile(tmpFile);
+        var future = vaas.forFileAsync(tmpFile);
 
         var result = future.cancel(true);
         assertTrue(result);
@@ -746,7 +746,7 @@ public class RealApiIntegrationTests {
         var forStreamOptions = new ForStreamOptions(true, "foobar");
 
         var vaas = getVaasWithCredentials();
-        var verdict = vaas.forStream(inputStream, contentLength, forStreamOptions).join();
+        var verdict = vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
@@ -803,7 +803,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forStream(inputStream, contentLength, forStreamOptions).join();
+        var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestUri = requestCaptor.getAllValues().get(0).uri();
@@ -865,7 +865,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forStream(inputStream, contentLength).join();
+        var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("User-Agent");
@@ -926,7 +926,7 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
         var forFileOptions = new ForStreamOptions(true, "foobar");
-        var vaasVerdict = vaas.forStream(inputStream, contentLength, forFileOptions).join();
+        var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength, forFileOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("tracestate");
@@ -974,7 +974,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forStream(inputStream, contentLength).join();
+            vaas.forStreamAsync(inputStream, contentLength).join();
         });
         assertTrue(exception.getCause() instanceof VaasClientException);
     }
@@ -1015,7 +1015,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forStream(inputStream, contentLength).join();
+            vaas.forStreamAsync(inputStream, contentLength).join();
         });
         assertTrue(exception.getCause() instanceof VaasServerException);
     }
@@ -1056,7 +1056,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forStream(inputStream, contentLength).join();
+            vaas.forStreamAsync(inputStream, contentLength).join();
         });
         assertTrue(exception.getCause() instanceof VaasAuthenticationException);
     }
@@ -1080,7 +1080,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forStream(inputStream, contentLength).join();
+            vaas.forStreamAsync(inputStream, contentLength).join();
         });
     }
 
@@ -1093,7 +1093,7 @@ public class RealApiIntegrationTests {
         var contentLength = inputStream.available();
         vaas = getVaasWithCredentials();
 
-        var future = vaas.forStream(inputStream, contentLength);
+        var future = vaas.forStreamAsync(inputStream, contentLength);
 
         var result = future.cancel(true);
         assertTrue(result);
@@ -1105,7 +1105,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
 
         vaas = getVaasWithCredentials();
-        var verdict = vaas.forUrl(url).join();
+        var verdict = vaas.forUrlAsync(url).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
@@ -1150,7 +1150,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forUrl(url, forUrlOptions).join();
+        var vaasVerdict = vaas.forUrlAsync(url, forUrlOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var bodyRequest = new String(readContent(requestCaptor.getAllValues().get(0).bodyPublisher().get()));
@@ -1203,7 +1203,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
         vaas = getVaasWithCredentials(mockHttpClient);
-        var vaasVerdict = vaas.forUrl(url).join();
+        var vaasVerdict = vaas.forUrlAsync(url).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("User-Agent");
@@ -1254,7 +1254,7 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
         var forUrlOptions = new ForUrlOptions(true, "foobar");
-        var vaasVerdict = vaas.forUrl(url, forUrlOptions).join();
+        var vaasVerdict = vaas.forUrlAsync(url, forUrlOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
         var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("tracestate");
@@ -1287,7 +1287,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forUrl(url).join();
+            vaas.forUrlAsync(url).join();
         });
         assertTrue(exception.getCause() instanceof VaasClientException);
     }
@@ -1313,7 +1313,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forUrl(url).join();
+            vaas.forUrlAsync(url).join();
         });
         assertTrue(exception.getCause() instanceof VaasServerException);
     }
@@ -1339,7 +1339,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forUrl(url).join();
+            vaas.forUrlAsync(url).join();
         });
         assertTrue(exception.getCause() instanceof VaasAuthenticationException);
     }
@@ -1360,7 +1360,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forUrl(url).join();
+            vaas.forUrlAsync(url).join();
         });
     }
 
@@ -1370,7 +1370,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
 
         vaas = getVaasWithCredentials();
-        var future = vaas.forUrl(url);
+        var future = vaas.forUrlAsync(url);
 
         var result = future.cancel(true);
         assertTrue(result);

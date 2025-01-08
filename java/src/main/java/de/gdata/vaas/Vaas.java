@@ -11,6 +11,7 @@ import lombok.NonNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -25,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
 public class Vaas implements IVaas {
@@ -131,16 +133,16 @@ public class Vaas implements IVaas {
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forSha256(Sha256 sha256)
+    public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256)
             throws IOException, InterruptedException, VaasAuthenticationException {
         var forSha256Options = new ForSha256Options();
         forSha256Options.setUseCache(true);
         forSha256Options.setUseHashLookup(true);
-        return this.forSha256(sha256, forSha256Options);
+        return this.forSha256Async(sha256, forSha256Options);
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forSha256(Sha256 sha256, ForSha256Options options)
+    public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256, ForSha256Options options)
             throws IOException, InterruptedException, VaasAuthenticationException {
         var params = Map.of(
                 "useCache", String.valueOf(options.isUseCache()),
@@ -159,23 +161,35 @@ public class Vaas implements IVaas {
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forFile(Path file)
+    public VaasVerdict forSha256(Sha256 sha256) throws URISyntaxException, IOException, InterruptedException,
+            VaasClientException, VaasAuthenticationException, ExecutionException {
+                return forSha256Async(sha256).get();
+    }
+
+    @Override
+    public VaasVerdict forSha256(Sha256 sha256, ForSha256Options options) throws URISyntaxException, IOException,
+            InterruptedException, VaasClientException, VaasAuthenticationException, ExecutionException {
+            return forSha256Async(sha256, options).get();
+    }    
+
+    @Override
+    public CompletableFuture<VaasVerdict> forFileAsync(Path file)
             throws NoSuchAlgorithmException, IOException, InterruptedException,
             VaasAuthenticationException {
         var forFileOptions = new ForFileOptions();
         forFileOptions.setUseCache(true);
         forFileOptions.setUseHashLookup(true);
-        return forFile(file, forFileOptions);
+        return forFileAsync(file, forFileOptions);
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forFile(Path file, ForFileOptions options)
+    public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
             throws NoSuchAlgorithmException, IOException, InterruptedException, VaasAuthenticationException {
         var sha256 = new Sha256(file);
         var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
                 options.getVaasRequestId());
 
-        return forSha256(sha256, forSha256Options)
+        return forSha256Async(sha256, forSha256Options)
                 .thenCompose(handleException(vaasVerdict -> {
                     var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
                             || (vaasVerdict.getVerdict() == Verdict.PUP && vaasVerdict.getDetection() == null)
@@ -193,21 +207,33 @@ public class Vaas implements IVaas {
                         forStreamOptions.setUseHashLookup(options.isUseHashLookup());
                         forStreamOptions.setVaasRequestId(options.getVaasRequestId());
 
-                        return forStream(inputstream, file.toFile().length(), forStreamOptions);
+                        return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions);
                     }
                 }));
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forStream(InputStream stream, long contentLength)
-            throws IOException, InterruptedException, VaasAuthenticationException {
-        var forStreamOptions = new ForStreamOptions();
-        forStreamOptions.setUseHashLookup(true);
-        return forStream(stream, contentLength, forStreamOptions);
+    public VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, IOException, URISyntaxException,
+            InterruptedException, VaasAuthenticationException, ExecutionException {
+                return forFileAsync(file).get();
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forStream(InputStream inputStream, long contentLength,
+    public VaasVerdict forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, IOException,
+            URISyntaxException, InterruptedException, VaasAuthenticationException, ExecutionException {
+                return forFileAsync(file, options).get();
+    }
+
+    @Override
+    public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength)
+            throws IOException, InterruptedException, VaasAuthenticationException {
+        var forStreamOptions = new ForStreamOptions();
+        forStreamOptions.setUseHashLookup(true);
+        return forStreamAsync(stream, contentLength, forStreamOptions);
+    }
+
+    @Override
+    public CompletableFuture<VaasVerdict> forStreamAsync(InputStream inputStream, long contentLength,
             ForStreamOptions options)
             throws IOException, InterruptedException, VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
@@ -233,20 +259,32 @@ public class Vaas implements IVaas {
                     forSha256Options.setUseHashLookup(options.isUseHashLookup());
                     forSha256Options.setVaasRequestId(options.getVaasRequestId());
 
-                    return forSha256(sha256, forSha256Options);
+                    return forSha256Async(sha256, forSha256Options);
                 }));
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forUrl(URL url) throws IOException, InterruptedException,
-            VaasAuthenticationException {
-        var forUrlOptions = new ForUrlOptions();
-        forUrlOptions.setUseHashLookup(true);
-        return forUrl(url, forUrlOptions);
+    public VaasVerdict forStream(InputStream stream, long contentLength)
+            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException, ExecutionException {
+                return forStreamAsync(stream, contentLength).get();
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forUrl(URL url, ForUrlOptions options)
+    public VaasVerdict forStream(InputStream stream, long contentLength, ForStreamOptions options)
+            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException, ExecutionException {
+                return forStreamAsync(stream, contentLength, options).get();
+    }    
+
+    @Override
+    public CompletableFuture<VaasVerdict> forUrlAsync(URL url) throws IOException, InterruptedException,
+            VaasAuthenticationException {
+        var forUrlOptions = new ForUrlOptions();
+        forUrlOptions.setUseHashLookup(true);
+        return forUrlAsync(url, forUrlOptions);
+    }
+
+    @Override
+    public CompletableFuture<VaasVerdict> forUrlAsync(URL url, ForUrlOptions options)
             throws IOException, InterruptedException, VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var urlsUri = this.config.getUrl() + "/urls";
@@ -274,5 +312,17 @@ public class Vaas implements IVaas {
                             .build();
                     return sendUrlWithRetry(httpClient, getRequest);
                 }));
+    }
+
+    @Override
+    public VaasVerdict forUrl(URL url) throws URISyntaxException, IOException, InterruptedException,
+            VaasAuthenticationException, VaasClientException, VaasServerException, ExecutionException {
+                return forUrlAsync(url).get();
+    }
+
+    @Override
+    public VaasVerdict forUrl(URL url, ForUrlOptions options) throws URISyntaxException, IOException,
+            InterruptedException, VaasAuthenticationException, VaasClientException, VaasServerException, ExecutionException {
+                return forUrlAsync(url, options).get();
     }
 }
