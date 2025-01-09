@@ -203,12 +203,12 @@ public class Vaas implements IVaas {
                             && !vaasVerdict.getMimeType().isEmpty()) {
                         return CompletableFuture.completedFuture(vaasVerdict);
                     } else {
-                        var inputstream = Files.newInputStream(file, StandardOpenOption.READ);
-                        var forStreamOptions = new ForStreamOptions();
-                        forStreamOptions.setUseHashLookup(options.isUseHashLookup());
-                        forStreamOptions.setVaasRequestId(options.getVaasRequestId());
-
-                        return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions);
+                        try (var inputstream = Files.newInputStream(file, StandardOpenOption.READ);) {
+                            var forStreamOptions = new ForStreamOptions();
+                            forStreamOptions.setUseHashLookup(options.isUseHashLookup());
+                            forStreamOptions.setVaasRequestId(options.getVaasRequestId());
+                            return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions);
+                        }
                     }
                 })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
     }
