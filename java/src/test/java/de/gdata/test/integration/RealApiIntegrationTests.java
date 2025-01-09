@@ -29,6 +29,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.TimeoutException;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -738,6 +739,28 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("This test is disabled because it takes too long to run.")
+    public void forFile_BigFileWithSmallTimeout_ThrowsTimeoutException()
+            throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = new URL("https://ash-speed.hetzner.com/1GB.bin");
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(new URI(vaasUrl), 1000);
+        var vaas = new Vaas(config, authenticator);
+        var forFileOptions = new ForFileOptions(false, false, null);
+
+        var exception = assertThrows(ExecutionException.class, () -> {
+                vaas.forFileAsync(tmpFile, forFileOptions).get();
+            });
+        assertTrue(exception.getCause() instanceof TimeoutException);
+    }    
+
+    @Test
     public void forStream_ReturnsVerdict() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
@@ -763,7 +786,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -824,7 +847,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -884,7 +907,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -945,7 +968,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -986,7 +1009,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -1027,7 +1050,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -1067,7 +1090,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockResponse = mock(HttpResponse.class);
@@ -1090,7 +1113,7 @@ public class RealApiIntegrationTests {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
-        var contentLength = inputStream.available();
+        var contentLength = conn.getContentLength();
         vaas = getVaasWithCredentials();
 
         var future = vaas.forStreamAsync(inputStream, contentLength);
@@ -1098,6 +1121,26 @@ public class RealApiIntegrationTests {
         var result = future.cancel(true);
         assertTrue(result);
         assertThrows(CancellationException.class, future::get);
+    }
+
+    @Test
+    public void forStream_BigFileWithSmallTimeout_ThrowsTimeoutException()
+            throws Exception {
+        var url = new URL("https://ash-speed.hetzner.com/1GB.bin");
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(new URI(vaasUrl), 1000);
+        var vaas = new Vaas(config, authenticator);
+        var forStreamOptions = new ForStreamOptions(false, null);
+
+        var exception = assertThrows(ExecutionException.class, () -> {
+                vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).get();
+            });
+        assertTrue(exception.getCause() instanceof TimeoutException);
     }
 
     @Test
@@ -1376,4 +1419,23 @@ public class RealApiIntegrationTests {
         assertTrue(result);
         assertThrows(CancellationException.class, future::get);
     }
+
+    @Test
+    public void forUrl_BigFileWithSmallTimeout_ThrowsTimeoutException()
+            throws Exception {
+        var url = new URL("https://ash-speed.hetzner.com/1GB.bin");
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(new URI(vaasUrl), 1000);
+        var vaas = new Vaas(config, authenticator);
+
+        var exception = assertThrows(ExecutionException.class, () -> {
+                vaas.forUrlAsync(url).get();
+            });
+        assertTrue(exception.getCause() instanceof TimeoutException);
+    }
+
+
+
 }

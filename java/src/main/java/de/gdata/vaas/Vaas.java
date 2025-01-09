@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public class Vaas implements IVaas {
@@ -160,20 +161,21 @@ public class Vaas implements IVaas {
             options.setVaasRequestId(UUID.randomUUID().toString());
         }
 
-        return sendFileWithRetry(httpClient, request);
+        return sendFileWithRetry(httpClient, request).orTimeout(this.config.getDefaultTimeoutInMs(),
+                TimeUnit.MILLISECONDS);
     }
 
     @Override
     public VaasVerdict forSha256(Sha256 sha256) throws URISyntaxException, IOException, InterruptedException,
             VaasClientException, VaasAuthenticationException, ExecutionException {
-                return forSha256Async(sha256).get();
+        return forSha256Async(sha256).get();
     }
 
     @Override
     public VaasVerdict forSha256(Sha256 sha256, ForSha256Options options) throws URISyntaxException, IOException,
             InterruptedException, VaasClientException, VaasAuthenticationException, ExecutionException {
-            return forSha256Async(sha256, options).get();
-    }    
+        return forSha256Async(sha256, options).get();
+    }
 
     @Override
     public CompletableFuture<VaasVerdict> forFileAsync(Path file)
@@ -212,19 +214,19 @@ public class Vaas implements IVaas {
 
                         return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions);
                     }
-                }));
+                })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
     }
 
     @Override
     public VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, IOException, URISyntaxException,
             InterruptedException, VaasAuthenticationException, ExecutionException {
-                return forFileAsync(file).get();
+        return forFileAsync(file).get();
     }
 
     @Override
     public VaasVerdict forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, IOException,
             URISyntaxException, InterruptedException, VaasAuthenticationException, ExecutionException {
-                return forFileAsync(file, options).get();
+        return forFileAsync(file, options).get();
     }
 
     @Override
@@ -263,20 +265,22 @@ public class Vaas implements IVaas {
                     forSha256Options.setVaasRequestId(options.getVaasRequestId());
 
                     return forSha256Async(sha256, forSha256Options);
-                }));
+                })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
     }
 
     @Override
     public VaasVerdict forStream(InputStream stream, long contentLength)
-            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException, ExecutionException {
-                return forStreamAsync(stream, contentLength).get();
+            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException,
+            ExecutionException {
+        return forStreamAsync(stream, contentLength).get();
     }
 
     @Override
     public VaasVerdict forStream(InputStream stream, long contentLength, ForStreamOptions options)
-            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException, ExecutionException {
-                return forStreamAsync(stream, contentLength, options).get();
-    }    
+            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException,
+            ExecutionException {
+        return forStreamAsync(stream, contentLength, options).get();
+    }
 
     @Override
     public CompletableFuture<VaasVerdict> forUrlAsync(URL url) throws IOException, InterruptedException,
@@ -313,19 +317,22 @@ public class Vaas implements IVaas {
                             options.getVaasRequestId())
                             .GET()
                             .build();
-                    return sendUrlWithRetry(httpClient, getRequest);
-                }));
+                    return sendUrlWithRetry(httpClient, getRequest).orTimeout(this.config.getDefaultTimeoutInMs(),
+                            TimeUnit.MILLISECONDS);
+                }))
+                .orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
     }
 
     @Override
     public VaasVerdict forUrl(URL url) throws URISyntaxException, IOException, InterruptedException,
             VaasAuthenticationException, VaasClientException, VaasServerException, ExecutionException {
-                return forUrlAsync(url).get();
+        return forUrlAsync(url).get();
     }
 
     @Override
     public VaasVerdict forUrl(URL url, ForUrlOptions options) throws URISyntaxException, IOException,
-            InterruptedException, VaasAuthenticationException, VaasClientException, VaasServerException, ExecutionException {
-                return forUrlAsync(url, options).get();
+            InterruptedException, VaasAuthenticationException, VaasClientException, VaasServerException,
+            ExecutionException {
+        return forUrlAsync(url, options).get();
     }
 }
