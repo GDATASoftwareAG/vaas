@@ -36,11 +36,11 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import com.google.gson.Gson;
 
-import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
-import de.gdata.vaas.IAuthenticator;
 import de.gdata.vaas.Sha256;
 import de.gdata.vaas.Vaas;
 import de.gdata.vaas.VaasConfig;
+import de.gdata.vaas.authentication.ClientCredentialsGrantAuthenticator;
+import de.gdata.vaas.authentication.IAuthenticator;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
 import de.gdata.vaas.exceptions.VaasServerException;

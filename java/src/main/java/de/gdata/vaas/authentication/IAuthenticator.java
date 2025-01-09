@@ -1,4 +1,4 @@
-package de.gdata.vaas;
+package de.gdata.vaas.authentication;
 
 import java.io.IOException;
 

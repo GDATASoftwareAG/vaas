@@ -1,4 +1,4 @@
-package de.gdata.vaas;
+package de.gdata.vaas.authentication;
 
 import com.google.gson.JsonParser;
 
@@ -16,6 +16,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -30,6 +31,8 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
     private final URI tokenEndpoint;
 
     private final HttpClient httpClient;
+    private String cachedToken;
+    private Instant tokenExpiry;
 
 
     public ClientCredentialsGrantAuthenticator(String clientId, String clientSecret, @NotNull URI tokenEndpoint) {
@@ -55,7 +58,11 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
-    public String getToken() throws IOException, InterruptedException, VaasAuthenticationException {
+    public synchronized String getToken() throws IOException, InterruptedException, VaasAuthenticationException {
+        if (cachedToken != null && tokenExpiry != null && Instant.now().isBefore(tokenExpiry)) {
+            return cachedToken;
+        }
+
         Map<String, String> requestParams = new HashMap<>();
         requestParams.put("client_id", this.clientId);
         requestParams.put("grant_type", "client_credentials");
@@ -75,14 +82,20 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
                 .POST(HttpRequest.BodyPublishers.ofString(uriWithParameters))
                 .build();
 
-        var response = httpClient
-                .send(request, HttpResponse.BodyHandlers.ofString());
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
             throw new VaasAuthenticationException();
         }
+
         var bodyJsonObject = JsonParser.parseString(response.body()).getAsJsonObject();
         var tokenJsonElement = bodyJsonObject.get("access_token");
-        return tokenJsonElement.getAsString();
+        var expiresInJsonElement = bodyJsonObject.get("expires_in");
+
+        cachedToken = tokenJsonElement.getAsString();
+        int expiresIn = expiresInJsonElement.getAsInt();
+        tokenExpiry = Instant.now().plusSeconds(expiresIn);
+
+        return cachedToken;
     }
 }

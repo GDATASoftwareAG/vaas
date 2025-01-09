@@ -6,6 +6,7 @@ import de.gdata.vaas.options.ForSha256Options;
 import de.gdata.vaas.options.ForStreamOptions;
 import de.gdata.vaas.options.ForUrlOptions;
 import de.gdata.vaas.exceptions.*;
+import de.gdata.vaas.authentication.*;
 import lombok.Getter;
 import lombok.NonNull;
 import java.io.IOException;
