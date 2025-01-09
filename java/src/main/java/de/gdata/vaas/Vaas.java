@@ -125,11 +125,14 @@ public class Vaas implements IVaas {
     public HttpRequest.Builder CreateHttpRequestBuilderWithHeaders(URI uri, String requestId)
             throws IOException, InterruptedException, VaasAuthenticationException {
         var token = this.authenticator.getToken();
-        return HttpRequest.newBuilder()
+        var httpRequestBuilder = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("Authorization", "Bearer " + token)
-                .header("User-Agent", userAgent)
-                .header("tracestate", "vaasrequestid=" + requestId);
+                .header("User-Agent", userAgent);
+        if (requestId != null && !requestId.isBlank()) {
+            httpRequestBuilder.header("tracestate", "vaasrequestid=" + requestId);
+        }
+        return httpRequestBuilder;
     }
 
     @Override
