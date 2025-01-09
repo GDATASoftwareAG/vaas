@@ -157,10 +157,6 @@ public class Vaas implements IVaas {
                 .GET()
                 .build();
 
-        if (options.getVaasRequestId() == null || options.getVaasRequestId().isBlank()) {
-            options.setVaasRequestId(UUID.randomUUID().toString());
-        }
-
         return sendFileWithRetry(httpClient, request).orTimeout(this.config.getDefaultTimeoutInMs(),
                 TimeUnit.MILLISECONDS);
     }
