@@ -26,6 +26,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -183,35 +184,47 @@ public class Vaas implements IVaas {
         return forFileAsync(file, forFileOptions);
     }
 
-    @Override
-    public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
-            throws NoSuchAlgorithmException, IOException, InterruptedException, VaasAuthenticationException {
-        var sha256 = new Sha256(file);
-        var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
-                options.getVaasRequestId());
+@Override
+public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
+        throws NoSuchAlgorithmException, IOException, InterruptedException, VaasAuthenticationException {
+    var sha256 = new Sha256(file);
+    var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
+            options.getVaasRequestId());
 
-        return forSha256Async(sha256, forSha256Options)
-                .thenCompose(handleException(vaasVerdict -> {
-                    var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
-                            || (vaasVerdict.getVerdict() == Verdict.PUP && vaasVerdict.getDetection() == null)
-                            || (vaasVerdict.getDetection() != null && vaasVerdict.getDetection().isBlank());
+    return forSha256Async(sha256, forSha256Options)
+            .thenCompose(handleException(vaasVerdict -> {
+                var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
+                        || (vaasVerdict.getVerdict() == Verdict.PUP && vaasVerdict.getDetection() == null)
+                        || (vaasVerdict.getDetection() != null && vaasVerdict.getDetection().isBlank());
 
-                    if (vaasVerdict.getVerdict() != Verdict.UNKNOWN && verdictWithoutDetection
-                            && vaasVerdict.getFileType() != null
-                            && !vaasVerdict.getFileType().isBlank()
-                            && vaasVerdict.getMimeType() != null
-                            && !vaasVerdict.getMimeType().isEmpty()) {
-                        return CompletableFuture.completedFuture(vaasVerdict);
-                    } else {
-                        try (var inputstream = Files.newInputStream(file, StandardOpenOption.READ);) {
-                            var forStreamOptions = new ForStreamOptions();
-                            forStreamOptions.setUseHashLookup(options.isUseHashLookup());
-                            forStreamOptions.setVaasRequestId(options.getVaasRequestId());
-                            return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions);
-                        }
+                if (vaasVerdict.getVerdict() != Verdict.UNKNOWN && verdictWithoutDetection
+                        && vaasVerdict.getFileType() != null
+                        && !vaasVerdict.getFileType().isBlank()
+                        && vaasVerdict.getMimeType() != null
+                        && !vaasVerdict.getMimeType().isEmpty()) {
+                    return CompletableFuture.completedFuture(vaasVerdict);
+                } else {
+                    try {
+                        var inputstream = Files.newInputStream(file, StandardOpenOption.READ);
+                        var forStreamOptions = new ForStreamOptions();
+                        forStreamOptions.setUseHashLookup(options.isUseHashLookup());
+                        forStreamOptions.setVaasRequestId(options.getVaasRequestId());
+
+                        return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions)
+                                .whenComplete((result, ex) -> {
+                                    try {
+                                        inputstream.close();
+                                    } catch (IOException e) {
+                                        throw new CompletionException(e);
+                                    }
+                                });
+                    } catch (IOException e) {
+                        return CompletableFuture.failedFuture(e);
                     }
-                })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
-    }
+                }
+            })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
+}
+
 
     @Override
     public VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, IOException, URISyntaxException,
