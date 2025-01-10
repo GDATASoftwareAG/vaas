@@ -12,7 +12,6 @@ import lombok.NonNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -125,7 +124,7 @@ public class Vaas implements IVaas {
                 }));
     }
 
-    public HttpRequest.Builder CreateHttpRequestBuilderWithHeaders(URI uri, String requestId)
+    private HttpRequest.Builder CreateHttpRequestBuilderWithHeaders(URI uri, String requestId)
             throws IOException, InterruptedException, VaasAuthenticationException {
         var token = this.authenticator.getToken();
         var httpRequestBuilder = HttpRequest.newBuilder()
@@ -138,6 +137,16 @@ public class Vaas implements IVaas {
         return httpRequestBuilder;
     }
 
+    /**
+     * Asynchronously retrieves a VaasVerdict for the given SHA-256 hash.
+     * This method uses cache and hash lookup options by default. 
+     *
+     * @param sha256 the SHA-256 hash to retrieve the verdict for
+     * @return A CompletableFuture that will complete with the VaasVerdict.
+     * @throws IOException If an I/O error occurs during the request.
+     * @throws InterruptedException If the operation is interrupted.
+     * @throws VaasAuthenticationException If there is an authentication error.
+     */
     @Override
     public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256)
             throws IOException, InterruptedException, VaasAuthenticationException {
@@ -147,6 +156,16 @@ public class Vaas implements IVaas {
         return this.forSha256Async(sha256, forSha256Options);
     }
 
+    /**
+     * Asynchronously retrieves a VaasVerdict for the given SHA-256 hash.
+     *
+     * @param sha256 the SHA-256 hash to retrieve the verdict for
+     * @param options The options to customize the request, such as cache usage and hash lookup.
+     * @return A CompletableFuture that will complete with the VaasVerdict.
+     * @throws IOException If an I/O error occurs during the request.
+     * @throws InterruptedException If the operation is interrupted.
+     * @throws VaasAuthenticationException If there is an authentication error.
+     */
     @Override
     public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256, ForSha256Options options)
             throws IOException, InterruptedException, VaasAuthenticationException {
@@ -163,85 +182,90 @@ public class Vaas implements IVaas {
                 TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Retrieves a VaasVerdict for the given SHA-256 hash.
+     *
+     * @param sha256 the SHA-256 hash to retrieve the verdict for
+     * @return the VaasVerdict for the given SHA-256 hash
+     * @throws InterruptedException if the thread is interrupted while waiting for the result
+     * @throws ExecutionException if the computation threw an exception
+     * @throws IOException if an I/O error occurs
+     * @throws VaasAuthenticationException if there is an authentication error
+     */
     @Override
-    public VaasVerdict forSha256(Sha256 sha256) throws URISyntaxException, IOException, InterruptedException,
-            VaasClientException, VaasAuthenticationException, ExecutionException {
+    public VaasVerdict forSha256(Sha256 sha256)
+            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forSha256Async(sha256).get();
     }
 
     @Override
-    public VaasVerdict forSha256(Sha256 sha256, ForSha256Options options) throws URISyntaxException, IOException,
-            InterruptedException, VaasClientException, VaasAuthenticationException, ExecutionException {
+    public VaasVerdict forSha256(Sha256 sha256, ForSha256Options options)
+            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forSha256Async(sha256, options).get();
     }
 
     @Override
     public CompletableFuture<VaasVerdict> forFileAsync(Path file)
-            throws NoSuchAlgorithmException, IOException, InterruptedException,
-            VaasAuthenticationException {
+            throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException {
         var forFileOptions = new ForFileOptions();
         forFileOptions.setUseCache(true);
         forFileOptions.setUseHashLookup(true);
         return forFileAsync(file, forFileOptions);
     }
 
-@Override
-public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
-        throws NoSuchAlgorithmException, IOException, InterruptedException, VaasAuthenticationException {
-    var sha256 = new Sha256(file);
-    var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
-            options.getVaasRequestId());
+    @Override
+    public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
+            throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException {
+        var sha256 = new Sha256(file);
+        var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
+                options.getVaasRequestId());
 
-    return forSha256Async(sha256, forSha256Options)
-            .thenCompose(handleException(vaasVerdict -> {
-                var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
-                        || (vaasVerdict.getVerdict() == Verdict.PUP && vaasVerdict.getDetection() == null)
-                        || (vaasVerdict.getDetection() != null && vaasVerdict.getDetection().isBlank());
+        return forSha256Async(sha256, forSha256Options)
+                .thenCompose(handleException(vaasVerdict -> {
+                    var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
+                            || (vaasVerdict.getVerdict() == Verdict.PUP && vaasVerdict.getDetection() == null)
+                            || (vaasVerdict.getDetection() != null && vaasVerdict.getDetection().isBlank());
 
-                if (vaasVerdict.getVerdict() != Verdict.UNKNOWN && verdictWithoutDetection
-                        && vaasVerdict.getFileType() != null
-                        && !vaasVerdict.getFileType().isBlank()
-                        && vaasVerdict.getMimeType() != null
-                        && !vaasVerdict.getMimeType().isEmpty()) {
-                    return CompletableFuture.completedFuture(vaasVerdict);
-                } else {
-                    try {
-                        var inputstream = Files.newInputStream(file, StandardOpenOption.READ);
-                        var forStreamOptions = new ForStreamOptions();
-                        forStreamOptions.setUseHashLookup(options.isUseHashLookup());
-                        forStreamOptions.setVaasRequestId(options.getVaasRequestId());
+                    if (vaasVerdict.getVerdict() != Verdict.UNKNOWN && verdictWithoutDetection
+                            && vaasVerdict.getFileType() != null
+                            && !vaasVerdict.getFileType().isBlank()
+                            && vaasVerdict.getMimeType() != null
+                            && !vaasVerdict.getMimeType().isEmpty()) {
+                        return CompletableFuture.completedFuture(vaasVerdict);
+                    } else {
+                        try {
+                            var inputstream = Files.newInputStream(file, StandardOpenOption.READ);
+                            var forStreamOptions = new ForStreamOptions();
+                            forStreamOptions.setUseHashLookup(options.isUseHashLookup());
+                            forStreamOptions.setVaasRequestId(options.getVaasRequestId());
 
-                        return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions)
-                                .whenComplete((result, ex) -> {
-                                    try {
-                                        inputstream.close();
-                                    } catch (IOException e) {
-                                        throw new CompletionException(e);
-                                    }
-                                });
-                    } catch (IOException e) {
-                        return CompletableFuture.failedFuture(e);
+                            return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions)
+                                    .whenComplete((result, ex) -> {
+                                        try {
+                                            inputstream.close();
+                                        } catch (IOException e) {
+                                            throw new CompletionException(e);
+                                        }
+                                    });
+                        } catch (IOException e) {
+                            return CompletableFuture.failedFuture(e);
+                        }
                     }
-                }
-            })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
-}
-
+                })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
+    }
 
     @Override
-    public VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, IOException, URISyntaxException,
-            InterruptedException, VaasAuthenticationException, ExecutionException {
+    public VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forFileAsync(file).get();
     }
 
     @Override
-    public VaasVerdict forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, IOException,
-            URISyntaxException, InterruptedException, VaasAuthenticationException, ExecutionException {
+    public VaasVerdict forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forFileAsync(file, options).get();
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength) throws IOException, InterruptedException, VaasAuthenticationException {
         var forStreamOptions = new ForStreamOptions();
         forStreamOptions.setUseHashLookup(true);
         return forStreamAsync(stream, contentLength, forStreamOptions);
@@ -249,8 +273,7 @@ public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions opt
 
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream inputStream, long contentLength,
-            ForStreamOptions options)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+            ForStreamOptions options) throws IOException, InterruptedException, VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
 
         var filesUri = this.config.getUrl() + "/files?" + encodeParams(params);
@@ -279,30 +302,24 @@ public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions opt
     }
 
     @Override
-    public VaasVerdict forStream(InputStream stream, long contentLength)
-            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException,
-            ExecutionException {
+    public VaasVerdict forStream(InputStream stream, long contentLength) throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forStreamAsync(stream, contentLength).get();
     }
 
     @Override
-    public VaasVerdict forStream(InputStream stream, long contentLength, ForStreamOptions options)
-            throws URISyntaxException, IOException, InterruptedException, VaasAuthenticationException,
-            ExecutionException {
+    public VaasVerdict forStream(InputStream stream, long contentLength, ForStreamOptions options) throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forStreamAsync(stream, contentLength, options).get();
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forUrlAsync(URL url) throws IOException, InterruptedException,
-            VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forUrlAsync(URL url) throws IOException, InterruptedException, VaasAuthenticationException {
         var forUrlOptions = new ForUrlOptions();
         forUrlOptions.setUseHashLookup(true);
         return forUrlAsync(url, forUrlOptions);
     }
 
     @Override
-    public CompletableFuture<VaasVerdict> forUrlAsync(URL url, ForUrlOptions options)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forUrlAsync(URL url, ForUrlOptions options) throws IOException, InterruptedException, VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var urlsUri = this.config.getUrl() + "/urls";
         var urlAnalysisRequest = new UrlAnalysisRequest(url.toString(), options.isUseHashLookup());
@@ -334,15 +351,12 @@ public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions opt
     }
 
     @Override
-    public VaasVerdict forUrl(URL url) throws URISyntaxException, IOException, InterruptedException,
-            VaasAuthenticationException, VaasClientException, VaasServerException, ExecutionException {
+    public VaasVerdict forUrl(URL url) throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forUrlAsync(url).get();
     }
 
     @Override
-    public VaasVerdict forUrl(URL url, ForUrlOptions options) throws URISyntaxException, IOException,
-            InterruptedException, VaasAuthenticationException, VaasClientException, VaasServerException,
-            ExecutionException {
+    public VaasVerdict forUrl(URL url, ForUrlOptions options) throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forUrlAsync(url, options).get();
     }
 }

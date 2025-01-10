@@ -8,7 +8,6 @@ import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
@@ -54,7 +53,7 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
         this(clientId, clientSecret, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     }
 
-    private String encodeValue(String value) throws UnsupportedEncodingException {
+    private String encodeValue(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
@@ -69,11 +68,7 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
         requestParams.put("client_secret", this.clientSecret);
         var uriWithParameters = requestParams.keySet().stream()
                 .map(key -> {
-                    try {
-                        return key + "=" + encodeValue(requestParams.get(key));
-                    } catch (UnsupportedEncodingException e) {
-                        return "";
-                    }
+                    return key + "=" + encodeValue(requestParams.get(key));
                 })
                 .collect(Collectors.joining("&"));
         var request = HttpRequest
