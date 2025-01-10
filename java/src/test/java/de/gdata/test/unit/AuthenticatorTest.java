@@ -4,12 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-
 import org.junit.jupiter.api.Test;
 
 import de.gdata.vaas.authentication.ClientCredentialsGrantAuthenticator;
-import de.gdata.vaas.authentication.IAuthenticator;
 import de.gdata.vaas.authentication.ResourceOwnerPasswordGrantAuthenticator;
 import io.github.cdimascio.dotenv.Dotenv;
 
