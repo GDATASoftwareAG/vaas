@@ -1,9 +1,9 @@
 package de.gdata.vaas.authentication;
 
-import java.io.IOException;
-
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 
+import java.io.IOException;
+
 public interface IAuthenticator {
-    public String getToken() throws IOException, InterruptedException, VaasAuthenticationException;
+    String getToken() throws IOException, InterruptedException, VaasAuthenticationException;
 }

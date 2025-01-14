@@ -3,18 +3,14 @@ package de.gdata.vaas.messages;
 import lombok.Getter;
 import lombok.NonNull;
 
+@Getter
 public class VaasVerdict {
-    @Getter
     @NonNull
     String sha256;
-    @Getter
     @NonNull
     Verdict verdict;
-    @Getter
     String detection;
-    @Getter
     String fileType;
-    @Getter
     String mimeType;
 
     public VaasVerdict(UrlReport urlReport) {

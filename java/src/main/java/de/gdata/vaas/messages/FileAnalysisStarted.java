@@ -7,11 +7,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class FileAnalysisStarted {
 
-    @Getter
     @SerializedName("sha256")
     String Sha256;
     public static FileAnalysisStarted fromJson(String json) {

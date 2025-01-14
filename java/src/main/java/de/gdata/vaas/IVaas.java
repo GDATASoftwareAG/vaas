@@ -27,7 +27,10 @@ public interface IVaas {
     VaasVerdict forStream(InputStream stream, long contentLength, ForStreamOptions options) throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException;
     CompletableFuture<VaasVerdict> forFileAsync(Path file) throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException;
     CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options) throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException;
-    VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, InterruptedException, ExecutionException, IOException, VaasAuthenticationException;
+
+    VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, InterruptedException, ExecutionException,
+            IOException, VaasAuthenticationException;
+
     VaasVerdict forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, InterruptedException, ExecutionException, IOException, VaasAuthenticationException;
     CompletableFuture<VaasVerdict> forUrlAsync(URL url) throws IOException, InterruptedException, VaasAuthenticationException;
     CompletableFuture<VaasVerdict> forUrlAsync(URL url, ForUrlOptions options) throws IOException, InterruptedException, VaasAuthenticationException;

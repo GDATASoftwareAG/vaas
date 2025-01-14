@@ -20,19 +20,13 @@ public class Sha256Test {
     @Test
     public void fromInvalidSha256() {
         // Wrong characters
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Sha256("x00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0");
-        });
+        assertThrows(IllegalArgumentException.class, () -> new Sha256("x00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0"));
 
         // Too short
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Sha256("00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0");
-        });
+        assertThrows(IllegalArgumentException.class, () -> new Sha256("00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0"));
 
         // Too long
-        assertThrows(IllegalArgumentException.class, () -> {
-            new Sha256("1000020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0");
-        });
+        assertThrows(IllegalArgumentException.class, () -> new Sha256("1000020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0"));
     }
 
     @Test

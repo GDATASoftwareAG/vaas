@@ -1,38 +1,6 @@
 package de.gdata.test.integration;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.io.ByteArrayOutputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Flow;
-import java.util.concurrent.TimeoutException;
-
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.ArgumentCaptor;
 import com.google.gson.Gson;
-
 import de.gdata.vaas.Sha256;
 import de.gdata.vaas.Vaas;
 import de.gdata.vaas.VaasConfig;
@@ -41,20 +9,39 @@ import de.gdata.vaas.authentication.IAuthenticator;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
 import de.gdata.vaas.exceptions.VaasServerException;
-import de.gdata.vaas.messages.FileAnalysisStarted;
-import de.gdata.vaas.messages.FileReport;
-import de.gdata.vaas.messages.ProblemDetails;
-import de.gdata.vaas.messages.UrlAnalysisRequest;
-import de.gdata.vaas.messages.UrlAnalysisStarted;
-import de.gdata.vaas.messages.UrlReport;
-import de.gdata.vaas.messages.Verdict;
+import de.gdata.vaas.messages.*;
 import de.gdata.vaas.options.ForFileOptions;
 import de.gdata.vaas.options.ForSha256Options;
 import de.gdata.vaas.options.ForStreamOptions;
 import de.gdata.vaas.options.ForUrlOptions;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
+
+import java.io.ByteArrayOutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Objects;
+import java.util.concurrent.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.*;
 
 public class RealApiIntegrationTests {
+    private static final String EICAR_URL = "https://secure.eicar.org/eicar.com.txt";
+
     private static final Dotenv dotenv = Dotenv.configure()
             .ignoreIfMissing()
             .load();
@@ -326,7 +313,7 @@ public class RealApiIntegrationTests {
     })
     public void forFile_ReturnsVerdict(String uri, Verdict verdict) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL(uri);
+        var url = new URI(uri).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -347,7 +334,7 @@ public class RealApiIntegrationTests {
     })
     public void forFile_SendOptions(boolean useCache, boolean useHashLookup) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -426,7 +413,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_SendUserAgent() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -489,7 +476,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -553,7 +540,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfBadRequest_ThrowsVaasClientException() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -568,7 +555,7 @@ public class RealApiIntegrationTests {
                         Verdict.UNKNOWN, null, null, null)));
         when(mockPostResponse.statusCode()).thenReturn(400);
         when(mockPostResponse.body()).thenReturn(new Gson()
-                .toJson(new ProblemDetails("VaasClientException", "Client-side error occured")));
+                .toJson(new ProblemDetails("VaasClientException", "Client-side error occurred")));
 
         when(mockHttpClient.sendAsync(
                 argThat(getRequest -> getRequest != null
@@ -593,7 +580,7 @@ public class RealApiIntegrationTests {
     public void forFile_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -608,7 +595,7 @@ public class RealApiIntegrationTests {
                         Verdict.UNKNOWN, null, null, null)));
         when(mockPostResponse.statusCode()).thenReturn(500);
         when(mockPostResponse.body()).thenReturn(new Gson()
-                .toJson(new ProblemDetails("VaasServerException", "Server-side error occured")));
+                .toJson(new ProblemDetails("VaasServerException", "Server-side error occurred")));
 
         when(mockHttpClient.sendAsync(
                 argThat(getRequest -> getRequest != null
@@ -633,7 +620,7 @@ public class RealApiIntegrationTests {
     public void forFile_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -672,7 +659,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -694,7 +681,7 @@ public class RealApiIntegrationTests {
     public void forFile_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -712,7 +699,7 @@ public class RealApiIntegrationTests {
     public void forFile_BigFileWithSmallTimeout_ThrowsTimeoutException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URL("https://ash-speed.hetzner.com/1GB.bin");
+        var url = new URI("https://ash-speed.hetzner.com/1GB.bin").toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -725,11 +712,11 @@ public class RealApiIntegrationTests {
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forFileAsync(tmpFile, forFileOptions).get());
         assertInstanceOf(TimeoutException.class, exception.getCause());
-    }    
+    }
 
     @Test
     public void forStream_ReturnsVerdict() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -750,7 +737,7 @@ public class RealApiIntegrationTests {
             "true",
     })
     public void forStream_SendOptions(boolean useHashLookup) throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -810,7 +797,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_SendUserAgent() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -870,7 +857,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -931,7 +918,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_IfBadRequest_ThrowsVaasClientException() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -946,7 +933,7 @@ public class RealApiIntegrationTests {
                         Verdict.UNKNOWN, null, null, null)));
         when(mockPostResponse.statusCode()).thenReturn(400);
         when(mockPostResponse.body()).thenReturn(new Gson()
-                .toJson(new ProblemDetails("VaasClientException", "Client-side error occured")));
+                .toJson(new ProblemDetails("VaasClientException", "Client-side error occurred")));
 
         when(mockHttpClient.sendAsync(
                 argThat(getRequest -> getRequest != null
@@ -970,7 +957,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -985,7 +972,7 @@ public class RealApiIntegrationTests {
                         Verdict.UNKNOWN, null, null, null)));
         when(mockPostResponse.statusCode()).thenReturn(500);
         when(mockPostResponse.body()).thenReturn(new Gson()
-                .toJson(new ProblemDetails("VaasServerException", "Server-side error occured")));
+                .toJson(new ProblemDetails("VaasServerException", "Server-side error occurred")));
 
         when(mockHttpClient.sendAsync(
                 argThat(getRequest -> getRequest != null
@@ -1009,7 +996,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -1047,7 +1034,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -1068,7 +1055,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -1084,7 +1071,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_BigFileWithSmallTimeout_ThrowsTimeoutException()
             throws Exception {
-        var url = new URL("https://ash-speed.hetzner.com/1GB.bin");
+        var url = new URI("https://ash-speed.hetzner.com/1GB.bin").toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -1101,7 +1088,7 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forUrl_ReturnsVerdict() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         vaas = getVaasWithCredentials();
         var verdict = vaas.forUrlAsync(url).join();
@@ -1118,7 +1105,7 @@ public class RealApiIntegrationTests {
             "true",
     })
     public void forUrl_SendOptions(boolean useHashLookup) throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -1152,12 +1139,12 @@ public class RealApiIntegrationTests {
         var vaasVerdict = vaas.forUrlAsync(url, forUrlOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
-        var bodyRequest = new String(readContent(requestCaptor.getAllValues().get(0).bodyPublisher().get()));
+        var bodyRequest = new String(readContent(Objects.requireNonNull(requestCaptor.getAllValues().get(0).bodyPublisher().orElse(null))));
         var urlAnalysisRequest = new Gson().fromJson(bodyRequest, UrlAnalysisRequest.class);
         var reportUri = requestCaptor.getAllValues().get(1).uri();
 
         assertEquals(useHashLookup, urlAnalysisRequest.isUseHashLookup());
-        assertEquals("https://secure.eicar.org/eicar.com.txt", urlAnalysisRequest.getUrl());
+        assertEquals(EICAR_URL, urlAnalysisRequest.getUrl());
         assertTrue(reportUri.toString()
                 .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
@@ -1168,7 +1155,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_SendUserAgent() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -1218,7 +1205,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -1269,13 +1256,13 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_IfBadRequest_ThrowsVaasClientException() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
         when(mockPostResponse.statusCode()).thenReturn(400);
         when(mockPostResponse.body()).thenReturn(new Gson()
-                .toJson(new ProblemDetails("VaasClientException", "Client-side error occured")));
+                .toJson(new ProblemDetails("VaasClientException", "Client-side error occurred")));
 
         when(mockHttpClient.sendAsync(
                 argThat(postRequest -> postRequest != null
@@ -1293,13 +1280,13 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
         when(mockPostResponse.statusCode()).thenReturn(500);
         when(mockPostResponse.body()).thenReturn(new Gson()
-                .toJson(new ProblemDetails("VaasServerException", "Server-side error occured")));
+                .toJson(new ProblemDetails("VaasServerException", "Server-side error occurred")));
 
         when(mockHttpClient.sendAsync(
                 argThat(postRequest -> postRequest != null
@@ -1317,7 +1304,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -1340,7 +1327,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockResponse = mock(HttpResponse.class);
@@ -1358,7 +1345,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
+        var url = new URI(EICAR_URL).toURL();
 
         vaas = getVaasWithCredentials();
         var future = vaas.forUrlAsync(url);
@@ -1371,7 +1358,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_BigFileWithSmallTimeout_ThrowsTimeoutException()
             throws Exception {
-        var url = new URL("https://ash-speed.hetzner.com/1GB.bin");
+        var url = new URI("https://ash-speed.hetzner.com/1GB.bin").toURL();
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
@@ -1381,7 +1368,6 @@ public class RealApiIntegrationTests {
         var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());
         assertInstanceOf(TimeoutException.class, exception.getCause());
     }
-
 
 
 }
