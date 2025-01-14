@@ -3,22 +3,31 @@
 namespace VaasExamples;
 
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Options\VaasOptions;
 use VaasSdk\Vaas;
 
 include_once("./vendor/autoload.php");
 
+
 $authenticator = new ClientCredentialsGrantAuthenticator(
-    getenv("CLIENT_ID"),
-    getenv("CLIENT_SECRET"),
-    getenv("TOKEN_URL") ?: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+    clientId: getenv("CLIENT_ID"),
+    clientSecret: getenv("CLIENT_SECRET"),
+    tokenUrl: getenv("TOKEN_URL")
 );
 
-$vaas = (new Vaas())
+$options = new VaasOptions(
+    useHashLookup: true,
+    useCache: true,
+    vaasUrl: getenv("VAAS_URL"),
+    timeout: 300
+);
+
+$vaas = Vaas::builder()
     ->withAuthenticator($authenticator)
-    ->withUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
+    ->withOptions($options)
     ->build();
 
 $scanPath = getenv("SCAN_PATH");
-$vaasVerdict = $vaas->ForFile($scanPath);
+$vaasVerdict = $vaas->forFileAsync($scanPath)->await();
 
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is " . $vaasVerdict->Verdict->value . " \n");
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");

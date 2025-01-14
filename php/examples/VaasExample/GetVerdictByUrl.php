@@ -3,23 +3,34 @@
 namespace VaasExamples;
 
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Options\VaasOptions;
 use VaasSdk\Vaas;
 
 include_once("./vendor/autoload.php");
 
+
 $authenticator = new ClientCredentialsGrantAuthenticator(
-    getenv("CLIENT_ID"),
-    getenv("CLIENT_SECRET"),
-    getenv("TOKEN_URL") ?: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+    clientId: getenv("CLIENT_ID"),
+    clientSecret: getenv("CLIENT_SECRET"),
+    tokenUrl: getenv("TOKEN_URL")
 );
-$vaas = (new Vaas())
+
+$options = new VaasOptions(
+    useHashLookup: true,
+    useCache: true,
+    vaasUrl: getenv("VAAS_URL"),
+    timeout: 300
+);
+
+$vaas = Vaas::builder()
     ->withAuthenticator($authenticator)
-    ->withUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
+    ->withOptions($options)
     ->build();
 
 // EICAR
-$vaasVerdict = $vaas->ForUrl("https://secure.eicar.org/eicar.com");
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is " . $vaasVerdict->Verdict->value . " \n");
-// SOMEFILE
-$vaasVerdict = $vaas->ForUrl("https://www.gdatasoftware.com/oem/verdict-as-a-service");
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is " . $vaasVerdict->Verdict->value . " \n");
+$vaasVerdict = $vaas->forUrlAsync("https://secure.eicar.org/eicar.com")->await();
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");
+
+// Some file
+$vaasVerdict = $vaas->forUrlAsync("https://www.gdatasoftware.com/oem/verdict-as-a-service")->await();
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");

@@ -21,7 +21,7 @@ regex = "1.10.4"
 tokio = { version = "1.37", features = ["sync", "fs"] }
 sha2 = "0.10.8"
 futures = "0.3.30"
-rand = "0.8.5"
+rand = "0.9.0"
 async-trait = "0.1.80"
 bytes = "1.6.0"
 tokio-util = "0.7.11"

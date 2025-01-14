@@ -40,37 +40,57 @@ use VaasSdk\Vaas;
 
 Authentication & Initializing:
 ```php
+// If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
+
+// $authenticator = new ResourceOwnerPasswordGrantAuthenticator(
+//     clientId: getenv("CLIENT_ID"),
+//     username: getenv("USERNAME"),
+//     password: getenv("PASSWORD"),
+//     tokenUrl: getenv("TOKEN_URL")
+// );
+    
+// You may use self registration and create a new username and password for the
+// `Password` authentication method by yourself like the example above on https://vaas.gdata.de/login
+
+// If you got a client id and client secret from us, you can use the `Client Credentials` authentication method like this
+
 $authenticator = new ClientCredentialsGrantAuthenticator(
-    $CLIENT_ID,
-    $CLIENT_SECRET,
-    $TOKEN_URL
+    clientId: getenv("CLIENT_ID"),
+    clientSecret: getenv("CLIENT_SECRET"),
+    tokenUrl: getenv("TOKEN_URL")
 );
-$vaas = new Vaas($VAAS_URL);
-$vaas->Connect($authenticator->getToken());
+
+$vaas = Vaas::builder()
+    ->withAuthenticator($authenticator)
+    ->build();
 ```
 
 Verdict Request for SHA256:
 ```php
-$vaasVerdict = $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
+$vaasVerdict = $vaas->forSha256Async(Sha256::TryFromString("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"))->await();
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");
 ```
 
 Verdict Request for a file:
 ```php
 $scanPath = getenv("SCAN_PATH");
-$vaasVerdict = $vaas->ForFile($scanPath);
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
+$vaasVerdict = $vaas->forFileAsync($scanPath)->await();
+
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");
 ```
 
 Verdict Request for a URL:
 ```php
-$vaasVerdict = $vaas->ForUrl("https://www.gdatasoftware.com/oem/verdict-as-a-service");
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
+$vaasVerdict = $vaas->forUrlAsync("https://secure.eicar.org/eicar.com")->await();
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");
 ```
 
 ## <a name="interested"></a>I'm interested in VaaS
 
 You need credentials to use the service in your application. If you are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
+You can create your test credentials at `https://vaas.gdata.de/login` for free.
+
+There is also the option of hosting the VaaS backend yourself. Just take a look here at the [Helm Chart repository](https://github.com/GDATASoftwareAG/vaas-helm).
 
 ## Developing with Visual Studio Code
 

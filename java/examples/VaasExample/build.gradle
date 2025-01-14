@@ -6,25 +6,44 @@ group 'de.gdata.vaasexample'
 version '1.0-SNAPSHOT'
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
-    implementation 'org.slf4j:slf4j-nop:2.0.16'
-    implementation 'de.gdata:vaas:8.3.8'
+    implementation 'org.slf4j:slf4j-nop:2.0.17'
+    implementation 'de.gdata:vaas:9.0.5'
+    implementation 'org.projectlombok:lombok:1.18.36'
+    implementation 'io.github.cdimascio:dotenv-java:3.2.0'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.782'
 }
 
-task fileScan(type: JavaExec) {
+tasks.register('sha256Scan', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'de.gdata.vaasexample.Main'
+    mainClass = 'de.gdata.vaasexample.ForSha256Scan'
 }
 
-task urlScan(type: JavaExec) {
+tasks.register('fileScan', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'de.gdata.vaasexample.UrlScan'
+    mainClass = 'de.gdata.vaasexample.ForFileScan'
 }
 
-task authentication(type: JavaExec) {
+tasks.register('streamScan', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.ForStreamScan'
+}
+
+tasks.register('urlScan', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.ForUrlScan'
+}
+
+tasks.register('authentication', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'de.gdata.vaasexample.Authentication'
+}
+
+tasks.register('config', JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'de.gdata.vaasexample.Config'
 }

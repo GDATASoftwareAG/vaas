@@ -28,7 +28,7 @@ on:
 env:
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
-  VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+  VAAS_URL: "https://gateway.production.vaas.gdatasecurity.de"
   TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
@@ -54,7 +54,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -65,7 +65,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -89,26 +89,51 @@ jobs:
           gradle-version: "8.6"
           build-root-directory: java
 
-      - name: run examples for file
+      - name: run forSha256 example
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: sha256Scan
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample
+
+      - name: run forFile example
         env:
-          SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
+          SCAN_PATH: "build.gradle"      
         uses: gradle/gradle-build-action@v3
         with:
           arguments: fileScan
           gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
-      - name: run examples for url
+      - name: run forStream example
+        env:
+          SCAN_PATH: "build.gradle"      
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: streamScan
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample
+
+      - name: run forUrl example
         uses: gradle/gradle-build-action@v3
         with:
           arguments: urlScan
           gradle-version: "8.6"
-          build-root-directory: java/examples/VaasExample
+          build-root-directory: java/examples/VaasExample 
 
-      - name: run authentication examples
+      - name: run authentication example
         uses: gradle/gradle-build-action@v3
         with:
           arguments: authentication
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample  
+
+      - name: run config example
+        env:
+          SCAN_PATH: "build.gradle"
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: config
           gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
@@ -140,7 +165,6 @@ jobs:
           MAVEN_CENTRAL_BEARER_TOKEN: ${{ secrets.MAVEN_CENTRAL_BEARER_TOKEN }}
         working-directory: java/build/repos/releases
         run: |
-          rm -rf de/gdata/vaas/*.xml*
           zip -r package.zip .
           curl --fail \
             --header "Authorization: Bearer ${MAVEN_CENTRAL_BEARER_TOKEN}" \
