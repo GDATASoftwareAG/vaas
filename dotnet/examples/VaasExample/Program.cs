@@ -10,10 +10,10 @@ public static class Program
     private static string ClientSecret => Environment.GetEnvironmentVariable("CLIENT_SECRET") ?? string.Empty;
     private static string UserName => Environment.GetEnvironmentVariable("VAAS_USER_NAME") ?? string.Empty;
     private static string Password => Environment.GetEnvironmentVariable("VAAS_PASSWORD") ?? string.Empty;
-    private static Uri VaasUrl => new Uri(Environment.GetEnvironmentVariable("VAAS_URL") ??
-                                          "wss://gateway.production.vaas.gdatasecurity.de");
-    private static Uri TokenUrl => new Uri(Environment.GetEnvironmentVariable("TOKEN_URL") ??
-                                           "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
+    private static Uri VaasUrl => new(Environment.GetEnvironmentVariable("VAAS_URL") ??
+                                      "wss://gateway.production.vaas.gdatasecurity.de");
+    private static Uri TokenUrl => new(Environment.GetEnvironmentVariable("TOKEN_URL") ??
+                                       "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
         
     public static async Task Main(string[] args)
     {
@@ -58,7 +58,7 @@ public static class Program
         // If you got a username and password from us, you can use the GrantType.Password like this
         // You may use self registration and create a new username and password for the
         // Credentials by yourself like the example above on https://vaas.gdata.de/login
-        var vaas = VaasFactory.Create(new VaasOptions()
+        var vaas = VaasFactory.Create(new VaasOptions
         {
             Url = VaasUrl,
             TokenUrl = TokenUrl,

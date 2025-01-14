@@ -9,45 +9,12 @@ using System.Security.Authentication;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using CommunityToolkit.Diagnostics;
 using Vaas.Authentication;
+using Vaas.Exceptions;
 using Vaas.Messages;
+using Vaas.Options;
 
 namespace Vaas;
-
-public class ForSha256Options
-{
-    public bool UseCache { get; init; } = true;
-    public bool UseHashLookup { get; init; } = true;
-
-    public string? VaasRequestId { get; init; }
-
-    public static ForSha256Options Default { get; } = new();
-}
-
-public class ForFileOptions
-{
-    public bool UseCache { get; init; } = true;
-    public bool UseHashLookup { get; init; } = true;
-    public string? VaasRequestId { get; init; }
-
-    public static ForFileOptions Default { get; } = new();
-}
-
-public class ForStreamOptions
-{
-    public bool UseHashLookup { get; init; } = true;
-    public string? VaasRequestId { get; init; }
-
-    public static ForStreamOptions Default { get; } = new();
-}
-
-public record ForUrlOptions
-{
-    public bool UseHashLookup { get; init; } = true;
-    public string? VaasRequestId { get; init; }
-    public static ForUrlOptions Default { get; } = new();
-}
 
 public interface IVaas
 {
@@ -103,15 +70,19 @@ public class Vaas : IVaas
     private readonly IAuthenticator _authenticator;
     private readonly VaasOptions _options;
 
-    public Vaas(HttpClient httpClient, IAuthenticator authenticator, VaasOptions options)
+    public Vaas(
+        IAuthenticator authenticator,
+        VaasOptions? options = null,
+        HttpClient? httpClient = null
+    )
     {
-        Guard.IsNotNullOrWhiteSpace(options.Url.Host);
-        _httpClient = httpClient;
         _authenticator = authenticator;
-        _options = options;
+        _options = options ?? new VaasOptions();
+        _httpClient = httpClient ?? new HttpClient();
         _httpClient.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue(ProductName, ProductVersion)
         );
+        _httpClient.Timeout = TimeSpan.FromSeconds(_options.Timeout);
     }
 
     public async Task<VaasVerdict> ForSha256Async(
@@ -120,9 +91,9 @@ public class Vaas : IVaas
         ForSha256Options? options = null
     )
     {
-        options ??= ForSha256Options.Default;
+        options ??= ForSha256Options.From(_options);
         var reportUri = new Uri(
-            _options.Url,
+            _options.VaasUrl,
             $"/files/{sha256}/report?useCache={JsonSerializer.Serialize(options.UseCache)}&useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
         );
         var request = new HttpRequestMessage { RequestUri = reportUri, Method = HttpMethod.Get };
@@ -137,7 +108,12 @@ public class Vaas : IVaas
                     var fileReport = await response.Content.ReadFromJsonAsync<FileReport>(
                         cancellationToken
                     );
-                    return VaasVerdict.From(fileReport ?? throw new VaasServerException($"Unable to deserialize FileReport {fileReport}"));
+                    return VaasVerdict.From(
+                        fileReport
+                            ?? throw new VaasServerException(
+                                $"Unable to deserialize FileReport {fileReport}"
+                            )
+                    );
                 case HttpStatusCode.Accepted:
                     continue;
                 case HttpStatusCode.Unauthorized:
@@ -152,7 +128,7 @@ public class Vaas : IVaas
     private async Task AddRequestHeadersAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken,
-        string requestId = ""
+        string? requestId = null
     )
     {
         var token = await _authenticator.GetTokenAsync(cancellationToken);
@@ -167,7 +143,7 @@ public class Vaas : IVaas
         ForFileOptions? options = null
     )
     {
-        options ??= ForFileOptions.Default;
+        options ??= ForFileOptions.From(_options);
 
         var sha256 = ChecksumSha256.Sha256CheckSum(path);
 
@@ -208,13 +184,14 @@ public class Vaas : IVaas
         ForStreamOptions? options = null
     )
     {
-        options ??= ForStreamOptions.Default;
+        options ??= ForStreamOptions.From(_options);
+
         var url = new Uri(
-            _options.Url,
+            _options.VaasUrl,
             $"/files?useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
         );
 
-        var request = new HttpRequestMessage()
+        var request = new HttpRequestMessage
         {
             RequestUri = url,
             Method = HttpMethod.Post,
@@ -236,10 +213,16 @@ public class Vaas : IVaas
             UseHashLookup = options.UseHashLookup,
         };
 
-        return await ForSha256Async(
-            fileAnalysisStarted.Sha256,
-            cancellationToken,
-            forSha256Options
+        if (fileAnalysisStarted?.Sha256 != null)
+            return await ForSha256Async(
+                fileAnalysisStarted.Sha256,
+                cancellationToken,
+                forSha256Options
+            );
+
+        throw new VaasServerException(
+            "Unexpected response from Vaas server, expected Sha256 in response: "
+                + response.StatusCode
         );
     }
 
@@ -249,15 +232,15 @@ public class Vaas : IVaas
         ForUrlOptions? options = null
     )
     {
-        options ??= ForUrlOptions.Default;
-        var urlAnalysisUri = new Uri(_options.Url, "/urls");
+        options ??= ForUrlOptions.From(_options);
+        var urlAnalysisUri = new Uri(_options.VaasUrl, "/urls");
 
-        var urlAnalysisRequest = new HttpRequestMessage()
+        var urlAnalysisRequest = new HttpRequestMessage
         {
             RequestUri = urlAnalysisUri,
             Method = HttpMethod.Post,
             Content = JsonContent.Create(
-                new UrlAnalysisRequest { url = uri, useHashLookup = options.UseHashLookup }
+                new UrlAnalysisRequest { Url = uri, UseHashLookup = options.UseHashLookup }
             ),
         };
 
@@ -277,7 +260,7 @@ public class Vaas : IVaas
 
         while (true)
         {
-            var reportUri = new Uri(_options.Url, $"/urls/{id}/report");
+            var reportUri = new Uri(_options.VaasUrl, $"/urls/{id}/report");
             var reportRequest = new HttpRequestMessage
             {
                 RequestUri = reportUri,
@@ -293,7 +276,12 @@ public class Vaas : IVaas
                     var urlReport = await reportResponse.Content.ReadFromJsonAsync<UrlReport>(
                         cancellationToken
                     );
-                    return VaasVerdict.From(urlReport ?? throw new VaasServerException($"Unable to deserialize UrlReport {urlReport}"));
+                    return VaasVerdict.From(
+                        urlReport
+                            ?? throw new VaasServerException(
+                                $"Unable to deserialize UrlReport {urlReport}"
+                            )
+                    );
                 case HttpStatusCode.Accepted:
                     continue;
                 case HttpStatusCode.Unauthorized:
