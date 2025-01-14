@@ -1,5 +1,5 @@
 {
-    "phpunit.phpunit": "/workspaces/vaas/php/tests/vaas/vendor/bin/phpunit",
+    "phpunit.phpunit": "/workspaces/vaas/php/tests/VaasTesting/vendor/bin/phpunit",
     "phpunit.php": "/usr/local/bin/php",
     "php.debug.ideKey": "vsc",
     "php.debug.executablePath": "/usr/local/bin/php",
