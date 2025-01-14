@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,8 +10,8 @@ public class ClientCredentialsGrantAuthenticator : IAuthenticator
 {
     private readonly TokenReceiver _tokenReceiver;
 
-    public string ClientId { get; }
-    public string ClientSecret { get; }
+    private string ClientId { get; }
+    private string ClientSecret { get; }
 
     public ClientCredentialsGrantAuthenticator(
         string clientId,
@@ -20,8 +21,12 @@ public class ClientCredentialsGrantAuthenticator : IAuthenticator
         ISystemClock? systemClock = null
     )
     {
-        _tokenReceiver = new TokenReceiver(this, tokenUrl, httpClient, systemClock);
-
+        _tokenReceiver = new ClientCredentialsTokenReceiver(
+            this,
+            tokenUrl,
+            httpClient,
+            systemClock
+        );
         ClientId = clientId;
         ClientSecret = clientSecret;
     }
@@ -29,5 +34,29 @@ public class ClientCredentialsGrantAuthenticator : IAuthenticator
     public async Task<string> GetTokenAsync(CancellationToken cancellationToken)
     {
         return await _tokenReceiver.GetTokenAsync(cancellationToken);
+    }
+
+    private class ClientCredentialsTokenReceiver(
+        IAuthenticator authenticator,
+        Uri? tokenUrl = null,
+        HttpClient? httpClient = null,
+        ISystemClock? systemClock = null
+    ) : TokenReceiver(authenticator, tokenUrl, httpClient, systemClock)
+    {
+        protected override FormUrlEncodedContent TokenRequestToForm()
+        {
+            var authenticator = (ClientCredentialsGrantAuthenticator)Authenticator;
+            return new FormUrlEncodedContent(
+                new List<KeyValuePair<string, string>>
+                {
+                    new("client_id", authenticator.ClientId),
+                    new(
+                        "client_secret",
+                        authenticator.ClientSecret ?? throw new InvalidOperationException()
+                    ),
+                    new("grant_type", "client_credentials"),
+                }
+            );
+        }
     }
 }

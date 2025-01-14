@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Security.Authentication;
 using System.Text.Json;
@@ -8,13 +7,14 @@ using System.Threading.Tasks;
 
 namespace Vaas.Authentication;
 
-internal class TokenReceiver(
+internal abstract class TokenReceiver(
     IAuthenticator authenticator,
     Uri? tokenUrl = null,
     HttpClient? httpClient = null,
     ISystemClock? systemClock = null
 ) : IAuthenticator, IDisposable
 {
+    protected readonly IAuthenticator Authenticator = authenticator;
     private readonly Uri _tokenUrl =
         tokenUrl
         ?? new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
@@ -107,39 +107,7 @@ internal class TokenReceiver(
         return tokenResponse;
     }
 
-    private FormUrlEncodedContent TokenRequestToForm()
-    {
-        return authenticator switch
-        {
-            ClientCredentialsGrantAuthenticator grantAuthenticator => new FormUrlEncodedContent(
-                new List<KeyValuePair<string, string>>
-                {
-                    new("client_id", grantAuthenticator.ClientId),
-                    new(
-                        "client_secret",
-                        grantAuthenticator.ClientSecret ?? throw new InvalidOperationException()
-                    ),
-                    new("grant_type", "client_credentials"),
-                }
-            ),
-            ResourceOwnerPasswordGrantAuthenticator grantAuthenticator => new FormUrlEncodedContent(
-                new List<KeyValuePair<string, string>>
-                {
-                    new("client_id", grantAuthenticator.ClientId),
-                    new(
-                        "username",
-                        grantAuthenticator.UserName ?? throw new InvalidOperationException()
-                    ),
-                    new(
-                        "password",
-                        grantAuthenticator.Password ?? throw new InvalidOperationException()
-                    ),
-                    new("grant_type", "password"),
-                }
-            ),
-            _ => throw new InvalidOperationException("Unknown authenticator type"),
-        };
-    }
+    protected abstract FormUrlEncodedContent TokenRequestToForm();
 
     public void Dispose()
     {
