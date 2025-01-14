@@ -17,9 +17,9 @@
         "ramsey/uuid": "^4.7 || ^4.2",
         "netresearch/jsonmapper": "^5.0",
         "psr/log": "^1.1 || ^2.0 || ^3.0",
-        "amphp/http-client": "5.1.0",
-        "amphp/file": "3.1.1",
-        "amphp/websocket-client": "2.0.0",
+        "amphp/http-client": "5.2.1",
+        "amphp/file": "3.2.0",
+        "amphp/websocket-client": "2.0.1",
         "amphp/amp": "3.0.2",
         "amphp/cache": "2.0.1"
     },
