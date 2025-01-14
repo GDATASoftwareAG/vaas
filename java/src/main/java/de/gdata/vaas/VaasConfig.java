@@ -6,7 +6,6 @@ import lombok.Setter;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.Duration;
 
 public class VaasConfig {
     @Getter
@@ -16,24 +15,22 @@ public class VaasConfig {
 
     @Getter
     @Setter
-    private int PullDelayMs;
-
-    @Getter
-    @Setter
-    Duration defaultTimeout = Duration.ofMinutes(10);
+    long defaultTimeoutInMs = 120000;
 
     public VaasConfig() throws URISyntaxException {
-        this(
-                new URI("wss://gateway.production.vaas.gdatasecurity.de"));
+        this(new URI("https://gateway.production.vaas.gdatasecurity.de"));
     }
 
     public VaasConfig(URI url) {
         this.url = url;
-        this.PullDelayMs = 100;
     }
 
-    public VaasConfig(URI url, Duration timeout) {
+    public VaasConfig(long defaultTimeoutInMs) throws URISyntaxException {
+        this(new URI("https://gateway.production.vaas.gdatasecurity.de"), defaultTimeoutInMs);
+    }
+
+    public VaasConfig(URI url, long defaultTimeoutInMs) {
         this.url = url;
-        this.defaultTimeout = timeout;
+        this.defaultTimeoutInMs = defaultTimeoutInMs;
     }
 }
