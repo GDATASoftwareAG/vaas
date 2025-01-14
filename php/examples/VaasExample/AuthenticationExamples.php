@@ -3,54 +3,33 @@
 namespace VaasExamples;
 
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
-use VaasSdk\Exceptions\InvalidSha256Exception;
-use VaasSdk\Exceptions\TimeoutException;
-use VaasSdk\Exceptions\VaasAuthenticationException;
-use VaasSdk\ResourceOwnerPasswordGrantAuthenticator;
+use VaasSdk\Sha256;
 use VaasSdk\Vaas;
 
-$USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR = false;
-
 // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
-if ($USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR){
-    $authenticator = new ResourceOwnerPasswordGrantAuthenticator(
-        "vaas-customer",
-        getenv("VAAS_USER_NAME"),
-        getenv("VAAS_PASSWORD"),
-        getenv("TOKEN_URL")
-    );
-}
+
+// $authenticator = new ResourceOwnerPasswordGrantAuthenticator(
+//     clientId: getenv("CLIENT_ID"),
+//     username: getenv("USERNAME"),
+//     password: getenv("PASSWORD"),
+//     tokenUrl: getenv("TOKEN_URL")
+// );
+    
 // You may use self registration and create a new username and password for the
-// ResourceOwnerPasswordAuthenticator by yourself like the example above on https://vaas.gdata.de/login
+// `Password` authentication method by yourself like the example above on https://vaas.gdata.de/login
 
-// If you got a client id and client secret from us, you can use the ClientCredentialsGrantAuthenticator like this
-else{
-    $authenticator = new ClientCredentialsGrantAuthenticator(
-        getenv("CLIENT_ID"),
-        getenv("CLIENT_SECRET"),
-        getenv("TOKEN_URL")
-    );
-}
+// If you got a client id and client secret from us, you can use the `Client Credentials` authentication method like this
 
-$vaas = new Vaas(
-    getenv("VAAS_URL")
+$authenticator = new ClientCredentialsGrantAuthenticator(
+    clientId: getenv("CLIENT_ID"),
+    clientSecret: getenv("CLIENT_SECRET"),
+    tokenUrl: getenv("TOKEN_URL")
 );
 
-try {
-    $vaas->Connect($authenticator->getToken());
-} catch (VaasAuthenticationException $e) {
-    fwrite(STDERR, "Authentication failed: " . $e->getMessage() . "\n");
-    exit(1);
-}
+$vaas = Vaas::builder()
+    ->withAuthenticator($authenticator)
+    ->build();
 
 // Get verdict for an eicar hash
-try {
-    $vaasVerdict = $vaas->ForSha256("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
-} catch (InvalidSha256Exception $e) {
-    fwrite(STDERR, "Invalid sha256: " . $e->getMessage() . "\n");
-    exit(1);
-} catch (TimeoutException $e) {
-    fwrite(STDERR, "Timeout: " . $e->getMessage() . "\n");
-    exit(1);
-}
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is $vaasVerdict->Verdict \n");
+$vaasVerdict = $vaas->forSha256Async(Sha256::TryFromString("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")->await())->await();
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is $vaasVerdict->verdict->value \n");

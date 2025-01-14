@@ -8,7 +8,15 @@ package de.gdata.vaas.exceptions;
  * * Analyze the error.
  */
 public class VaasClientException extends Exception {
+    public VaasClientException(String message, Throwable cause) {
+        super(message != null ? message : "Client error", cause);
+    }
+
     public VaasClientException(String message) {
-        super(message != null ? message : "Client error");
+        this(message, null);
+    }
+
+    public VaasClientException() {
+        this(null, null);
     }
 }

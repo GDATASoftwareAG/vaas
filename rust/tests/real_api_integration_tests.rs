@@ -1,5 +1,6 @@
 use futures::future::try_join_all;
-use rand::{distributions::Alphanumeric, Rng};
+use rand::distr::Alphanumeric;
+use rand::Rng;
 use reqwest::Url;
 use std::convert::TryFrom;
 use std::ops::Deref;
@@ -426,7 +427,7 @@ async fn from_file_single_clean_file() {
 
 #[tokio::test]
 async fn from_file_single_unknown_file() {
-    let unknown: String = rand::thread_rng()
+    let unknown: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(50)
         .map(char::from)
@@ -449,12 +450,12 @@ async fn from_file_single_unknown_file() {
 
 #[tokio::test]
 async fn from_files_unknown_files() {
-    let unknown1: String = rand::thread_rng()
+    let unknown1: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(50)
         .map(char::from)
         .collect();
-    let unknown2: String = rand::thread_rng()
+    let unknown2: String = rand::rng()
         .sample_iter(&Alphanumeric)
         .take(50)
         .map(char::from)
