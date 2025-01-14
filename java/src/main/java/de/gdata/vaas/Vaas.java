@@ -9,6 +9,8 @@ import de.gdata.vaas.exceptions.*;
 import de.gdata.vaas.authentication.*;
 import lombok.Getter;
 import lombok.NonNull;
+import org.jetbrains.annotations.NotNull;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -47,7 +49,7 @@ public class Vaas implements IVaas {
         this.httpClient = HttpClient.newHttpClient();
     }
 
-    public Vaas(VaasConfig config, IAuthenticator authenticator, HttpClient httpClient) {
+    public Vaas(@NotNull VaasConfig config, IAuthenticator authenticator, HttpClient httpClient) {
         this.config = config;
         this.authenticator = authenticator;
         this.httpClient = httpClient;
@@ -72,7 +74,7 @@ public class Vaas implements IVaas {
     private static String encodeParams(Map<String, String> params) {
         StringBuilder encodedParams = new StringBuilder();
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            if (encodedParams.length() > 0) {
+            if (!encodedParams.isEmpty()) {
                 encodedParams.append("&");
             }
             encodedParams.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8))
@@ -84,43 +86,34 @@ public class Vaas implements IVaas {
 
     private static CompletableFuture<VaasVerdict> parseVaasError(HttpResponse<String> response) {
         var problemDetails = response.body() != null ? ProblemDetails.fromJson(response.body()) : new ProblemDetails();
-        switch (response.statusCode()) {
-            case 400:
-                return CompletableFuture.failedFuture(new VaasClientException(problemDetails.detail));
-            case 401:
-                return CompletableFuture.failedFuture(new VaasAuthenticationException());
-            default:
-                return CompletableFuture.failedFuture(new VaasServerException(problemDetails.detail));
-        }
+        return switch (response.statusCode()) {
+            case 400 -> CompletableFuture.failedFuture(new VaasClientException(problemDetails.detail));
+            case 401 -> CompletableFuture.failedFuture(new VaasAuthenticationException());
+            default -> CompletableFuture.failedFuture(new VaasServerException(problemDetails.detail));
+        };
     }
 
     private static CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, HttpRequest request) {
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenCompose(handleException(response -> {
-                    switch (response.statusCode()) {
-                        case 200:
-                            var fileReport = FileReport.fromJson(response.body());
-                            return CompletableFuture.completedFuture(VaasVerdict.From(fileReport));
-                        case 201:
-                            return sendFileWithRetry(httpClient, request);
-                        default:
-                            return parseVaasError(response);
+                .thenCompose(handleException(response -> switch (response.statusCode()) {
+                    case 200 -> {
+                        var fileReport = FileReport.fromJson(response.body());
+                        yield CompletableFuture.completedFuture(VaasVerdict.From(fileReport));
                     }
+                    case 201 -> sendFileWithRetry(httpClient, request);
+                    default -> parseVaasError(response);
                 }));
     }
 
     private static CompletableFuture<VaasVerdict> sendUrlWithRetry(HttpClient httpClient, HttpRequest request) {
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenCompose(handleException(response -> {
-                    switch (response.statusCode()) {
-                        case 200:
-                            var urlReport = UrlReport.fromJson(response.body());
-                            return CompletableFuture.completedFuture(VaasVerdict.From(urlReport));
-                        case 201:
-                            return sendUrlWithRetry(httpClient, request);
-                        default:
-                            return parseVaasError(response);
+                .thenCompose(handleException(response -> switch (response.statusCode()) {
+                    case 200 -> {
+                        var urlReport = UrlReport.fromJson(response.body());
+                        yield CompletableFuture.completedFuture(VaasVerdict.From(urlReport));
                     }
+                    case 201 -> sendUrlWithRetry(httpClient, request);
+                    default -> parseVaasError(response);
                 }));
     }
 

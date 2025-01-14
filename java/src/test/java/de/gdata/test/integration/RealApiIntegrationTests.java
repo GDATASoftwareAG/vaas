@@ -1,8 +1,6 @@
 package de.gdata.test.integration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
@@ -11,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -87,48 +84,37 @@ public class RealApiIntegrationTests {
     }
 
     private static Vaas getVaasWithCredentials(IAuthenticator authenticator)
-            throws URISyntaxException, InterruptedException, IOException, ExecutionException,
-            TimeoutException,
-            VaasAuthenticationException {
+            throws URISyntaxException {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var config = new VaasConfig(new URI(vaasUrl));
-        var vaas = new Vaas(config, authenticator);
-        return vaas;
+        return new Vaas(config, authenticator);
     }
 
     private static Vaas getVaasWithCredentials(HttpClient httpClient)
-            throws URISyntaxException, InterruptedException, IOException, ExecutionException,
-            TimeoutException,
-            VaasAuthenticationException {
+            throws URISyntaxException {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
         var config = new VaasConfig(new URI(vaasUrl));
-        var vaas = new Vaas(config, authenticator, httpClient);
-        return vaas;
+        return new Vaas(config, authenticator, httpClient);
     }
 
     private static Vaas getVaasWithCredentials()
-            throws URISyntaxException, InterruptedException, IOException, ExecutionException,
-            TimeoutException,
-            VaasAuthenticationException {
+            throws URISyntaxException {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
         var config = new VaasConfig(new URI(vaasUrl));
-        var vaas = new Vaas(config, authenticator);
-        return vaas;
+        return new Vaas(config, authenticator);
     }
 
     public static byte[] readContent(HttpRequest.BodyPublisher bodyPublisher) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         bodyPublisher.subscribe(new Flow.Subscriber<>() {
-            private Flow.Subscription subscription;
 
             @Override
             public void onSubscribe(Flow.Subscription subscription) {
-                this.subscription = subscription;
                 subscription.request(Long.MAX_VALUE);
             }
 
@@ -194,9 +180,9 @@ public class RealApiIntegrationTests {
         verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
         var capturedUri = requestCaptor.getValue().uri();
 
-        assertTrue(capturedUri.toString().contains(String.format("useCache=%s", String.valueOf(useCache))));
+        assertTrue(capturedUri.toString().contains(String.format("useCache=%s", useCache)));
         assertTrue(capturedUri.toString()
-                .contains(String.format("useHashLookup=%s", String.valueOf(useHashLookup))));
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(vaasVerdict.getSha256()));
@@ -268,10 +254,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forSha256Async(sha256).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasClientException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -286,10 +270,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forSha256Async(sha256).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasServerException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -304,10 +286,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forSha256Async(sha256).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasAuthenticationException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
+        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -323,9 +303,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forSha256Async(sha256).join();
-        });
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256Async(sha256).join());
     }
 
     @Test
@@ -395,9 +373,9 @@ public class RealApiIntegrationTests {
                         && getRequest.uri().toString().contains(
                         "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                        .contains("useCache=" + Boolean.toString(useCache))
+                        .contains("useCache=" + useCache)
                         && getRequest.uri().toString().contains(
-                        "useHashLookup=" + Boolean.toString(useHashLookup))),
+                        "useHashLookup=" + useHashLookup)),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -408,10 +386,9 @@ public class RealApiIntegrationTests {
                             && getRequest.uri().toString().contains(
                             "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                             && getRequest.uri().toString()
-                            .contains("useCache=" + Boolean.toString(true))
+                            .contains("useCache=" + true)
                             && getRequest.uri().toString()
-                            .contains("useHashLookup=" + Boolean
-                                    .toString(useHashLookup))),
+                            .contains("useHashLookup=" + useHashLookup)),
                     any(HttpResponse.BodyHandler.class)))
                     .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
         }
@@ -421,7 +398,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString().contains(
-                        "useHashLookup=" + Boolean.toString(useHashLookup))),
+                        "useHashLookup=" + useHashLookup)),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -433,13 +410,13 @@ public class RealApiIntegrationTests {
         var secondRequestUri = requestCaptor.getAllValues().get(1).uri();
         var thirdRequestUri = requestCaptor.getAllValues().get(2).uri();
 
-        assertTrue(firstRequestUri.toString().contains(String.format("useCache=%s", String.valueOf(useCache))));
+        assertTrue(firstRequestUri.toString().contains(String.format("useCache=%s", useCache)));
         assertTrue(firstRequestUri.toString()
-                .contains(String.format("useHashLookup=%s", String.valueOf(useHashLookup))));
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertTrue(secondRequestUri.toString()
-                .contains(String.format("useHashLookup=%s", String.valueOf(useHashLookup))));
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertTrue(thirdRequestUri.toString()
-                .contains(String.format("useHashLookup=%s", String.valueOf(useHashLookup))));
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(vaasVerdict.getSha256()));
@@ -473,9 +450,9 @@ public class RealApiIntegrationTests {
                         && getRequest.uri().toString().contains(
                         "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                        .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + true)
                         && getRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && getRequest.headers().firstValue("User-Agent").toString()
                         .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
@@ -486,7 +463,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && postRequest.headers().firstValue("User-Agent").toString()
                         .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
@@ -536,9 +513,9 @@ public class RealApiIntegrationTests {
                         && getRequest.uri().toString().contains(
                         "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                        .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + true)
                         && getRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && getRequest.headers().firstValue("tracestate").toString()
                         .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
@@ -549,7 +526,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && postRequest.headers().firstValue("tracestate").toString()
                         .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
@@ -607,10 +584,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forFileAsync(tmpFile).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasClientException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -649,10 +624,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forFileAsync(tmpFile).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasServerException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -691,10 +664,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forFileAsync(tmpFile).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasAuthenticationException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
+        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -716,9 +687,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forFileAsync(tmpFile).join();
-        });
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forFileAsync(tmpFile).join());
     }
 
     @Test
@@ -754,10 +723,8 @@ public class RealApiIntegrationTests {
         var vaas = new Vaas(config, authenticator);
         var forFileOptions = new ForFileOptions(false, false, null);
 
-        var exception = assertThrows(ExecutionException.class, () -> {
-                vaas.forFileAsync(tmpFile, forFileOptions).get();
-            });
-        assertTrue(exception.getCause() instanceof TimeoutException);
+        var exception = assertThrows(ExecutionException.class, () -> vaas.forFileAsync(tmpFile, forFileOptions).get());
+        assertInstanceOf(TimeoutException.class, exception.getCause());
     }    
 
     @Test
@@ -809,10 +776,9 @@ public class RealApiIntegrationTests {
                         && getRequest.uri().toString().contains(
                         "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                        .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + true)
                         && getRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean
-                                .toString(useHashLookup))),
+                        .contains("useHashLookup=" + useHashLookup)),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
 
@@ -821,7 +787,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString().contains(
-                        "useHashLookup=" + Boolean.toString(useHashLookup))),
+                        "useHashLookup=" + useHashLookup)),
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
@@ -833,9 +799,9 @@ public class RealApiIntegrationTests {
         var secondRequestUri = requestCaptor.getAllValues().get(1).uri();
 
         assertTrue(firstRequestUri.toString()
-                .contains(String.format("useHashLookup=%s", String.valueOf(useHashLookup))));
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertTrue(secondRequestUri.toString()
-                .contains(String.format("useHashLookup=%s", String.valueOf(useHashLookup))));
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(vaasVerdict.getSha256()));
@@ -868,9 +834,9 @@ public class RealApiIntegrationTests {
                         && getRequest.uri().toString().contains(
                         "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                        .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + true)
                         && getRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && getRequest.headers().firstValue("User-Agent").toString()
                         .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
@@ -881,7 +847,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && postRequest.headers().firstValue("User-Agent").toString()
                         .contains("Java")),
                 any(HttpResponse.BodyHandler.class)))
@@ -928,9 +894,9 @@ public class RealApiIntegrationTests {
                         && getRequest.uri().toString().contains(
                         "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
                         && getRequest.uri().toString()
-                        .contains("useCache=" + Boolean.toString(true))
+                        .contains("useCache=" + true)
                         && getRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && getRequest.headers().firstValue("tracestate").toString()
                         .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
@@ -941,7 +907,7 @@ public class RealApiIntegrationTests {
                         && postRequest.method().equals("POST")
                         && postRequest.uri().toString().contains("files")
                         && postRequest.uri().toString()
-                        .contains("useHashLookup=" + Boolean.toString(true))
+                        .contains("useHashLookup=" + true)
                         && postRequest.headers().firstValue("tracestate").toString()
                         .contains("foobar")),
                 any(HttpResponse.BodyHandler.class)))
@@ -996,10 +962,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forStreamAsync(inputStream, contentLength).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasClientException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -1037,10 +1001,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forStreamAsync(inputStream, contentLength).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasServerException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -1078,10 +1040,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forStreamAsync(inputStream, contentLength).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasAuthenticationException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
+        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -1102,9 +1062,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forStreamAsync(inputStream, contentLength).join();
-        });
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
     }
 
     @Test
@@ -1137,10 +1095,8 @@ public class RealApiIntegrationTests {
         var vaas = new Vaas(config, authenticator);
         var forStreamOptions = new ForStreamOptions(false, null);
 
-        var exception = assertThrows(ExecutionException.class, () -> {
-                vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).get();
-            });
-        assertTrue(exception.getCause() instanceof TimeoutException);
+        var exception = assertThrows(ExecutionException.class, () -> vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).get());
+        assertInstanceOf(TimeoutException.class, exception.getCause());
     }
 
     @Test
@@ -1203,7 +1159,7 @@ public class RealApiIntegrationTests {
         assertEquals(useHashLookup, urlAnalysisRequest.isUseHashLookup());
         assertEquals("https://secure.eicar.org/eicar.com.txt", urlAnalysisRequest.getUrl());
         assertTrue(reportUri.toString()
-                .contains(String.format("useHashLookup=%s", String.valueOf(useHashLookup))));
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
         assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
                 .equalsIgnoreCase(vaasVerdict.getSha256()));
@@ -1329,10 +1285,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forUrlAsync(url).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasClientException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -1355,10 +1309,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forUrlAsync(url).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasServerException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -1381,10 +1333,8 @@ public class RealApiIntegrationTests {
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
-        var exception = assertThrows(CompletionException.class, () -> {
-            vaas.forUrlAsync(url).join();
-        });
-        assertTrue(exception.getCause() instanceof VaasAuthenticationException);
+        var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
+        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
     }
 
     @SuppressWarnings("unchecked")
@@ -1402,9 +1352,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> {
-            vaas.forUrlAsync(url).join();
-        });
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forUrlAsync(url).join());
     }
 
     @Test
@@ -1430,10 +1378,8 @@ public class RealApiIntegrationTests {
         var config = new VaasConfig(new URI(vaasUrl), 1000);
         var vaas = new Vaas(config, authenticator);
 
-        var exception = assertThrows(ExecutionException.class, () -> {
-                vaas.forUrlAsync(url).get();
-            });
-        assertTrue(exception.getCause() instanceof TimeoutException);
+        var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());
+        assertInstanceOf(TimeoutException.class, exception.getCause());
     }
 
 
