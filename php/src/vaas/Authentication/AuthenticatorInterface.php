@@ -2,6 +2,9 @@
 
 namespace VaasSdk\Authentication;
 
-interface AuthenticatorInterface {
-    public function getToken(): string;
+use Amp\Cancellation;
+
+interface AuthenticatorInterface
+{
+    public function getTokenAsync(?Cancellation $cancellation = null): string;
 }
