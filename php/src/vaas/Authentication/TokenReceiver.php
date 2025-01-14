@@ -10,12 +10,11 @@ use Amp\Http\Client\Request;
 use Amp\Sync\LocalMutex;
 use Amp\Sync\Mutex;
 use Exception;
-use InvalidArgumentException;
 use VaasSdk\Exceptions\VaasAuthenticationException;
 use function Amp\async;
 use function Amp\delay;
 
-class TokenReceiver
+abstract class TokenReceiver
 {
     private Mutex $mutex;
     private ?TokenResponse $lastTokenResponse = null;
@@ -116,22 +115,5 @@ class TokenReceiver
      * Converts the token request to form data.
      * @return string Form data for the token request
      */
-    private function tokenRequestToForm(): string
-    {
-        return match (true) 
-        {
-            $this->authenticator instanceof ClientCredentialsGrantAuthenticator =>  http_build_query([
-                'client_id' => $this->authenticator->clientId,
-                'client_secret' => $this->authenticator->clientSecret,
-                'grant_type' => 'client_credentials',
-            ]),
-            $this->authenticator instanceof ResourceOwnerPasswordGrantAuthenticator =>  http_build_query([
-                'client_id' => $this->authenticator->clientId,
-                'username' => $this->authenticator->userName,
-                'password' => $this->authenticator->password,
-            'grant_type' => 'password',
-            ]),
-            default => throw new InvalidArgumentException("Unknown authenticator type")
-        };
-    }
+    abstract protected function tokenRequestToForm(): string;
 }

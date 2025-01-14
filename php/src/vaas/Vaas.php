@@ -146,17 +146,22 @@ class Vaas
                     $options->useCache, $options->useHashLookup, $options->vaasRequestId);
                 $sha256 = Sha256::TryFromFile($path);
                 $this->logger->debug("Check if file $path is already known by its SHA256: $sha256");
-                $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
-                $isVerdictWithoutDetection = ($response->verdict === 'Malicious' || $response->verdict === 'Pup') && !empty($response->detection);
-                if ($response->verdict !== 'Unknown' && !empty($response->fileType) && !empty($response->mimeType) && !$isVerdictWithoutDetection) {
-                    $this->logger->debug("File $path is already known from cache or G DATA cloud by its SHA256: $sha256");
-                    return $response;
+                try {
+                    $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
+                    $isVerdictWithoutDetection = ($response->verdict === 'Malicious' || $response->verdict === 'Pup') && !empty($response->detection);
+                    if ($response->verdict !== 'Unknown' && !empty($response->fileType) && !empty($response->mimeType) && !$isVerdictWithoutDetection) {
+                        $this->logger->debug("File $path is already known from cache or G DATA cloud by its SHA256: $sha256");
+                        return $response;
+                    }
+                }
+                catch (Exception $ex) {
+                    $this->logger->debug("Something went wrong while checking the SHA256 of file $path: " . $ex->getMessage());
                 }
             }
 
             $stream = openFile($path, 'r');
 
-            $forStreamOptions = new ForStreamOptions($options->useHashLookup, 300, $options->vaasRequestId);
+            $forStreamOptions = new ForStreamOptions(useHashLookup: $options->useHashLookup, vaasRequestId: $options->vaasRequestId);
 
             $this->logger->debug("Requesting verdict for $path as file stream");
             return $this->forStreamAsync($stream, filesize($path), $forStreamOptions)->await();

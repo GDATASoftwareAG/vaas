@@ -4,8 +4,8 @@ namespace VaasSdk\Options;
 
 class ForStreamOptions
 {
-    const DEFAULT_TIMEOUT = 300;
-    const DEFAULT_REQUEST_ID = null;
+    private const DEFAULT_TIMEOUT = 300;
+    private const DEFAULT_REQUEST_ID = null;
 
     public function __construct(
         public bool $useHashLookup = true,

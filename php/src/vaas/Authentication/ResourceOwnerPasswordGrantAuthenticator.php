@@ -20,7 +20,7 @@ class ResourceOwnerPasswordGrantAuthenticator implements AuthenticatorInterface
      */
     public function __construct(public string $clientId, public string $userName, public string $password, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
     {
-        $this->tokenReceiver = new TokenReceiver($this, $tokenUrl, $httpClient);
+        $this->tokenReceiver = new ResourceOwnerPasswordTokenReceiver($this, $tokenUrl, $httpClient);
     }
 
     /**
