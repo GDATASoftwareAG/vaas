@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.testng.AssertJUnit.assertEquals;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.Optional;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterAll;
@@ -41,14 +43,39 @@ import de.gdata.vaas.messages.VerdictRequestAttributes;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class RealApiIntegrationTests {
-    private static final Dotenv dotenv = Dotenv.configure()
-            .ignoreIfMissing()
-            .load();
+    private static final Dotenv dotenv = getDotenv();
     private static Vaas vaas;
+
+    private static Dotenv getDotenv() {
+        var dotenv = Dotenv.configure()
+            .ignoreIfMissing();
+
+        Optional<File> envFile = findFile(".env");
+
+        if (envFile.isPresent()) {
+            var directory = envFile.get().getParent();
+            dotenv.directory(directory);
+        }
+
+        return dotenv.load();
+    }
+
+    private static Optional<File> findFile(String name) {
+        File currentDirectory = new File(System.getProperty("user.dir"));
+        File file = new File(currentDirectory, name);
+
+        while (!file.exists() && currentDirectory.getParentFile() != null) {
+            currentDirectory = currentDirectory.getParentFile();
+            file = new File(currentDirectory, name);
+        }
+
+        return file.exists() ? Optional.of(file) : Optional.empty();
+    }
 
     @BeforeAll
     public static void setUpAll() throws URISyntaxException, InterruptedException, IOException, ExecutionException,
             TimeoutException, VaasAuthenticationException {
+        System.out.println("VAAS_URL=" + getEnvironmentKey("VAAS_URL"));
         vaas = getVaasWithCredentials();
     }
 
@@ -318,6 +345,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("secure.eicar.org is down. Disable for now.")
     public void forUrlMultipleMaliciousUrls() throws Exception {
         var url_1 = new URL("https://secure.eicar.org/eicar.com");
         var url_2 = new URL("https://secure.eicar.org/eicar.com.txt");
@@ -453,6 +481,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("secure.eicar.org is down. Disable for now.")
     public void forStream_WithEicarUrl_ReturnsMaliciousVerdict() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
@@ -500,6 +529,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    @Disabled("secure.eicar.org is down. Disable for now.")
     public void forStream_WithEicarFile_ReturnsMaliciousVerdictWithDetections() throws Exception {
         var url = new URL("https://secure.eicar.org/eicar.com.txt");
         var conn = url.openConnection();
