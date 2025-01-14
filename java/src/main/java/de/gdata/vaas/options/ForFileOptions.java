@@ -20,20 +20,16 @@ import lombok.Setter;
  *   <li>{@code String VaasRequestId} - Optional VaaS request ID. Can be {@code null}.</li>
  * </ul>
  */
+@Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ForFileOptions {
     
-    @Setter
-    @Getter
     boolean UseCache = true;
 
-    @Setter
-    @Getter
     boolean UseHashLookup = true;
 
-    @Setter
-    @Getter
     @Nullable 
     String VaasRequestId;
 }

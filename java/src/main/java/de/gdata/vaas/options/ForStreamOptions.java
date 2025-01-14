@@ -16,15 +16,13 @@ import lombok.Setter;
  * The {@code VaasRequestId} field can hold a nullable string representing the Vaas request ID.
  * </p>
  */
+@Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ForStreamOptions {
-    @Setter
-    @Getter
     boolean UseHashLookup = true;
 
-    @Setter
-    @Getter
     @Nullable 
     String VaasRequestId;    
 }

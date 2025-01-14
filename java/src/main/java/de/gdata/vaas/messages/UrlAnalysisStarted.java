@@ -7,10 +7,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class UrlAnalysisStarted {
-    @Getter
     @SerializedName("id")
     String Id;
     public static UrlAnalysisStarted fromJson(String json) {

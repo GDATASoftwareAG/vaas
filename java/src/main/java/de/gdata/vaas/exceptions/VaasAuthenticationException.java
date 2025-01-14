@@ -7,8 +7,15 @@ package de.gdata.vaas.exceptions;
  * * Make sure the token has not expired.
  */
 public class VaasAuthenticationException extends Exception {
+    public VaasAuthenticationException(String message, Exception cause) {
+        super(message != null ? message : "Authentication error", cause);
+    }
+
+    public VaasAuthenticationException(String message) {
+        this(message, null);
+    }
 
     public VaasAuthenticationException() {
-        super("Vaas authentication failed");
+        this(null, null);
     }
 }

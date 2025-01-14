@@ -22,20 +22,16 @@ import lombok.Setter;
  *   <li>{@code String VaasRequestId} - The Vaas request ID. Default is a randomly generated UUID.</li>
  * </ul>
  */
+@Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ForSha256Options {
 
-    @Setter
-    @Getter
     boolean UseCache = true;
 
-    @Setter
-    @Getter
     boolean UseHashLookup = true;
 
-    @Setter
-    @Getter
     @Nullable
     String VaasRequestId = UUID.randomUUID().toString();
 }

@@ -9,16 +9,15 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProblemDetails
 {
-    @Getter
     @Nullable
     @SerializedName("type")
     public String type;
 
-    @Getter
     @Nullable
     @SerializedName("detail")
     public String detail;

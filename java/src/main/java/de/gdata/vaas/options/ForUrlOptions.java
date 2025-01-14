@@ -20,15 +20,13 @@ import lombok.Setter;
  * </p>
  * 
  */
+@Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ForUrlOptions {
-    @Setter
-    @Getter
     boolean UseHashLookup = true;
 
-    @Setter
-    @Getter
     @Nullable 
     String VaasRequestId;    
 }

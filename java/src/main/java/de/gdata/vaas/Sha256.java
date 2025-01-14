@@ -2,6 +2,7 @@ package de.gdata.vaas;
 
 import lombok.Getter;
 import lombok.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -11,14 +12,14 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.regex.Pattern;
 
+@Getter
 public class Sha256 {
-    private static Pattern pattern = Pattern.compile("^[A-Fa-f0-9]{64}$");
+    private static final Pattern pattern = Pattern.compile("^[A-Fa-f0-9]{64}$");
 
     @NonNull
-    @Getter
-    private String value;
+    private final String value;
 
-    public Sha256(String sha256) {
+    public Sha256(@NotNull String sha256) {
         var matcher = pattern.matcher(sha256);
 
         if (!matcher.find()) {
