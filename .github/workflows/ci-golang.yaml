@@ -26,6 +26,7 @@ on:
         default: "production"
 
 env:
+  LATEST_PATH: v3/
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
   VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
@@ -193,7 +194,7 @@ jobs:
       - name: publish module
         env:
           MAJOR_VERSION: ${{ needs.extract-major-version.outputs.major_version }}
-        if: startsWith(github.ref, 'refs/tags')
+        if: startsWith(github.ref, 'refs/tags/golang/vaas/v3<')
         run: |
           if [ "$MAJOR_VERSION" = "v1" ]; then
             GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/golang/vaas/}
@@ -209,3 +210,52 @@ jobs:
           title: "`Failed workflow on for VaaS-SDK vaas-golang-ci`"
           job: ${{ toJson(job) }}
           steps: ${{ toJson(steps) }}
+
+  deploy-git-scan:
+    if: startsWith(github.ref, 'refs/tags')
+    needs:
+      - extract-major-version
+      - virus-scan
+      - build-golang
+      - codeql
+      - vulncheck
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        env:
+          MAJOR_VERSION: ${{ needs.extract-major-version.outputs.major_version }}
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: |
+            ghcr.io/gdatasoftwareag/vaas/git-scan
+          tags: |
+            type=semver,pattern={{version}},value=${{ env.MAJOR_VERSION }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.MAJOR_VERSION }}
+            type=semver,pattern={{major}},value=${{ env.MAJOR_VERSION }}
+          flavor: |
+            latest=auto
+
+      - name: login to ghcr.io/gdatasoftwareag
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_USERNAME }}
+          password: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: "golang/vaas/${{ env.LATEST_PATH }}"
+          file: "golang/vaas/${{ env.LATEST_PATH }}git-scan.Dockerfile"
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
