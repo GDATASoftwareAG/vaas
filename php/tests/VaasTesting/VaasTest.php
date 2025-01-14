@@ -37,6 +37,9 @@ final class VaasTest extends TestCase
     const PUP_URL = "http://amtso.eicar.org/PotentiallyUnwanted.exe";
     const CLEAN_URL = "https://www.gdata.de";
 
+    /**
+     * @throws VaasClientException
+     */
     public function setUp(): void
     {
         $dotenv = Dotenv::createImmutable(__DIR__);
@@ -63,6 +66,9 @@ final class VaasTest extends TestCase
         $this->vaas = $this->getVaas();
     }
 
+    /**
+     * @throws VaasClientException
+     */
     private function getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
     {
         $options = new VaasOptions(
@@ -84,6 +90,9 @@ final class VaasTest extends TestCase
             ->build();
     }
 
+    /**
+     * @throws InvalidSha256Exception
+     */
     public function testForSha256_WithMaliciousSha256_GetsMaliciousResponse(): void
     {
         $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::MALICIOUS_HASH))->await();
@@ -98,6 +107,9 @@ final class VaasTest extends TestCase
         $this->assertEqualsIgnoringCase(self::MALICIOUS_HASH, $verdict->sha256);
     }
 
+    /**
+     * @throws InvalidSha256Exception
+     */
     public function testForSha256_WithPupSha256_GetsPupResponse(): void
     {
         $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::PUP_HASH))->await();
@@ -112,6 +124,9 @@ final class VaasTest extends TestCase
         $this->assertEquals(Verdict::PUP, $verdict->verdict);
     }
 
+    /**
+     * @throws InvalidSha256Exception
+     */
     public function testForSha256_WithCleanSha256_GetsCleanResponse(): void
     {
         $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::CLEAN_HASH))->await();
@@ -126,6 +141,10 @@ final class VaasTest extends TestCase
         $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
     }
 
+    /**
+     * @throws InvalidSha256Exception
+     * @throws VaasClientException
+     */
     public function testForSha256_WithUnknownSha256_GetsUnknownResponse(): void
     {
         $vaas = $this->getVaas(false, false);

@@ -18,7 +18,7 @@ class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
      */
     public function __construct(public string $clientId, public string $clientSecret, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
     {
-        $this->tokenReceiver = new TokenReceiver($this, $tokenUrl, $httpClient);
+        $this->tokenReceiver = new ClientCredentialsTokenReceiver($this, $tokenUrl, $httpClient);
     }
 
     /**
