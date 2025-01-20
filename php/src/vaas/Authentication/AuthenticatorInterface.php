@@ -6,5 +6,5 @@ use Amp\Cancellation;
 
 interface AuthenticatorInterface
 {
-    public function getTokenAsync(?Cancellation $cancellation = null): string;
+    public function getToken(?Cancellation $cancellation = null): string;
 }

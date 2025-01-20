@@ -22,7 +22,6 @@ abstract class TokenReceiver
     private ?int $lastRequestTime = null;
 
     public function __construct(
-        public AuthenticatorInterface $authenticator,
         public ?string $tokenUrl = null,
         public ?HttpClient $httpClient = null)
     {
