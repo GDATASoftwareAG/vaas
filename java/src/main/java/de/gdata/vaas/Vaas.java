@@ -16,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -55,6 +56,10 @@ public class Vaas implements IVaas {
         this.config = config;
         this.authenticator = authenticator;
         this.httpClient = httpClient;
+    }
+
+    public Vaas(IAuthenticator authenticator) throws URISyntaxException {
+        this(new VaasConfig(), authenticator);
     }
 
     private static <T, R> Function<T, CompletableFuture<R>> handleException(
