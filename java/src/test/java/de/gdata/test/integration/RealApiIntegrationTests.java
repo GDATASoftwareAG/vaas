@@ -706,7 +706,7 @@ public class RealApiIntegrationTests {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(new URI(vaasUrl), 1000);
+        var config = new VaasConfig(1000, new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         var forFileOptions = new ForFileOptions(false, false, null);
 
@@ -1078,7 +1078,7 @@ public class RealApiIntegrationTests {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(new URI(vaasUrl), 1000);
+        var config = new VaasConfig(1000, new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         var forStreamOptions = new ForStreamOptions(false, null);
 
@@ -1362,7 +1362,7 @@ public class RealApiIntegrationTests {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(new URI(vaasUrl), 1000);
+        var config = new VaasConfig(1000, new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());

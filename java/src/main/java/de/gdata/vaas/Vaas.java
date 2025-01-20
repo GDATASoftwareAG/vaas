@@ -148,10 +148,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256)
             throws IOException, InterruptedException, VaasAuthenticationException {
-        var forSha256Options = new ForSha256Options();
-        forSha256Options.setUseCache(true);
-        forSha256Options.setUseHashLookup(true);
-        return this.forSha256Async(sha256, forSha256Options);
+        return this.forSha256Async(sha256, ForSha256Options.fromVaasConfig(this.config));
     }
 
     /**
@@ -240,10 +237,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forFileAsync(Path file)
             throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException {
-        var forFileOptions = new ForFileOptions();
-        forFileOptions.setUseCache(true);
-        forFileOptions.setUseHashLookup(true);
-        return forFileAsync(file, forFileOptions);
+        return forFileAsync(file, ForFileOptions.fromVaaSConfig(this.config));
     }
 
     /**
@@ -358,9 +352,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength)
             throws IOException, InterruptedException, VaasAuthenticationException {
-        var forStreamOptions = new ForStreamOptions();
-        forStreamOptions.setUseHashLookup(true);
-        return forStreamAsync(stream, contentLength, forStreamOptions);
+        return forStreamAsync(stream, contentLength, ForStreamOptions.fromVaasConfig(this.config));
     }
 
     /**
@@ -461,9 +453,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forUrlAsync(URL url)
             throws IOException, InterruptedException, VaasAuthenticationException {
-        var forUrlOptions = new ForUrlOptions();
-        forUrlOptions.setUseHashLookup(true);
-        return forUrlAsync(url, forUrlOptions);
+        return forUrlAsync(url, ForUrlOptions.fromVaasConfig(this.config));
     }
 
     /**
