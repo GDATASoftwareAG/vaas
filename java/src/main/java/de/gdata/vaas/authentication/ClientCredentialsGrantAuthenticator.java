@@ -1,20 +1,21 @@
 package de.gdata.vaas.authentication;
 
-import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 
-public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
+@Getter
+public class ClientCredentialsGrantAuthenticator extends TokenReceiver implements IAuthenticator {
 
-    @Getter
     private final String clientId;
-    @Getter
     private final String clientSecret;
-    private final ClientCredentialsTokenReceiver tokenReceiver;
+    private final URI tokenUrl;
+    private final HttpClient httpClient;
 
     /**
      * The authenticator for the client credentials grant type if you have a client id and client secret.
@@ -25,9 +26,11 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
      * @param httpClient   Your optional custom http client.
      */
     public ClientCredentialsGrantAuthenticator(@NotNull String clientId, @NotNull String clientSecret, @NotNull URI tokenUrl, @NotNull HttpClient httpClient) {
+        super(tokenUrl, httpClient);
         this.clientId = clientId;
         this.clientSecret = clientSecret;
-        this.tokenReceiver = new ClientCredentialsTokenReceiver(this, tokenUrl, httpClient);
+        this.tokenUrl = tokenUrl;
+        this.httpClient = httpClient;
     }
 
     /**
@@ -52,7 +55,9 @@ public class ClientCredentialsGrantAuthenticator implements IAuthenticator {
     }
 
     @Override
-    public String getToken() throws VaasAuthenticationException {
-        return tokenReceiver.getToken();
+    protected String tokenRequestToForm() {
+        return "client_id=" + URLEncoder.encode(this.getClientId(), StandardCharsets.UTF_8) +
+                "&client_secret=" + URLEncoder.encode(this.getClientSecret(), StandardCharsets.UTF_8) +
+                "&grant_type=client_credentials";
     }
 }

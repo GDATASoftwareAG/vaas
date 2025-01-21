@@ -27,17 +27,17 @@ abstract class TokenReceiver {
     private Instant validTo = Instant.EPOCH;
     private Instant lastRequestTime = null;
 
-    public TokenReceiver(@NotNull IAuthenticator authenticator, @NotNull URI tokenUrl, @NotNull HttpClient httpClient) {
+    public TokenReceiver(@NotNull URI tokenUrl, @NotNull HttpClient httpClient) {
         this.tokenUrl = tokenUrl;
         this.httpClient = httpClient;
     }
 
-    public TokenReceiver(@NotNull IAuthenticator authenticator, @NotNull URI tokenUrl) {
-        this(authenticator, tokenUrl, HttpClient.newHttpClient());
+    public TokenReceiver(@NotNull URI tokenUrl) {
+        this(tokenUrl, HttpClient.newHttpClient());
     }
 
-    public TokenReceiver(@NotNull IAuthenticator authenticator) throws URISyntaxException {
-        this(authenticator, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"), HttpClient.newHttpClient());
+    public TokenReceiver() throws URISyntaxException {
+        this(new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"), HttpClient.newHttpClient());
     }
 
     public String getToken() throws VaasAuthenticationException {

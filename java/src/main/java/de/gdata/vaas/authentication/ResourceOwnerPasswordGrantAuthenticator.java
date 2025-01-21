@@ -1,22 +1,20 @@
 package de.gdata.vaas.authentication;
 
-import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
+import java.nio.charset.StandardCharsets;
 
-public class ResourceOwnerPasswordGrantAuthenticator implements IAuthenticator {
+@Getter
+public class ResourceOwnerPasswordGrantAuthenticator extends TokenReceiver implements IAuthenticator {
 
-    @Getter
     private final String clientId;
-    @Getter
     private final String userName;
-    @Getter
     private final String password;
-    private final ResourceOwnerPasswordTokenReceiver tokenReceiver;
 
     /**
      * The authenticator for the resource owner password grant type if you have a client id, username and password.
@@ -29,10 +27,10 @@ public class ResourceOwnerPasswordGrantAuthenticator implements IAuthenticator {
      * @param httpClient Your optional custom http client.
      */
     public ResourceOwnerPasswordGrantAuthenticator(@NotNull String clientId, @NotNull String userName, @NotNull String password, @NotNull URI tokenUrl, @NotNull HttpClient httpClient) {
+        super(tokenUrl, httpClient);
         this.clientId = clientId;
         this.userName = userName;
         this.password = password;
-        this.tokenReceiver = new ResourceOwnerPasswordTokenReceiver(this, tokenUrl, httpClient);
     }
 
     /**
@@ -61,7 +59,10 @@ public class ResourceOwnerPasswordGrantAuthenticator implements IAuthenticator {
     }
 
     @Override
-    public String getToken() throws VaasAuthenticationException {
-        return tokenReceiver.getToken();
+    protected String tokenRequestToForm() {
+        return "client_id=" + URLEncoder.encode(this.getClientId(), StandardCharsets.UTF_8) +
+                "&username=" + URLEncoder.encode(this.getUserName(), StandardCharsets.UTF_8) +
+                "&password=" + URLEncoder.encode(this.getPassword(), StandardCharsets.UTF_8) +
+                "&grant_type=password";
     }
 }
