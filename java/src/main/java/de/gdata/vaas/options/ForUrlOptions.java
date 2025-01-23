@@ -1,16 +1,16 @@
 package de.gdata.vaas.options;
 
-import org.jetbrains.annotations.Nullable;
-
+import de.gdata.vaas.VaasConfig;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Options for configuring forUrl requests.
  * It includes options for using hash lookup and specifying a VaaS request ID.
- * 
+ *
  * <p>
  * Fields:
  * <ul>
@@ -18,17 +18,18 @@ import lombok.Setter;
  *   <li>{@code VaasRequestId} - An optional string representing the VaaS request ID.</li>
  * </ul>
  * </p>
- * 
  */
+@Setter
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class ForUrlOptions {
-    @Setter
-    @Getter
     boolean UseHashLookup = true;
 
-    @Setter
-    @Getter
-    @Nullable 
-    String VaasRequestId;    
+    @Nullable
+    String VaasRequestId;
+
+    public static ForUrlOptions fromVaasConfig(VaasConfig config) {
+        return new ForUrlOptions(config.isUseHashLookup(), null);
+    }
 }

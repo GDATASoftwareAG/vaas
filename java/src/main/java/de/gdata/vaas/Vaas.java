@@ -1,12 +1,14 @@
 package de.gdata.vaas;
 
+import de.gdata.vaas.authentication.IAuthenticator;
+import de.gdata.vaas.exceptions.VaasAuthenticationException;
+import de.gdata.vaas.exceptions.VaasClientException;
+import de.gdata.vaas.exceptions.VaasServerException;
 import de.gdata.vaas.messages.*;
 import de.gdata.vaas.options.ForFileOptions;
 import de.gdata.vaas.options.ForSha256Options;
 import de.gdata.vaas.options.ForStreamOptions;
 import de.gdata.vaas.options.ForUrlOptions;
-import de.gdata.vaas.exceptions.*;
-import de.gdata.vaas.authentication.*;
 import lombok.Getter;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
@@ -14,6 +16,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -55,6 +58,10 @@ public class Vaas implements IVaas {
         this.httpClient = httpClient;
     }
 
+    public Vaas(IAuthenticator authenticator) throws URISyntaxException {
+        this(new VaasConfig(), authenticator);
+    }
+
     private static <T, R> Function<T, CompletableFuture<R>> handleException(
             ThrowingFunction<T, CompletableFuture<R>> function) {
         return input -> {
@@ -64,11 +71,6 @@ public class Vaas implements IVaas {
                 return CompletableFuture.failedFuture(e);
             }
         };
-    }
-
-    @FunctionalInterface
-    interface ThrowingFunction<T, R> {
-        R apply(T t) throws Exception;
     }
 
     private static String encodeParams(Map<String, String> params) {
@@ -137,7 +139,7 @@ public class Vaas implements IVaas {
      *
      * @param sha256 the SHA-256 hash to retrieve the verdict for
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     *         the hash
+     * the hash
      * @throws IOException                 If an I/O error occurs during the
      *                                     request.
      * @throws InterruptedException        If the operation is interrupted.
@@ -146,10 +148,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256)
             throws IOException, InterruptedException, VaasAuthenticationException {
-        var forSha256Options = new ForSha256Options();
-        forSha256Options.setUseCache(true);
-        forSha256Options.setUseHashLookup(true);
-        return this.forSha256Async(sha256, forSha256Options);
+        return this.forSha256Async(sha256, ForSha256Options.fromVaasConfig(this.config));
     }
 
     /**
@@ -160,7 +159,7 @@ public class Vaas implements IVaas {
      * @param options The options to customize the request, such as using the cache
      *                and hash lookup.
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     *         the hash
+     * the hash
      * @throws IOException                 If an I/O error occurs during the
      *                                     request.
      * @throws InterruptedException        If the operation is interrupted.
@@ -228,7 +227,7 @@ public class Vaas implements IVaas {
      *
      * @param file the {@link Path} to the file to be processed
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     *         the file
+     * the file
      * @throws IOException                 if an I/O error occurs
      * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
@@ -238,10 +237,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forFileAsync(Path file)
             throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException {
-        var forFileOptions = new ForFileOptions();
-        forFileOptions.setUseCache(true);
-        forFileOptions.setUseHashLookup(true);
-        return forFileAsync(file, forFileOptions);
+        return forFileAsync(file, ForFileOptions.fromVaaSConfig(this.config));
     }
 
     /**
@@ -254,7 +250,7 @@ public class Vaas implements IVaas {
      * @param options The options to customize the request, such as using the cache
      *                and hash lookup.
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     *         the file
+     * the file
      * @throws IOException                 if an I/O error occurs
      * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
@@ -356,9 +352,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength)
             throws IOException, InterruptedException, VaasAuthenticationException {
-        var forStreamOptions = new ForStreamOptions();
-        forStreamOptions.setUseHashLookup(true);
-        return forStreamAsync(stream, contentLength, forStreamOptions);
+        return forStreamAsync(stream, contentLength, ForStreamOptions.fromVaasConfig(this.config));
     }
 
     /**
@@ -377,7 +371,7 @@ public class Vaas implements IVaas {
      */
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream inputStream, long contentLength,
-            ForStreamOptions options) throws IOException, InterruptedException, VaasAuthenticationException {
+                                                         ForStreamOptions options) throws IOException, InterruptedException, VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
 
         var filesUri = this.config.getUrl() + "/files?" + encodeParams(params);
@@ -449,8 +443,8 @@ public class Vaas implements IVaas {
      *
      * @param url the URL to retrieve the verdict for
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     *         the
-     *         URL
+     * the
+     * URL
      * @throws IOException                 If an I/O error occurs during the
      *                                     request.
      * @throws InterruptedException        If the operation is interrupted.
@@ -459,9 +453,7 @@ public class Vaas implements IVaas {
     @Override
     public CompletableFuture<VaasVerdict> forUrlAsync(URL url)
             throws IOException, InterruptedException, VaasAuthenticationException {
-        var forUrlOptions = new ForUrlOptions();
-        forUrlOptions.setUseHashLookup(true);
-        return forUrlAsync(url, forUrlOptions);
+        return forUrlAsync(url, ForUrlOptions.fromVaasConfig(this.config));
     }
 
     /**
@@ -472,8 +464,8 @@ public class Vaas implements IVaas {
      * @param options The options to customize the request, such as using hash
      *                lookup.
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     *         the
-     *         URL
+     * the
+     * URL
      * @throws IOException                 If an I/O error occurs during the
      *                                     request.
      * @throws InterruptedException        If the operation is interrupted.
@@ -549,5 +541,10 @@ public class Vaas implements IVaas {
     public VaasVerdict forUrl(URL url, ForUrlOptions options)
             throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forUrlAsync(url, options).get();
+    }
+
+    @FunctionalInterface
+    interface ThrowingFunction<T, R> {
+        R apply(T t) throws Exception;
     }
 }
