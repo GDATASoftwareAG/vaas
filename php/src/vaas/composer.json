@@ -20,7 +20,7 @@
         "amphp/http-client": "5.2.2",
         "amphp/file": "3.2.0",
         "amphp/websocket-client": "2.0.1",
-        "amphp/amp": "3.0.2",
+        "amphp/amp": "3.1.0",
         "amphp/cache": "2.0.1"
     },
     "autoload": {
