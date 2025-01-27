@@ -54,7 +54,7 @@ public class Vaas implements IVaas {
         this.config = config;
         this.authenticator = authenticator;
         this.httpClient = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_2)
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofMillis(config.getDefaultTimeoutInMs()))
                 .build();
     }
@@ -121,7 +121,7 @@ public class Vaas implements IVaas {
             }
             return new VaasServerException(detail);
         } catch (JsonProcessingException e) {
-            return new Exception("Invalid JSON response");
+            return new VaasServerException("Invalid JSON error response from server");
         } catch (Exception e) {
             if (response.statusCode() == 401) {
                 return new VaasAuthenticationException(
