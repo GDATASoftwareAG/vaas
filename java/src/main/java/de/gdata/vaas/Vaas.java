@@ -19,7 +19,6 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -65,19 +64,8 @@ public class Vaas implements IVaas {
         this.httpClient = httpClient;
     }
 
-    public Vaas(IAuthenticator authenticator) throws URISyntaxException {
+    public Vaas(IAuthenticator authenticator) {
         this(new VaasConfig(), authenticator);
-    }
-
-    private static <T, R> Function<T, CompletableFuture<R>> handleException(
-            ThrowingFunction<T, CompletableFuture<R>> function) {
-        return input -> {
-            try {
-                return function.apply(input);
-            } catch (Exception e) {
-                return CompletableFuture.failedFuture(e);
-            }
-        };
     }
 
     private static String encodeParams(Map<String, String> params) {
@@ -108,8 +96,8 @@ public class Vaas implements IVaas {
     private static Exception parseVaasError(HttpResponse<String> response) {
         String responseBody = response.body();
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, Object> problemDetails = objectMapper.readValue(responseBody, new TypeReference<>() {
+            var objectMapper = new ObjectMapper();
+            var problemDetails = objectMapper.readValue(responseBody, new TypeReference<>() {
             });
             String type = (String) problemDetails.getOrDefault("type", "");
             String detail = (String) problemDetails.getOrDefault("detail", "Unknown error");

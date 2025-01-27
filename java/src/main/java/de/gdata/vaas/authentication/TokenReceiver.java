@@ -2,6 +2,8 @@ package de.gdata.vaas.authentication;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+
+import de.gdata.vaas.CompletableFutureExceptionHandler;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
@@ -66,6 +68,7 @@ abstract class TokenReceiver {
         }
     }
 
+
     private TokenResponse requestToken() throws VaasAuthenticationException {
         try {
             String form = tokenRequestToForm();
@@ -74,7 +77,8 @@ abstract class TokenReceiver {
                     .POST(HttpRequest.BodyPublishers.ofString(form))
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenCompose(CompletableFutureExceptionHandler.handleException()))
+            HttpResponse<String> response = httpClient.send(request,);
 
             if (response.statusCode() != 200) {
                 JsonObject errorResponse = JsonParser.parseString(response.body()).getAsJsonObject();
