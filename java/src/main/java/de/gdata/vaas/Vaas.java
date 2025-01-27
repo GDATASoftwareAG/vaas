@@ -1,8 +1,6 @@
 package de.gdata.vaas;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import de.gdata.vaas.authentication.IAuthenticator;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
@@ -37,7 +35,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
+
+import static de.gdata.vaas.CompletableFutureExceptionHandler.handleException;
 
 public class Vaas implements IVaas {
     private static final String userAgent = "Java/9.0.0";
@@ -96,20 +95,19 @@ public class Vaas implements IVaas {
     private static Exception parseVaasError(HttpResponse<String> response) {
         String responseBody = response.body();
         try {
-            var objectMapper = new ObjectMapper();
-            var problemDetails = objectMapper.readValue(responseBody, new TypeReference<>() {
-            });
-            String type = (String) problemDetails.getOrDefault("type", "");
-            String detail = (String) problemDetails.getOrDefault("detail", "Unknown error");
-
-            if (type.equals("VaasClientException")) {
-                return new VaasClientException(detail);
-            } else if (type.equals("VaasAuthenticationException")) {
-                return new VaasAuthenticationException(detail);
+            Map<String, Object> problemDetails = new Gson().fromJson(responseBody, Map.class);
+            if (problemDetails != null) {
+                String type = (String) problemDetails.getOrDefault("type", "");
+                String detail = (String) problemDetails.getOrDefault("detail", "Unknown error");
+                if (type.equals("VaasClientException")) {
+                    return new VaasClientException(detail);
+                } else if (type.equals("VaasAuthenticationException")) {
+                    return new VaasAuthenticationException(detail);
+                }
+                return new VaasServerException(detail);
+            } else {
+                return new VaasServerException("Invalid JSON error response from server");
             }
-            return new VaasServerException(detail);
-        } catch (JsonProcessingException e) {
-            return new VaasServerException("Invalid JSON error response from server");
         } catch (Exception e) {
             if (response.statusCode() == 401) {
                 return new VaasAuthenticationException(
@@ -123,7 +121,7 @@ public class Vaas implements IVaas {
         }
     }
 
-    private CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, URI uri, String vaasRequestId) throws IOException, VaasAuthenticationException, InterruptedException {
+    private CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, URI uri, String vaasRequestId) throws VaasAuthenticationException {
         var request = CreateHttpRequestBuilderWithHeaders(uri, vaasRequestId)
                 .GET()
                 .build();
@@ -139,7 +137,7 @@ public class Vaas implements IVaas {
     }
 
     private HttpRequest.Builder CreateHttpRequestBuilderWithHeaders(URI uri, String requestId)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+            throws VaasAuthenticationException {
         var token = this.authenticator.getToken();
         var httpRequestBuilder = HttpRequest.newBuilder()
                 .uri(uri)
@@ -159,14 +157,11 @@ public class Vaas implements IVaas {
      * @param sha256 the SHA-256 hash to retrieve the verdict for
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
      * the hash
-     * @throws IOException                 If an I/O error occurs during the
-     *                                     request.
-     * @throws InterruptedException        If the operation is interrupted.
      * @throws VaasAuthenticationException If there is an authentication error.
      */
     @Override
     public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+            throws VaasAuthenticationException {
         return this.forSha256Async(sha256, ForSha256Options.fromVaasConfig(this.config));
     }
 
@@ -179,14 +174,11 @@ public class Vaas implements IVaas {
      *                and hash lookup.
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
      * the hash
-     * @throws IOException                 If an I/O error occurs during the
-     *                                     request.
-     * @throws InterruptedException        If the operation is interrupted.
      * @throws VaasAuthenticationException If there is an authentication error.
      */
     @Override
     public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256, ForSha256Options options)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+            throws VaasAuthenticationException {
         var params = Map.of(
                 "useCache", String.valueOf(options.isUseCache()),
                 "useHashLookup", String.valueOf(options.isUseHashLookup()));
@@ -206,12 +198,11 @@ public class Vaas implements IVaas {
      * @throws InterruptedException        if the thread is interrupted while
      *                                     waiting for the result
      * @throws ExecutionException          if the computation threw an exception
-     * @throws IOException                 if an I/O error occurs
      * @throws VaasAuthenticationException if there is an authentication error
      */
     @Override
     public VaasVerdict forSha256(Sha256 sha256)
-            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
+            throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forSha256Async(sha256).get();
     }
 
@@ -226,12 +217,11 @@ public class Vaas implements IVaas {
      * @throws InterruptedException        if the thread is interrupted while
      *                                     waiting for the result
      * @throws ExecutionException          if the computation threw an exception
-     * @throws IOException                 if an I/O error occurs
      * @throws VaasAuthenticationException if there is an authentication error
      */
     @Override
     public VaasVerdict forSha256(Sha256 sha256, ForSha256Options options)
-            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
+            throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forSha256Async(sha256, options).get();
     }
 
@@ -245,14 +235,13 @@ public class Vaas implements IVaas {
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
      * the file
      * @throws IOException                 if an I/O error occurs
-     * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
      * @throws NoSuchAlgorithmException    if the algorithm for hash lookup is not
      *                                     available
      */
     @Override
     public CompletableFuture<VaasVerdict> forFileAsync(Path file)
-            throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException {
+            throws IOException, VaasAuthenticationException, NoSuchAlgorithmException {
         return forFileAsync(file, ForFileOptions.fromVaaSConfig(this.config));
     }
 
@@ -268,14 +257,13 @@ public class Vaas implements IVaas {
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
      * the file
      * @throws IOException                 if an I/O error occurs
-     * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
      * @throws NoSuchAlgorithmException    if the algorithm for hash lookup is not
      *                                     available
      */
     @Override
     public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
-            throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException {
+            throws IOException, VaasAuthenticationException, NoSuchAlgorithmException {
         var sha256 = new Sha256(file);
         var contentLength = Files.size(file);
         var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
@@ -362,12 +350,11 @@ public class Vaas implements IVaas {
      * @param contentLength the length of the content in the input stream
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict}
      * @throws IOException                 if an I/O error occurs
-     * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
      */
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+            throws IOException, VaasAuthenticationException {
         return forStreamAsync(stream, contentLength, ForStreamOptions.fromVaasConfig(this.config));
     }
 
@@ -382,12 +369,11 @@ public class Vaas implements IVaas {
      *                      hash lookup.
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict}
      * @throws IOException                 if an I/O error occurs
-     * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
      */
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream inputStream, long contentLength,
-                                                         ForStreamOptions options) throws IOException, InterruptedException, VaasAuthenticationException {
+                                                         ForStreamOptions options) throws IOException, VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
 
         var filesUri = this.config.getUrl() + "/files?" + encodeParams(params);
@@ -461,14 +447,11 @@ public class Vaas implements IVaas {
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
      * the
      * URL
-     * @throws IOException                 If an I/O error occurs during the
-     *                                     request.
-     * @throws InterruptedException        If the operation is interrupted.
      * @throws VaasAuthenticationException If there is an authentication error.
      */
     @Override
     public CompletableFuture<VaasVerdict> forUrlAsync(URL url)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+            throws VaasAuthenticationException {
         return forUrlAsync(url, ForUrlOptions.fromVaasConfig(this.config));
     }
 
@@ -482,14 +465,11 @@ public class Vaas implements IVaas {
      * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
      * the
      * URL
-     * @throws IOException                 If an I/O error occurs during the
-     *                                     request.
-     * @throws InterruptedException        If the operation is interrupted.
      * @throws VaasAuthenticationException If there is an authentication error.
      */
     @Override
     public CompletableFuture<VaasVerdict> forUrlAsync(URL url, ForUrlOptions options)
-            throws IOException, InterruptedException, VaasAuthenticationException {
+            throws VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var urlsUri = this.config.getUrl() + "/urls";
         var urlAnalysisRequest = new UrlAnalysisRequest(url.toString(), options.isUseHashLookup());
@@ -530,12 +510,11 @@ public class Vaas implements IVaas {
      *                                     waiting
      *                                     for the result
      * @throws ExecutionException          if the computation threw an exception
-     * @throws IOException                 if an I/O error occurs
      * @throws VaasAuthenticationException if there is an authentication error
      */
     @Override
     public VaasVerdict forUrl(URL url)
-            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
+            throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forUrlAsync(url).get();
     }
 
@@ -550,12 +529,11 @@ public class Vaas implements IVaas {
      *                                     waiting
      *                                     for the result
      * @throws ExecutionException          if the computation threw an exception
-     * @throws IOException                 if an I/O error occurs
      * @throws VaasAuthenticationException if there is an authentication error
      */
     @Override
     public VaasVerdict forUrl(URL url, ForUrlOptions options)
-            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
+            throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forUrlAsync(url, options).get();
     }
 
