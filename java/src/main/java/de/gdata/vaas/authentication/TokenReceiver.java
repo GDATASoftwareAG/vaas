@@ -2,15 +2,11 @@ package de.gdata.vaas.authentication;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
-import de.gdata.vaas.CompletableFutureExceptionHandler;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -39,8 +35,8 @@ abstract class TokenReceiver {
         this(tokenUrl, HttpClient.newHttpClient());
     }
 
-    public TokenReceiver() throws URISyntaxException {
-        this(new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"),
+    public TokenReceiver() {
+        this(URI.create("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"),
                 HttpClient.newHttpClient());
     }
 

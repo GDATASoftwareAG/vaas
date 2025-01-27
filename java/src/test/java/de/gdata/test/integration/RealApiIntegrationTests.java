@@ -238,6 +238,8 @@ public class RealApiIntegrationTests {
         when(mockResponse.statusCode()).thenReturn(400);
         when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
+        when(mockResponse.body()).thenReturn(
+                new Gson().toJson(new ProblemDetails("VaasClientException", "Bad Request")));
 
         vaas = getVaasWithCredentials(mockHttpClient);
 
@@ -271,10 +273,10 @@ public class RealApiIntegrationTests {
         when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var authenticator = getAuthenticator(mockHttpClient);
+        vaas = getVaasWithCredentials(authenticator);
 
-        var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
-        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256Async(sha256).join());
     }
 
     @SuppressWarnings("unchecked")
