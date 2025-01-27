@@ -4,7 +4,6 @@ import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -54,8 +53,8 @@ public class ResourceOwnerPasswordGrantAuthenticator extends TokenReceiver imple
      * @param userName Your username or email
      * @param password Your password
      */
-    public ResourceOwnerPasswordGrantAuthenticator(@NotNull String clientId, @NotNull String userName, @NotNull String password) throws URISyntaxException {
-        this(clientId, userName, password, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
+    public ResourceOwnerPasswordGrantAuthenticator(@NotNull String clientId, @NotNull String userName, @NotNull String password) {
+        this(clientId, userName, password, URI.create("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     }
 
     @Override

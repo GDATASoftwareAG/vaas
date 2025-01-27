@@ -4,7 +4,6 @@ import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
@@ -50,8 +49,8 @@ public class ClientCredentialsGrantAuthenticator extends TokenReceiver implement
      * @param clientId     The client id
      * @param clientSecret The client secret
      */
-    public ClientCredentialsGrantAuthenticator(@NotNull String clientId, @NotNull String clientSecret) throws URISyntaxException {
-        this(clientId, clientSecret, new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
+    public ClientCredentialsGrantAuthenticator(@NotNull String clientId, @NotNull String clientSecret) {
+        this(clientId, clientSecret, URI.create("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"));
     }
 
     @Override
