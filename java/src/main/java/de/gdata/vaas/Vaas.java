@@ -1,5 +1,8 @@
 package de.gdata.vaas;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gdata.vaas.authentication.IAuthenticator;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
@@ -28,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -49,7 +53,10 @@ public class Vaas implements IVaas {
     public Vaas(@NonNull VaasConfig config, @NonNull IAuthenticator authenticator) {
         this.config = config;
         this.authenticator = authenticator;
-        this.httpClient = HttpClient.newHttpClient();
+        this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_2)
+                .connectTimeout(Duration.ofMillis(config.getDefaultTimeoutInMs()))
+                .build();
     }
 
     public Vaas(@NotNull VaasConfig config, IAuthenticator authenticator, HttpClient httpClient) {
@@ -86,27 +93,6 @@ public class Vaas implements IVaas {
         return encodedParams.toString();
     }
 
-    private static CompletableFuture<VaasVerdict> parseVaasError(HttpResponse<String> response) {
-        var problemDetails = response.body() != null ? ProblemDetails.fromJson(response.body()) : new ProblemDetails();
-        return switch (response.statusCode()) {
-            case 400 -> CompletableFuture.failedFuture(new VaasClientException(problemDetails.detail));
-            case 401 -> CompletableFuture.failedFuture(new VaasAuthenticationException());
-            default -> CompletableFuture.failedFuture(new VaasServerException(problemDetails.detail));
-        };
-    }
-
-    private static CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, HttpRequest request) {
-        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenCompose(handleException(response -> switch (response.statusCode()) {
-                    case 200 -> {
-                        var fileReport = FileReport.fromJson(response.body());
-                        yield CompletableFuture.completedFuture(VaasVerdict.From(fileReport));
-                    }
-                    case 201 -> sendFileWithRetry(httpClient, request);
-                    default -> parseVaasError(response);
-                }));
-    }
-
     private static CompletableFuture<VaasVerdict> sendUrlWithRetry(HttpClient httpClient, HttpRequest request) {
         return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenCompose(handleException(response -> switch (response.statusCode()) {
@@ -114,8 +100,53 @@ public class Vaas implements IVaas {
                         var urlReport = UrlReport.fromJson(response.body());
                         yield CompletableFuture.completedFuture(VaasVerdict.From(urlReport));
                     }
-                    case 201 -> sendUrlWithRetry(httpClient, request);
-                    default -> parseVaasError(response);
+                    case 201, 202 -> sendUrlWithRetry(httpClient, request);
+                    default -> throw parseVaasError(response);
+                }));
+    }
+
+    private static Exception parseVaasError(HttpResponse<String> response) {
+        String responseBody = response.body();
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, Object> problemDetails = objectMapper.readValue(responseBody, new TypeReference<>() {
+            });
+            String type = (String) problemDetails.getOrDefault("type", "");
+            String detail = (String) problemDetails.getOrDefault("detail", "Unknown error");
+
+            if (type.equals("VaasClientException")) {
+                return new VaasClientException(detail);
+            } else if (type.equals("VaasAuthenticationException")) {
+                return new VaasAuthenticationException(detail);
+            }
+            return new VaasServerException(detail);
+        } catch (JsonProcessingException e) {
+            return new Exception("Invalid JSON response");
+        } catch (Exception e) {
+            if (response.statusCode() == 401) {
+                return new VaasAuthenticationException(
+                        "Server did not accept token from identity provider. Check if you are using the correct identity provider and credentials."
+                );
+            } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                return new VaasClientException("HTTP Error: " + response.statusCode());
+            } else {
+                return new VaasServerException("HTTP Error: " + response.statusCode());
+            }
+        }
+    }
+
+    private CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, URI uri, String vaasRequestId) throws IOException, VaasAuthenticationException, InterruptedException {
+        var request = CreateHttpRequestBuilderWithHeaders(uri, vaasRequestId)
+                .GET()
+                .build();
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenCompose(handleException(response -> switch (response.statusCode()) {
+                    case 200 -> {
+                        var fileReport = FileReport.fromJson(response.body());
+                        yield CompletableFuture.completedFuture(VaasVerdict.From(fileReport));
+                    }
+                    case 201, 202 -> sendFileWithRetry(httpClient, uri, vaasRequestId);
+                    default -> throw parseVaasError(response);
                 }));
     }
 
@@ -173,11 +204,8 @@ public class Vaas implements IVaas {
                 "useHashLookup", String.valueOf(options.isUseHashLookup()));
         var filesReportUri = this.config.getUrl() + String.format("/files/%s/report?", sha256.getValue())
                 + encodeParams(params);
-        var request = CreateHttpRequestBuilderWithHeaders(URI.create(filesReportUri), options.getVaasRequestId())
-                .GET()
-                .build();
 
-        return sendFileWithRetry(httpClient, request).orTimeout(this.config.getDefaultTimeoutInMs(),
+        return sendFileWithRetry(httpClient, URI.create(filesReportUri), options.getVaasRequestId()).orTimeout(this.config.getDefaultTimeoutInMs(),
                 TimeUnit.MILLISECONDS);
     }
 
@@ -261,9 +289,9 @@ public class Vaas implements IVaas {
     public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
             throws IOException, InterruptedException, VaasAuthenticationException, NoSuchAlgorithmException {
         var sha256 = new Sha256(file);
+        var contentLength = Files.size(file);
         var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
                 options.getVaasRequestId());
-
         return forSha256Async(sha256, forSha256Options)
                 .thenCompose(handleException(vaasVerdict -> {
                     var verdictWithoutDetection = vaasVerdict.getVerdict() == Verdict.MALICIOUS
@@ -283,7 +311,7 @@ public class Vaas implements IVaas {
                             forStreamOptions.setUseHashLookup(options.isUseHashLookup());
                             forStreamOptions.setVaasRequestId(options.getVaasRequestId());
 
-                            return forStreamAsync(inputstream, file.toFile().length(), forStreamOptions)
+                            return forStreamAsync(inputstream, contentLength, forStreamOptions)
                                     .whenComplete((result, ex) -> {
                                         try {
                                             inputstream.close();
@@ -387,7 +415,7 @@ public class Vaas implements IVaas {
                 .thenCompose(handleException(response -> {
                     var statusCode = response.statusCode();
                     if (statusCode < 200 || statusCode >= 300) {
-                        return parseVaasError(response);
+                        throw parseVaasError(response);
                     }
                     var fileResponseStarted = FileAnalysisStarted.fromJson(response.body());
                     var sha256 = new Sha256(fileResponseStarted.getSha256());
@@ -486,7 +514,7 @@ public class Vaas implements IVaas {
                 .thenCompose(handleException(response -> {
                     var statusCode = response.statusCode();
                     if (statusCode < 200 || statusCode >= 300) {
-                        return parseVaasError(response);
+                        throw parseVaasError(response);
                     }
                     var urlAnalysisStarted = UrlAnalysisStarted.fromJson(response.body());
                     var urlsReportUri = this.config.getUrl()

@@ -9,7 +9,7 @@ import java.net.URISyntaxException;
 @Setter
 @Getter
 public class VaasConfig {
-    long defaultTimeoutInMs = 120000;
+    long defaultTimeoutInMs = 300000;
     boolean useCache = true;
     boolean useHashLookup = true;
     private URI url = new URI("https://gateway.production.vaas.gdatasecurity.de");
