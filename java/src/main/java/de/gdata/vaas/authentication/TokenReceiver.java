@@ -15,6 +15,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -39,7 +40,8 @@ abstract class TokenReceiver {
     }
 
     public TokenReceiver() throws URISyntaxException {
-        this(new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"), HttpClient.newHttpClient());
+        this(new URI("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"),
+                HttpClient.newHttpClient());
     }
 
     public String getToken() throws VaasAuthenticationException {
@@ -58,7 +60,7 @@ abstract class TokenReceiver {
             }
 
             lastRequestTime = Instant.now();
-            lastTokenResponse = requestToken();
+            lastTokenResponse = requestToken().get();
             validTo = Instant.now().plusSeconds(lastTokenResponse.expiresInSeconds());
             return lastTokenResponse.accessToken();
         } catch (Exception ex) {
@@ -68,30 +70,36 @@ abstract class TokenReceiver {
         }
     }
 
+    private CompletableFuture<TokenResponse> requestToken() {
+        String form = tokenRequestToForm();
+        HttpRequest request = HttpRequest.newBuilder(tokenUrl)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .build();
 
-    private TokenResponse requestToken() throws VaasAuthenticationException {
+        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenCompose(response -> {
+                    if (response.statusCode() != 200) {
+                        return CompletableFuture.failedFuture(
+                                new VaasAuthenticationException("Identity provider returned status code "
+                                        + response.statusCode() + ": " + extractErrorDescription(response.body())));
+                    }
+
+                    var tokenResponse = JsonParser.parseString(response.body()).getAsJsonObject();
+                    var accessToken = tokenResponse.get("access_token").getAsString();
+                    int expiresIn = tokenResponse.get("expires_in").getAsInt();
+
+                    return CompletableFuture.completedFuture(new TokenResponse(accessToken, expiresIn));
+                });
+    }
+
+    private String extractErrorDescription(String responseBody) {
         try {
-            String form = tokenRequestToForm();
-            HttpRequest request = HttpRequest.newBuilder(tokenUrl)
-                    .header("Content-Type", "application/x-www-form-urlencoded")
-                    .POST(HttpRequest.BodyPublishers.ofString(form))
-                    .build();
-
-            httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenCompose(CompletableFutureExceptionHandler.handleException()))
-            HttpResponse<String> response = httpClient.send(request,);
-
-            if (response.statusCode() != 200) {
-                JsonObject errorResponse = JsonParser.parseString(response.body()).getAsJsonObject();
-                throw new VaasAuthenticationException("Identity provider returned status code " + response.statusCode() + ": " + errorResponse.get("error_description").getAsString());
-            }
-
-            JsonObject tokenResponse = JsonParser.parseString(response.body()).getAsJsonObject();
-            String accessToken = tokenResponse.get("access_token").getAsString();
-            int expiresIn = tokenResponse.get("expires_in").getAsInt();
-
-            return new TokenResponse(accessToken, expiresIn);
-        } catch (IOException | InterruptedException ex) {
-            throw new VaasAuthenticationException("Failed to request token", ex);
+            JsonObject errorResponse = JsonParser.parseString(responseBody).getAsJsonObject();
+            return errorResponse.has("error_description") ? errorResponse.get("error_description").getAsString()
+                    : "Unknown error";
+        } catch (Exception e) {
+            return "Unable to parse error description: " + e.getMessage();
         }
     }
 
