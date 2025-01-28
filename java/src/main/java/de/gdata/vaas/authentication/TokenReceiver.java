@@ -2,6 +2,7 @@ package de.gdata.vaas.authentication;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.ibm.asyncutil.locks.AsyncLock;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import lombok.NonNull;
 import org.jetbrains.annotations.NotNull;
@@ -12,11 +13,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 abstract class TokenReceiver {
-    private final Lock lock = new ReentrantLock();
+    private final AsyncLock lock = AsyncLock.createFair();
 
     @NonNull
     private final URI tokenUrl;
@@ -40,30 +39,35 @@ abstract class TokenReceiver {
                 HttpClient.newHttpClient());
     }
 
-    public String getToken() throws VaasAuthenticationException {
-        lock.lock();
-        try {
-            Instant now = Instant.now();
-            if (lastTokenResponse != null && validTo.isAfter(now)) {
-                return lastTokenResponse.accessToken();
-            }
-
-            if (lastRequestTime != null) {
-                long timeToWait = lastRequestTime.plusSeconds(1).getEpochSecond() - now.getEpochSecond();
-                if (timeToWait > 0) {
-                    Thread.sleep(timeToWait * 1000);
+    public CompletableFuture<String> getToken() {
+        return lock.acquireLock().thenCompose(token -> {
+            try {
+                Instant now = Instant.now();
+                if (lastTokenResponse != null && validTo.isAfter(now)) {
+                    return CompletableFuture.completedFuture(lastTokenResponse.accessToken());
                 }
-            }
 
-            lastRequestTime = Instant.now();
-            lastTokenResponse = requestToken().get();
-            validTo = Instant.now().plusSeconds(lastTokenResponse.expiresInSeconds());
-            return lastTokenResponse.accessToken();
-        } catch (Exception ex) {
-            throw new VaasAuthenticationException("Failed to get token");
-        } finally {
-            lock.unlock();
-        }
+                if (lastRequestTime != null) {
+                    long timeToWait = lastRequestTime.plusSeconds(1).getEpochSecond() - now.getEpochSecond();
+                    if (timeToWait > 0) {
+                        try {
+                            Thread.sleep(timeToWait * 1000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+                }
+
+                lastRequestTime = Instant.now();
+                lastTokenResponse = requestToken().get();
+                validTo = Instant.now().plusSeconds(lastTokenResponse.expiresInSeconds());
+                return CompletableFuture.completedFuture(lastTokenResponse.accessToken());
+            } catch (Exception e) {
+                return CompletableFuture.failedFuture(new VaasAuthenticationException("Failed to get token", e));
+            } finally {
+                token.releaseLock();
+            }
+        }).toCompletableFuture();
     }
 
     private CompletableFuture<TokenResponse> requestToken() {

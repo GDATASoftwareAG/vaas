@@ -1,14 +1,14 @@
 package de.gdata.test.unit;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-import java.net.URI;
-import org.junit.jupiter.api.Test;
-
 import de.gdata.vaas.authentication.ClientCredentialsGrantAuthenticator;
 import de.gdata.vaas.authentication.ResourceOwnerPasswordGrantAuthenticator;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.junit.jupiter.api.Test;
+
+import java.net.URI;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class AuthenticatorTest {
     private static final Dotenv dotenv = Dotenv.configure()
@@ -29,7 +29,7 @@ public class AuthenticatorTest {
         var clientSecret = getEnvironmentKey("CLIENT_SECRET");
         var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var token = authenticator.getToken();
+        var token = authenticator.getToken().get();
 
         assertNotNull(token);
     }
@@ -40,8 +40,8 @@ public class AuthenticatorTest {
         var clientSecret = getEnvironmentKey("CLIENT_SECRET");
         var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var token = authenticator.getToken();
-        var cachedToken = authenticator.getToken();
+        var token = authenticator.getToken().get();
+        var cachedToken = authenticator.getToken().get();
 
         assertEquals(token, cachedToken);
     }
@@ -53,7 +53,7 @@ public class AuthenticatorTest {
         var password = getEnvironmentKey("VAAS_PASSWORD");
         var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
         var authenticator = new ResourceOwnerPasswordGrantAuthenticator(clientId, username, password, tokenUrl);
-        var token = authenticator.getToken();
+        var token = authenticator.getToken().get();
 
         assertNotNull(token);
     }
@@ -65,8 +65,8 @@ public class AuthenticatorTest {
         var password = getEnvironmentKey("VAAS_PASSWORD");
         var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
         var authenticator = new ResourceOwnerPasswordGrantAuthenticator(clientId, username, password, tokenUrl);
-        var token = authenticator.getToken();
-        var cachedToken = authenticator.getToken();
+        var token = authenticator.getToken().get();
+        var cachedToken = authenticator.getToken().get();
 
         assertEquals(token, cachedToken);
     }

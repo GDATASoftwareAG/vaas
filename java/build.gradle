@@ -22,6 +22,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'org.jetbrains:annotations:26.0.1'
     implementation 'io.github.cdimascio:dotenv-java:3.1.0'
+    implementation 'com.ibm.async:asyncutil:0.1.0'
     testImplementation 'org.testng:testng:7.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.4'
     testImplementation 'org.mockito:mockito-core:5.14.2'
@@ -39,13 +40,13 @@ dependencies {
 test {
     useJUnitPlatform()
     testLogging {
-      events "passed", "skipped", "failed"
+        events "passed", "skipped", "failed"
 
-      showExceptions true
-      exceptionFormat "full"
-      showCauses true
-      showStackTraces true
-      showStandardStreams true
+        showExceptions true
+        exceptionFormat "full"
+        showCauses true
+        showStackTraces true
+        showStandardStreams true
     }
 }
 
@@ -97,7 +98,7 @@ publishing {
     signing {
         def signingKey = findProperty("signingKey")
         def signingPassword = findProperty("signingPassword")
-        useInMemoryPgpKeys(signingKey, signingPassword)        
+        useInMemoryPgpKeys(signingKey, signingPassword)
         sign publishing.publications.mavenJava
     }
 

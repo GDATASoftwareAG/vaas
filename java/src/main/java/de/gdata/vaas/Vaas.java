@@ -138,7 +138,13 @@ public class Vaas implements IVaas {
 
     private HttpRequest.Builder CreateHttpRequestBuilderWithHeaders(URI uri, String requestId)
             throws VaasAuthenticationException {
-        var token = this.authenticator.getToken();
+        String token;
+        try {
+            token = this.authenticator.getToken().get();
+        } catch (Exception e) {
+            throw new VaasAuthenticationException("Failed to get token", e);
+        }
+
         var httpRequestBuilder = HttpRequest.newBuilder()
                 .uri(uri)
                 .header("Authorization", "Bearer " + token)
@@ -239,7 +245,7 @@ public class Vaas implements IVaas {
 
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream inputStream, long contentLength,
-            ForStreamOptions options) throws VaasAuthenticationException {
+                                                         ForStreamOptions options) throws VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
 
         var filesUri = this.config.getUrl() + "/files?" + encodeParams(params);
