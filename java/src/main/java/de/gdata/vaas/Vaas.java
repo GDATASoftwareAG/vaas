@@ -95,10 +95,10 @@ public class Vaas implements IVaas {
     private static Exception parseVaasError(HttpResponse<String> response) {
         String responseBody = response.body();
         try {
-            Map<String, Object> problemDetails = new Gson().fromJson(responseBody, Map.class);
+            var problemDetails = new Gson().fromJson(responseBody, Map.class);
             if (problemDetails != null) {
-                String type = (String) problemDetails.getOrDefault("type", "");
-                String detail = (String) problemDetails.getOrDefault("detail", "Unknown error");
+                var type = (String) problemDetails.getOrDefault("type", "");
+                var detail = (String) problemDetails.getOrDefault("detail", "Unknown error");
                 if (type.equals("VaasClientException")) {
                     return new VaasClientException(detail);
                 } else if (type.equals("VaasAuthenticationException")) {
@@ -111,8 +111,7 @@ public class Vaas implements IVaas {
         } catch (Exception e) {
             if (response.statusCode() == 401) {
                 return new VaasAuthenticationException(
-                        "Server did not accept token from identity provider. Check if you are using the correct identity provider and credentials."
-                );
+                        "Server did not accept token from identity provider. Check if you are using the correct identity provider and credentials.");
             } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
                 return new VaasClientException("HTTP Error: " + response.statusCode());
             } else {
@@ -121,7 +120,8 @@ public class Vaas implements IVaas {
         }
     }
 
-    private CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, URI uri, String vaasRequestId) throws VaasAuthenticationException {
+    private CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, URI uri, String vaasRequestId)
+            throws VaasAuthenticationException {
         var request = CreateHttpRequestBuilderWithHeaders(uri, vaasRequestId)
                 .GET()
                 .build();
@@ -149,121 +149,41 @@ public class Vaas implements IVaas {
         return httpRequestBuilder;
     }
 
-    /**
-     * Asynchronously retrieves a {@link CompletableFuture} containing the
-     * {@link VaasVerdict} for the given SHA-256 hash.
-     * This method uses cache and hash lookup options by default.
-     *
-     * @param sha256 the SHA-256 hash to retrieve the verdict for
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     * the hash
-     * @throws VaasAuthenticationException If there is an authentication error.
-     */
     @Override
-    public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256)
-            throws VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256) throws VaasAuthenticationException {
         return this.forSha256Async(sha256, ForSha256Options.fromVaasConfig(this.config));
     }
 
-    /**
-     * Asynchronously retrieves a {@link CompletableFuture} containing the
-     * {@link VaasVerdict} for the given SHA-256 hash.
-     *
-     * @param sha256  the SHA-256 hash to retrieve the verdict for
-     * @param options The options to customize the request, such as using the cache
-     *                and hash lookup.
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     * the hash
-     * @throws VaasAuthenticationException If there is an authentication error.
-     */
     @Override
-    public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256, ForSha256Options options)
-            throws VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forSha256Async(Sha256 sha256, ForSha256Options options) throws VaasAuthenticationException {
         var params = Map.of(
                 "useCache", String.valueOf(options.isUseCache()),
                 "useHashLookup", String.valueOf(options.isUseHashLookup()));
         var filesReportUri = this.config.getUrl() + String.format("/files/%s/report?", sha256.getValue())
                 + encodeParams(params);
 
-        return sendFileWithRetry(httpClient, URI.create(filesReportUri), options.getVaasRequestId()).orTimeout(this.config.getDefaultTimeoutInMs(),
+        return sendFileWithRetry(httpClient, URI.create(filesReportUri), options.getVaasRequestId()).orTimeout(
+                this.config.getDefaultTimeoutInMs(),
                 TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Retrieves a {@link VaasVerdict} for the given SHA-256 hash.
-     * This method uses cache and hash lookup options by default.
-     *
-     * @param sha256 the SHA-256 hash to retrieve the verdict for
-     * @return the {@link VaasVerdict} for the given SHA-256 hash
-     * @throws InterruptedException        if the thread is interrupted while
-     *                                     waiting for the result
-     * @throws ExecutionException          if the computation threw an exception
-     * @throws VaasAuthenticationException if there is an authentication error
-     */
     @Override
-    public VaasVerdict forSha256(Sha256 sha256)
-            throws InterruptedException, ExecutionException, VaasAuthenticationException {
+    public VaasVerdict forSha256(Sha256 sha256) throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forSha256Async(sha256).get();
     }
 
-    /**
-     * Retrieves a {@link VaasVerdict} for the given SHA-256 hash.
-     * This method uses cache and hash lookup options by default.
-     *
-     * @param sha256  the SHA-256 hash to retrieve the verdict for
-     * @param options The options to customize the request, such as using the cache
-     *                and hash lookup.
-     * @return the {@link VaasVerdict} for the given SHA-256 hash
-     * @throws InterruptedException        if the thread is interrupted while
-     *                                     waiting for the result
-     * @throws ExecutionException          if the computation threw an exception
-     * @throws VaasAuthenticationException if there is an authentication error
-     */
     @Override
-    public VaasVerdict forSha256(Sha256 sha256, ForSha256Options options)
-            throws InterruptedException, ExecutionException, VaasAuthenticationException {
+    public VaasVerdict forSha256(Sha256 sha256, ForSha256Options options) throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forSha256Async(sha256, options).get();
     }
 
-    /**
-     * Asynchronously processes a file and returns a {@link CompletableFuture}
-     * containing the {@link VaasVerdict}.
-     * This method uses default options for file processing, including using the
-     * cache and hash lookup.
-     *
-     * @param file the {@link Path} to the file to be processed
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     * the file
-     * @throws IOException                 if an I/O error occurs
-     * @throws VaasAuthenticationException if authentication fails
-     * @throws NoSuchAlgorithmException    if the algorithm for hash lookup is not
-     *                                     available
-     */
     @Override
-    public CompletableFuture<VaasVerdict> forFileAsync(Path file)
-            throws IOException, VaasAuthenticationException, NoSuchAlgorithmException {
+    public CompletableFuture<VaasVerdict> forFileAsync(Path file) throws NoSuchAlgorithmException, IOException, VaasAuthenticationException {
         return forFileAsync(file, ForFileOptions.fromVaaSConfig(this.config));
     }
 
-    /**
-     * Asynchronously processes a file and returns a {@link CompletableFuture}
-     * containing the {@link VaasVerdict}.
-     * This method uses default options for file processing, including using the
-     * cache and hash lookup.
-     *
-     * @param file    the {@link Path} to the file to be processed
-     * @param options The options to customize the request, such as using the cache
-     *                and hash lookup.
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     * the file
-     * @throws IOException                 if an I/O error occurs
-     * @throws VaasAuthenticationException if authentication fails
-     * @throws NoSuchAlgorithmException    if the algorithm for hash lookup is not
-     *                                     available
-     */
     @Override
-    public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options)
-            throws IOException, VaasAuthenticationException, NoSuchAlgorithmException {
+    public CompletableFuture<VaasVerdict> forFileAsync(Path file, ForFileOptions options) throws NoSuchAlgorithmException, IOException, VaasAuthenticationException {
         var sha256 = new Sha256(file);
         var contentLength = Files.size(file);
         var forSha256Options = new ForSha256Options(options.isUseCache(), options.isUseHashLookup(),
@@ -302,78 +222,24 @@ public class Vaas implements IVaas {
                 })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Processes a file and returns the {@link VaasVerdict}.
-     * This method uses default options for file processing, including using the
-     * cache and hash lookup.
-     *
-     * @param file the {@link Path} to the file to be processed
-     * @return the {@link VaasVerdict} for the file
-     * @throws IOException                 if an I/O error occurs
-     * @throws InterruptedException        if the operation is interrupted
-     * @throws VaasAuthenticationException if authentication fails
-     * @throws NoSuchAlgorithmException    if the algorithm for hash lookup is not
-     *                                     available
-     */
     @Override
-    public VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, InterruptedException, ExecutionException,
-            IOException, VaasAuthenticationException {
+    public VaasVerdict forFile(Path file) throws NoSuchAlgorithmException, InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forFileAsync(file).get();
     }
 
-    /**
-     * Processes a file and returns the {@link VaasVerdict}.
-     *
-     * @param file    the {@link Path} to the file to be processed
-     * @param options The options to customize the request, such as using the cache
-     *                and hash lookup.
-     * @return the {@link VaasVerdict} for the file
-     * @throws IOException                 if an I/O error occurs
-     * @throws InterruptedException        if the operation is interrupted
-     * @throws VaasAuthenticationException if authentication fails
-     * @throws NoSuchAlgorithmException    if the algorithm for hash lookup is not
-     *                                     available
-     */
     @Override
-    public VaasVerdict forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, InterruptedException,
-            ExecutionException, IOException, VaasAuthenticationException {
+    public VaasVerdict forFile(Path file, ForFileOptions options) throws NoSuchAlgorithmException, InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
         return forFileAsync(file, options).get();
     }
 
-    /**
-     * Asynchronously processes a given input stream and returns a
-     * {@link CompletableFuture}
-     * containing the {@link VaasVerdict}.
-     * This method uses the hash lookup option by default.
-     *
-     * @param stream        the input stream to be processed
-     * @param contentLength the length of the content in the input stream
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict}
-     * @throws IOException                 if an I/O error occurs
-     * @throws VaasAuthenticationException if authentication fails
-     */
     @Override
-    public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength)
-            throws IOException, VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forStreamAsync(InputStream stream, long contentLength) throws VaasAuthenticationException {
         return forStreamAsync(stream, contentLength, ForStreamOptions.fromVaasConfig(this.config));
     }
 
-    /**
-     * Asynchronously processes a given input stream and returns a
-     * {@link CompletableFuture}
-     * containing the {@link VaasVerdict}.
-     *
-     * @param inputStream   the input stream to be processed
-     * @param contentLength the length of the content in the input stream
-     * @param options       The options to customize the request, such as using the
-     *                      hash lookup.
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict}
-     * @throws IOException                 if an I/O error occurs
-     * @throws VaasAuthenticationException if authentication fails
-     */
     @Override
     public CompletableFuture<VaasVerdict> forStreamAsync(InputStream inputStream, long contentLength,
-                                                         ForStreamOptions options) throws IOException, VaasAuthenticationException {
+            ForStreamOptions options) throws VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
 
         var filesUri = this.config.getUrl() + "/files?" + encodeParams(params);
@@ -401,75 +267,23 @@ public class Vaas implements IVaas {
                 })).orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Processes a given input stream and returns the {@link VaasVerdict}.
-     * This method uses the hash lookup option by default.
-     *
-     * @param stream        the input stream to be processed
-     * @param contentLength the length of the content in the input stream
-     * @return the {@link VaasVerdict}
-     * @throws InterruptedException        if the operation is interrupted
-     * @throws ExecutionException          if the computation threw an exception
-     * @throws IOException                 if an I/O error occurs
-     * @throws VaasAuthenticationException if there is an authentication error
-     */
     @Override
-    public VaasVerdict forStream(InputStream stream, long contentLength)
-            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
+    public VaasVerdict forStream(InputStream stream, long contentLength) throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forStreamAsync(stream, contentLength).get();
     }
 
-    /**
-     * Processes a given input stream and returns the {@link VaasVerdict}.
-     *
-     * @param stream        the input stream to be processed
-     * @param contentLength the length of the content in the input stream
-     * @param options       The options to customize the request, such as using the
-     *                      hash lookup.
-     * @return the {@link VaasVerdict}
-     * @throws InterruptedException        if the operation is interrupted
-     * @throws ExecutionException          if the computation threw an exception
-     * @throws IOException                 if an I/O error occurs
-     * @throws VaasAuthenticationException if there is an authentication error
-     */
     @Override
-    public VaasVerdict forStream(InputStream stream, long contentLength, ForStreamOptions options)
-            throws InterruptedException, ExecutionException, IOException, VaasAuthenticationException {
+    public VaasVerdict forStream(InputStream stream, long contentLength, ForStreamOptions options) throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forStreamAsync(stream, contentLength, options).get();
     }
 
-    /**
-     * Asynchronously retrieves a {@link CompletableFuture} containing the
-     * {@link VaasVerdict} for the given URL.
-     * This method uses hash lookup by default.
-     *
-     * @param url the URL to retrieve the verdict for
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     * the
-     * URL
-     * @throws VaasAuthenticationException If there is an authentication error.
-     */
     @Override
-    public CompletableFuture<VaasVerdict> forUrlAsync(URL url)
-            throws VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forUrlAsync(URL url) throws VaasAuthenticationException {
         return forUrlAsync(url, ForUrlOptions.fromVaasConfig(this.config));
     }
 
-    /**
-     * Asynchronously retrieves a {@link CompletableFuture} containing the
-     * {@link VaasVerdict} for the given URL.
-     *
-     * @param url     the URL to retrieve the verdict for
-     * @param options The options to customize the request, such as using hash
-     *                lookup.
-     * @return a {@link CompletableFuture} containing the {@link VaasVerdict} for
-     * the
-     * URL
-     * @throws VaasAuthenticationException If there is an authentication error.
-     */
     @Override
-    public CompletableFuture<VaasVerdict> forUrlAsync(URL url, ForUrlOptions options)
-            throws VaasAuthenticationException {
+    public CompletableFuture<VaasVerdict> forUrlAsync(URL url, ForUrlOptions options) throws VaasAuthenticationException {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var urlsUri = this.config.getUrl() + "/urls";
         var urlAnalysisRequest = new UrlAnalysisRequest(url.toString(), options.isUseHashLookup());
@@ -500,40 +314,13 @@ public class Vaas implements IVaas {
                 .orTimeout(this.config.getDefaultTimeoutInMs(), TimeUnit.MILLISECONDS);
     }
 
-    /**
-     * Retrieves a {@link VaasVerdict} for the given URL.
-     * This method uses hash lookup by default.
-     *
-     * @param url the URL to retrieve the verdict for
-     * @return the {@link VaasVerdict} for the URL
-     * @throws InterruptedException        if the thread is interrupted while
-     *                                     waiting
-     *                                     for the result
-     * @throws ExecutionException          if the computation threw an exception
-     * @throws VaasAuthenticationException if there is an authentication error
-     */
     @Override
-    public VaasVerdict forUrl(URL url)
-            throws InterruptedException, ExecutionException, VaasAuthenticationException {
+    public VaasVerdict forUrl(URL url) throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forUrlAsync(url).get();
     }
 
-    /**
-     * Retrieves a {@link VaasVerdict} for the given URL.
-     *
-     * @param url     the URL to retrieve the verdict for
-     * @param options The options to customize the request, such as using hash
-     *                lookup.
-     * @return the {@link VaasVerdict} for the URL
-     * @throws InterruptedException        if the thread is interrupted while
-     *                                     waiting
-     *                                     for the result
-     * @throws ExecutionException          if the computation threw an exception
-     * @throws VaasAuthenticationException if there is an authentication error
-     */
     @Override
-    public VaasVerdict forUrl(URL url, ForUrlOptions options)
-            throws InterruptedException, ExecutionException, VaasAuthenticationException {
+    public VaasVerdict forUrl(URL url, ForUrlOptions options) throws InterruptedException, ExecutionException, VaasAuthenticationException {
         return forUrlAsync(url, options).get();
     }
 
