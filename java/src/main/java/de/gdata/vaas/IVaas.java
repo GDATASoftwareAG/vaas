@@ -90,7 +90,7 @@ public interface IVaas {
      * {@link CompletableFuture}
      * containing the {@link VaasVerdict}.
      *
-     * @param inputStream   the input stream to be processed
+     * @param stream        the input stream to be processed
      * @param contentLength the length of the content in the input stream
      * @param options       The options to customize the request, such as using the
      *                      hash lookup.
@@ -172,7 +172,7 @@ public interface IVaas {
      *
      * @param file the {@link Path} to the file to be processed
      * @return the {@link VaasVerdict} for the file
-     * @throws ExecutionException
+     * @throws ExecutionException          if the computation threw an exception
      * @throws IOException                 if an I/O error occurs
      * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
@@ -189,7 +189,7 @@ public interface IVaas {
      * @param options The options to customize the request, such as using the cache
      *                and hash lookup.
      * @return the {@link VaasVerdict} for the file
-     * @throws ExecutionException
+     * @throws ExecutionException          if the computation threw an exception
      * @throws IOException                 if an I/O error occurs
      * @throws InterruptedException        if the operation is interrupted
      * @throws VaasAuthenticationException if authentication fails
@@ -238,8 +238,7 @@ public interface IVaas {
      * @throws ExecutionException          if the computation threw an exception
      * @throws VaasAuthenticationException if there is an authentication error
      */
-    VaasVerdict forUrl(URL url, ForUrlOptions options)
-            throws InterruptedException, ExecutionException, VaasAuthenticationException;
+    VaasVerdict forUrl(URL url) throws InterruptedException, ExecutionException, VaasAuthenticationException;
 
     /**
      * Retrieves a {@link VaasVerdict} for the given URL.
@@ -254,6 +253,7 @@ public interface IVaas {
      * @throws ExecutionException          if the computation threw an exception
      * @throws VaasAuthenticationException if there is an authentication error
      */
-    VaasVerdict forUrl(URL url) throws InterruptedException, ExecutionException, VaasAuthenticationException;
+    VaasVerdict forUrl(URL url, ForUrlOptions options)
+            throws InterruptedException, ExecutionException, VaasAuthenticationException;
 
 }
