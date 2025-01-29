@@ -39,16 +39,25 @@ abstract class TokenReceiver {
                 HttpClient.newHttpClient());
     }
 
+    private static String extractErrorDescription(String responseBody) {
+        try {
+            JsonObject errorResponse = JsonParser.parseString(responseBody).getAsJsonObject();
+            return errorResponse.has("error_description") ? errorResponse.get("error_description").getAsString()
+                    : "Unknown error";
+        } catch (Exception e) {
+            return "Unable to parse error description: " + e.getMessage();
+        }
+    }
+
     public CompletableFuture<String> getToken() {
         return lock.acquireLock().thenCompose(token -> {
             try {
                 Instant now = Instant.now();
-                if (lastTokenResponse != null && validTo.isAfter(now)) {
-                    return CompletableFuture.completedFuture(lastTokenResponse.accessToken());
+                if (this.lastTokenResponse != null && this.validTo.isAfter(now)) {
+                    return CompletableFuture.completedFuture(this.lastTokenResponse.accessToken());
                 }
-
-                if (lastRequestTime != null) {
-                    long timeToWait = lastRequestTime.plusSeconds(1).getEpochSecond() - now.getEpochSecond();
+                if (this.lastRequestTime != null) {
+                    long timeToWait = this.lastRequestTime.plusSeconds(1).getEpochSecond() - now.getEpochSecond();
                     if (timeToWait > 0) {
                         try {
                             Thread.sleep(timeToWait * 1000);
@@ -57,13 +66,14 @@ abstract class TokenReceiver {
                         }
                     }
                 }
-
                 lastRequestTime = Instant.now();
-                lastTokenResponse = requestToken().get();
-                validTo = Instant.now().plusSeconds(lastTokenResponse.expiresInSeconds());
-                return CompletableFuture.completedFuture(lastTokenResponse.accessToken());
+                return requestToken().thenCompose(tokenResponse -> {
+                    this.validTo = Instant.now().plusSeconds(tokenResponse.expiresInSeconds());
+                    this.lastTokenResponse = tokenResponse;
+                    return CompletableFuture.completedFuture(tokenResponse);
+                }).thenApply(TokenResponse::accessToken);
             } catch (Exception e) {
-                return CompletableFuture.failedFuture(new VaasAuthenticationException("Failed to get token", e));
+                return CompletableFuture.failedFuture(new VaasAuthenticationException(e.getMessage(), e.getCause()));
             } finally {
                 token.releaseLock();
             }
@@ -72,35 +82,22 @@ abstract class TokenReceiver {
 
     private CompletableFuture<TokenResponse> requestToken() {
         String form = tokenRequestToForm();
-        HttpRequest request = HttpRequest.newBuilder(tokenUrl)
+        HttpRequest request = HttpRequest.newBuilder(this.tokenUrl)
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .POST(HttpRequest.BodyPublishers.ofString(form))
                 .build();
-
-        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        return this.httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenCompose(response -> {
                     if (response.statusCode() != 200) {
                         return CompletableFuture.failedFuture(
                                 new VaasAuthenticationException("Identity provider returned status code "
                                         + response.statusCode() + ": " + extractErrorDescription(response.body())));
                     }
-
                     var tokenResponse = JsonParser.parseString(response.body()).getAsJsonObject();
                     var accessToken = tokenResponse.get("access_token").getAsString();
                     int expiresIn = tokenResponse.get("expires_in").getAsInt();
-
                     return CompletableFuture.completedFuture(new TokenResponse(accessToken, expiresIn));
                 });
-    }
-
-    private String extractErrorDescription(String responseBody) {
-        try {
-            JsonObject errorResponse = JsonParser.parseString(responseBody).getAsJsonObject();
-            return errorResponse.has("error_description") ? errorResponse.get("error_description").getAsString()
-                    : "Unknown error";
-        } catch (Exception e) {
-            return "Unable to parse error description: " + e.getMessage();
-        }
     }
 
     protected abstract String tokenRequestToForm();
