@@ -7,7 +7,7 @@ package de.gdata.vaas.exceptions;
  * * If the problem persists contact G DATA.
  */
 public class VaasServerException extends Exception {
-    public VaasServerException(String message, Exception cause) {
+    public VaasServerException(String message, Throwable cause) {
         super(message != null ? message : "Server error", cause);
     }
 

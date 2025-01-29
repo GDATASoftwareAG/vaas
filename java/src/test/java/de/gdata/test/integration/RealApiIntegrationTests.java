@@ -276,7 +276,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256Async(sha256).join());
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256(sha256));
     }
 
     @SuppressWarnings("unchecked")
@@ -292,7 +292,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256Async(sha256).join());
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256(sha256));
     }
 
     @Test
@@ -676,7 +676,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> vaas.forFileAsync(tmpFile).join());
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forFile(tmpFile));
     }
 
     @Test
@@ -1051,7 +1051,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forStream(inputStream, contentLength));
     }
 
     @Test
@@ -1341,7 +1341,7 @@ public class RealApiIntegrationTests {
         var authenticator = getAuthenticator(mockHttpClient);
         vaas = getVaasWithCredentials(authenticator);
 
-        assertThrows(VaasAuthenticationException.class, () -> vaas.forUrlAsync(url).join());
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forUrl(url));
     }
 
     @Test
@@ -1370,6 +1370,4 @@ public class RealApiIntegrationTests {
         var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());
         assertInstanceOf(TimeoutException.class, exception.getCause());
     }
-
-
 }
