@@ -23,7 +23,6 @@ import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -56,43 +55,40 @@ public class RealApiIntegrationTests {
         return value;
     }
 
-    private static IAuthenticator getAuthenticator() throws URISyntaxException {
+    private static IAuthenticator getAuthenticator() {
         var clientId = getEnvironmentKey("CLIENT_ID");
         var clientSecret = getEnvironmentKey("CLIENT_SECRET");
-        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
+        var tokenUrl = URI.create(getEnvironmentKey("TOKEN_URL"));
         return new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
     }
 
-    private static IAuthenticator getAuthenticator(HttpClient httpClient) throws URISyntaxException {
+    private static IAuthenticator getAuthenticator(HttpClient httpClient) {
         var clientId = getEnvironmentKey("CLIENT_ID");
         var clientSecret = getEnvironmentKey("CLIENT_SECRET");
-        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
+        var tokenUrl = URI.create(getEnvironmentKey("TOKEN_URL"));
         return new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl, httpClient);
     }
 
-    private static Vaas getVaasWithCredentials(IAuthenticator authenticator)
-            throws URISyntaxException {
+    private static Vaas getVaasWithCredentials(IAuthenticator authenticator) {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var config = new VaasConfig(new URI(vaasUrl));
+        var config = new VaasConfig(URI.create(vaasUrl));
         return new Vaas(config, authenticator);
     }
 
-    private static Vaas getVaasWithCredentials(HttpClient httpClient)
-            throws URISyntaxException {
+    private static Vaas getVaasWithCredentials(HttpClient httpClient) {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(new URI(vaasUrl));
+        var config = new VaasConfig(URI.create(vaasUrl));
         return new Vaas(config, authenticator, httpClient);
     }
 
-    private static Vaas getVaasWithCredentials()
-            throws URISyntaxException {
+    private static Vaas getVaasWithCredentials() {
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(new URI(vaasUrl));
+        var config = new VaasConfig(URI.create(vaasUrl));
         return new Vaas(config, authenticator);
     }
 
@@ -130,7 +126,7 @@ public class RealApiIntegrationTests {
             "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f, MALICIOUS",
             "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad, PUP"
     })
-    public void forSha256_ReturnsVerdict(String sha256, Verdict verdict) throws Exception {
+    public void forSha256_ReturnsVerdict(String sha256, Verdict verdict) {
         var sha256sum = new Sha256(sha256);
         vaas = getVaasWithCredentials();
 
@@ -148,7 +144,7 @@ public class RealApiIntegrationTests {
             "true, false",
             "true, true",
     })
-    public void forSha256_SendOptions(boolean useCache, boolean useHashLookup) throws Exception {
+    public void forSha256_SendOptions(boolean useCache, boolean useHashLookup) {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -177,7 +173,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void forSha256_SendUserAgent() throws Exception {
+    public void forSha256_SendUserAgent() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -203,7 +199,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void forSha256_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
+    public void forSha256_IfVaasRequestIdIsSet_SendTraceState() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -231,7 +227,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void forSha256_IfBadRequest_ThrowsVaasClientException() throws Exception {
+    public void forSha256_IfBadRequest_ThrowsVaasClientException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var mockHttpClient = mock(HttpClient.class);
         var mockResponse = mock(HttpResponse.class);
@@ -249,7 +245,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void forSha256_IfInternalServerError_ThrowsVaasServerException() throws Exception {
+    public void forSha256_IfInternalServerError_ThrowsVaasServerException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var mockHttpClient = mock(HttpClient.class);
         var mockResponse = mock(HttpResponse.class);
@@ -265,7 +261,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
-    public void forSha256_IfUnauthorized_ThrowsVaasAuthenticationException() throws Exception {
+    public void forSha256_IfUnauthorized_ThrowsVaasAuthenticationException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var mockHttpClient = mock(HttpClient.class);
         var mockResponse = mock(HttpResponse.class);
@@ -296,7 +292,7 @@ public class RealApiIntegrationTests {
     }
 
     @Test
-    public void forSha256_IfCancellationIsRequested_ThrowsCancellationException() throws Exception {
+    public void forSha256_IfCancellationIsRequested_ThrowsCancellationException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         vaas = getVaasWithCredentials();
 
@@ -315,7 +311,7 @@ public class RealApiIntegrationTests {
     })
     public void forFile_ReturnsVerdict(String uri, Verdict verdict) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(uri).toURL();
+        var url = URI.create(uri).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -336,7 +332,7 @@ public class RealApiIntegrationTests {
     })
     public void forFile_SendOptions(boolean useCache, boolean useHashLookup) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -415,7 +411,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_SendUserAgent() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -478,7 +474,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -542,7 +538,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfBadRequest_ThrowsVaasClientException() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -582,7 +578,7 @@ public class RealApiIntegrationTests {
     public void forFile_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -622,7 +618,7 @@ public class RealApiIntegrationTests {
     public void forFile_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -661,7 +657,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -683,7 +679,7 @@ public class RealApiIntegrationTests {
     public void forFile_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
@@ -701,14 +697,14 @@ public class RealApiIntegrationTests {
     public void forFile_BigFileWithSmallTimeout_ThrowsTimeoutException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = new URI("https://ash-speed.hetzner.com/1GB.bin").toURL();
+        var url = URI.create("https://ash-speed.hetzner.com/1GB.bin").toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(1000, new URI(vaasUrl));
+        var config = new VaasConfig(1000, URI.create(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         var forFileOptions = new ForFileOptions(false, false, null);
 
@@ -718,7 +714,7 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forStream_ReturnsVerdict() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -739,7 +735,7 @@ public class RealApiIntegrationTests {
             "true",
     })
     public void forStream_SendOptions(boolean useHashLookup) throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -799,7 +795,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_SendUserAgent() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -859,7 +855,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -920,7 +916,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_IfBadRequest_ThrowsVaasClientException() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -959,7 +955,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -998,7 +994,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -1036,7 +1032,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forStream_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -1057,7 +1053,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
@@ -1073,14 +1069,14 @@ public class RealApiIntegrationTests {
     @Test
     public void forStream_BigFileWithSmallTimeout_ThrowsTimeoutException()
             throws Exception {
-        var url = new URI("https://ash-speed.hetzner.com/1GB.bin").toURL();
+        var url = URI.create("https://ash-speed.hetzner.com/1GB.bin").toURL();
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(1000, new URI(vaasUrl));
+        var config = new VaasConfig(1000, URI.create(vaasUrl));
         var vaas = new Vaas(config, authenticator);
         var forStreamOptions = new ForStreamOptions(false, null);
 
@@ -1090,7 +1086,7 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forUrl_ReturnsVerdict() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         vaas = getVaasWithCredentials();
         var verdict = vaas.forUrlAsync(url).join();
@@ -1107,7 +1103,7 @@ public class RealApiIntegrationTests {
             "true",
     })
     public void forUrl_SendOptions(boolean useHashLookup) throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -1157,7 +1153,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_SendUserAgent() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -1207,7 +1203,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -1258,7 +1254,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_IfBadRequest_ThrowsVaasClientException() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -1282,7 +1278,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -1306,7 +1302,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -1329,7 +1325,7 @@ public class RealApiIntegrationTests {
     @SuppressWarnings("unchecked")
     @Test
     public void forUrl_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockResponse = mock(HttpResponse.class);
@@ -1347,7 +1343,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
-        var url = new URI(EICAR_URL).toURL();
+        var url = URI.create(EICAR_URL).toURL();
 
         vaas = getVaasWithCredentials();
         var future = vaas.forUrlAsync(url);
@@ -1360,11 +1356,11 @@ public class RealApiIntegrationTests {
     @Test
     public void forUrl_BigFileWithSmallTimeout_ThrowsTimeoutException()
             throws Exception {
-        var url = new URI("https://ash-speed.hetzner.com/1GB.bin").toURL();
+        var url = URI.create("https://ash-speed.hetzner.com/1GB.bin").toURL();
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var authenticator = getAuthenticator();
-        var config = new VaasConfig(1000, new URI(vaasUrl));
+        var config = new VaasConfig(1000, URI.create(vaasUrl));
         var vaas = new Vaas(config, authenticator);
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());
