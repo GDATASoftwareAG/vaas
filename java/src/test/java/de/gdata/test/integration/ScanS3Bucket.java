@@ -43,8 +43,9 @@ public class ScanS3Bucket {
         String S3_REGION = dotenv.get("S3_REGION");
 
         // Build VaaS
+        long startTimeAll = System.currentTimeMillis();
         ClientCredentialsGrantAuthenticator authenticator = new ClientCredentialsGrantAuthenticator(CLIENT_ID, CLIENT_SECRET, new URI(TOKEN_URL));
-        VaasConfig vaasConfig = new VaasConfig(Duration.ofMinutes(30).getSeconds() * 1000, false, true, new URI(VAAS_URL));
+        VaasConfig vaasConfig = new VaasConfig(Duration.ofSeconds(1).getSeconds() * 1000, false, true, new URI(VAAS_URL));
         Vaas vaas = new Vaas(vaasConfig, authenticator);
 
         // List S3 bucket
@@ -74,7 +75,7 @@ public class ScanS3Bucket {
 
         // Iterate over everything in S3 bucket and scan with VaaS
         List<Map<String, Object>> results = new ArrayList<>();
-        for (String key : keys) {
+        keys.parallelStream().forEach((key) -> {
             try {
                 System.out.println("Current key: " + key + " (" + keys.indexOf(key) + "/" + keys.size() + ")");
 
@@ -83,7 +84,6 @@ public class ScanS3Bucket {
                 long fileSize = s3Object.getObjectMetadata().getContentLength();
                 if (fileSize > 2500000000L) {
                     System.out.println("File too big, skipping: " + key);
-                    continue;
                 }
                 File tempFile = File.createTempFile("vaas-sample-", null);
                 try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -115,13 +115,14 @@ public class ScanS3Bucket {
             } catch (Exception e) {
                 System.out.println("Error processing key: " + key);
                 e.printStackTrace();
-            }
-        }
+            }            
+        });
 
         // Write results to file
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
         objectMapper.writeValue(new File("results-" + S3_BUCKET + ".json"), results);
+        long endTimeAll = System.currentTimeMillis();
 
         System.out.println("Results written to results-" + S3_BUCKET + ".json");
     }
