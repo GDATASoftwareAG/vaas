@@ -89,28 +89,35 @@ jobs:
           gradle-version: "8.6"
           build-root-directory: java
 
-      # - name: run examples for file
-      #   env:
-      #     SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
-      #   uses: gradle/gradle-build-action@v3
-      #   with:
-      #     arguments: fileScan
-      #     gradle-version: "8.6"
-      #     build-root-directory: java/examples/VaasExample
+      - name: publish local Maven package for examples
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: publishToLocalMaven
+          gradle-version: "8.6"
+          build-root-directory: java          
 
-      # - name: run examples for url
-      #   uses: gradle/gradle-build-action@v3
-      #   with:
-      #     arguments: urlScan
-      #     gradle-version: "8.6"
-      #     build-root-directory: java/examples/VaasExample
+      - name: run examples for file
+        env:
+          SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: fileScan
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample
 
-      # - name: run authentication examples
-      #   uses: gradle/gradle-build-action@v3
-      #   with:
-      #     arguments: authentication
-      #     gradle-version: "8.6"
-      #     build-root-directory: java/examples/VaasExample
+      - name: run examples for url
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: urlScan
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample
+
+      - name: run authentication examples
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: authentication
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample
 
       - name: extract version
         if: startsWith(github.ref, 'refs/tags/java')

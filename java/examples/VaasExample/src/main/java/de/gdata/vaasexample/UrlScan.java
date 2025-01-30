@@ -1,10 +1,7 @@
 package de.gdata.vaasexample;
 
-import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
-import de.gdata.vaas.Vaas;
-import de.gdata.vaas.VaasConfig;
-import de.gdata.vaas.messages.VerdictRequestAttributes;
-
+import de.gdata.vaas.*;
+import de.gdata.vaas.authentication.*;
 import java.net.URI;
 import java.net.URL;
 
@@ -24,15 +21,8 @@ public class UrlScan {
         var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, new URI(tokenUrl));
         var config = new VaasConfig(new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
-        vaas.connect();
-
         var url = new URL("https://secure.eicar.org/eicar.com");
-
-        var verdictRequestAttributes = new VerdictRequestAttributes();
-        verdictRequestAttributes.setTenantId("urlTenant");
-        var verdict = vaas.forUrl(url, verdictRequestAttributes);
-
-        vaas.disconnect();
+        var verdict = vaas.forUrl(url);
         System.out.printf("File %s was detected as %s", verdict.getSha256(), verdict.getVerdict());
     }
 }

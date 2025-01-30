@@ -1,8 +1,7 @@
 package de.gdata.vaasexample;
 
 import de.gdata.vaas.*;
-import de.gdata.vaas.messages.VerdictRequestAttributes;
-
+import de.gdata.vaas.authentication.*;
 import java.net.URI;
 import java.nio.file.Path;
 
@@ -33,16 +32,10 @@ public class Main {
             authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, new URI(tokenUrl));
         }
 
-        var config = new VaasConfig(
-                new URI(vaasUrl));
+        var config = new VaasConfig(new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
-        vaas.connect();
-
         var file = Path.of(scanPath);
-        var verdictRequestAttributes = new VerdictRequestAttributes();
-        verdictRequestAttributes.setTenantId("fileTenant");
-        var verdict = vaas.forFile(file, verdictRequestAttributes);
-        vaas.disconnect();
+        var verdict = vaas.forFile(file);
         System.out.printf("File %s was detected as %s", verdict.getSha256(), verdict.getVerdict());
     }
 

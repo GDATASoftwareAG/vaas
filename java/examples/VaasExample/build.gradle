@@ -6,12 +6,13 @@ group 'de.gdata.vaasexample'
 version '1.0-SNAPSHOT'
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
     implementation 'org.slf4j:slf4j-nop:2.0.16'
-    implementation 'de.gdata:vaas:8.3.8'
+    implementation 'de.gdata:vaas:0.0.0'
 }
 
 task fileScan(type: JavaExec) {
