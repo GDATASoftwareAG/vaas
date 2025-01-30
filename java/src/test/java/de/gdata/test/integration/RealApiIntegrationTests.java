@@ -15,6 +15,7 @@ import de.gdata.vaas.options.ForSha256Options;
 import de.gdata.vaas.options.ForStreamOptions;
 import de.gdata.vaas.options.ForUrlOptions;
 import io.github.cdimascio.dotenv.Dotenv;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -22,6 +23,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -30,7 +32,9 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -38,6 +42,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
+@Slf4j
 public class RealApiIntegrationTests {
     private static final String EICAR_URL = "https://secure.eicar.org/eicar.com.txt";
 
@@ -1365,5 +1370,61 @@ public class RealApiIntegrationTests {
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());
         assertInstanceOf(TimeoutException.class, exception.getCause());
+    }
+
+    @Test
+    @Disabled()
+    public void forFileAsync_WithSmallTimeout_DoesNotShowNegativeResources() {
+        var config = new VaasConfig(45, false, false, URI.create(getEnvironmentKey("VAAS_URL")));
+        var vaas = new Vaas(config, getAuthenticator());
+        var file = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        try (var writer = Files.newBufferedWriter(file)) {
+            writer.write(UUID.randomUUID().toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        while (true) {
+            try {
+                vaas.forFile(file);
+                System.out.print("+");
+                System.out.flush();
+            } catch (Exception e) {
+                System.out.print("-");
+                System.out.flush();
+            }
+        }
+    }
+
+    @Test
+    @Disabled()
+    public void forFileAsync_WithSmallTimeoutInParallel_DoesNotShowNegativeResources() {
+        var config = new VaasConfig(45, false, false, URI.create(getEnvironmentKey("VAAS_URL")));
+        var vaas = new Vaas(config, getAuthenticator());
+        var file1 = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var file2 = Path.of(System.getProperty("java.io.tmpdir"), "file2.txt");
+        var file3 = Path.of(System.getProperty("java.io.tmpdir"), "file3.txt");
+        var file4 = Path.of(System.getProperty("java.io.tmpdir"), "file4.txt");
+        var fileList = List.of(file1, file2, file3, file4);
+        for (var file : fileList) {
+            try (var writer = Files.newBufferedWriter(file)) {
+                writer.write(UUID.randomUUID().toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        while (true) {
+            fileList.parallelStream().forEach((key) -> {
+                try {
+                    vaas.forFile(key);
+                    System.out.print("+");
+                    System.out.flush();
+                } catch (Exception e) {
+                    System.out.print("-");
+                    System.out.flush();
+                }
+            });
+        }
     }
 }

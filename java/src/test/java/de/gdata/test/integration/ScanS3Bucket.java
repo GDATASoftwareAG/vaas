@@ -15,14 +15,12 @@ import de.gdata.vaas.Vaas;
 import de.gdata.vaas.VaasConfig;
 import de.gdata.vaas.authentication.ClientCredentialsGrantAuthenticator;
 import de.gdata.vaas.messages.VaasVerdict;
-import de.gdata.vaas.options.ForFileOptions;
 import io.github.cdimascio.dotenv.Dotenv;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.net.URI;
 import java.nio.file.Files;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,7 +43,7 @@ public class ScanS3Bucket {
         // Build VaaS
         long startTimeAll = System.currentTimeMillis();
         ClientCredentialsGrantAuthenticator authenticator = new ClientCredentialsGrantAuthenticator(CLIENT_ID, CLIENT_SECRET, new URI(TOKEN_URL));
-        VaasConfig vaasConfig = new VaasConfig(Duration.ofSeconds(1).getSeconds() * 1000, false, true, new URI(VAAS_URL));
+        VaasConfig vaasConfig = new VaasConfig(10000, false, false, new URI(VAAS_URL));
         Vaas vaas = new Vaas(vaasConfig, authenticator);
 
         // List S3 bucket
@@ -92,8 +90,7 @@ public class ScanS3Bucket {
 
                 // Scan file with VaaS and track time
                 long startTime = System.currentTimeMillis();
-                ForFileOptions forFileOptions = new ForFileOptions(false, true, "LD-big-big-files-01");
-                VaasVerdict vaasVerdict = vaas.forFileAsync(tempFile.toPath(), forFileOptions).get();
+                VaasVerdict vaasVerdict = vaas.forFileAsync(tempFile.toPath()).get();
                 long endTime = System.currentTimeMillis();
                 double executionTime = (endTime - startTime);
 
@@ -115,7 +112,7 @@ public class ScanS3Bucket {
             } catch (Exception e) {
                 System.out.println("Error processing key: " + key);
                 e.printStackTrace();
-            }            
+            }
         });
 
         // Write results to file
