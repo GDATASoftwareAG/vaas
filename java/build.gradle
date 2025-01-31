@@ -110,19 +110,8 @@ publishing {
 
 
     repositories {
-        // Veröffentlichung in ein internes lokales Verzeichnis (nur optional)
         maven {
             url = layout.buildDirectory.dir('repos/releases')
-        }
-
-        // Maven Central
-        maven {
-            name = "mavenCentral"
-            url = "https://repo.maven.apache.org/maven2"
-            credentials {
-                username = findProperty("mavenCentralUsername") ?: ""
-                password = findProperty("mavenCentralPassword") ?: ""
-            }
         }
     }
 }
