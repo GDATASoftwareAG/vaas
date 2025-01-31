@@ -1,21 +1,22 @@
 package de.gdata.vaasexample;
 
 import de.gdata.vaas.*;
-import de.gdata.vaas.messages.VerdictRequestAttributes;
+import de.gdata.vaas.authentication.*;
+
 import java.net.URI;
 
 
 public class Authentication {
     public static void main(String[] args) throws Exception {
-        var clientId = System.getenv("CLIENT_ID");
-        var clientSecret = System.getenv("CLIENT_SECRET");
-        var vaasclientId = System.getenv("VAAS_CLIENT_ID");
-        var userName = System.getenv("VAAS_USER_NAME");
-        var password = System.getenv("VAAS_PASSWORD");
-        var tokenUrl = System.getenv("TOKEN_URL");
-        if (tokenUrl == null) { tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"; }
-        var vaasUrl = System.getenv("VAAS_URL");
-        if (vaasUrl == null) { vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de"; }
+        var env = new Environment();
+
+        var clientId = env.clientId;
+        var clientSecret = env.clientSecret;
+        var vaasclientId = env.vaasClientId;
+        var userName = env.userName;
+        var password = env.password;
+        var tokenUrl = env.tokenUrl;
+        var vaasUrl = env.vaasUrl;
 
         // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
         var authenticator = new ResourceOwnerPasswordGrantAuthenticator(
@@ -36,12 +37,7 @@ public class Authentication {
 
         var config = new VaasConfig(new URI(vaasUrl));
         var vaas = new Vaas(config, authenticator);
-        vaas.connect();
-
-        var verdictRequestAttributes = new VerdictRequestAttributes();
-        verdictRequestAttributes.setTenantId("fileTenant");
-        var verdict = vaas.forSha256(new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"), verdictRequestAttributes);
-        vaas.disconnect();
+        var verdict = vaas.forSha256(new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"));
         System.out.printf("File %s was detected as %s", verdict.getSha256(), verdict.getVerdict());
     }
 }

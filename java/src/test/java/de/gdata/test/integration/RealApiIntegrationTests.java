@@ -1,524 +1,56 @@
 package de.gdata.test.integration;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.testng.AssertJUnit.assertEquals;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
-import java.util.Optional;
-
-import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-
-import de.gdata.test.unit.Sha256Test;
-import de.gdata.vaas.ClientCredentialsGrantAuthenticator;
-import de.gdata.vaas.IAuthenticator;
-import de.gdata.vaas.ResourceOwnerPasswordGrantAuthenticator;
+import com.google.gson.Gson;
 import de.gdata.vaas.Sha256;
 import de.gdata.vaas.Vaas;
 import de.gdata.vaas.VaasConfig;
+import de.gdata.vaas.authentication.ClientCredentialsGrantAuthenticator;
+import de.gdata.vaas.authentication.IAuthenticator;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
-import de.gdata.vaas.exceptions.VaasConnectionClosedException;
-import de.gdata.vaas.exceptions.VaasInvalidStateException;
-import de.gdata.vaas.messages.Verdict;
-import de.gdata.vaas.messages.VerdictRequest;
-import de.gdata.vaas.messages.VerdictRequestAttributes;
+import de.gdata.vaas.exceptions.VaasServerException;
+import de.gdata.vaas.messages.*;
+import de.gdata.vaas.options.ForFileOptions;
+import de.gdata.vaas.options.ForSha256Options;
+import de.gdata.vaas.options.ForStreamOptions;
+import de.gdata.vaas.options.ForUrlOptions;
 import io.github.cdimascio.dotenv.Dotenv;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.*;
+
+@Slf4j
 public class RealApiIntegrationTests {
-    private static final Dotenv dotenv = getDotenv();
+    private static final String EICAR_URL = "https://secure.eicar.org/eicar.com.txt";
+
+    private static final Dotenv dotenv = Dotenv.configure()
+            .ignoreIfMissing()
+            .load();
+
     private static Vaas vaas;
-
-    private static Dotenv getDotenv() {
-        var dotenv = Dotenv.configure()
-            .ignoreIfMissing();
-
-        Optional<File> envFile = findFile(".env");
-
-        if (envFile.isPresent()) {
-            var directory = envFile.get().getParent();
-            dotenv.directory(directory);
-        }
-
-        return dotenv.load();
-    }
-
-    private static Optional<File> findFile(String name) {
-        File currentDirectory = new File(System.getProperty("user.dir"));
-        File file = new File(currentDirectory, name);
-
-        while (!file.exists() && currentDirectory.getParentFile() != null) {
-            currentDirectory = currentDirectory.getParentFile();
-            file = new File(currentDirectory, name);
-        }
-
-        return file.exists() ? Optional.of(file) : Optional.empty();
-    }
-
-    @BeforeAll
-    public static void setUpAll() throws URISyntaxException, InterruptedException, IOException, ExecutionException,
-            TimeoutException, VaasAuthenticationException {
-        System.out.println("VAAS_URL=" + getEnvironmentKey("VAAS_URL"));
-        vaas = getVaasWithCredentials();
-    }
-
-    @AfterAll
-    public static void tearDownAll() throws Exception {
-        vaas.close();
-    }
-
-    @Test
-    public void clientCredentialsGrantAuthenticatorGetToken() throws Exception {
-        var clientId = getEnvironmentKey("CLIENT_ID");
-        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
-        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var token = authenticator.getToken();
-
-        assertNotNull(token);
-    }
-
-    @Test
-    public void resourceOwnerPasswordAuthenticatorGetToken() throws Exception {
-        var clientId = getEnvironmentKey("VAAS_CLIENT_ID");
-        var username = getEnvironmentKey("VAAS_USER_NAME");
-        var password = getEnvironmentKey("VAAS_PASSWORD");
-        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
-        var authenticator = new ResourceOwnerPasswordGrantAuthenticator(clientId, username, password, tokenUrl);
-        var token = authenticator.getToken();
-
-        assertNotNull(token);
-    }
-
-    @Test
-    public void forSha256SingleMaliciousHash() throws Exception {
-        var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
-
-        var verdict = vaas.forSha256(sha256);
-
-        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
-                .equalsIgnoreCase(verdict.getSha256()));
-    }
-
-    @Test
-    public void fromSha256SinglePupHash() throws Exception {
-        var sha256 = new Sha256("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad");
-
-        var verdict = vaas.forSha256(sha256);
-
-        assertEquals(Verdict.PUP, verdict.getVerdict());
-        assertTrue("d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
-                .equalsIgnoreCase(verdict.getSha256()));
-    }
-
-    @Test
-    @Tag("ErrorLogProducer")
-    public void illegalCredentials() throws Exception {
-        var clientId = "NON_EXISTING_CLIENT_ID";
-        var clientSecret = "A wizard is never late, Frodo Baggins. He arrives precisely when he means to!";
-        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
-        var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var config = new VaasConfig(new URI(vaasUrl));
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        try (var client = new Vaas(config, authenticator)) {
-            assertThrows(Exception.class, client::connect);
-        }
-    }
-
-    @Test
-    @Tag("ErrorLogProducer")
-    public void wrongTokenUsedToAuthenticateWebsocket() throws Exception {
-        class MockAuthenticator implements IAuthenticator {
-
-            @Override
-            public String getToken() {
-                return "arbitrary_wrong_token";
-            }
-        }
-
-        var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var config = new VaasConfig(new URI(vaasUrl));
-        var authenticator = new MockAuthenticator();
-
-        try (var client = new Vaas(config, authenticator)) {
-            assertThrows(VaasAuthenticationException.class, client::connect);
-        }
-    }
-
-    @Test
-    public void forSha256MultipleHashes() throws Exception {
-        var sha256_1 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
-        var sha256_2 = new Sha256("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e");
-        var sha256_3 = new Sha256("1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df");
-
-        var verdict_1 = vaas.forSha256(sha256_1);
-        var verdict_2 = vaas.forSha256(sha256_2);
-        var verdict_3 = vaas.forSha256(sha256_3);
-
-        assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
-        assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
-        assertEquals(Verdict.UNKNOWN, verdict_3.getVerdict());
-
-        assertTrue("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2"
-                .equalsIgnoreCase(verdict_1.getSha256()));
-        assertTrue("cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"
-                .equalsIgnoreCase(verdict_2.getSha256()));
-        assertTrue("1f72c1111111111111f912e40b7323a0192a300b376186c10f6803dc5efe28df"
-                .equalsIgnoreCase(verdict_3.getSha256()));
-    }
-
-    @Test
-    public void forSha256MultipleUnknownHash() throws Exception {
-        var sha256_1 = new Sha256("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
-        var sha256_2 = new Sha256("11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c");
-        var sha256_3 = new Sha256("11000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a");
-
-        var verdict_1 = vaas.forSha256(sha256_1);
-        var verdict_2 = vaas.forSha256(sha256_2);
-        var verdict_3 = vaas.forSha256(sha256_3);
-
-        assertEquals(Verdict.UNKNOWN, verdict_1.getVerdict());
-        assertEquals(Verdict.UNKNOWN, verdict_2.getVerdict());
-        assertEquals(Verdict.UNKNOWN, verdict_3.getVerdict());
-
-        assertTrue("110005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"
-                .equalsIgnoreCase(verdict_1.getSha256()));
-        assertTrue("11000b68934493af2f5954593fe8127b9dda6d4b520e78265aa5875623b58c9c"
-                .equalsIgnoreCase(verdict_2.getSha256()));
-        assertTrue("11000f83e3120f79a21b7b395dd3dd6a9c31ce00857f78d7cf487476ca75fd1a"
-                .equalsIgnoreCase(verdict_3.getSha256()));
-    }
-
-    @Test
-    public void forFileSingleMaliciousFile()
-            throws Exception {
-        var tmpFile = Sha256Test.writeEicar();
-
-        var sha256 = new Sha256(tmpFile);
-        var verdict = vaas.forFile(tmpFile);
-
-        Files.deleteIfExists(tmpFile);
-        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
-    }
-
-    @Test
-    public void forFileSingleMaliciousFileWithVerdictRequestAttributes()
-            throws Exception {
-        var tmpFile = Sha256Test.writeEicar();
-
-        var sha256 = new Sha256(tmpFile);
-        var verdict = vaas.forFile(tmpFile, new VerdictRequestAttributes() {
-            {
-                setTenantId("JavaSDK");
-            }
-        });
-
-        Files.deleteIfExists(tmpFile);
-        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
-    }
-
-    @Test
-    public void forFileSingleCleanFile()
-            throws Exception {
-        byte[] clean = { 0x65, 0x0a, 0x67, 0x0a, 0x65, 0x0a, 0x62, 0x0a };
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "clean.txt");
-        Files.write(tmpFile, clean);
-
-        var sha256 = new Sha256(tmpFile);
-        var verdict = vaas.forFile(tmpFile);
-
-        Files.deleteIfExists(tmpFile);
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
-        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
-    }
-
-    @Test
-    public void forFileSingleUnknownFile()
-            throws Exception {
-        var unknown = getRandomString(50);
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "unknown.txt");
-        Files.writeString(tmpFile, unknown);
-
-        var sha256 = new Sha256(tmpFile);
-        var verdict = vaas.forFile(tmpFile);
-
-        Files.deleteIfExists(tmpFile);
-        assert (verdict != null);
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
-        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
-    }
-
-    @Test
-    public void forFileEmptyFile()
-            throws Exception {
-        byte[] clean = {};
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "empty.txt");
-
-        Files.write(tmpFile, clean);
-
-        var sha256 = new Sha256(tmpFile);
-        var verdict = vaas.forFile(tmpFile);
-
-        Files.deleteIfExists(tmpFile);
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
-        assertTrue(sha256.getValue().equalsIgnoreCase(verdict.getSha256()));
-    }
-
-    @Test
-    @Disabled("Enable to test keep-alive")
-    public void forFile_WorksWithBigSample() throws Exception {
-        var verdict = vaas.forFile(Path.of("/home/vscode/big.zip"));
-        assert (verdict != null);
-        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-    }
-
-    @Test
-    @Disabled("Enable to test keep-alive")
-    public void forSha256_WorksAfter40s() throws Exception {
-        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-        var verdict = vaas.forSha256(sha256);
-        assert (verdict != null);
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
-        Thread.sleep(40000);
-        verdict = vaas.forSha256(sha256);
-        assert (verdict != null);
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
-    }
-
-    @Test
-    public void forSha256_ThrowsConnectionClosed() throws Exception {
-        try (var vaas = getVaasWithCredentials()) {
-            vaas.disconnect();
-            var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-            assertThrows(VaasConnectionClosedException.class, () -> {
-                vaas.forSha256(sha256);
-            });
-        }
-    }
-
-    @Test
-    public void forSha256_VaasCloses() throws Exception {
-        try (var vaas = getVaasWithCredentials()) {
-            vaas.close();
-            var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-            assertThrows(VaasConnectionClosedException.class, () -> {
-                vaas.forSha256(sha256);
-            });
-        }
-    }
-
-    @Test
-    public void forSha256_ConnectHasntBeCalled() throws Exception {
-        var clientId = getEnvironmentKey("CLIENT_ID");
-        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
-        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
-        var vaasUrl = getEnvironmentKey("VAAS_URL");
-
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var config = new VaasConfig(new URI(vaasUrl));
-        try (var vaas = new Vaas(config, authenticator)) {
-            var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-            assertThrows(VaasInvalidStateException.class, () -> {
-                vaas.forSha256(sha256);
-            });
-        }
-    }
-
-    @Test
-    @Disabled("secure.eicar.org is down. Disable for now.")
-    public void forUrlMultipleMaliciousUrls() throws Exception {
-        var url_1 = new URL("https://secure.eicar.org/eicar.com");
-        var url_2 = new URL("https://secure.eicar.org/eicar.com.txt");
-        var url_3 = new URL("https://secure.eicar.org/eicar_com.zip");
-
-        var verdict_1 = vaas.forUrl(url_1);
-        var verdict_2 = vaas.forUrl(url_2);
-        var verdict_3 = vaas.forUrl(url_3);
-
-        assertEquals(Verdict.MALICIOUS, verdict_1.getVerdict());
-        assertEquals(Verdict.MALICIOUS, verdict_2.getVerdict());
-        assertEquals(Verdict.MALICIOUS, verdict_3.getVerdict());
-    }
-
-    @Test
-    @Tag("ErrorLogProducer")
-    public void forUrl_WithoutAuthority_ThrowsURISyntaxException() throws Exception {
-        var url_1 = new URL("https://");
-        var e = assertThrows(URISyntaxException.class, () -> vaas.forUrl(url_1));
-        assertEquals(
-                "Expected scheme-specific part at index 6: https:",
-                e.getMessage());
-    }
-
-    @Test
-    public void forUrl_WithUrlNull_ThrowsNullPointerException() throws Exception {
-        @SuppressWarnings("DataFlowIssue")
-        var e = assertThrows(NullPointerException.class, () -> vaas.forUrl(null));
-        assertEquals("url is marked non-null but is null", e.getMessage());
-    }
-
-    @Test
-    @Tag("ErrorLogProducer")
-    public void forUrl_WithUrlWithStatusCode4xx_ThrowsVaasClientException() throws Exception {
-        var url_1 = new URL("https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere");
-        var e = assertThrows(VaasClientException.class, () -> vaas.forUrl(url_1));
-        assertEquals(
-                "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere",
-                e.getMessage());
-    }
-
-    @Test
-    @Disabled("Used for manual testing")
-    public void forUrlInALoop() throws Exception {
-        var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");
-
-        while (true) {
-            try {
-                while (true) {
-                    var verdict_1 = vaas.forUrl(url_1);
-                    assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
-                    System.out.println(verdict_1.getVerdict());
-
-                    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss:SSS");
-                    LocalDateTime now = LocalDateTime.now();
-                    System.out.println(dtf.format(now));
-                }
-
-            } catch (ExecutionException e) {
-                System.out.println(e);
-            }
-
-        }
-    }
-
-    @Test
-    @Tag("ErrorLogProducer")
-    public void forUrlMultipleCleanUrls() throws Exception {
-        var url_1 = new URL("https://github.com/GDATASoftwareAG/vaas");
-        var url_2 = new URL("https://github.com/GDATASoftwareAG/vaas");
-        var url_3 = new URL("https://github.com/GDATASoftwareAG/vaas");
-
-        var verdictRequestAttributes = new VerdictRequestAttributes();
-        verdictRequestAttributes.setTenantId("GiveMeThatHashes");
-
-        var verdict_1 = vaas.forUrl(url_1, verdictRequestAttributes);
-        var verdict_2 = vaas.forUrl(url_2, verdictRequestAttributes);
-        var verdict_3 = vaas.forUrl(url_3, verdictRequestAttributes);
-
-        assertEquals(Verdict.CLEAN, verdict_1.getVerdict());
-        assertEquals(Verdict.CLEAN, verdict_2.getVerdict());
-        assertEquals(Verdict.CLEAN, verdict_3.getVerdict());
-    }
-
-    @Test
-    public void serializationTest() {
-        var sha256 = new Sha256("3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C");
-        var verdictRequestAttributes = new VerdictRequestAttributes();
-        verdictRequestAttributes.setTenantId("Test");
-        var verdictRequest = new VerdictRequest(sha256, "myid", verdictRequestAttributes);
-        var json1 = verdictRequest.toJson();
-        var json2 = verdictRequestAttributes.toJson();
-        assertNotNull(json1, "");
-        assertNotNull(json2, "");
-    }
-
-    @Test
-    public void forSha256_WithSha256Null_ThrowsNullPointerException() throws Exception {
-        @SuppressWarnings("DataFlowIssue")
-        var e = assertThrows(NullPointerException.class, () -> vaas.forSha256(null));
-        assertEquals("sha256 is marked non-null but is null", e.getMessage());
-    }
-
-    @Test
-    public void forStream_WithCleanString_ReturnsCleanVerdict() throws Exception {
-        var targetStream = new ByteArrayInputStream("I am clean".getBytes());
-        var contentLength = targetStream.available();
-        var verdict = vaas.forStream(targetStream, contentLength);
-
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
-    }
-
-    @Test
-    public void forStream_WithEicarString_ReturnsMaliciousVerdict() throws Exception {
-        var targetStream = new ByteArrayInputStream(
-                "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*".getBytes());
-        var contentLength = targetStream.available();
-        var verdict = vaas.forStream(targetStream, contentLength);
-
-        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-    }
-
-    @Test
-    public void forStream_WithCleanUrl_ReturnsCleanVerdict() throws Exception {
-        var url = new URL("https://raw.githubusercontent.com/GDATASoftwareAG/vaas/main/Readme.md");
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        var contentLength = conn.getContentLengthLong();
-
-        var verdict = vaas.forStream(inputStream, contentLength);
-
-        assertEquals(Verdict.CLEAN, verdict.getVerdict());
-    }
-
-    @Test
-    @Disabled("secure.eicar.org is down. Disable for now.")
-    public void forStream_WithEicarUrl_ReturnsMaliciousVerdict() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        var contentLength = conn.getContentLengthLong();
-
-        var verdict = vaas.forStream(inputStream, contentLength);
-
-        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-    }
-
-    private @NotNull String getRandomString(int size) {
-        String AlphaNumericString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvxyz0123456789";
-        StringBuilder sb = new StringBuilder(size);
-
-        for (int i = 0; i < size; i++) {
-            int index = (int) (AlphaNumericString.length() * Math.random());
-            sb.append(AlphaNumericString.charAt(index));
-        }
-
-        return sb.toString();
-    }
-
-    private static Vaas getVaasWithCredentials()
-            throws URISyntaxException, InterruptedException, IOException, ExecutionException, TimeoutException,
-            VaasAuthenticationException {
-        var clientId = getEnvironmentKey("CLIENT_ID");
-        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
-        var tokenUrl = new URI(getEnvironmentKey("TOKEN_URL"));
-        var vaasUrl = getEnvironmentKey("VAAS_URL");
-
-        var authenticator = new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
-        var config = new VaasConfig(new URI(vaasUrl));
-        var client = new Vaas(config, authenticator);
-        client.connect();
-        return client;
-    }
 
     private static String getEnvironmentKey(String key) {
         var value = dotenv.get(key);
@@ -528,32 +60,1371 @@ public class RealApiIntegrationTests {
         return value;
     }
 
+    private static IAuthenticator getAuthenticator() {
+        var clientId = getEnvironmentKey("CLIENT_ID");
+        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
+        var tokenUrl = URI.create(getEnvironmentKey("TOKEN_URL"));
+        return new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl);
+    }
+
+    private static IAuthenticator getAuthenticator(HttpClient httpClient) {
+        var clientId = getEnvironmentKey("CLIENT_ID");
+        var clientSecret = getEnvironmentKey("CLIENT_SECRET");
+        var tokenUrl = URI.create(getEnvironmentKey("TOKEN_URL"));
+        return new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl, httpClient);
+    }
+
+    private static Vaas getVaasWithCredentials(IAuthenticator authenticator) {
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var config = new VaasConfig(URI.create(vaasUrl));
+        return new Vaas(config, authenticator);
+    }
+
+    private static Vaas getVaasWithCredentials(HttpClient httpClient) {
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(URI.create(vaasUrl));
+        return new Vaas(config, authenticator, httpClient);
+    }
+
+    private static Vaas getVaasWithCredentials() {
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(URI.create(vaasUrl));
+        return new Vaas(config, authenticator);
+    }
+
+    public static byte[] readContent(HttpRequest.BodyPublisher bodyPublisher) {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        bodyPublisher.subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(ByteBuffer item) {
+                byte[] bytes = new byte[item.remaining()];
+                item.get(bytes);
+                outputStream.write(bytes, 0, bytes.length);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                throwable.printStackTrace();
+            }
+
+            @Override
+            public void onComplete() {
+            }
+        });
+        return outputStream.toByteArray();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e, CLEAN",
+            "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f, MALICIOUS",
+            "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad, PUP"
+    })
+    public void forSha256_ReturnsVerdict(String sha256, Verdict verdict) {
+        var sha256sum = new Sha256(sha256);
+        vaas = getVaasWithCredentials();
+
+        var vaasVerdict = vaas.forSha256Async(sha256sum).join();
+
+        assertEquals(sha256, vaasVerdict.getSha256());
+        assertEquals(verdict, vaasVerdict.getVerdict());
+    }
+
+    @SuppressWarnings("unchecked")
+    @ParameterizedTest
+    @CsvSource({
+            "false, false",
+            "false, true",
+            "true, false",
+            "true, true",
+    })
+    public void forSha256_SendOptions(boolean useCache, boolean useHashLookup) {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        var forSha256Options = new ForSha256Options(useCache, useHashLookup, "foobar");
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forSha256Async(sha256, forSha256Options).join();
+        verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
+        var capturedUri = requestCaptor.getValue().uri();
+
+        assertTrue(capturedUri.toString().contains(String.format("useCache=%s", useCache)));
+        assertTrue(capturedUri.toString()
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
     @Test
-    @Disabled("secure.eicar.org is down. Disable for now.")
-    public void forStream_WithEicarFile_ReturnsMaliciousVerdictWithDetections() throws Exception {
-        var url = new URL("https://secure.eicar.org/eicar.com.txt");
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        var contentLength = conn.getContentLengthLong();
+    public void forSha256_SendUserAgent() {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
-        var verdict = vaas.forStream(inputStream, contentLength);
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forSha256Async(sha256).join();
+        verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
+        var capturedUserAgent = requestCaptor.getValue().headers().firstValue("User-Agent");
 
-        assertNotNull(verdict.getDetection());
-        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-        assertEquals("EICAR virus test files", verdict.getFileType());
-        assertEquals("text/plain", verdict.getMimeType());
+        assertTrue(capturedUserAgent.toString().contains("Java"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forSha256_IfVaasRequestIdIsSet_SendTraceState() {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var forSha256Options = new ForSha256Options(true, true, "foobar");
+        var vaasVerdict = vaas.forSha256Async(sha256, forSha256Options).join();
+
+        verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
+        var capturedTraceState = requestCaptor.getValue().headers().firstValue("tracestate");
+
+        assertTrue(capturedTraceState.toString().contains("foobar"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forSha256_IfBadRequest_ThrowsVaasClientException() {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(400);
+        when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
+        when(mockResponse.body()).thenReturn(
+                new Gson().toJson(new ProblemDetails("VaasClientException", "Bad Request")));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forSha256_IfInternalServerError_ThrowsVaasServerException() {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(500);
+        when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forSha256_IfUnauthorized_ThrowsVaasAuthenticationException() {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(401);
+        when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
+
+        var authenticator = getAuthenticator(mockHttpClient);
+        vaas = getVaasWithCredentials(authenticator);
+
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256(sha256));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forSha256_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(401);
+        when(mockHttpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> mockResponse);
+
+        var authenticator = getAuthenticator(mockHttpClient);
+        vaas = getVaasWithCredentials(authenticator);
+
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256(sha256));
     }
 
     @Test
-    @Disabled("Runs endless. Monitor memory usage.")
-    public void connect_RepeatedlyCalled_DoesntLeakMemory() throws Exception {
-        var sha256 = new Sha256("ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2");
+    public void forSha256_IfCancellationIsRequested_ThrowsCancellationException() {
+        var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
+        vaas = getVaasWithCredentials();
+
+        var future = vaas.forSha256Async(sha256);
+
+        var result = future.cancel(true);
+        assertTrue(result);
+        assertThrows(CancellationException.class, future::get);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "https://github.com/GDATASoftwareAG/vaas/blob/main/Readme.md, CLEAN",
+            "https://secure.eicar.org/eicar.com.txt, MALICIOUS",
+            "http://amtso.eicar.org/PotentiallyUnwanted.exe, PUP"
+    })
+    public void forFile_ReturnsVerdict(String uri, Verdict verdict) throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(uri).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        vaas = getVaasWithCredentials();
+        var vaasVerdict = vaas.forFileAsync(tmpFile).join();
+
+        assertEquals(verdict, vaasVerdict.getVerdict());
+    }
+
+    @SuppressWarnings("unchecked")
+    @ParameterizedTest
+    @CsvSource({
+            "false, false",
+            "false, true",
+            "true, false",
+            "true, true",
+    })
+    public void forFile_SendOptions(boolean useCache, boolean useHashLookup) throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        var forFileOptions = new ForFileOptions(useCache, useHashLookup, "foobar");
+
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new FileAnalysisStarted(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        && getRequest.uri().toString()
+                        .contains("useCache=" + useCache)
+                        && getRequest.uri().toString().contains(
+                        "useHashLookup=" + useHashLookup)),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        if (!useCache) {
+            when(mockHttpClient.sendAsync(
+                    argThat(getRequest -> getRequest != null
+                            && getRequest.method().equals("GET")
+                            && getRequest.uri().toString().contains(
+                            "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                            && getRequest.uri().toString()
+                            .contains("useCache=" + true)
+                            && getRequest.uri().toString()
+                            .contains("useHashLookup=" + useHashLookup)),
+                    any(HttpResponse.BodyHandler.class)))
+                    .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+        }
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("files")
+                        && postRequest.uri().toString().contains(
+                        "useHashLookup=" + useHashLookup)),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forFileAsync(tmpFile, forFileOptions).join();
+        verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestUri = requestCaptor.getAllValues().get(0).uri();
+        var secondRequestUri = requestCaptor.getAllValues().get(1).uri();
+        var thirdRequestUri = requestCaptor.getAllValues().get(2).uri();
+
+        assertTrue(firstRequestUri.toString().contains(String.format("useCache=%s", useCache)));
+        assertTrue(firstRequestUri.toString()
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
+        assertTrue(secondRequestUri.toString()
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
+        assertTrue(thirdRequestUri.toString()
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forFile_SendUserAgent() throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new FileAnalysisStarted(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        && getRequest.uri().toString()
+                        .contains("useCache=" + true)
+                        && getRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && getRequest.headers().firstValue("User-Agent").toString()
+                        .contains("Java")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("files")
+                        && postRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && postRequest.headers().firstValue("User-Agent").toString()
+                        .contains("Java")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forFileAsync(tmpFile).join();
+        verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("User-Agent");
+        var secondRequestHeaders = requestCaptor.getAllValues().get(1).headers().firstValue("User-Agent");
+        var thirdRequestHeaders = requestCaptor.getAllValues().get(2).headers().firstValue("User-Agent");
+
+        assertTrue(firstRequestHeaders.toString().contains("Java"));
+        assertTrue(secondRequestHeaders.toString().contains("Java"));
+        assertTrue(thirdRequestHeaders.toString().contains("Java"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forFile_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new FileAnalysisStarted(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        && getRequest.uri().toString()
+                        .contains("useCache=" + true)
+                        && getRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && getRequest.headers().firstValue("tracestate").toString()
+                        .contains("foobar")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("files")
+                        && postRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && postRequest.headers().firstValue("tracestate").toString()
+                        .contains("foobar")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var forFileOptions = new ForFileOptions(true, true, "foobar");
+        var vaasVerdict = vaas.forFileAsync(tmpFile, forFileOptions).join();
+        verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("tracestate");
+        var secondRequestHeaders = requestCaptor.getAllValues().get(1).headers().firstValue("tracestate");
+        var thirdRequestHeaders = requestCaptor.getAllValues().get(2).headers().firstValue("tracestate");
+
+        assertTrue(firstRequestHeaders.toString().contains("foobar"));
+        assertTrue(secondRequestHeaders.toString().contains("foobar"));
+        assertTrue(thirdRequestHeaders.toString().contains("foobar"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forFile_IfBadRequest_ThrowsVaasClientException() throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(400);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasClientException", "Client-side error occurred")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forFile_IfInternalServerError_ThrowsVaasServerException()
+            throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(500);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasServerException", "Server-side error occurred")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forFile_IfUnauthorized_ThrowsVaasAuthenticationException()
+            throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(401);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasAuthenticationException", "Authentication failed.")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
+        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forFile_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(401);
+        when(mockHttpClient.send(any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> mockResponse);
+
+        var authenticator = getAuthenticator(mockHttpClient);
+        vaas = getVaasWithCredentials(authenticator);
+
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forFile(tmpFile));
+    }
+
+    @Test
+    public void forFile_IfCancellationIsRequested_ThrowsCancellationException()
+            throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+        vaas = getVaasWithCredentials();
+
+        var future = vaas.forFileAsync(tmpFile);
+
+        var result = future.cancel(true);
+        assertTrue(result);
+        assertThrows(CancellationException.class, future::get);
+    }
+
+    @Test
+    @Disabled("This test is disabled because it takes too long to run.")
+    public void forFile_BigFileWithSmallTimeout_ThrowsTimeoutException()
+            throws Exception {
+        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var url = URI.create("https://ash-speed.hetzner.com/1GB.bin").toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(1000, URI.create(vaasUrl));
+        var vaas = new Vaas(config, authenticator);
+        var forFileOptions = new ForFileOptions(false, false, null);
+
+        var exception = assertThrows(ExecutionException.class, () -> vaas.forFileAsync(tmpFile, forFileOptions).get());
+        assertInstanceOf(TimeoutException.class, exception.getCause());
+    }
+
+    @Test
+    public void forStream_ReturnsVerdict() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+        var forStreamOptions = new ForStreamOptions(true, "foobar");
+
+        var vaas = getVaasWithCredentials();
+        var verdict = vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).join();
+
+        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(verdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @ParameterizedTest
+    @CsvSource({
+            "false",
+            "true",
+    })
+    public void forStream_SendOptions(boolean useHashLookup) throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        var forStreamOptions = new ForStreamOptions(useHashLookup, "foobar");
+
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new FileAnalysisStarted(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        && getRequest.uri().toString()
+                        .contains("useCache=" + true)
+                        && getRequest.uri().toString()
+                        .contains("useHashLookup=" + useHashLookup)),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("files")
+                        && postRequest.uri().toString().contains(
+                        "useHashLookup=" + useHashLookup)),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).join();
+        verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestUri = requestCaptor.getAllValues().get(0).uri();
+        var secondRequestUri = requestCaptor.getAllValues().get(1).uri();
+
+        assertTrue(firstRequestUri.toString()
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
+        assertTrue(secondRequestUri.toString()
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forStream_SendUserAgent() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new FileAnalysisStarted(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        && getRequest.uri().toString()
+                        .contains("useCache=" + true)
+                        && getRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && getRequest.headers().firstValue("User-Agent").toString()
+                        .contains("Java")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("files")
+                        && postRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && postRequest.headers().firstValue("User-Agent").toString()
+                        .contains("Java")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength).join();
+        verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("User-Agent");
+        var secondRequestHeaders = requestCaptor.getAllValues().get(1).headers().firstValue("User-Agent");
+
+        assertTrue(firstRequestHeaders.toString().contains("Java"));
+        assertTrue(secondRequestHeaders.toString().contains("Java"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forStream_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new FileAnalysisStarted(
+                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f")
+                        && getRequest.uri().toString()
+                        .contains("useCache=" + true)
+                        && getRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && getRequest.headers().firstValue("tracestate").toString()
+                        .contains("foobar")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("files")
+                        && postRequest.uri().toString()
+                        .contains("useHashLookup=" + true)
+                        && postRequest.headers().firstValue("tracestate").toString()
+                        .contains("foobar")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var forFileOptions = new ForStreamOptions(true, "foobar");
+        var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength, forFileOptions).join();
+        verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("tracestate");
+        var secondRequestHeaders = requestCaptor.getAllValues().get(1).headers().firstValue("tracestate");
+
+        assertTrue(firstRequestHeaders.toString().contains("foobar"));
+        assertTrue(secondRequestHeaders.toString().contains("foobar"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forStream_IfBadRequest_ThrowsVaasClientException() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(400);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasClientException", "Client-side error occurred")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forStream_IfInternalServerError_ThrowsVaasServerException()
+            throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(500);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasServerException", "Server-side error occurred")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forStream_IfUnauthorized_ThrowsVaasAuthenticationException()
+            throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new FileReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(401);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasAuthenticationException", "Authentication failed.")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
+        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forStream_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(401);
+        when(mockHttpClient.send(any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> mockResponse);
+
+        var authenticator = getAuthenticator(mockHttpClient);
+        vaas = getVaasWithCredentials(authenticator);
+
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forStream(inputStream, contentLength));
+    }
+
+    @Test
+    public void forStream_IfCancellationIsRequested_ThrowsCancellationException()
+            throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+        vaas = getVaasWithCredentials();
+
+        var future = vaas.forStreamAsync(inputStream, contentLength);
+
+        var result = future.cancel(true);
+        assertTrue(result);
+        assertThrows(CancellationException.class, future::get);
+    }
+
+    @Test
+    public void forStream_BigFileWithSmallTimeout_ThrowsTimeoutException()
+            throws Exception {
+        var url = URI.create("https://ash-speed.hetzner.com/1GB.bin").toURL();
+        var conn = url.openConnection();
+        var inputStream = conn.getInputStream();
+        var contentLength = conn.getContentLength();
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(1000, URI.create(vaasUrl));
+        var vaas = new Vaas(config, authenticator);
+        var forStreamOptions = new ForStreamOptions(false, null);
+
+        var exception = assertThrows(ExecutionException.class, () -> vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).get());
+        assertInstanceOf(TimeoutException.class, exception.getCause());
+    }
+
+    @Test
+    public void forUrl_ReturnsVerdict() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        vaas = getVaasWithCredentials();
+        var verdict = vaas.forUrlAsync(url).join();
+
+        assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(verdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @ParameterizedTest
+    @CsvSource({
+            "false",
+            "true",
+    })
+    public void forUrl_SendOptions(boolean useHashLookup) throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+        var forUrlOptions = new ForUrlOptions(useHashLookup, "foobar");
+
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new UrlReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, url.toString(), null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new UrlAnalysisStarted("id")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains("id")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("urls")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forUrlAsync(url, forUrlOptions).join();
+        verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var bodyRequest = new String(readContent(Objects.requireNonNull(requestCaptor.getAllValues().get(0).bodyPublisher().orElse(null))));
+        var urlAnalysisRequest = new Gson().fromJson(bodyRequest, UrlAnalysisRequest.class);
+        var reportUri = requestCaptor.getAllValues().get(1).uri();
+
+        assertEquals(useHashLookup, urlAnalysisRequest.isUseHashLookup());
+        assertEquals(EICAR_URL, urlAnalysisRequest.getUrl());
+        assertTrue(reportUri.toString()
+                .contains(String.format("useHashLookup=%s", useHashLookup)));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forUrl_SendUserAgent() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new UrlReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, url.toString(), null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new UrlAnalysisStarted("id")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains("id")
+                        && getRequest.headers().firstValue("User-Agent").toString()
+                        .contains("Java")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("urls")
+                        && postRequest.headers().firstValue("User-Agent").toString()
+                        .contains("Java")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaasVerdict = vaas.forUrlAsync(url).join();
+        verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("User-Agent");
+        var secondRequestHeaders = requestCaptor.getAllValues().get(1).headers().firstValue("User-Agent");
+
+        assertTrue(firstRequestHeaders.toString().contains("Java"));
+        assertTrue(secondRequestHeaders.toString().contains("Java"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forUrl_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        var mockGetResponse = mock(HttpResponse.class);
+
+        when(mockGetResponse.statusCode()).thenReturn(200);
+        when(mockGetResponse.body()).thenReturn(
+                new Gson().toJson(new UrlReport(
+                        "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
+                        Verdict.UNKNOWN, url.toString(), null, null, null)));
+        when(mockPostResponse.statusCode()).thenReturn(200);
+        when(mockPostResponse.body()).thenReturn(new Gson().toJson(new UrlAnalysisStarted("id")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(getRequest -> getRequest != null
+                        && getRequest.method().equals("GET")
+                        && getRequest.uri().toString().contains("id")
+                        && getRequest.headers().firstValue("tracestate").toString()
+                        .contains("foobar")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockGetResponse));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")
+                        && postRequest.uri().toString().contains("urls")
+                        && postRequest.headers().firstValue("tracestate").toString()
+                        .contains("foobar")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+        var forUrlOptions = new ForUrlOptions(true, "foobar");
+        var vaasVerdict = vaas.forUrlAsync(url, forUrlOptions).join();
+        verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
+                any(HttpResponse.BodyHandler.class));
+        var firstRequestHeaders = requestCaptor.getAllValues().get(0).headers().firstValue("tracestate");
+        var secondRequestHeaders = requestCaptor.getAllValues().get(1).headers().firstValue("tracestate");
+
+        assertTrue(firstRequestHeaders.toString().contains("foobar"));
+        assertTrue(secondRequestHeaders.toString().contains("foobar"));
+        assertEquals(Verdict.UNKNOWN, vaasVerdict.getVerdict());
+        assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+                .equalsIgnoreCase(vaasVerdict.getSha256()));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forUrl_IfBadRequest_ThrowsVaasClientException() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        when(mockPostResponse.statusCode()).thenReturn(400);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasClientException", "Client-side error occurred")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
+        assertInstanceOf(VaasClientException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forUrl_IfInternalServerError_ThrowsVaasServerException()
+            throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        when(mockPostResponse.statusCode()).thenReturn(500);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasServerException", "Server-side error occurred")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
+        assertInstanceOf(VaasServerException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forUrl_IfUnauthorized_ThrowsVaasAuthenticationException()
+            throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockPostResponse = mock(HttpResponse.class);
+        when(mockPostResponse.statusCode()).thenReturn(401);
+        when(mockPostResponse.body()).thenReturn(new Gson()
+                .toJson(new ProblemDetails("VaasAuthenticationException", "Authentication failed.")));
+
+        when(mockHttpClient.sendAsync(
+                argThat(postRequest -> postRequest != null
+                        && postRequest.method().equals("POST")),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
+
+        vaas = getVaasWithCredentials(mockHttpClient);
+
+        var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
+        assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void forUrl_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        var mockHttpClient = mock(HttpClient.class);
+        var mockResponse = mock(HttpResponse.class);
+        when(mockResponse.statusCode()).thenReturn(401);
+        when(mockHttpClient.send(any(HttpRequest.class),
+                any(HttpResponse.BodyHandler.class)))
+                .thenAnswer(invocation -> mockResponse);
+
+        var authenticator = getAuthenticator(mockHttpClient);
+        vaas = getVaasWithCredentials(authenticator);
+
+        assertThrows(VaasAuthenticationException.class, () -> vaas.forUrl(url));
+    }
+
+    @Test
+    public void forUrl_IfCancellationIsRequested_ThrowsCancellationException()
+            throws Exception {
+        var url = URI.create(EICAR_URL).toURL();
+
+        vaas = getVaasWithCredentials();
+        var future = vaas.forUrlAsync(url);
+
+        var result = future.cancel(true);
+        assertTrue(result);
+        assertThrows(CancellationException.class, future::get);
+    }
+
+    @Test
+    public void forUrl_BigFileWithSmallTimeout_ThrowsTimeoutException()
+            throws Exception {
+        var url = URI.create("https://ash-speed.hetzner.com/1GB.bin").toURL();
+
+        var vaasUrl = getEnvironmentKey("VAAS_URL");
+        var authenticator = getAuthenticator();
+        var config = new VaasConfig(1000, URI.create(vaasUrl));
+        var vaas = new Vaas(config, authenticator);
+
+        var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());
+        assertInstanceOf(TimeoutException.class, exception.getCause());
+    }
+
+    @Test
+    @Disabled()
+    public void forFileAsync_WithSmallTimeout_DoesNotShowNegativeResources() {
+        var config = new VaasConfig(45, false, false, URI.create(getEnvironmentKey("VAAS_URL")));
+        var vaas = new Vaas(config, getAuthenticator());
+        var file = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        try (var writer = Files.newBufferedWriter(file)) {
+            writer.write(UUID.randomUUID().toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         while (true) {
-            vaas.connect();
-            var verdict = vaas.forSha256(sha256);
+            try {
+                vaas.forFile(file);
+                System.out.print("+");
+                System.out.flush();
+            } catch (Exception e) {
+                System.out.print("-");
+                System.out.flush();
+            }
+        }
+    }
 
-            assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
+    @Test
+    @Disabled()
+    public void forFileAsync_WithSmallTimeoutInParallel_DoesNotShowNegativeResources() {
+        var config = new VaasConfig(45, false, false, URI.create(getEnvironmentKey("VAAS_URL")));
+        var vaas = new Vaas(config, getAuthenticator());
+        var file1 = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var file2 = Path.of(System.getProperty("java.io.tmpdir"), "file2.txt");
+        var file3 = Path.of(System.getProperty("java.io.tmpdir"), "file3.txt");
+        var file4 = Path.of(System.getProperty("java.io.tmpdir"), "file4.txt");
+        var fileList = List.of(file1, file2, file3, file4);
+        for (var file : fileList) {
+            try (var writer = Files.newBufferedWriter(file)) {
+                writer.write(UUID.randomUUID().toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        while (true) {
+            fileList.parallelStream().forEach((key) -> {
+                try {
+                    vaas.forFile(key);
+                    System.out.print("+");
+                    System.out.flush();
+                } catch (Exception e) {
+                    System.out.print("-");
+                    System.out.flush();
+                }
+            });
         }
     }
 }

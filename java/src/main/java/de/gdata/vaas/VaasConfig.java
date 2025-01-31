@@ -1,39 +1,55 @@
 package de.gdata.vaas;
 
 import lombok.Getter;
-import lombok.NonNull;
 import lombok.Setter;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.time.Duration;
 
+@Setter
+@Getter
 public class VaasConfig {
-    @Getter
-    @Setter
-    @NonNull
-    private URI url;
+    long defaultTimeoutInMs = 300000;
+    boolean useCache = true;
+    boolean useHashLookup = true;
+    private URI url = URI.create("https://gateway.production.vaas.gdatasecurity.de");
 
-    @Getter
-    @Setter
-    private int PullDelayMs;
+    public VaasConfig() {
+    }
 
-    @Getter
-    @Setter
-    Duration defaultTimeout = Duration.ofMinutes(10);
+    public VaasConfig(long defaultTimeoutInMs) {
+        this.defaultTimeoutInMs = defaultTimeoutInMs;
+    }
 
-    public VaasConfig() throws URISyntaxException {
-        this(
-                new URI("wss://gateway.production.vaas.gdatasecurity.de"));
+    public VaasConfig(boolean useCache, boolean useHashLookup) {
+        this.useCache = useCache;
+        this.useHashLookup = useHashLookup;
     }
 
     public VaasConfig(URI url) {
         this.url = url;
-        this.PullDelayMs = 100;
     }
 
-    public VaasConfig(URI url, Duration timeout) {
+    public VaasConfig(long defaultTimeoutInMs, boolean useCache, boolean useHashLookup) {
+        this.defaultTimeoutInMs = defaultTimeoutInMs;
+        this.useCache = useCache;
+        this.useHashLookup = useHashLookup;
+    }
+
+    public VaasConfig(long defaultTimeoutInMs, URI url) {
+        this.defaultTimeoutInMs = defaultTimeoutInMs;
         this.url = url;
-        this.defaultTimeout = timeout;
+    }
+
+    public VaasConfig(boolean useCache, boolean useHashLookup, URI url) {
+        this.useCache = useCache;
+        this.useHashLookup = useHashLookup;
+        this.url = url;
+    }
+
+    public VaasConfig(long defaultTimeoutInMs, boolean useCache, boolean useHashLookup, URI url) {
+        this.defaultTimeoutInMs = defaultTimeoutInMs;
+        this.useCache = useCache;
+        this.useHashLookup = useHashLookup;
+        this.url = url;
     }
 }

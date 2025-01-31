@@ -20,16 +20,17 @@ java {
 dependencies {
     implementation 'org.projectlombok:lombok:1.18.36'
     implementation 'com.google.code.gson:gson:2.11.0'
-    implementation 'org.java-websocket:Java-WebSocket:1.6.0'
     implementation 'org.jetbrains:annotations:26.0.1'
     implementation 'io.github.cdimascio:dotenv-java:3.1.0'
+    implementation 'com.ibm.async:asyncutil:0.1.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
     testImplementation 'org.testng:testng:7.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.4'
-    testImplementation 'org.slf4j:slf4j-simple:2.0.16'
-
+    testImplementation 'org.mockito:mockito-core:5.14.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.3'
+    testImplementation 'com.amazonaws:aws-java-sdk-s3:1.12.780'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
-
 
     compileOnly 'org.projectlombok:lombok:1.18.36'
     annotationProcessor 'org.projectlombok:lombok:1.18.36'
@@ -41,13 +42,13 @@ dependencies {
 test {
     useJUnitPlatform()
     testLogging {
-      events "passed", "skipped", "failed"
+        events "passed", "skipped", "failed"
 
-      showExceptions true
-      exceptionFormat "full"
-      showCauses true
-      showStackTraces true
-      showStandardStreams true
+        showExceptions true
+        exceptionFormat "full"
+        showCauses true
+        showStackTraces true
+        showStandardStreams true
     }
 }
 
@@ -69,6 +70,8 @@ tasks.register('testWithoutErrorLogProducer', Test) {
 publishing {
     publications {
         mavenJava(MavenPublication) {
+            from components.java
+
             pom {
                 name = 'G DATA VaaS'
                 description = 'Verdict-as-a-Service (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware.'
@@ -90,22 +93,50 @@ publishing {
                     connection = 'scm:git:git@github.com:GDATASoftwareAG/vaas.git'
                     url = 'https://github.com/GDATASoftwareAG/vaas'
                 }
-
-                from components.java
             }
         }
     }
 
     signing {
-        def signingKey = findProperty("signingKey")
-        def signingPassword = findProperty("signingPassword")
-        useInMemoryPgpKeys(signingKey, signingPassword)        
-        sign publishing.publications.mavenJava
+        def isReleaseBuild = project.gradle.taskGraph.hasTask("publishToMavenCentral")
+
+        if (isReleaseBuild && findProperty("signingKey") && findProperty("signingPassword")) {
+            useInMemoryPgpKeys(findProperty("signingKey"), findProperty("signingPassword"))
+            sign publishing.publications.mavenJava
+        } else {
+            logger.lifecycle("Skipping signing as this is not a release build or no signing credentials are provided.")
+        }
     }
 
+
     repositories {
+        // Veröffentlichung in ein internes lokales Verzeichnis (nur optional)
         maven {
             url = layout.buildDirectory.dir('repos/releases')
         }
+
+        // Maven Central
+        maven {
+            name = "mavenCentral"
+            url = "https://repo.maven.apache.org/maven2"
+            credentials {
+                username = findProperty("mavenCentralUsername") ?: ""
+                password = findProperty("mavenCentralPassword") ?: ""
+            }
+        }
     }
+}
+
+tasks.register('publishToLocalMaven') {
+    group = 'publishing'
+    description = 'Publish the library to the local Maven repository (~/.m2/repository).'
+
+    dependsOn 'publishMavenJavaPublicationToMavenLocal'
+}
+
+tasks.register('publishToMavenCentral') {
+    group = 'publishing'
+    description = 'Publish the library to Maven Central.'
+
+    dependsOn 'publishMavenJavaPublicationToMavenRepository'
 }
