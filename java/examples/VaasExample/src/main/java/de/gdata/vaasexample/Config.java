@@ -24,7 +24,7 @@ public class Config {
         var useHashLookup = false;
         var config = new VaasConfig(timeoutInMs, useCache, useHashLookup, new URI(env.vaasUrl));
         var vaas = new Vaas(config, authenticator);
-        var file = Path.of(env.scanPath);
+        var file = Path.of(Environment.getenv("SCAN_PATH"));
         var verdict = vaas.forFile(file);
         System.out.printf("File %s was sync detected as %s", verdict.getSha256(), verdict.getVerdict());
         vaas.forFileAsync(file).thenAccept(vaasResult -> {
