@@ -98,10 +98,10 @@ publishing {
     }
 
     signing {
-        def isReleaseBuild = project.gradle.taskGraph.hasTask("publishToMavenCentral")
-
-        if (isReleaseBuild && findProperty("signingKey") && findProperty("signingPassword")) {
-            useInMemoryPgpKeys(findProperty("signingKey"), findProperty("signingPassword"))
+        if (project.gradle.taskGraph.hasTask("publishToMavenCentral")) {
+            def signingKey = findProperty("signingKey")
+            def signingPassword = findProperty("signingPassword")
+            useInMemoryPgpKeys(signingKey, signingPassword)
             sign publishing.publications.mavenJava
         } else {
             logger.lifecycle("Skipping signing as this is not a release build or no signing credentials are provided.")
