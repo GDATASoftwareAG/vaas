@@ -2,6 +2,7 @@ package de.gdata.vaasexample;
 
 import de.gdata.vaas.*;
 import de.gdata.vaas.authentication.*;
+
 import java.net.URI;
 
 public class ForSha256Scan {

@@ -13,7 +13,7 @@ public class Environment {
     public String vaasUrl;
     public String tokenUrl;
 
-    public Environment () {
+    public Environment() {
         clientId = System.getenv("CLIENT_ID");
         clientSecret = System.getenv("CLIENT_SECRET");
         userName = System.getenv("VAAS_USER_NAME");

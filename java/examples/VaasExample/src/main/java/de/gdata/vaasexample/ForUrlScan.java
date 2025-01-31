@@ -1,7 +1,9 @@
 package de.gdata.vaasexample;
 
-import de.gdata.vaas.*;
-import de.gdata.vaas.authentication.*;
+import de.gdata.vaas.Vaas;
+import de.gdata.vaas.VaasConfig;
+import de.gdata.vaas.authentication.ClientCredentialsGrantAuthenticator;
+
 import java.net.URI;
 import java.net.URL;
 
