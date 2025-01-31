@@ -162,7 +162,7 @@ jobs:
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.ORG_GRADLE_PROJECT_SIGNINGKEY }}
         uses: gradle/gradle-build-action@v3
         with:
-          arguments: publishToMavenCentral
+          arguments: publish
           gradle-version: "8.6"
           build-root-directory: java
 

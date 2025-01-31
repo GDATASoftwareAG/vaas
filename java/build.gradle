@@ -23,12 +23,13 @@ dependencies {
     implementation 'org.jetbrains:annotations:26.0.1'
     implementation 'io.github.cdimascio:dotenv-java:3.1.0'
     implementation 'com.ibm.async:asyncutil:0.1.0'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.780'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
+    implementation 'io.github.cdimascio:dotenv-java:2.2.0'
     testImplementation 'org.testng:testng:7.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.4'
     testImplementation 'org.mockito:mockito-core:5.14.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.11.3'
-    testImplementation 'com.amazonaws:aws-java-sdk-s3:1.12.780'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
 
@@ -70,7 +71,6 @@ tasks.register('testWithoutErrorLogProducer', Test) {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-
             pom {
                 name = 'G DATA VaaS'
                 description = 'Verdict-as-a-Service (VaaS) is a service that provides a platform for scanning files for malware and other threats. It allows easy integration in your application. With a few lines of code, you can start scanning files for malware.'
@@ -92,40 +92,22 @@ publishing {
                     connection = 'scm:git:git@github.com:GDATASoftwareAG/vaas.git'
                     url = 'https://github.com/GDATASoftwareAG/vaas'
                 }
+
                 from components.java
             }
         }
     }
 
     signing {
-        if (findProperty("signingKey") != null && findProperty("signingPassword") != null) {
-            def signingKey = findProperty("signingKey")
-            def signingPassword = findProperty("signingPassword")
-            useInMemoryPgpKeys(signingKey, signingPassword)
-            sign publishing.publications.mavenJava
-        } else {
-            logger.lifecycle("Skipping signing as this is not a release build or no signing credentials are provided.")
-        }
+        def signingKey = findProperty("signingKey")
+        def signingPassword = findProperty("signingPassword")
+        useInMemoryPgpKeys(signingKey, signingPassword)
+        sign publishing.publications.mavenJava
     }
-
 
     repositories {
         maven {
             url = layout.buildDirectory.dir('repos/releases')
         }
     }
-}
-
-tasks.register('publishToLocalMaven') {
-    group = 'publishing'
-    description = 'Publish the library to the local Maven repository (~/.m2/repository).'
-
-    dependsOn 'publishMavenJavaPublicationToMavenLocal'
-}
-
-tasks.register('publishToMavenCentral') {
-    group = 'publishing'
-    description = 'Publish the library to Maven Central.'
-
-    dependsOn 'publishMavenJavaPublicationToMavenRepository'
 }
