@@ -24,7 +24,6 @@ dependencies {
     implementation 'io.github.cdimascio:dotenv-java:3.1.0'
     implementation 'com.ibm.async:asyncutil:0.1.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.18.2'
-    implementation 'io.github.cdimascio:dotenv-java:2.2.0'
     testImplementation 'org.testng:testng:7.10.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.11.4'
     testImplementation 'org.mockito:mockito-core:5.14.2'
@@ -131,7 +130,7 @@ publishing {
 tasks.register('publishToLocalMaven') {
     group = 'publishing'
     description = 'Publish the library to the local Maven repository (~/.m2/repository).'
-    
+
     dependsOn 'publishMavenJavaPublicationToMavenLocal'
 }
 
