@@ -7,18 +7,19 @@ use VaasSdk\Vaas;
 
 include_once("./vendor/autoload.php");
 
+
 $authenticator = new ClientCredentialsGrantAuthenticator(
-    getenv("CLIENT_ID"),
-    getenv("CLIENT_SECRET"),
-    getenv("TOKEN_URL") ?: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+    clientId: getenv("CLIENT_ID"),
+    clientSecret: getenv("CLIENT_SECRET"),
+    tokenUrl: getenv("TOKEN_URL")
 );
 
-$vaas = (new Vaas())
+$vaas = Vaas::builder()
     ->withAuthenticator($authenticator)
-    ->withUrl(getenv("VAAS_URL") ?? "wss://gateway.production.vaas.gdatasecurity.de")
     ->build();
 
-$scanPath = getenv("SCAN_PATH");
-$vaasVerdict = $vaas->ForFile($scanPath);
 
-fwrite(STDOUT, "Verdict for $vaasVerdict->Sha256 is " . $vaasVerdict->Verdict->value . " \n");
+$scanPath = getenv("SCAN_PATH");
+$vaasVerdict = $vaas->forFileAsync($scanPath)->await();
+
+fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is " . $vaasVerdict->verdict->value . " \n");
