@@ -22,7 +22,7 @@ public class Environment {
         if (vaasUrl == null) {
             vaasUrl = "wss://gateway.staging.vaas.gdatasecurity.de";
         }
-        tokenUrl = System.getenv("VAAS_TOKEN_URL");
+        tokenUrl = System.getenv("TOKEN_URL");
         if (tokenUrl == null) {
             tokenUrl = "https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token";
         }
