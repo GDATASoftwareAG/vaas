@@ -41,7 +41,6 @@ public class ScanS3Bucket {
         String S3_REGION = dotenv.get("S3_REGION");
 
         // Build VaaS
-        long startTimeAll = System.currentTimeMillis();
         ClientCredentialsGrantAuthenticator authenticator = new ClientCredentialsGrantAuthenticator(CLIENT_ID, CLIENT_SECRET, new URI(TOKEN_URL));
         VaasConfig vaasConfig = new VaasConfig(10000, false, false, new URI(VAAS_URL));
         Vaas vaas = new Vaas(vaasConfig, authenticator);
@@ -119,7 +118,6 @@ public class ScanS3Bucket {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
         objectMapper.writeValue(new File("results-" + S3_BUCKET + ".json"), results);
-        long endTimeAll = System.currentTimeMillis();
 
         System.out.println("Results written to results-" + S3_BUCKET + ".json");
     }
