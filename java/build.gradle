@@ -70,7 +70,6 @@ tasks.register('testWithoutErrorLogProducer', Test) {
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            from components.java
 
             pom {
                 name = 'G DATA VaaS'
