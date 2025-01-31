@@ -94,28 +94,53 @@ jobs:
         with:
           arguments: publishToLocalMaven
           gradle-version: "8.6"
-          build-root-directory: java          
+          build-root-directory: java
 
-      - name: run examples for file
+      - name: run forSha256 example
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: sha256Scan
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample
+
+      - name: run forFile example
         env:
-          SCAN_PATH: "src/main/java/de/gdata/vaasexample/Main.java"
+          SCAN_PATH: "build.gradle"      
         uses: gradle/gradle-build-action@v3
         with:
           arguments: fileScan
           gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
-      - name: run examples for url
+      - name: run forStream example
+        env:
+          SCAN_PATH: "build.gradle"      
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: streamScan
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample
+
+      - name: run forUrl example
         uses: gradle/gradle-build-action@v3
         with:
           arguments: urlScan
           gradle-version: "8.6"
-          build-root-directory: java/examples/VaasExample
+          build-root-directory: java/examples/VaasExample 
 
-      - name: run authentication examples
+      - name: run authentication example
         uses: gradle/gradle-build-action@v3
         with:
           arguments: authentication
+          gradle-version: "8.6"
+          build-root-directory: java/examples/VaasExample  
+
+      - name: run config example
+        env:
+          SCAN_PATH: "build.gradle"
+        uses: gradle/gradle-build-action@v3
+        with:
+          arguments: config
           gradle-version: "8.6"
           build-root-directory: java/examples/VaasExample
 
