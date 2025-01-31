@@ -2,20 +2,21 @@ package de.gdata.vaasexample;
 
 import de.gdata.vaas.*;
 import de.gdata.vaas.authentication.*;
+
 import java.net.URI;
 
 
 public class Authentication {
     public static void main(String[] args) throws Exception {
-        var clientId = System.getenv("CLIENT_ID");
-        var clientSecret = System.getenv("CLIENT_SECRET");
-        var vaasclientId = System.getenv("VAAS_CLIENT_ID");
-        var userName = System.getenv("VAAS_USER_NAME");
-        var password = System.getenv("VAAS_PASSWORD");
-        var tokenUrl = System.getenv("TOKEN_URL");
-        if (tokenUrl == null) { tokenUrl = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"; }
-        var vaasUrl = System.getenv("VAAS_URL");
-        if (vaasUrl == null) { vaasUrl = "wss://gateway.production.vaas.gdatasecurity.de"; }
+        var env = new Environment();
+
+        var clientId = env.clientId;
+        var clientSecret = env.clientSecret;
+        var vaasclientId = env.vaasClientId;
+        var userName = env.userName;
+        var password = env.password;
+        var tokenUrl = env.tokenUrl;
+        var vaasUrl = env.vaasUrl;
 
         // If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
         var authenticator = new ResourceOwnerPasswordGrantAuthenticator(
