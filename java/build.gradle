@@ -98,7 +98,7 @@ publishing {
     }
 
     signing {
-        if (project.gradle.taskGraph.hasTask("publishToMavenCentral")) {
+        if (findProperty("signingKey") != null && findProperty("signingPassword") != null) {
             def signingKey = findProperty("signingKey")
             def signingPassword = findProperty("signingPassword")
             useInMemoryPgpKeys(signingKey, signingPassword)
