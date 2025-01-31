@@ -25,7 +25,7 @@ public class ForFileScan {
         var verdict = vaas.forFile(file);
         System.out.printf("File %s was sync detected as %s", verdict.getSha256(), verdict.getVerdict());
         vaas.forFileAsync(file).thenAccept(vaasResult -> {
-            System.out.printf("\nFile %s was async detected as %s", verdict.getSha256(), verdict.getVerdict());
+            System.out.printf("\nFile %s was async detected as %s", vaasResult.getSha256(), vaasResult.getVerdict());
         }).get();
     }
 }
