@@ -10,7 +10,6 @@ public class Environment {
     public String clientSecret;
     public String userName;
     public String password;
-    public String scanPath;
     public String vaasUrl;
     public String tokenUrl;
 
@@ -19,7 +18,6 @@ public class Environment {
         clientSecret = System.getenv("CLIENT_SECRET");
         userName = System.getenv("VAAS_USER_NAME");
         password = System.getenv("VAAS_PASSWORD");
-        scanPath = getenv("SCAN_PATH");
         vaasUrl = System.getenv("VAAS_URL");
         if (vaasUrl == null) {
             vaasUrl = "wss://gateway.staging.vaas.gdatasecurity.de";
@@ -31,10 +29,10 @@ public class Environment {
     }
 
     public static String getenv(String key) {
-    var value = System.getenv(key);
-    if (value == null) {
-        throw new IllegalStateException("The environment variable " + key + " must be set.");
-    }
-    return value;
+        var value = System.getenv(key);
+        if (value == null) {
+            throw new IllegalStateException("The environment variable " + key + " must be set.");
+        }
+        return value;
     }
 }

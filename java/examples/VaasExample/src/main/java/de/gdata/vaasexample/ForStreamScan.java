@@ -22,10 +22,10 @@ public class ForStreamScan {
 
         var config = new VaasConfig(new URI(env.vaasUrl));
         var vaas = new Vaas(config, authenticator);
-        try (var inputStream = Files.newInputStream(Path.of(env.scanPath))) {
-            var verdict = vaas.forStream(inputStream, Path.of(env.scanPath).toFile().length());
+        try (var inputStream = Files.newInputStream(Path.of(Environment.getenv("SCAN_PATH")))) {
+            var verdict = vaas.forStream(inputStream, Path.of(Environment.getenv("SCAN_PATH")).toFile().length());
             System.out.printf("File %s was sync detected as %s", verdict.getSha256(), verdict.getVerdict());
-            vaas.forStreamAsync(inputStream, Path.of(env.scanPath).toFile().length()).thenAccept(vaasResult -> {
+            vaas.forStreamAsync(inputStream, Path.of(Environment.getenv("SCAN_PATH")).toFile().length()).thenAccept(vaasResult -> {
                 System.out.printf("\nFile %s was async detected as %s", verdict.getSha256(), verdict.getVerdict());
             }).get();
         }
