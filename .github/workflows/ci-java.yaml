@@ -89,13 +89,6 @@ jobs:
           gradle-version: "8.6"
           build-root-directory: java
 
-      - name: publish local Maven package for examples
-        uses: gradle/gradle-build-action@v3
-        with:
-          arguments: publishToLocalMaven
-          gradle-version: "8.6"
-          build-root-directory: java
-
       - name: run forSha256 example
         uses: gradle/gradle-build-action@v3
         with:
@@ -172,7 +165,6 @@ jobs:
           MAVEN_CENTRAL_BEARER_TOKEN: ${{ secrets.MAVEN_CENTRAL_BEARER_TOKEN }}
         working-directory: java/build/repos/releases
         run: |
-          rm -rf de/gdata/vaas/*.xml*
           zip -r package.zip .
           curl --fail \
             --header "Authorization: Bearer ${MAVEN_CENTRAL_BEARER_TOKEN}" \
