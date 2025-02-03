@@ -29,7 +29,7 @@ on:
 env:
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
-  VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+  VAAS_URL: "https://gateway.production.vaas.gdatasecurity.de"
   TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        version: ["8.1", "8.2", "8.3"]
+        version: ["8.1", "8.2", "8.3", "8.4"]
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -57,7 +57,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -68,7 +68,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -82,12 +82,12 @@ jobs:
       - name: install php dependencies
         uses: php-actions/composer@v6
         with:
-          working_dir: php/tests/vaas
+          working_dir: php/tests/VaasTesting
           php_version: ${{ matrix.version }}
 
       - name: run tests
-        run: ./vendor/bin/phpunit --colors --testdox
-        working-directory: php/tests/vaas
+        run: ./vendor/bin/phpunit --colors --testdox --exclude-group exclude
+        working-directory: php/tests/VaasTesting
 
       - name: install example requirements
         run: composer install

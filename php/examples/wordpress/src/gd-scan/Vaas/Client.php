@@ -2,8 +2,8 @@
 
 namespace WpGdScan\Vaas;
 
-use VaasSdk\Vaas;
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Vaas;
 
 class Client
 {
