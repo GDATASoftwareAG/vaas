@@ -2,7 +2,6 @@
 
 namespace VaasSdk\Authentication;
 
-use Amp\Cancellation;
 use Amp\Http\Client\HttpClient;
 
 class ResourceOwnerPasswordGrantAuthenticator extends TokenReceiver implements AuthenticatorInterface
@@ -26,18 +25,6 @@ class ResourceOwnerPasswordGrantAuthenticator extends TokenReceiver implements A
         $this->clientId = $clientId;
         $this->userName = $userName;
         $this->password = $password;
-    }
-
-    /**
-     * Gets the access token asynchronously.
-     * If the token is still valid, it will be returned immediately.
-     * If the token is expired, a new token will be requested.
-     * @param Cancellation|null $cancellation Cancellation token
-     * @return string The access token string
-     */
-    public function getToken(Cancellation $cancellation = null): string
-    {
-        return parent::getTokenAsync($cancellation)->await($cancellation);
     }
 
     protected function tokenRequestToForm(): string

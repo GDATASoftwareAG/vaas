@@ -324,7 +324,7 @@ class Vaas
     {
         return async(function () use ($request, $requestId) {
             $this->logger->debug("Add request headers");
-            $request->setHeader('Authorization', 'Bearer ' . $this->authenticator->getToken());
+            $request->setHeader('Authorization', 'Bearer ' . $this->authenticator->getTokenAsync()->await());
             $this->logger->debug("Successfully added authorization header with bearer token");
             $request->setHeader('User-Agent', sprintf('%s/%s', self::PRODUCT_NAME, self::PRODUCT_VERSION));
             if (!empty($requestId)) {
