@@ -2,13 +2,13 @@
 
 namespace VaasSdk\Authentication;
 
-use Amp\Cancellation;
 use Amp\Http\Client\HttpClient;
 
-class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
+class ClientCredentialsGrantAuthenticator extends TokenReceiver implements AuthenticatorInterface
 {
-    private TokenReceiver $tokenReceiver;
-
+    private readonly string $clientId;
+    private readonly string $clientSecret;
+    
     /**
      * The authenticator for the client credentials grant type if you have a client id and client secret.
      * @param string $clientId The client id
@@ -16,20 +16,19 @@ class ClientCredentialsGrantAuthenticator implements AuthenticatorInterface
      * @param string|null $tokenUrl The optional token url. Defaults to 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token'
      * @param HttpClient|null $httpClient Your optional custom http client.
      */
-    public function __construct(public string $clientId, public string $clientSecret, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
+    public function __construct(string $clientId, string $clientSecret, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
     {
-        $this->tokenReceiver = new TokenReceiver($this, $tokenUrl, $httpClient);
+        parent::__construct($tokenUrl, $httpClient);
+        $this->clientId = $clientId;
+        $this->clientSecret = $clientSecret;
     }
 
-    /**
-     * Gets the access token asynchronously.
-     * If the token is still valid, it will be returned immediately.
-     * If the token is expired, a new token will be requested.
-     * @param Cancellation|null $cancellation Cancellation token
-     * @return string The access token string
-     */
-    public function getTokenAsync(?Cancellation $cancellation = null): string
+    protected function tokenRequestToForm(): string
     {
-        return $this->tokenReceiver->getTokenAsync($cancellation)->await();
+        return http_build_query([
+            'client_id' => $this->clientId,
+            'client_secret' => $this->clientSecret,
+            'grant_type' => 'client_credentials',
+        ]);
     }
 }

@@ -14,7 +14,7 @@ class VaasOptions
     public function __construct(
         public bool  $useHashLookup = true,
         public bool  $useCache = true,
-        public string $vaasUrl = 'https://gateway.production.vaas.gdatasecurity.de/',
+        public string $vaasUrl = 'https://gateway.production.vaas.gdatasecurity.de',
         public int    $timeout = 300
     ) {}
 }

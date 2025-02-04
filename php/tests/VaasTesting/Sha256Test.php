@@ -22,6 +22,9 @@ final class Sha256Test extends TestCase
         $this->assertFalse(Sha256::IsValid("00005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"));
     }
 
+    /**
+     * @throws InvalidSha256Exception
+     */
     public function testTryFromStringGetsValidSha256ReturnsCorrectSha256(): void
     {
         $calculatedSha256 = Sha256::TryFromString(Sha256Test::VALID_SHA256);
@@ -34,12 +37,19 @@ final class Sha256Test extends TestCase
         Sha256::TryFromString("00005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8");
     }
 
+    /**
+     * @throws InvalidSha256Exception
+     * @throws FileDoesNotExistException
+     */
     public function testTryFromFileGetsValidSha256ReturnsTrue(): void
     {
         $calculatedSha256 = Sha256::TryFromFile(Sha256Test::VALID_FILE);
         $this->assertEquals(Sha256Test::VALID_SHA256, $calculatedSha256);
     }
 
+    /**
+     * @throws InvalidSha256Exception
+     */
     public function testTryFromFileGetsInvalidPathThrowsFileDoesNotExistException(): void
     {
         $this->expectException(FileDoesNotExistException::class);

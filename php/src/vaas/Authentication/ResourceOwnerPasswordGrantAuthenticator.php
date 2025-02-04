@@ -2,12 +2,13 @@
 
 namespace VaasSdk\Authentication;
 
-use Amp\Cancellation;
 use Amp\Http\Client\HttpClient;
 
-class ResourceOwnerPasswordGrantAuthenticator implements AuthenticatorInterface
+class ResourceOwnerPasswordGrantAuthenticator extends TokenReceiver implements AuthenticatorInterface
 {
-    private TokenReceiver $tokenReceiver;
+    private readonly string $clientId;
+    private readonly string $userName;
+    private readonly string $password;
 
     /**
      * The authenticator for the resource owner password grant type if you have a client id, username and password.
@@ -18,20 +19,21 @@ class ResourceOwnerPasswordGrantAuthenticator implements AuthenticatorInterface
      * @param string|null $tokenUrl The optional token url. Defaults to 'https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token'
      * @param HttpClient|null $httpClient Your optional custom http client.
      */
-    public function __construct(public string $clientId, public string $userName, public string $password, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
+    public function __construct(string $clientId, string $userName, string $password, ?string $tokenUrl = null, ?HttpClient $httpClient = null)
     {
-        $this->tokenReceiver = new TokenReceiver($this, $tokenUrl, $httpClient);
+        parent::__construct($tokenUrl, $httpClient);
+        $this->clientId = $clientId;
+        $this->userName = $userName;
+        $this->password = $password;
     }
 
-    /**
-     * Gets the access token asynchronously.
-     * If the token is still valid, it will be returned immediately.
-     * If the token is expired, a new token will be requested.
-     * @param Cancellation|null $cancellation Cancellation token
-     * @return string The access token string
-     */
-    public function getTokenAsync(?Cancellation $cancellation = null): string
+    protected function tokenRequestToForm(): string
     {
-        return $this->tokenReceiver->getTokenAsync($cancellation)->await();
+        return http_build_query([
+            'client_id' => $this->clientId,
+            'username' => $this->userName,
+            'password' => $this->password,
+            'grant_type' => 'password',
+        ]);
     }
 }
