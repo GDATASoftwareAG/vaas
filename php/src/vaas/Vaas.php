@@ -331,6 +331,7 @@ class Vaas
                 $request->setHeader('tracestate', 'vaasrequestid=' . $requestId);
                 $this->logger->debug("Request ID added to headers: $requestId");
             }
+            $request->setTransferTimeout($this->options->timeout);
         });
     }
 
