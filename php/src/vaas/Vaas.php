@@ -2,12 +2,12 @@
 
 namespace VaasSdk;
 
-use Amp\ByteStream\BufferException;
 use Amp\ByteStream\ReadableStream;
-use Amp\ByteStream\StreamException;
 use Amp\Cancellation;
+use Amp\File\FilesystemException;
 use Amp\Future;
 use Amp\Http\Client\HttpClient;
+use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Http\Client\StreamedContent;
@@ -75,6 +75,10 @@ class Vaas
      * @param ForSha256Options|null $options Options for the request
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
+     * @throws HttpException If the request fails
+     * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
+     * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
+     * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
      */
     public function forSha256Async(Sha256 $sha256, ?ForSha256Options $options = null, ?Cancellation $cancellation = null): Future
     {
@@ -128,6 +132,9 @@ class Vaas
      * @param ForFileOptions|null $options Options for the request
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
+     * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
+     * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
+     * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
      */
     public function forFileAsync(string $path, ?ForFileOptions $options = null, ?Cancellation $cancellation = null): Future
     {
@@ -159,12 +166,23 @@ class Vaas
                 }
             }
 
-            $stream = openFile($path, 'r');
-
-            $forStreamOptions = new ForStreamOptions(useHashLookup: $options->useHashLookup, vaasRequestId: $options->vaasRequestId);
-
-            $this->logger->debug("Requesting verdict for $path as file stream");
-            return $this->forStreamAsync($stream, filesize($path), $forStreamOptions)->await();
+            try {
+                $stream = openFile($path, 'r');
+                $forStreamOptions = new ForStreamOptions(useHashLookup: $options->useHashLookup, vaasRequestId: $options->vaasRequestId);
+                $this->logger->debug("Requesting verdict for $path as file stream");
+                return $this->forStreamAsync($stream, filesize($path), $forStreamOptions)->await();
+            } catch (FilesystemException  $ex) {
+                $this->logger->error("Error opening file: $path");
+                throw new VaasClientException('Error opening file (' . $path . '): ' . $ex->getMessage());
+            } catch (Exception $ex){
+                $this->logger->error("Error requesting verdict for file: $path");
+                throw $ex;
+            }
+            finally {
+                if (isset($stream)) {
+                    $stream->close();
+                }
+            }
         });
     }
 
@@ -175,6 +193,10 @@ class Vaas
      * @param ForStreamOptions|null $options Options for the request
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
+     * @throws HttpException If the request fails
+     * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
+     * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
+     * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
      */
     public function forStreamAsync(ReadableStream $stream, int $fileSize, ?ForStreamOptions $options = null, ?Cancellation $cancellation = null): Future
     {
@@ -194,7 +216,6 @@ class Vaas
                 $request = new Request($url, 'POST');
 
                 $request->setBody(StreamedContent::fromStream($stream, $fileSize));
-                $request->setTransferTimeout($options->timeout);
                 $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
                 $this->logger->debug("Send request for file stream: " . self::logUri($request));
                 $response = $this->httpClient->request($request, $cancellation);
@@ -203,7 +224,12 @@ class Vaas
             }
             switch ($response->getStatus()) {
                 case 201:
-                    $fileAnalysisStarted = json_decode($response->getBody()->buffer(), true);
+                    try {
+                        $fileAnalysisStarted = json_decode($response->getBody()->buffer(), true);
+                    } catch (Exception $ex) {
+                        $this->logger->error("Error parsing response for stream: " . $ex->getMessage());
+                        throw new VaasServerException('Error parsing response stream', $ex->getCode(), $ex);
+                    }
                     $this->logger->debug("File uploaded successfully and analysis started");
                     break;
                 case 400:
@@ -239,6 +265,10 @@ class Vaas
      * @param ForUrlOptions|null $options Options for the request
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
+     * @throws HttpException If the request fails
+     * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
+     * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
+     * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
      */
     public function forUrlAsync(string $uri, ?ForUrlOptions $options = null, ?Cancellation $cancellation = null): Future
     {
@@ -263,9 +293,14 @@ class Vaas
 
             switch ($urlAnalysisResponse->getStatus()) {
                 case 201:
-                    $urlAnalysisStarted = json_decode($urlAnalysisResponse->getBody()->buffer($cancellation), true);
-                    $id = $urlAnalysisStarted['id'] ?? null;
-                    $this->logger->debug("URL analysis started for: $uri");
+                    try {
+                        $urlAnalysisStarted = json_decode($urlAnalysisResponse->getBody()->buffer($cancellation), true);
+                        $id = $urlAnalysisStarted['id'] ?? null;
+                    } catch (Exception $ex) {
+                        $this->logger->error("Error parsing response for URL: $uri");
+                        throw new VaasServerException('Error parsing response from VaaS backend for URL scan', $ex->getCode(), $ex);
+                    }                    
+                    $this->logger->debug("URL analysis for " . $uri . " started with id: " . $id);
                     break;
                 case 400:
                     $this->logger->error("Bad request for URL: $uri");
@@ -295,11 +330,16 @@ class Vaas
 
                 switch ($reportResponse->getStatus()) {
                     case 200:
-                        $urlReport = json_decode($reportResponse->getBody()->buffer($cancellation), true)
-                            ?? throw new VaasServerException('Unexpected response from the server');
-                        $verdict = VaasVerdict::from($urlReport);
-                        $this->logger->info("Received verdict for $uri: $verdict");
-                        return $verdict;
+                        try {
+                            $urlReport = json_decode($reportResponse->getBody()->buffer($cancellation), true)
+                                ?? throw new VaasServerException('Unexpected response from the server');
+                            $verdict = VaasVerdict::from($urlReport);
+                            $this->logger->info("Received verdict for $uri: $verdict");
+                            return $verdict;
+                        } catch (Exception $ex) {
+                            $this->logger->error("Error parsing response for URL scan: " . $ex->getMessage());
+                            throw new VaasServerException('Error parsing response from VaaS backend for URL scan', $ex->getCode(), $ex);
+                        }
                     case 202:
                         $this->logger->debug("Verdict for URL: $uri is not ready yet, retrying...");
                         break;
@@ -331,6 +371,7 @@ class Vaas
                 $request->setHeader('tracestate', 'vaasrequestid=' . $requestId);
                 $this->logger->debug("Request ID added to headers: $requestId");
             }
+            $request->setTransferTimeout($this->options->timeout);
         });
     }
 
@@ -341,13 +382,11 @@ class Vaas
      * @throws VaasAuthenticationException If the server did not accept the token from the identity provider
      * @throws VaasClientException If the error was caused by the client
      * @throws VaasServerException If the error was caused by the server
-     * @throws BufferException If the response body could not be read
-     * @throws StreamException If the response body could not be read
      */
     private function parseVaasError(Response $response): Exception
     {
-        $responseBody = $response->getBody()->buffer();
         try {
+            $responseBody = $response->getBody()->buffer();
             $problemDetails = json_decode($responseBody, true);
             if (json_last_error() === JSON_ERROR_NONE) {
                 throw match ($problemDetails['type'] ?? '') {
@@ -355,7 +394,7 @@ class Vaas
                     default => new VaasServerException($problemDetails['detail'] ?? 'Unknown server error'),
                 };
             } else {
-                throw new Exception('Invalid JSON response');
+                throw new VaasServerException('Invalid JSON error response from VaaS backend');
             }
         } catch (Exception) {
             if ($response->getStatus() == 401) {
@@ -364,9 +403,8 @@ class Vaas
                 );
             } elseif ($response->isClientError()) {
                 throw new VaasClientException('HTTP Error: ' . $response->getStatus() . ' ' . $response->getReason());
-            } else {
-                throw new VaasServerException('HTTP Error: ' . $response->getStatus() . ' ' . $response->getReason());
             }
+            throw new VaasServerException('HTTP Error: ' . $response->getStatus() . ' ' . $response->getReason());
         }
     }
     
