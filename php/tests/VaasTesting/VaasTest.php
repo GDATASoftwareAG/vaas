@@ -14,6 +14,7 @@ use Psr\Log\LoggerInterface;
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\VaasClientException;
+use VaasSdk\Options\ForSha256Options;
 use VaasSdk\Options\VaasOptions;
 use VaasSdk\Sha256;
 use VaasSdk\Vaas;
@@ -63,7 +64,7 @@ final class VaasTest extends TestCase
         $this->vaas = $this->getVaas();
     }
 
-    private function getVaas(bool $useCache = true, bool $useHashLookup = true): Vaas
+    private function getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
     {
         $options = new VaasOptions(
             useHashLookup: $useHashLookup,
@@ -100,7 +101,15 @@ final class VaasTest extends TestCase
 
     public function testForSha256_WithPupSha256_GetsPupResponse(): void
     {
-        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::PUP_HASH)->await())->await();
+        // You need to scan the verdict from the file first to have the hash in the cache because the hash-lookup do not know the PUP hash
+        $file = file_get_contents(self::PUP_URL);
+        file_put_contents(__DIR__ . "/PotentiallyUnwanted.exe", $file);
+        $verdictFromFileScan = $this->vaas->forFileAsync(__DIR__ . "/PotentiallyUnwanted.exe")->await();
+        unlink(__DIR__ . "/PotentiallyUnwanted.exe");
+        $options = new ForSha256Options(useCache: true, useHashLookup: true);
+        
+        // Act
+        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::PUP_HASH)->await(), $options)->await();
 
         $this->logger->info('Test for PUP SHA256', [
             'expected' => Verdict::PUP,
@@ -110,10 +119,12 @@ final class VaasTest extends TestCase
 
         $this->assertEqualsIgnoringCase(self::PUP_HASH, $verdict->sha256);
         $this->assertEquals(Verdict::PUP, $verdict->verdict);
+        $this->assertEquals($verdictFromFileScan->verdict, $verdict->verdict);
     }
 
     public function testForSha256_WithCleanSha256_GetsCleanResponse(): void
     {
+        
         $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::CLEAN_HASH)->await())->await();
 
         $this->logger->info('Test for clean SHA256', [
