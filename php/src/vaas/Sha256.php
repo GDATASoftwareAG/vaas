@@ -27,7 +27,7 @@ class Sha256
 
             $hashString = hash_file("sha256", $path);
 
-            if (Sha256::IsValid($hashString)) {
+            if (Sha256::IsValid($hashString)->await()) {
                 $sha256 = new Sha256();
                 $sha256->_hash = $hashString;
                 return $sha256;
