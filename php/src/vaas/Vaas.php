@@ -151,7 +151,7 @@ class Vaas
             if ($options->useCache || $options->useHashLookup) {
                 $forSha256Options = new ForSha256Options(
                     $options->useCache, $options->useHashLookup, $options->vaasRequestId);
-                $sha256 = Sha256::TryFromFile($path);
+                $sha256 = Sha256::TryFromFile($path)->await();
                 $this->logger->debug("Check if file $path is already known by its SHA256: $sha256");
                 try {
                     $response = $this->forSha256Async($sha256, $forSha256Options, $cancellation)->await();
@@ -252,7 +252,7 @@ class Vaas
                 $this->logger->error("Unexpected response from the server for stream");
                 throw new VaasServerException('Unexpected response from the server');
             }
-            $sha256 = Sha256::TryFromString($fileAnalysisStarted['sha256']);
+            $sha256 = Sha256::TryFromString($fileAnalysisStarted['sha256'])->await();
 
             $this->logger->debug("Requesting verdict for uploaded file with SHA256: $sha256");
             return $this->forSha256Async($sha256, $forSha256Options)->await();
