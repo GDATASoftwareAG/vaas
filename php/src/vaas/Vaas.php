@@ -98,7 +98,7 @@ class Vaas
 
             while (true) {
                 $request = new Request($url, 'GET');
-                $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await($cancellation);
+                $this->enrichRequestAsync($request,$this->options->timeout, $options->vaasRequestId)->await($cancellation);
                 $this->logger->debug("Send request for SHA256: " . self::logUri($request));
                 $response = $this->httpClient->request($request, $cancellation);
 
@@ -220,7 +220,7 @@ class Vaas
                 $request = new Request($url, 'POST');
 
                 $request->setBody(StreamedContent::fromStream($stream, $fileSize));
-                $this->addRequestHeadersAsync($request, $options->vaasRequestId)->await();
+                $this->enrichRequestAsync($request, $options->timeout, $options->vaasRequestId)->await();
                 $this->logger->debug("Send request for file stream: " . self::logUri($request));
                 $response = $this->httpClient->request($request, $cancellation);
             } finally {
@@ -291,7 +291,7 @@ class Vaas
                 'useHashLookup' => $options->useHashLookup,
             ]));
 
-            $this->addRequestHeadersAsync($urlAnalysisRequest, $options->vaasRequestId)->await($cancellation);
+            $this->enrichRequestAsync($urlAnalysisRequest, $options->timeout, $options->vaasRequestId)->await($cancellation);
             $urlAnalysisRequest->setHeader('Content-Type', 'application/json');
             $this->logger->debug("Send request for url analysis: " . self::logUri($urlAnalysisRequest));
             $urlAnalysisResponse = $this->httpClient->request($urlAnalysisRequest, $cancellation);
@@ -330,7 +330,7 @@ class Vaas
                 $reportUri = sprintf('%s/urls/%s/report', $this->options->vaasUrl, $id);
                 $reportRequest = new Request($reportUri, 'GET');
 
-                $this->addRequestHeadersAsync($reportRequest, $options->vaasRequestId)->await($cancellation);
+                $this->enrichRequestAsync($reportRequest, $options->timeout, $options->vaasRequestId)->await($cancellation);
                 $reportResponse = $this->httpClient->request($reportRequest, $cancellation);
 
                 switch ($reportResponse->getStatus()) {
@@ -357,17 +357,19 @@ class Vaas
     }
 
     /**
-     * Add the necessary headers to a request:
+     * Set necessary headers to a request:
      * - Authorization (Bearer token)
      * - User-Agent
      * - tracestate
+     * Also set the timeout for the request.
      * @param Request $request The request to add headers to
+     * @param int $timeout The timeout to set for the request
      * @param string|null $requestId The request ID to add to the headers
      * @return Future A future that resolves when the headers have been added
      */
-    private function addRequestHeadersAsync(Request $request, ?string $requestId = ''): Future
+    private function enrichRequestAsync(Request $request, int $timeout, ?string $requestId = ''): Future
     {
-        return async(function () use ($request, $requestId) {
+        return async(function () use ($request, $requestId, $timeout) {
             $this->logger->debug("Add request headers");
             $request->setHeader('Authorization', 'Bearer ' . $this->authenticator->getTokenAsync()->await());
             $this->logger->debug("Successfully added authorization header with bearer token");
@@ -376,7 +378,9 @@ class Vaas
                 $request->setHeader('tracestate', 'vaasrequestid=' . $requestId);
                 $this->logger->debug("Request ID added to headers: $requestId");
             }
-            $request->setTransferTimeout($this->options->timeout);
+            $request->setTransferTimeout($timeout);
+            $request->setInactivityTimeout($timeout);
+            $this->logger->debug("Timeout set to " . $timeout . " seconds");
         });
     }
 

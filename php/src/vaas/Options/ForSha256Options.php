@@ -4,7 +4,7 @@ namespace VaasSdk\Options;
 
 class ForSha256Options
 {
-    const DEFAULT_REQUEST_ID = null;
+    private const DEFAULT_REQUEST_ID = null;
 
     public function __construct(
         public bool $useCache = true,

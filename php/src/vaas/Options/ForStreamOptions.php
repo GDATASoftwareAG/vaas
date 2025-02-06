@@ -16,7 +16,7 @@ class ForStreamOptions
     {
         return new self(
             $options->useCache,
-            self::DEFAULT_TIMEOUT,
+            $options->timeout,
             self::DEFAULT_REQUEST_ID
         );
     }
