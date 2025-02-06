@@ -31,5 +31,5 @@ $vaas = Vaas::builder()
     ->build();
 
 // Get verdict for an eicar hash
-$vaasVerdict = $vaas->forSha256Async(Sha256::TryFromString("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8"))->await();
+$vaasVerdict = $vaas->forSha256Async(Sha256::TryFromString("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")->await())->await();
 fwrite(STDOUT, "Verdict for $vaasVerdict->sha256 is $vaasVerdict->verdict->value \n");

@@ -63,7 +63,7 @@ final class VaasTest extends TestCase
         $this->vaas = $this->getVaas();
     }
 
-    private function getVaas(bool $useCache = false, bool $useHashLookup = true): Vaas
+    private function getVaas(bool $useCache = true, bool $useHashLookup = true): Vaas
     {
         $options = new VaasOptions(
             useHashLookup: $useHashLookup,
@@ -86,7 +86,7 @@ final class VaasTest extends TestCase
 
     public function testForSha256_WithMaliciousSha256_GetsMaliciousResponse(): void
     {
-        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::MALICIOUS_HASH))->await();
+        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::MALICIOUS_HASH)->await())->await();
 
         $this->logger->info('Test for malicious SHA256', [
             'expected' => Verdict::MALICIOUS,
@@ -100,7 +100,7 @@ final class VaasTest extends TestCase
 
     public function testForSha256_WithPupSha256_GetsPupResponse(): void
     {
-        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::PUP_HASH))->await();
+        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::PUP_HASH)->await())->await();
 
         $this->logger->info('Test for PUP SHA256', [
             'expected' => Verdict::PUP,
@@ -114,7 +114,7 @@ final class VaasTest extends TestCase
 
     public function testForSha256_WithCleanSha256_GetsCleanResponse(): void
     {
-        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::CLEAN_HASH))->await();
+        $verdict = $this->vaas->forSha256Async(Sha256::TryFromString(self::CLEAN_HASH)->await())->await();
 
         $this->logger->info('Test for clean SHA256', [
             'expected' => Verdict::CLEAN,
@@ -130,7 +130,7 @@ final class VaasTest extends TestCase
     {
         $vaas = $this->getVaas(false, false);
 
-        $verdict = $vaas->forSha256Async(Sha256::TryFromString(self::UNKNOWN_HASH))->await();
+        $verdict = $vaas->forSha256Async(Sha256::TryFromString(self::UNKNOWN_HASH)->await())->await();
 
         $this->logger->info('Test for unknown SHA256', [
             'expected' => Verdict::UNKNOWN,
@@ -148,7 +148,7 @@ final class VaasTest extends TestCase
         $this->expectExceptionMessage("Invalid SHA256 hash");
 
         try {
-            $this->vaas->forSha256Async(Sha256::TryFromString("invalid"))->await();
+            $this->vaas->forSha256Async(Sha256::TryFromString("invalid")->await())->await();
         } catch (InvalidSha256Exception $e) {
             $this->logger->error('Test for invalid SHA256', [
                 'exception' => $e->getMessage()
