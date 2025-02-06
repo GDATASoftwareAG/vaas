@@ -14,7 +14,6 @@ use Psr\Log\LoggerInterface;
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\VaasClientException;
-use VaasSdk\Options\ForSha256Options;
 use VaasSdk\Options\VaasOptions;
 use VaasSdk\Sha256;
 use VaasSdk\Vaas;
