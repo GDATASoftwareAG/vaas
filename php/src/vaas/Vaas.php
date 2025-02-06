@@ -11,6 +11,7 @@ use Amp\Http\Client\HttpException;
 use Amp\Http\Client\Request;
 use Amp\Http\Client\Response;
 use Amp\Http\Client\StreamedContent;
+use Amp\Http\Client\TimeoutException;
 use Exception;
 use Psr\Log\LoggerInterface;
 use VaasSdk\Authentication\AuthenticatorInterface;
@@ -76,6 +77,7 @@ class Vaas
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
      * @throws HttpException If the request fails
+     * @throws TimeoutException If the request exceeds the timeout specified in the VaasOptions. Per default 300 seconds.
      * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
      * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
      * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
@@ -132,6 +134,7 @@ class Vaas
      * @param ForFileOptions|null $options Options for the request
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
+     * @throws TimeoutException If the request exceeds the timeout specified in the VaasOptions. Per default 300 seconds.
      * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
      * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
      * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
@@ -194,6 +197,7 @@ class Vaas
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
      * @throws HttpException If the request fails
+     * @throws TimeoutException If the request exceeds the timeout specified in the VaasOptions. Per default 300 seconds.
      * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
      * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
      * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
@@ -266,6 +270,7 @@ class Vaas
      * @param Cancellation|null $cancellation Cancellation token
      * @return Future A future that resolves to a VaasVerdict
      * @throws HttpException If the request fails
+     * @throws TimeoutException If the request exceeds the timeout specified in the VaasOptions. Per default 300 seconds.
      * @throws VaasClientException The request is malformed or cannot be completed. Recommended actions: Don't repeat the request. Log. Analyze the error.
      * @throws VaasAuthenticationException The Vaas authentication failed. Recommended actions: Double-check your credentials in the authenticator object. Check if your authenticator connects to the correct token endpoint. Check if the token endpoint is reachable. If your problem persists contact G DATA.
      * @throws VaasServerException The server encountered an internal error. Recommended actions: You may retry the request after a certain delay. If the problem persists contact G DATA.
@@ -422,7 +427,7 @@ class Vaas
      * @return string The validated URI
      * @throws VaasClientException If the URI is invalid
      */
-    private static function validUri(string $uri): string
+    public static function validUri(string $uri): string
     {
         if (!filter_var($uri, FILTER_VALIDATE_URL)) {
             throw new VaasClientException('Invalid URI');
