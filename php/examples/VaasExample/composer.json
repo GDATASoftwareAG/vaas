@@ -9,6 +9,9 @@
         }
     ],
     "require": {
-        "gdata/vaas": "@dev"
+        "gdata/vaas": "@dev",
+        "aws/aws-sdk-php": "^3.337",
+        "ext-simplexml": "*",
+        "vlucas/phpdotenv": "^5.6"
     }
 }
