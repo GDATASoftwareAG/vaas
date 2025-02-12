@@ -1250,4 +1250,36 @@ public class VaasTest
             .Should()
             .ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task ForFile_WithTimeout_ThrowsException()
+    {
+        var authenticator = new ClientCredentialsGrantAuthenticator(
+            AuthenticationEnvironment.ClientId,
+            AuthenticationEnvironment.ClientSecret,
+            AuthenticationEnvironment.TokenUrl
+        );
+        var options = new VaasOptions
+        {
+            Timeout = 1,
+            UseCache = false,
+            UseHashLookup = false,
+            VaasUrl = new Uri("https://gateway.staging.vaas.gdatasecurity.de"),
+        };
+        var vaas = new Vaas(authenticator, options);
+
+        try
+        {
+            var random100Mb = new byte[1000 * 1024 * 1024];
+            new Random().NextBytes(random100Mb);
+            await File.WriteAllBytesAsync("file.txt", random100Mb);
+            await vaas.Invoking(async v => await v.ForFileAsync("file.txt", CancellationToken.None))
+                .Should()
+                .ThrowAsync<TaskCanceledException>();
+        }
+        finally
+        {
+            File.Delete("file.txt");
+        }
+    }
 }
