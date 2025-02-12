@@ -96,10 +96,14 @@ public class Vaas : IVaas
             _options.VaasUrl,
             $"/files/{sha256}/report?useCache={JsonSerializer.Serialize(options.UseCache)}&useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
         );
-        var request = new HttpRequestMessage { RequestUri = reportUri, Method = HttpMethod.Get };
 
         while (true)
         {
+            var request = new HttpRequestMessage
+            {
+                RequestUri = reportUri,
+                Method = HttpMethod.Get,
+            };
             await AddRequestHeadersAsync(request, cancellationToken, options.VaasRequestId);
             var response = await _httpClient.SendAsync(request, cancellationToken);
             switch (response.StatusCode)
