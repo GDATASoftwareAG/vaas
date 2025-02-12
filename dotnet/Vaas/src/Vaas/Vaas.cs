@@ -143,30 +143,41 @@ public class Vaas : IVaas
         ForFileOptions? options = null
     )
     {
+        if (!File.Exists(path))
+            throw new VaasClientException("File does not exist: " + path);
+
         options ??= ForFileOptions.From(_options);
 
-        var sha256 = ChecksumSha256.Sha256CheckSum(path);
-
-        var forSha256Options = new ForSha256Options
+        if (options.UseCache || options.UseHashLookup)
         {
-            VaasRequestId = options.VaasRequestId,
-            UseHashLookup = options.UseHashLookup,
-            UseCache = options.UseCache,
-        };
+            var forSha256Options = new ForSha256Options
+            {
+                VaasRequestId = options.VaasRequestId,
+                UseHashLookup = options.UseHashLookup,
+                UseCache = options.UseCache,
+            };
 
-        var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
-
-        var verdictWithoutDetection =
-            response.Verdict is Verdict.Malicious or Verdict.Pup
-            && string.IsNullOrEmpty(response.Detection);
-        if (
-            response.Verdict != Verdict.Unknown
-            && !verdictWithoutDetection
-            && !string.IsNullOrWhiteSpace(response.FileType)
-            && !string.IsNullOrEmpty(response.MimeType)
-        )
-        {
-            return response;
+            try
+            {
+                var sha256 = ChecksumSha256.Sha256CheckSum(path);
+                var response = await ForSha256Async(sha256, cancellationToken, forSha256Options);
+                var verdictWithoutDetection =
+                    response.Verdict is Verdict.Malicious or Verdict.Pup
+                    && string.IsNullOrEmpty(response.Detection);
+                if (
+                    response.Verdict != Verdict.Unknown
+                    && !verdictWithoutDetection
+                    && !string.IsNullOrWhiteSpace(response.FileType)
+                    && !string.IsNullOrEmpty(response.MimeType)
+                )
+                {
+                    return response;
+                }
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
         }
 
         await using var stream = File.OpenRead(path);
@@ -188,7 +199,7 @@ public class Vaas : IVaas
 
         var url = new Uri(
             _options.VaasUrl,
-            $"/files?useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}"
+            $"/files?useHashLookup={JsonSerializer.Serialize(options.UseHashLookup)}&useCache={JsonSerializer.Serialize(true)}"
         );
 
         var request = new HttpRequestMessage

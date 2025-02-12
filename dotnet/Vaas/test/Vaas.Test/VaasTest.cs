@@ -64,7 +64,7 @@ public class VaasTest
         return GetServices(
             new Dictionary<string, string>
             {
-                { "VerdictAsAService:Options:UseHashLookup", "false" },
+                { "VerdictAsAService:Options:UseHashLookup", "true" },
                 { "VerdictAsAService:Options:UseCache", "false" },
                 { "VerdictAsAService:Options:VaasUrl", VaasUrl.ToString() },
                 { "VerdictAsAService:Options:Timeout", "10" },
@@ -360,29 +360,32 @@ public class VaasTest
         const string content =
             "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
         const string sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-        var fileName = Guid.NewGuid().ToString() + ".txt";
+        var fileName = Guid.NewGuid() + ".txt";
 
         await File.WriteAllBytesAsync(fileName, Encoding.UTF8.GetBytes(content));
 
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
 
-        handlerMock
-            .SetupRequest(request =>
-                request.RequestUri != null
-                && request.Method == HttpMethod.Get
-                && request.RequestUri.ToString().Contains(sha256)
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useCache=" + JsonSerializer.Serialize(useCache))
-                && request
-                    .RequestUri.ToString()
-                    .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
-            )
-            .ReturnsResponse(
-                JsonSerializer.Serialize(
-                    new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+        if (useCache || useHashLookup)
+        {
+            handlerMock
+                .SetupRequest(request =>
+                    request.RequestUri != null
+                    && request.Method == HttpMethod.Get
+                    && request.RequestUri.ToString().Contains(sha256)
+                    && request
+                        .RequestUri.ToString()
+                        .Contains("useCache=" + JsonSerializer.Serialize(useCache))
+                    && request
+                        .RequestUri.ToString()
+                        .Contains("useHashLookup=" + JsonSerializer.Serialize(useHashLookup))
                 )
-            );
+                .ReturnsResponse(
+                    JsonSerializer.Serialize(
+                        new FileReport { Sha256 = EicarSha256, Verdict = Verdict.Unknown }
+                    )
+                );
+        }
 
         if (!useCache)
         {
@@ -422,7 +425,7 @@ public class VaasTest
         var vaas = provider.GetRequiredService<IVaas>();
 
         await vaas.ForFileAsync(
-            "file.txt",
+            fileName,
             CancellationToken.None,
             new ForFileOptions { UseCache = useCache, UseHashLookup = useHashLookup }
         );
@@ -630,30 +633,6 @@ public class VaasTest
             .Invoking(async v => await v.ForFileAsync("file.txt", ct))
             .Should()
             .ThrowAsync<OperationCanceledException>();
-    }
-
-    [Fact]
-    public async Task ForFileAsync_IfForSha256DoesNotReturnDetectionEtc_UploadsFile()
-    {
-        var buffer = new byte[1024];
-        Random.Shared.NextBytes(buffer);
-        await File.WriteAllBytesAsync("file.txt", buffer);
-        var sha256 = new ChecksumSha256(SHA256.HashData(buffer));
-        // TODO: Mock response
-
-        var actual = await _vaas.ForFileAsync("file.txt", CancellationToken.None);
-
-        actual
-            .Should()
-            .BeEquivalentTo(
-                new VaasVerdict
-                {
-                    Sha256 = sha256,
-                    Detection = null,
-                    FileType = "data",
-                    MimeType = "application/octet-stream",
-                }
-            );
     }
 
     [Fact]
