@@ -16,10 +16,10 @@ class ForFileOptions
     public static function fromVaasOptions(VaasOptions $options): self
     {
         return new self(
-            $options->useCache,
-            $options->useHashLookup,
-            $options->timeout,
-            self::DEFAULT_REQUEST_ID
+            useCache: $options->useCache,
+            useHashLookup: $options->useHashLookup,
+            timeout: $options->timeout,
+            vaasRequestId: self::DEFAULT_REQUEST_ID
         );
     }
 }

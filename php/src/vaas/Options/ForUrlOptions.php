@@ -15,9 +15,9 @@ class ForUrlOptions
     public static function fromVaasOptions(VaasOptions $options): self
     {
         return new self(
-            $options->useHashLookup,
-            $options->timeout,
-            self::DEFAULT_REQUEST_ID
+            useHashLookup: $options->useHashLookup,
+            timeout: $options->timeout,
+            vaasRequestId: self::DEFAULT_REQUEST_ID
         );
     }
 }

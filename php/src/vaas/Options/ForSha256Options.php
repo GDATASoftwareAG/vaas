@@ -14,9 +14,9 @@ class ForSha256Options
     public static function fromVaasOptions(VaasOptions $options): self
     {
         return new self(
-            $options->useCache,
-            $options->useHashLookup,
-            self::DEFAULT_REQUEST_ID
+            useCache: $options->useCache,
+            useHashLookup: $options->useHashLookup,
+            vaasRequestId: self::DEFAULT_REQUEST_ID
         );
     }
 }
