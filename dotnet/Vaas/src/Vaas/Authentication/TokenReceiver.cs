@@ -7,14 +7,12 @@ using System.Threading.Tasks;
 
 namespace Vaas.Authentication;
 
-internal abstract class TokenReceiver(
-    IAuthenticator authenticator,
+public abstract class TokenReceiver(
     Uri? tokenUrl = null,
     HttpClient? httpClient = null,
     ISystemClock? systemClock = null
-) : IAuthenticator, IDisposable
+) : IDisposable
 {
-    protected readonly IAuthenticator Authenticator = authenticator;
     private readonly Uri _tokenUrl =
         tokenUrl
         ?? new Uri("https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token");
