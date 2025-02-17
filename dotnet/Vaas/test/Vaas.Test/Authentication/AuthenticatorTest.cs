@@ -224,6 +224,6 @@ public class AuthenticatorTest
         await Assert.ThrowsAsync<AuthenticationException>(
             () => _authenticator.GetTokenAsync(CancellationToken.None)
         );
-        sw.Elapsed.Should().BeGreaterOrEqualTo(TimeSpan.FromSeconds(1));
+        sw.Elapsed.Should().BeGreaterThanOrEqualTo(TimeSpan.FromSeconds(1));
     }
 }
