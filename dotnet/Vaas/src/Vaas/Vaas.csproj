@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Version>0.0.17</Version>
+    <Version>0.0.18</Version>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -23,13 +23,13 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Diagnostics" Version="8.4.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="9.0.1" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.4.0" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="9.0.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.5.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.5.0" />
     <PackageReference Include="Websocket.Client" Version="5.1.2" />
   </ItemGroup>
 
