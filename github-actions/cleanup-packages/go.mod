@@ -8,7 +8,7 @@ require (
 	github.com/docker/docker v27.5.1+incompatible
 	github.com/gofri/go-github-ratelimit v1.1.0
 	github.com/google/go-github/v66 v66.0.0
-	github.com/google/go-github/v69 v69.1.0
+	github.com/google/go-github/v69 v69.2.0
 )
 
 require (
