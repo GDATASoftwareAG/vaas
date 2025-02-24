@@ -7,10 +7,14 @@ public class TokenResponse
 {
     [JsonPropertyName("access_token")]
     public string AccessToken { get; init; }
- 
-    public TokenResponse(string accessToken)
+
+    [JsonPropertyName("expires_in")]
+    public int? ExpiresInSeconds { get; init; }
+
+    public TokenResponse(string accessToken, int? expiresInSeconds)
     {
         Guard.IsNotNullOrEmpty(accessToken);
         AccessToken = accessToken;
+        ExpiresInSeconds = expiresInSeconds;
     }
 }

@@ -42,6 +42,8 @@ lib/
 
 bin/
 obj/
+.idea/
+.mono/
 
 # Python
 __pycache__/

@@ -13,7 +13,7 @@ then
 	exit 1
 fi
 
-dd if=/dev/urandom of=big/big.dat bs=1M count=$1
+dd if=/dev/urandom of=big/big.dat bs=1M count="$1"
 curl https://secure.eicar.org/eicar.com.txt -o big/eicar.com.txt
 zip -0 -r big big/
 
