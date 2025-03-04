@@ -3,6 +3,7 @@
 namespace VaasExamples;
 
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
+use VaasSdk\Options\VaasOptions;
 use VaasSdk\Sha256;
 use VaasSdk\Vaas;
 
@@ -15,10 +16,17 @@ $authenticator = new ClientCredentialsGrantAuthenticator(
     tokenUrl: getenv("TOKEN_URL")
 );
 
+$options = new VaasOptions(
+    useHashLookup: true,
+    useCache: true,
+    vaasUrl: getenv("VAAS_URL"),
+    timeout: 300
+);
+
 $vaas = Vaas::builder()
     ->withAuthenticator($authenticator)
+    ->withOptions($options)
     ->build();
-
 
 // Malicious hash
 $vaasVerdict = $vaas->forSha256Async(Sha256::TryFromString("000005c43196142f01d615a67b7da8a53cb0172f8e9317a2ec9a0a39a1da6fe8")->await())->await();
