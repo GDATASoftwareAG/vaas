@@ -42,7 +42,7 @@ jobs:
         with:
           SRC_DIR: rust/examples/gscan
           RUSTTARGET: x86_64-pc-windows-gnu
-          TOOLCHAIN_VERSION: 1.80
+          TOOLCHAIN_VERSION: 1.80.0
           EXTRA_FILES: "Readme.md"
           UPLOAD_MODE: none
 
