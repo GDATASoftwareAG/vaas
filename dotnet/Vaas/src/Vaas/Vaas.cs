@@ -82,7 +82,7 @@ public class Vaas : IVaas
         _httpClient.DefaultRequestHeaders.UserAgent.Add(
             new ProductInfoHeaderValue(ProductName, ProductVersion)
         );
-        _httpClient.Timeout = TimeSpan.FromSeconds(_options.Timeout);
+        _httpClient.Timeout = _options.Timeout;
     }
 
     public async Task<VaasVerdict> ForSha256Async(

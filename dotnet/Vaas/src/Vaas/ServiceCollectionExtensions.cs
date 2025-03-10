@@ -25,7 +25,7 @@ public static class ServiceCollectionExtensions
             VaasUrl =
                 optionsSection.GetValue<Uri>("VaasUrl")
                 ?? new Uri("https://gateway.production.vaas.gdatasecurity.de"),
-            Timeout = optionsSection.GetValue<int>("Timeout"),
+            Timeout = TimeSpan.FromSeconds(optionsSection.GetValue<int>("Timeout")),
         };
 
         IAuthenticator authenticator;

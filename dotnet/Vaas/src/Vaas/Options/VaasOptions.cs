@@ -9,5 +9,5 @@ public class VaasOptions
 
     public Uri VaasUrl { get; init; } = new("https://gateway.production.vaas.gdatasecurity.de");
 
-    public int Timeout { get; init; } = 300;
+    public TimeSpan Timeout { get; init; } = TimeSpan.FromSeconds(300);
 }

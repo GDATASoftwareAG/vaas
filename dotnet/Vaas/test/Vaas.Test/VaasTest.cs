@@ -1260,7 +1260,7 @@ public class VaasTest
         );
         var options = new VaasOptions
         {
-            Timeout = 1,
+            Timeout = TimeSpan.FromSeconds(1),
             UseCache = false,
             UseHashLookup = false,
             VaasUrl = new Uri("https://gateway.staging.vaas.gdatasecurity.de"),
