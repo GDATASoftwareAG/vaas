@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="DotNetEnv" Version="3.1.1" />
+    <PackageReference Include="FluentAssertions" Version="8.0.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageReference Include="Moq.Contrib.HttpClient" Version="1.4.0" />
     <PackageReference Include="Snapshooter.Xunit" Version="1.0.1" />
@@ -24,10 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Vaas\Vaas.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Messages\__snapshots__\" />
   </ItemGroup>
 
 </Project>

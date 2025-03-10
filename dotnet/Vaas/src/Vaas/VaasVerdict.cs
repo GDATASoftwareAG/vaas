@@ -1,12 +1,39 @@
-using System.Collections.Generic;
+using System.Text.Json;
+using Vaas.Messages;
 
-namespace Vaas.Messages;
+namespace Vaas;
 
-public class VaasVerdict(VerdictResponse verdictResponse)
+public class VaasVerdict
 {
-    public string Sha256 { get; init; } = verdictResponse.Sha256 ?? "";
-    public Verdict Verdict { get; init; } = verdictResponse.Verdict;
-    public string? Detection { get; init; } = verdictResponse.Detection;
-    public string? MimeType { get; init; } = verdictResponse.FileType;
-    public string? FileType { get; init; } = verdictResponse.MimeType;
+    public required string Sha256 { get; init; }
+    public Verdict Verdict { get; init; }
+    public string? Detection { get; init; }
+    public string? MimeType { get; init; }
+    public string? FileType { get; init; }
+
+    public static VaasVerdict From(FileReport fileReport)
+    {
+        return new VaasVerdict
+        {
+            Sha256 = fileReport.Sha256,
+            Verdict = fileReport.Verdict,
+            Detection = fileReport.Detection,
+            MimeType = fileReport.MimeType,
+            FileType = fileReport.FileType,
+        };
+    }
+
+    public static VaasVerdict From(UrlReport urlReport)
+    {
+        return new VaasVerdict
+        {
+            Sha256 = urlReport.Sha256,
+            Verdict = urlReport.Verdict,
+            Detection = urlReport.Detection,
+            MimeType = urlReport.MimeType,
+            FileType = urlReport.FileType,
+        };
+    }
+
+    public override string ToString() => JsonSerializer.Serialize(this);
 }
