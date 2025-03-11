@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,8 +22,19 @@ const gdataOrganisation = "GDATASoftwareAG"
 
 var packageType = "container"
 var globalNameRegex, _ = regexp.Compile(`^(gdscanserver|scanclient|vaas/.+)$`)
-var globalTagsNotToDelete, _ = regexp.Compile(`^(latest|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+|[0-9]+)$`)
+var globalTagsNotToDelete, _ = regexp.Compile(`^(latest|[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+|[0-9]+)(-[0-9]+)?$`)
 var nowTime = time.Now()
+
+func packageListOptions(page int, state *string) *github.PackageListOptions {
+	return &github.PackageListOptions{
+		ListOptions: github.ListOptions{
+			Page:    page,
+			PerPage: 100,
+		},
+		PackageType: &packageType,
+		State:       state,
+	}
+}
 
 // Cleanup represents a cleanup operation for packages.
 type Cleanup struct {
@@ -49,121 +62,105 @@ func NewCleanup(githubClient *github.Client, dockerClient *client.Client, authTo
 // If a version is older than 2 months, it is deleted using the GitHub API.
 // The method logs the details of the deleted versions and the total number of deleted versions for each package.
 // Finally, it logs the total time taken for the deletion process.
-func (cleanup *Cleanup) Run(context context.Context) {
+func (cleanup *Cleanup) Run(ctx context.Context, dryRun bool) {
 	start := time.Now()
 
-	packageList := cleanup.getContainerPackages(context, globalNameRegex)
+	packageList := cleanup.getContainerPackages(ctx, globalNameRegex)
+	var packageNames []string
 	for _, pack := range packageList {
-		println("checking versions for package ", pack.GetName())
-		versions := cleanup.getVersionsOlderThan2Month(context, pack.Name)
-		deleted := 0
-		for version := range versions {
-			deleted++
-			if len(version.Metadata.Container.Tags) > 0 {
-				log.Printf(
-					"deleting package %v with versions %v created %v updates %v",
-					pack.GetName(), strings.Join(version.Metadata.Container.Tags, "|"),
-					version.CreatedAt.Time, version.UpdatedAt.Time)
-			} else {
-				log.Printf(
-					"deleting package %v with digest %v created %v updates %v",
-					pack.GetName(), version.Name, version.CreatedAt.Time, version.UpdatedAt.Time)
-			}
+		packageNames = append(packageNames, pack.GetName())
+	}
+	println("Start cleanup for packages: \n\t - ", strings.Join(packageNames, "\n\t - "))
 
-			cleanup.githubClient.Organizations.PackageDeleteVersion(context, gdataOrganisation, packageType, pack.GetName(), *version.ID)
+	for idx, pack := range packageList {
+		println(fmt.Sprintf("(%.2d|%.02d) Start cleanup for %s", idx+1, len(packageList), pack.GetName()))
+		println("cleanup tagged packages for ", pack.GetName())
+		taggedVersionsToDelete, err := cleanup.collectTaggedVersionsToDelete(ctx, pack.GetName())
+		if err != nil {
+			log.Printf("error getting tagged versions to delete for %s: %s\n", pack.GetName(), err)
+			continue
+		}
+
+		for _, version := range taggedVersionsToDelete {
+			cleanup.deleteVersion(ctx, version, pack.GetName(), dryRun)
+		}
+
+		println("cleanup untagged packages for ", pack.GetName())
+		versionsChan := cleanup.collectUntaggedVersionsToDelete(ctx, pack.GetName())
+		deleted := 0
+		for version := range versionsChan {
+			deleted++
+			cleanup.deleteVersion(ctx, version, pack.GetName(), dryRun)
 		}
 		if deleted == 0 {
 			log.Println("no versions older than 2 month for package ", pack.GetName())
+		} else {
+			log.Printf("Deleted %d Versions for package", deleted)
 		}
-		if deleted == 0 {
-			log.Println("no versions older than 2 month for package ", pack.GetName())
-		}
-		log.Printf("Deleted %d Versions for package", deleted)
 	}
 	log.Printf("Deletion took %s", time.Since(start))
 }
 
-func (cleanup *Cleanup) getVersionsOlderThan2Month(context context.Context, name *string) <-chan *github.PackageVersion {
-	ch := make(chan *github.PackageVersion)
-	run := true
-	nextPage := 1
-	packageType := "container"
-	packageState := "active"
-	var packageVersionsWithoutTags []*github.PackageVersion
-	var packageVersionsWithTags []*github.PackageVersion
-
-	_, lengthResponse, err := cleanup.githubClient.Organizations.PackageGetAllVersions(
-		context, gdataOrganisation, packageType, *name,
-		&github.PackageListOptions{
-			ListOptions: github.ListOptions{
-				Page:    nextPage,
-				PerPage: 100,
-			},
-			PackageType: &packageType,
-		})
-	if err != nil {
-		log.Println(lengthResponse)
-		log.Println(err)
-		run = false
+func (cleanup *Cleanup) deleteVersion(ctx context.Context, version *github.PackageVersion, name string, dryRun bool) {
+	if len(version.Metadata.Container.Tags) > 0 {
+		log.Printf(
+			"deleting package %v with versions %v created %v updates %v",
+			name, strings.Join(version.Metadata.Container.Tags, "|"),
+			version.CreatedAt.Time, version.UpdatedAt.Time)
+	} else {
+		log.Printf(
+			"deleting package %v with digest %v created %v updates %v",
+			name, version.Name, version.CreatedAt.Time, version.UpdatedAt.Time)
 	}
-	nextPage = lengthResponse.LastPage
 
+	if dryRun {
+		return
+	}
+
+	if resp, err := cleanup.githubClient.Organizations.PackageDeleteVersion(ctx, gdataOrganisation, packageType, name, *version.ID); err != nil {
+		log.Printf("error deleting version for package %s: %s\n", name, err)
+		if resp != nil {
+			log.Printf("\tapi response %d: %s\n", resp.StatusCode, resp.Status)
+		}
+	}
+}
+
+func (cleanup *Cleanup) collectTaggedVersionsToDelete(ctx context.Context, name string) ([]*github.PackageVersion, error) {
+	_, packageVersionsWithTags, err := cleanup.collectPackageVersions(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+
+	return slices.DeleteFunc(packageVersionsWithTags, func(version *github.PackageVersion) bool {
+		return !isOlderThan2Month(&nowTime, version) || !areWeAllowedToDeleteThisVersion(version)
+	}), nil
+}
+
+func (cleanup *Cleanup) collectUntaggedVersionsToDelete(ctx context.Context, name string) <-chan *github.PackageVersion {
+	ch := make(chan *github.PackageVersion)
 	go func() {
 		defer close(ch)
-		for run {
-			packageVersionsPage, response, err := cleanup.githubClient.Organizations.PackageGetAllVersions(
-				context, gdataOrganisation, packageType, *name,
-				&github.PackageListOptions{
-					ListOptions: github.ListOptions{
-						Page:    nextPage,
-						PerPage: 100,
-					},
-					PackageType: &packageType,
-					State:       &packageState,
-				})
-			if err != nil {
-				log.Println(response)
-				log.Println(err)
-				run = false
-			}
-			if response != nil {
-				if response.PrevPage == 0 {
-					run = false
-				}
-				nextPage = response.PrevPage
-			}
-			for i, packVersion := range packageVersionsPage {
-				if len(packVersion.Metadata.Container.Tags) != 0 {
-					packageVersionsWithTags = append(packageVersionsWithTags, packageVersionsPage[i])
-				} else {
-					packageVersionsWithoutTags = append(packageVersionsWithoutTags, packageVersionsPage[i])
-				}
-			}
+
+		packageVersionsWithoutTags, packageVersionsWithTags, err := cleanup.collectPackageVersions(ctx, name)
+		if err != nil {
+			log.Println(err)
+			return
 		}
 
-		var versionsWithTagsNotToDelete []*github.PackageVersion
-		for _, packVersion := range packageVersionsWithTags {
-			if !isNewestDateOlderThan2Month(&nowTime, &packVersion.CreatedAt.Time, &packVersion.UpdatedAt.Time) {
-				versionsWithTagsNotToDelete = append(versionsWithTagsNotToDelete, packVersion)
-				continue
-			}
-			if !areWeAllowedToDeleteThisVersion(packVersion) {
-				versionsWithTagsNotToDelete = append(versionsWithTagsNotToDelete, packVersion)
-				continue
-			}
-			ch <- packVersion
-		}
+		versionsWithTagsNotToDelete := slices.DeleteFunc(packageVersionsWithTags, func(version *github.PackageVersion) bool {
+			return isOlderThan2Month(&nowTime, version) && areWeAllowedToDeleteThisVersion(version)
+		})
 
-		versionsNotToDeleteDependencies, error := cleanup.getVersionsNotToDeleteDependencies(*name, versionsWithTagsNotToDelete)
-		if error != nil {
-			log.Println(error)
+		var dependenciesOfTaggedImages []string
+		if dependenciesOfTaggedImages, err = cleanup.dockerImageDependencies(ctx, name, versionsWithTagsNotToDelete); err != nil {
+			log.Println(err)
 			return
 		}
 		for _, packVersion := range packageVersionsWithoutTags {
-			if !isNewestDateOlderThan2Month(&nowTime, &packVersion.CreatedAt.Time, &packVersion.UpdatedAt.Time) {
+			if !isOlderThan2Month(&nowTime, packVersion) {
 				continue
 			}
-			if isDependencyOfAVersionNotToDelete(packVersion, versionsNotToDeleteDependencies) {
+			if isDependencyOfATaggedImage(packVersion, dependenciesOfTaggedImages) {
 				continue
 			}
 			ch <- packVersion
@@ -172,17 +169,66 @@ func (cleanup *Cleanup) getVersionsOlderThan2Month(context context.Context, name
 	return ch
 }
 
-func isDependencyOfAVersionNotToDelete(version *github.PackageVersion, versionsNotToDeleteDependencies []string) bool {
-	for _, dependency := range versionsNotToDeleteDependencies {
-		if dependency == *version.Name {
-			return true
+func (cleanup *Cleanup) collectPackageVersions(ctx context.Context, name string) (packageVersionsWithoutTags []*github.PackageVersion, packageVersionsWithTags []*github.PackageVersion, err error) {
+	nextPage := 1
+	packageState := "active"
+	_, lengthResponse, err := cleanup.githubClient.Organizations.PackageGetAllVersions(ctx, gdataOrganisation, packageType, name, packageListOptions(nextPage, nil))
+	if err != nil {
+		log.Println(lengthResponse, "\n", err)
+		return
+	}
+	nextPage = lengthResponse.LastPage
+
+	for {
+		var packageVersionsPage []*github.PackageVersion
+		var response *github.Response
+		packageVersionsPage, response, err = cleanup.githubClient.Organizations.PackageGetAllVersions(ctx, gdataOrganisation, packageType, name, packageListOptions(nextPage, &packageState))
+		if err != nil {
+			log.Println(response, "\n", err)
+			return
+		}
+
+		for i, packVersion := range packageVersionsPage {
+			if len(packVersion.Metadata.Container.Tags) != 0 {
+				packageVersionsWithTags = append(packageVersionsWithTags, packageVersionsPage[i])
+			} else {
+				packageVersionsWithoutTags = append(packageVersionsWithoutTags, packageVersionsPage[i])
+			}
+		}
+
+		if response != nil {
+			if response.PrevPage == 0 {
+				return
+			}
+			nextPage = response.PrevPage
 		}
 	}
-	return false
 }
 
-func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, versionsWithTagsNotToDelete []*github.PackageVersion) (dependencies []string, err error) {
+func (cleanup *Cleanup) dockerImageDependencies(ctx context.Context, packageName string, versionsWithTagsNotToDelete []*github.PackageVersion) (dependencies []string, err error) {
+	pullImage := func(ctx context.Context, imageRef, authConfigEncoded string) error {
+		var imagePullCloser io.ReadCloser
+		if imagePullCloser, err = cleanup.dockerClient.ImagePull(context.Background(), imageRef, image.PullOptions{
+			RegistryAuth: authConfigEncoded,
+		}); err != nil {
+			return err
+		}
+		defer imagePullCloser.Close()
+
+		if _, err = io.ReadAll(imagePullCloser); err != nil {
+			log.Println("Image Pull Response Error: " + err.Error())
+			return err
+		}
+		return nil
+	}
+
+	var tags []string
 	for _, version := range versionsWithTagsNotToDelete {
+		tags = append(tags, version.GetName())
+	}
+	println("collect dependencies for package", packageName, "with tags: \n\t -", strings.Join(tags, "\n\t - "))
+	for idx, version := range versionsWithTagsNotToDelete {
+		println(fmt.Sprintf("(%.2d|%.2d) collect for %s", idx+1, len(versionsWithTagsNotToDelete), version.GetName()))
 		imageRef := "ghcr.io/" + strings.ToLower(gdataOrganisation) + "/" + packageName + ":" + version.Metadata.Container.Tags[0]
 
 		authConfig := registry.AuthConfig{
@@ -192,68 +238,42 @@ func (cleanup *Cleanup) getVersionsNotToDeleteDependencies(packageName string, v
 		}
 		authConfigBytes, _ := json.Marshal(authConfig)
 		authConfigEncoded := base64.URLEncoding.EncodeToString(authConfigBytes)
-		imagePullCloser, error := cleanup.dockerClient.ImagePull(context.Background(), imageRef, image.PullOptions{
-			RegistryAuth: authConfigEncoded,
-		})
-		if error != nil {
-			log.Println("ImagePull: " + error.Error())
-			return nil, error
-		}
-		bytes, error := io.ReadAll(imagePullCloser)
-		if error != nil {
-			log.Println("Image Pull Response Error: " + error.Error())
-			return nil, error
-		}
-		log.Println("Image Pull Response" + string(bytes))
 
-		defer imagePullCloser.Close()
-		inspect, _, error := cleanup.dockerClient.ImageInspectWithRaw(context.Background(), imageRef)
-		if error != nil {
-			log.Println("ImageInspect: " + error.Error())
-			return nil, error
+		if err = pullImage(ctx, imageRef, authConfigEncoded); err != nil {
+			return nil, err
 		}
-		imageID := inspect.ID
-		imageHistory, error := cleanup.dockerClient.ImageHistory(context.Background(), imageID)
-		if error != nil {
-			log.Println("ImageHistory: " + error.Error())
-			return nil, error
+
+		var inspectResponse image.InspectResponse
+		if inspectResponse, err = cleanup.dockerClient.ImageInspect(context.Background(), imageRef); err != nil {
+			log.Println("ImageInspect: " + err.Error())
+			return nil, err
 		}
-		for _, layer := range imageHistory {
+
+		var imageHistoryResponse []image.HistoryResponseItem
+		if imageHistoryResponse, err = cleanup.dockerClient.ImageHistory(context.Background(), inspectResponse.ID); err != nil {
+			log.Println("ImageHistory: " + err.Error())
+			return nil, err
+		}
+		for _, layer := range imageHistoryResponse {
 			dependencies = append(dependencies, layer.ID)
 		}
 		// remove locally
-		cleanup.dockerClient.ImageRemove(context.Background(), imageID, image.RemoveOptions{
+		if _, err = cleanup.dockerClient.ImageRemove(context.Background(), inspectResponse.ID, image.RemoveOptions{
 			PruneChildren: true,
 			Force:         true,
-		})
+		}); err != nil {
+			log.Println("ImageRemove error: " + err.Error())
+		}
 	}
 	return
 }
 
-func areWeAllowedToDeleteThisVersion(version *github.PackageVersion) bool {
-	for _, tag := range version.Metadata.Container.Tags {
-		if globalTagsNotToDelete.Match([]byte(tag)) {
-			return false
-		}
-	}
-	return true
-}
-
-func isNewestDateOlderThan2Month(now *time.Time, created *time.Time, updated *time.Time) bool {
-	compareTime := updated.AddDate(0, 2, 0)
-	if created.After(*updated) {
-		compareTime = created.AddDate(0, 2, 0)
-	}
-
-	return compareTime.Before(*now)
-}
-
-func (cleanup *Cleanup) getContainerPackages(context context.Context, nameRegex *regexp.Regexp) (packageList []*github.Package) {
+func (cleanup *Cleanup) getContainerPackages(ctx context.Context, nameRegex *regexp.Regexp) (packageList []*github.Package) {
 	run := true
 	nextPage := 0
 	for run {
 		packages, response, err := cleanup.githubClient.Organizations.ListPackages(
-			context, gdataOrganisation, &github.PackageListOptions{
+			ctx, gdataOrganisation, &github.PackageListOptions{
 				PackageType: &packageType,
 				ListOptions: github.ListOptions{
 					PerPage: 100,
@@ -272,7 +292,7 @@ func (cleanup *Cleanup) getContainerPackages(context context.Context, nameRegex 
 			nextPage = response.NextPage
 		}
 		for _, pack := range packages {
-			if match(nameRegex, pack.Name) {
+			if nameRegex.Match([]byte(pack.GetName())) {
 				packageList = append(packageList, pack)
 			}
 		}
@@ -280,7 +300,32 @@ func (cleanup *Cleanup) getContainerPackages(context context.Context, nameRegex 
 	return
 }
 
-func match(nameRegex *regexp.Regexp, name *string) bool {
-	nameByteArray := []byte(*name)
-	return nameRegex.Match(nameByteArray)
+func isDependencyOfATaggedImage(version *github.PackageVersion, versionsNotToDeleteDependencies []string) bool {
+	for _, dependency := range versionsNotToDeleteDependencies {
+		if dependency == *version.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func areWeAllowedToDeleteThisVersion(version *github.PackageVersion) bool {
+	for _, tag := range version.Metadata.Container.Tags {
+		if globalTagsNotToDelete.Match([]byte(tag)) {
+			return false
+		}
+	}
+	return true
+}
+
+func isOlderThan2Month(now *time.Time, version *github.PackageVersion) bool {
+	updated := version.UpdatedAt.GetTime()
+	created := version.CreatedAt.GetTime()
+
+	compareTime := updated.AddDate(0, 2, 0)
+	if created.After(*updated) {
+		compareTime = created.AddDate(0, 2, 0)
+	}
+
+	return compareTime.Before(*now)
 }
