@@ -40,6 +40,7 @@ github.com/gofri/go-github-ratelimit v1.1.0/go.mod h1:OnCi5gV+hAG/LMR7llGhU7yHt4
 github.com/gofri/go-github-ratelimit v1.1.1 h1:5TCOtFf45M2PjSYU17txqbiYBEzjOuK1+OhivbW69W0=
 github.com/gofri/go-github-ratelimit v1.1.1/go.mod h1:wGZlBbzHmIVjwDR3pZgKY7RBTV6gsQWxLVkpfwhcMJM=
 github.com/gofri/go-github-ratelimit/v2 v2.0.1/go.mod h1:nqGxwHNwqXx5GNRaEEhegUOvMLAx51BOJtN8eFi8FEA=
+github.com/gofri/go-github-ratelimit/v2 v2.0.2/go.mod h1:YBQt4gTbdcbMjJFT05YFEaECwH78P5b0IwrnbLiHGdE=
 github.com/gogo/protobuf v1.3.2 h1:Ov1cvc58UF3b5XjBnZv7+opcTcQFZebYjWzi34vdm4Q=
 github.com/gogo/protobuf v1.3.2/go.mod h1:P1XiOD3dCwIKUDQYPy72D8LYyHL2YPYrpS2s69NZV8Q=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
