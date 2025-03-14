@@ -1,6 +1,5 @@
 [![vaas-dotnet-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-dotnet.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-dotnet.yaml)
 [![vaas-rust-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-rust.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-rust.yaml)[![vaas-typescript-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-typescript.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-typescript.yaml)
-[![vaas-ruby-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-ruby.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-ruby.yaml)
 [![vaas-java-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-java.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-java.yaml)
 [![vaas-python-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-python.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-python.yaml)
 [![vaas-php-ci](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-php.yaml/badge.svg)](https://github.com/GDATASoftwareAG/vaas/actions/workflows/ci-php.yaml)
@@ -61,13 +60,13 @@ We provide SDKs for various programming languages to make it easy for you to int
 |TypeScript|[TypeScript SDK](./typescript/)|[Examples](./typescript/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/typescript/Readme.md)|[npmjs](https://www.npmjs.com/package/gdata-vaas)
 |Python|[Python SDK](./python/)|[Examples](./python/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/python/README.md)|[pypi](https://pypi.org/project/gdata-vaas/)|
 |.NET|[.NET SDK](./dotnet/)|[Examples](./dotnet/examples)||[nuget.org](https://www.nuget.org/packages/GDataCyberDefense.Vaas)|
-|Ruby|[Ruby SDK](./ruby/)|[Examples](./ruby/examples)|[Reamde](https://github.com/GDATASoftwareAG/vaas/blob/main/ruby/README.md)|[rubygems](https://rubygems.org/gems/vaas)|
+|Ruby (DEPRECATED)|[Ruby SDK](./ruby/)|[Examples](./ruby/examples)|[Reamde](https://github.com/GDATASoftwareAG/vaas/blob/main/ruby/README.md)|[rubygems](https://rubygems.org/gems/vaas)|
 |Go|[Go SDK](./golang/vaas/)|[Examples](./golang/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/golang/vaas/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/golang/vaas)|
 |C++|[C++ SDK](./cpp/)||[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/cpp/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/cpp)|
 
 The following table shows the functionality supported by each SDK:
 
-|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby|Golang|C++|
+|Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby (DEPRECATED)|Golang|C++|
 |---|---|---|---|---|---|---|---|---|---|
 |Use HTTP API|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|&#10060;|&#10060;|&#9989;|&#10060;|
 |Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
