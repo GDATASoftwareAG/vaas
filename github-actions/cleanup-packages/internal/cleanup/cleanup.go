@@ -15,7 +15,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/client"
-	"github.com/google/go-github/v66/github"
+	"github.com/google/go-github/v69/github"
 )
 
 const gdataOrganisation = "GDATASoftwareAG"
