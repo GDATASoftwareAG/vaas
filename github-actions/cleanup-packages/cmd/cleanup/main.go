@@ -5,17 +5,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/docker/docker/client"
-	"github.com/gofri/go-github-ratelimit/github_ratelimit"
-	"github.com/google/go-github/v66/github"
+	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
+	"github.com/google/go-github/v69/github"
 	"os"
 )
 
 func main() {
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(nil)
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
-	}
+	rateLimiter := github_ratelimit.NewClient(nil)
 	authToken := os.Getenv("PAT_CONTAINER_REGISTRY")
 	registryUsername := "GdataGithubBot"
 
