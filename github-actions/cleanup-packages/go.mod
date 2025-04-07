@@ -2,12 +2,12 @@ module GDATACyberDefense/cleanup-packages
 
 go 1.23.1
 
-toolchain go1.24.1
+toolchain go1.24.2
 
 require (
 	github.com/docker/docker v28.0.4+incompatible
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v70 v70.0.0
+	github.com/google/go-github/v69 v69.2.0
 	github.com/google/go-github/v70 v70.0.0
 )
 
