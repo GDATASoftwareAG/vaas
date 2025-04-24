@@ -231,7 +231,7 @@ jobs:
 
       - name: Docker meta
         env:
-          MAJOR_VERSION: ${{ needs.extract-major-version.outputs.major_version }}
+          MAJOR_VERSION: ${{ needs.extract-major-version.outputs.major_version | sed 's/^v//'}}
         uses: docker/metadata-action@v5
         id: meta
         with:
