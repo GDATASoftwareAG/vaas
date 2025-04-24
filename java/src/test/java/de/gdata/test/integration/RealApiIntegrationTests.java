@@ -312,7 +312,7 @@ public class RealApiIntegrationTests {
     @CsvSource({
             "https://github.com/GDATASoftwareAG/vaas/blob/main/Readme.md, CLEAN",
             "https://secure.eicar.org/eicar.com.txt, MALICIOUS",
-            "http://amtso.eicar.org/PotentiallyUnwanted.exe, PUP"
+            "https://github.com/Provention2/CyberEssentials-TestFiles/raw/refs/heads/main/PotentiallyUnwanted.exe, PUP"
     })
     public void forFile_ReturnsVerdict(String uri, Verdict verdict) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
