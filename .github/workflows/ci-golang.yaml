@@ -194,7 +194,7 @@ jobs:
       - name: publish module
         env:
           MAJOR_VERSION: ${{ needs.extract-major-version.outputs.major_version }}
-        if: startsWith(github.ref, 'refs/tags/golang/vaas/v3<')
+        if: startsWith(github.ref, 'refs/tags/golang/vaas/v3')
         run: |
           if [ "$MAJOR_VERSION" = "v1" ]; then
             GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/golang/vaas/}
@@ -212,7 +212,7 @@ jobs:
           steps: ${{ toJson(steps) }}
 
   deploy-git-scan:
-    if: startsWith(github.ref, 'refs/tags')
+    if: startsWith(github.ref, 'refs/tags/golang/vaas/v1')
     needs:
       - extract-major-version
       - virus-scan
@@ -229,23 +229,16 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Strip "v" from version and set as output
-        id: strip_v
-        run: |
-          version="${{ needs.extract-major-version.outputs.major_version }}"
-          clean_version="${version#v}"
-          echo "major_version=$clean_version" >> "$GITHUB_OUTPUT"        
-
       - name: Docker meta
+        env:
+          MAJOR_VERSION: ${{ needs.extract-major-version.outputs.major_version }}
         uses: docker/metadata-action@v5
         id: meta
         with:
           images: |
             ghcr.io/gdatasoftwareag/vaas/git-scan
           tags: |
-            type=semver,pattern={{version}},value=${{ steps.strip_v.outputs.major_version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.strip_v.outputs.major_version }}
-            type=semver,pattern={{major}},value=${{ steps.strip_v.outputs.major_version }}
+            type=semver,pattern={{raw}},value=${{ ${GITHUB_REF#refs/tags/golang/vaas/ }}
           flavor: |
             latest=auto
 
