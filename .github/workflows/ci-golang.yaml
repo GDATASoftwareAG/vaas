@@ -229,18 +229,18 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-  - name: Docker meta
-    uses: docker/metadata-action@v5
-    id: meta
-    with:
-      images: |
-        ghcr.io/gdatasoftwareag/vaas/git-scan
-      tags: |
-        type=semver,pattern={{version}},value=${{ github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name }}
-        type=semver,pattern={{major}}.{{minor}},value=${{ (github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name).split('.')[0] }}.${{ (github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name).split('.')[1] }}
-        type=semver,pattern={{major}},value=${{ (github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name).split('.')[0] }}
-      flavor: |
-        latest=auto
+      - name: Docker meta
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: |
+            ghcr.io/gdatasoftwareag/vaas/git-scan
+          tags: |
+            type=semver,pattern={{version}},value=${{ github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ (github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name).split('.')[0] }}.${{ (github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name).split('.')[1] }}
+            type=semver,pattern={{major}},value=${{ (github.ref_name.startsWith('v') && github.ref_name.replace('v', '', 1) || github.ref_name).split('.')[0] }}
+          flavor: |
+            latest=auto
 
       - name: login to ghcr.io/gdatasoftwareag
         uses: docker/login-action@v3
