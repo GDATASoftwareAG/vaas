@@ -16,8 +16,6 @@ on:
     paths:
       - "rust/example/gdscan/**"
       - ".github/workflows/ci-rust-gscan-cli.yaml"
-  release:
-    types: [created]
 
 jobs:
   release:
