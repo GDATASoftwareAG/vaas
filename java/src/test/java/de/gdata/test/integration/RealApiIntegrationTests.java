@@ -310,9 +310,9 @@ public class RealApiIntegrationTests {
 
     @ParameterizedTest
     @CsvSource({
-            "https://github.com/GDATASoftwareAG/vaas/blob/main/Readme.md, CLEAN",
-            "https://secure.eicar.org/eicar.com.txt, MALICIOUS",
-            "https://raw.githubusercontent.com/Provention2/CyberEssentials-TestFiles/refs/heads/main/PotentiallyUnwanted.exe, PUP"
+            "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt, CLEAN",
+            "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt, MALICIOUS",
+            "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe, PUP"
     })
     public void forFile_ReturnsVerdict(String uri, Verdict verdict) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
