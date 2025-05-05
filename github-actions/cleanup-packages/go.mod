@@ -7,8 +7,7 @@ toolchain go1.24.2
 require (
 	github.com/docker/docker v28.1.1+incompatible
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v71 v71.0.0
-	github.com/google/go-github/v71 v71.0.0
+	github.com/google/go-github/v69 v69.2.0
 )
 
 require (
@@ -21,8 +20,10 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
+	github.com/moby/sys/atomicwriter v0.1.0 // indirect
 	github.com/moby/term v0.5.0 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
