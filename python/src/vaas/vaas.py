@@ -120,6 +120,11 @@ def map_response(verdict_response) -> VaasVerdict:
         "MimeType": verdict_response.get("mime_type")
     }
 
+def raiseIfHttpResponseError(response):
+    if response.is_server_error:
+        raise VaasServerError(response.reason_phrase)
+    if response.is_client_error:
+        raise VaasClientError(response.reason_phrase)
 
 class Vaas:
     """Verdict-as-a-Service client"""
@@ -379,7 +384,7 @@ class Vaas:
         jwt = PyJWT()
         decoded_token = jwt.decode(token, options={"verify_signature": False})
         try:
-            await self.httpx_client.put(
+            response = await self.httpx_client.put(
                 url=upload_uri,
                 content=buffer_or_file,
                 headers={
@@ -388,6 +393,7 @@ class Vaas:
                 },
                 timeout=UPLOAD_TIMEOUT,
             )
+            raiseIfHttpResponseError(response)
         except httpx.TimeoutException as ex:
             self.tracing.trace_upload_timeout(content_length)
             raise VaasTimeoutError() from ex
