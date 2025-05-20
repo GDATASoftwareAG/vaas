@@ -45,7 +45,7 @@ import static org.mockito.Mockito.*;
 
 @Slf4j
 public class RealApiIntegrationTests {
-    private static final String EICAR_URL = "https://test-samples-vaas.s3-eu-central-2.ionoscloud.com/eicar.com.txt";
+    private static final String EICAR_URL = "https://vaas-test.s3-eu-central-1.ionoscloud.com/eicar.com.txt";
 
     private static final Dotenv dotenv = Dotenv.configure()
             .ignoreIfMissing()
