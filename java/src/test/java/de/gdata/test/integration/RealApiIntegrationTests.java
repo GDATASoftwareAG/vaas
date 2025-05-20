@@ -17,6 +17,7 @@ import de.gdata.vaas.options.ForUrlOptions;
 import io.github.cdimascio.dotenv.Dotenv;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -44,7 +45,7 @@ import static org.mockito.Mockito.*;
 
 @Slf4j
 public class RealApiIntegrationTests {
-    private static final String EICAR_URL = "https://secure.eicar.org/eicar.com.txt";
+    private static final String EICAR_URL = "https://test-samples-vaas.s3-eu-central-2.ionoscloud.com/eicar.com.txt";
 
     private static final Dotenv dotenv = Dotenv.configure()
             .ignoreIfMissing()
@@ -149,6 +150,7 @@ public class RealApiIntegrationTests {
             "true, false",
             "true, true",
     })
+    @Tag("Mock")
     public void forSha256_SendOptions(boolean useCache, boolean useHashLookup) {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
@@ -178,6 +180,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forSha256_SendUserAgent() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
@@ -204,6 +207,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forSha256_IfVaasRequestIdIsSet_SendTraceState() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
@@ -232,6 +236,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forSha256_IfBadRequest_ThrowsVaasClientException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var mockHttpClient = mock(HttpClient.class);
@@ -250,6 +255,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forSha256_IfInternalServerError_ThrowsVaasServerException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var mockHttpClient = mock(HttpClient.class);
@@ -266,6 +272,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forSha256_IfUnauthorized_ThrowsVaasAuthenticationException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var mockHttpClient = mock(HttpClient.class);
@@ -282,6 +289,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forSha256_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
         var mockHttpClient = mock(HttpClient.class);
@@ -335,6 +343,7 @@ public class RealApiIntegrationTests {
             "true, false",
             "true, true",
     })
+    @Tag("Mock")
     public void forFile_SendOptions(boolean useCache, boolean useHashLookup) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
         var url = URI.create(EICAR_URL).toURL();
@@ -414,6 +423,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forFile_SendUserAgent() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
         var url = URI.create(EICAR_URL).toURL();
@@ -477,6 +487,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forFile_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
         var url = URI.create(EICAR_URL).toURL();
@@ -541,6 +552,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forFile_IfBadRequest_ThrowsVaasClientException() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
         var url = URI.create(EICAR_URL).toURL();
@@ -580,6 +592,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forFile_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
@@ -620,6 +633,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forFile_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
@@ -660,6 +674,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forFile_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
         var url = URI.create(EICAR_URL).toURL();
@@ -739,6 +754,7 @@ public class RealApiIntegrationTests {
             "false",
             "true",
     })
+    @Tag("Mock")
     public void forStream_SendOptions(boolean useHashLookup) throws Exception {
         var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
@@ -799,6 +815,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forStream_SendUserAgent() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
@@ -859,6 +876,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forStream_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
@@ -920,6 +938,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forStream_IfBadRequest_ThrowsVaasClientException() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
@@ -958,6 +977,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forStream_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
         var url = URI.create(EICAR_URL).toURL();
@@ -997,6 +1017,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forStream_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
         var url = URI.create(EICAR_URL).toURL();
@@ -1036,6 +1057,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forStream_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
@@ -1107,6 +1129,7 @@ public class RealApiIntegrationTests {
             "false",
             "true",
     })
+    @Tag("Mock")
     public void forUrl_SendOptions(boolean useHashLookup) throws Exception {
         var url = URI.create(EICAR_URL).toURL();
 
@@ -1157,6 +1180,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forUrl_SendUserAgent() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
 
@@ -1207,6 +1231,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forUrl_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
 
@@ -1258,6 +1283,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forUrl_IfBadRequest_ThrowsVaasClientException() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
 
@@ -1281,6 +1307,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forUrl_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
         var url = URI.create(EICAR_URL).toURL();
@@ -1305,6 +1332,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forUrl_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
         var url = URI.create(EICAR_URL).toURL();
@@ -1329,6 +1357,7 @@ public class RealApiIntegrationTests {
 
     @SuppressWarnings("unchecked")
     @Test
+    @Tag("Mock")
     public void forUrl_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
 
