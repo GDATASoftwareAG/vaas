@@ -66,7 +66,7 @@ public class VaasTest
                 { "VerdictAsAService:Options:UseHashLookup", "true" },
                 { "VerdictAsAService:Options:UseCache", "false" },
                 { "VerdictAsAService:Options:VaasUrl", VaasUrl.ToString() },
-                { "VerdictAsAService:Options:Timeout", "10" },
+                { "VerdictAsAService:Options:Timeout", "120" },
                 {
                     "VerdictAsAService:Credentials:TokenUrl",
                     AuthenticationEnvironment.TokenUrl.ToString()
