@@ -1,6 +1,6 @@
 package de.gdata.vaas.messages;
 
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 import com.google.gson.Gson;
 import com.google.gson.annotations.SerializedName;
@@ -14,11 +14,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ProblemDetails
 {
-    @Nullable
+    @NotNull
     @SerializedName("type")
     public String type;
 
-    @Nullable
+    @NotNull
     @SerializedName("detail")
     public String detail;
 

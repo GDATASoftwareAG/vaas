@@ -1,6 +1,8 @@
 package de.gdata.vaas;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
+
 import de.gdata.vaas.authentication.IAuthenticator;
 import de.gdata.vaas.exceptions.VaasAuthenticationException;
 import de.gdata.vaas.exceptions.VaasClientException;
@@ -67,29 +69,27 @@ public class Vaas implements IVaas {
     }
 
     private static void throwParsedVaasError(HttpResponse<String> response) throws VaasAuthenticationException, VaasClientException, VaasServerException {
-        String responseBody = response.body();
         try {
-            var problemDetails = new Gson().fromJson(responseBody, Map.class);
-            if (problemDetails != null) {
-                var type = (String) problemDetails.getOrDefault("type", "");
-                var detail = (String) problemDetails.getOrDefault("detail", "Unknown error");
-                if (type.equals("VaasClientException")) {
-                    throw new VaasClientException(detail);
-                } else if (type.equals("VaasAuthenticationException")) {
-                    throw new VaasAuthenticationException(detail);
-                }
-                throw new VaasServerException(detail);
-            } else {
-                throw new VaasServerException("Invalid JSON error response from server");
+            var problemDetails = ProblemDetails.fromJson(response.body());
+            if(problemDetails == null) {
+                throw new JsonSyntaxException("no JSON in server response");
             }
-        } catch (Exception e) {
+            var type = problemDetails.type;
+            var detail = problemDetails.detail;
+            if (type.equals("VaasClientException")) {
+                throw new VaasClientException(detail);
+            } else if (type.equals("VaasAuthenticationException")) {
+                throw new VaasAuthenticationException(detail);
+            }
+            throw new VaasServerException(detail);
+        } catch(JsonSyntaxException e) {
             if (response.statusCode() == 401) {
                 throw new VaasAuthenticationException(
                         "Server did not accept token from identity provider. Check if you are using the correct identity provider and credentials.");
             } else if (response.statusCode() >= 400 && response.statusCode() < 500) {
-                throw new VaasClientException("HTTP Error: " + response.statusCode());
+                throw new VaasClientException("HTTP Error: " + response.statusCode() + " for request " + response.uri());
             } else {
-                throw new VaasServerException("HTTP Error: " + response.statusCode());
+                throw new VaasServerException("HTTP Error: " + response.statusCode() + " for request " + response.uri());
             }
         }
     }
