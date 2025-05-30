@@ -25,5 +25,5 @@ from .vaas_errors import (
     VaasInvalidStateError,
     VaasConnectionClosedError,
 )
-from .client_credentials_grant_authenticator import ClientCredentialsGrantAuthenticator
-from .resource_owner_password_grant_authenticator import ResourceOwnerPasswordGrantAuthenticator
+from src.vaas.authentication.client_credentials_grant_authenticator import ClientCredentialsGrantAuthenticator
+from src.vaas.authentication.resource_owner_password_grant_authenticator import ResourceOwnerPasswordGrantAuthenticator

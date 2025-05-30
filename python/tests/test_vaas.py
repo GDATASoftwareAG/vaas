@@ -1,18 +1,27 @@
 # pylint: disable=C0114,C0116,C0115
+import asyncio
 import base64
 import hashlib
+import json
 import os
 import unittest
-from unittest.mock import MagicMock, ANY
+from unittest.mock import AsyncMock
+
+import pytest
 import uuid
 
+import respx
 import websockets.client
 from dotenv import load_dotenv
+from httpx import Response
+from pytest_mock import mocker
 
-from src.vaas import Vaas, VaasTracing, VaasOptions, ClientCredentialsGrantAuthenticator
+from src.vaas import Vaas, VaasTracing, VaasOptions, ClientCredentialsGrantAuthenticator, VaasAuthenticationError
 from src.vaas import get_ssl_context
+from src.vaas.options.for_sha256_options import ForSha256Options
+from src.vaas.options.for_stream_options import ForStreamOptions
 from src.vaas.vaas import hash_file
-from src.vaas.vaas_errors import VaasConnectionClosedError, VaasInvalidStateError, VaasClientError
+from src.vaas.vaas_errors import VaasConnectionClosedError, VaasInvalidStateError, VaasClientError, VaasServerError
 import httpx
 
 load_dotenv()
@@ -23,18 +32,28 @@ TOKEN_URL = os.getenv("TOKEN_URL")
 VAAS_URL = os.getenv("VAAS_URL")
 SSL_VERIFICATION = os.getenv("SSL_VERIFICATION", "True").lower() in ["true", "1"]
 
-EICAR_BASE64 = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCo="
+EICAR_SHA256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+CLEAN_SHA256 = "d24dc598b54a8eedb0a4b381fad68af956441dffa9c9d5d9ac81de73fcc0a089"
+PUP_SHA256 = "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
+
+EICAR_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt"
+CLEAN_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt"
+PUP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe"
 
 
-async def create_and_connect(tracing=VaasTracing(), options=VaasOptions()):
+async def create_vaas(tracing=None, options=None):
+    tracing = tracing or VaasTracing()
+    options = options or VaasOptions()
+
     authenticator = ClientCredentialsGrantAuthenticator(
         CLIENT_ID, CLIENT_SECRET, TOKEN_URL, SSL_VERIFICATION
     )
-    vaas = Vaas(tracing=tracing, options=options, url=VAAS_URL)
-
-    token = await authenticator.get_token()
-    await vaas.connect(token, verify=SSL_VERIFICATION)
-    return vaas
+    return Vaas(
+        tracing=tracing,
+        options=options,
+        url=VAAS_URL,
+        authenticator=authenticator
+    )
 
 
 def get_disabled_options():
@@ -44,214 +63,588 @@ def get_disabled_options():
     return options
 
 
-class VaasTest(unittest.IsolatedAsyncioTestCase):
-    async def test_raises_error_if_token_is_invalid(self):
-        async with Vaas() as vaas:
-            token = "ThisIsAnInvalidToken"
-            with self.assertRaises(Exception):
-                await vaas.connect(token)
+class TestVaas:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "sha256, expected_verdict",
+        [
+            (EICAR_SHA256, "Malicious"),
+            (CLEAN_SHA256, "Clean"),
+            (PUP_SHA256, "Pup")
+        ],
+        ids=["Malware", "Clean", "Pup"]
+    )
+    async def test_for_sha256_returns_verdict(self, sha256, expected_verdict):
+            vaas = await create_vaas()
 
-    async def test_connects(self):
-        async with await create_and_connect():
-            pass
+            verdict = await vaas.for_sha256(sha256)
 
-    async def test_for_sha256_returns_clean_for_clean_sha256(self):
-        async with await create_and_connect() as vaas:
-            verdict = await vaas.for_sha256(
-                "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e"
-            )
-            self.assertEqual(verdict["Verdict"], "Clean")
-            self.assertEqual(
-                verdict["Sha256"].casefold(),
-                "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e".casefold(),
-            )
+            assert verdict.verdict == expected_verdict
+            assert verdict.sha256.casefold() == sha256.casefold()
 
-    async def test_use_for_sha256_when_connection_already_closed(self):
-        authenticator = ClientCredentialsGrantAuthenticator(
-            CLIENT_ID, CLIENT_SECRET, TOKEN_URL, SSL_VERIFICATION
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "use_cache, use_hash_lookup",
+        [
+            (False, False),
+            (False, True),
+            (True, False),
+            (True, True),
+        ],
+        ids=["false_for_all", "only_hash_lookup", "only_cache", "true_for_all"]
+    )
+    async def test_for_sha256_send_options(self, use_cache, use_hash_lookup, httpx_mock):
+        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(use_cache).lower()}&useHashLookup={str(use_hash_lookup).lower()}"
         )
-        vaas = Vaas(tracing=VaasTracing(), options=VaasOptions(), url=VAAS_URL)
-        ssl_context = get_ssl_context(VAAS_URL, SSL_VERIFICATION)
-        websocket = await websockets.client.connect(VAAS_URL, ssl=ssl_context)
-        await vaas.connect(
-            await authenticator.get_token(),
-            websocket=websocket,
-            verify=SSL_VERIFICATION,
+        httpx_mock.add_response(
+            method="GET",
+            url=request_url,
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256,
+                "verdict": "Clean",
+                "detection": None,
+                "fileType": None,
+                "mimeType": None
+            }
         )
-        await websocket.close()
-        with self.assertRaises(VaasConnectionClosedError):
-            await vaas.for_sha256(
-                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-            )
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+        options = ForSha256Options(use_cache=use_cache, use_hash_lookup=use_hash_lookup)
 
-    async def test_use_for_sha256_if_not_connected(self):
-        vaas = Vaas(tracing=VaasTracing(), options=VaasOptions(), url=VAAS_URL)
-        with self.assertRaises(VaasInvalidStateError):
-            await vaas.for_sha256(
-                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-            )
+        verdict = await vaas.for_sha256(CLEAN_SHA256, options)
+        actual_request = httpx_mock.get_requests()[0]
+        actual_url = str(actual_request.url)
 
-    async def test_for_stream_eicar_form_url_returns_malicious(self):
-        async with await create_and_connect() as vaas:
-            guid = str(uuid.uuid4())
+        assert len(httpx_mock.get_requests()) == 1
+        assert actual_url == request_url, f"URL mismatch:\nExpected: {request_url}\nActual:   {actual_url}"
+        assert verdict.verdict == "Clean"
+
+    @pytest.mark.asyncio
+    async def test_for_sha256_send_user_agent(self, httpx_mock):
+        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
+        )
+        httpx_mock.add_response(
+            method="GET",
+            url=request_url,
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256,
+                "verdict": "Clean",
+                "detection": None,
+                "fileType": None,
+                "mimeType": None
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        verdict = await vaas.for_sha256(CLEAN_SHA256)
+        request = httpx_mock.get_requests()[0]
+
+        assert len(httpx_mock.get_requests()) == 1
+        assert "Python" in request.headers["User-Agent"]
+        assert verdict.verdict == "Clean"
+
+    @pytest.mark.asyncio
+    async def test_for_sha256_set_request_id_send_trace_state(self, httpx_mock):
+        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
+        )
+        httpx_mock.add_response(
+            method="GET",
+            url=request_url,
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256,
+                "verdict": "Clean",
+                "detection": None,
+                "fileType": None,
+                "mimeType": None
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        options = ForSha256Options(vaas_request_id="foobar")
+        verdict = await vaas.for_sha256(CLEAN_SHA256, options)
+        request = httpx_mock.get_requests()[0]
+
+        assert len(httpx_mock.get_requests()) == 1
+        assert "vaasrequestid=foobar" in request.headers["tracestate"]
+        assert verdict.verdict == "Clean"
+
+    @pytest.mark.asyncio
+    async def test_for_sha256_bad_request_raise_vaas_client_error(self, httpx_mock):
+        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
+        )
+        httpx_mock.add_response(
+            method="GET",
+            url=request_url,
+            status_code=400,
+            json = {
+                "detail": "Mocked client-side error",
+                "type": "VaasClientException"
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        with pytest.raises(VaasClientError):
+            await vaas.for_sha256(CLEAN_SHA256)
+
+    @pytest.mark.asyncio
+    async def test_for_sha256_server_error_raise_vaas_server_error(self, httpx_mock):
+        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
+        )
+        httpx_mock.add_response(
+            method="GET",
+            url=request_url,
+            status_code=500,
+            json = {
+                "detail": "Mocked server-side error",
+                "type": "VaasServerException"
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        with pytest.raises(VaasServerError):
+            await vaas.for_sha256(CLEAN_SHA256)
+
+    @pytest.mark.asyncio
+    async def test_for_sha256_authentication_error_raise_vaas_authentication_error(self):
+        vaas = await create_vaas()
+
+        vaas.authenticator.get_token = AsyncMock(side_effect=VaasAuthenticationError("Mocked auth error"))
+
+        with pytest.raises(VaasAuthenticationError):
+            await vaas.for_sha256(CLEAN_SHA256)
+
+    @pytest.mark.asyncio
+    async def test_for_sha256_unauthorized_raise_vaas_authentication_error(self, httpx_mock):
+        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
+        )
+        httpx_mock.add_response(
+            method="GET",
+            url=request_url,
+            status_code=401,
+            json = {
+                "detail": "Authentication error",
+                "type": "VaasAuthenticationException"
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        with pytest.raises(VaasAuthenticationError):
+            await vaas.for_sha256(CLEAN_SHA256)
+
+
+    @pytest.mark.asyncio
+    async def test_for_sha256_cancel_request_raise_cancel_error(self, httpx_mock):
+        vaas = await create_vaas()
+
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        httpx_mock.add_exception(
+            method="GET",
+            url=f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache=true&useHashLookup=true",
+            exception=asyncio.CancelledError()
+        )
+
+        with pytest.raises(asyncio.CancelledError):
+            await vaas.for_sha256(CLEAN_SHA256)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "url, expected_verdict",
+        [
+            ("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt", "Malicious"),
+            ("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt", "Clean"),
+            ("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe", "Pup")
+        ],
+        ids=["Malware", "Clean", "Pup"]
+    )
+    async def test_for_stream_returns_verdict(self, url, expected_verdict):
+            vaas = await create_vaas()
             async with httpx.AsyncClient() as client:
-                response = await client.get("https://secure.eicar.org/eicar.com")
+                response = await client.get(url)
                 content_length = response.headers["Content-Length"]
-                verdict = await vaas.for_stream(
-                    response.aiter_bytes(),
-                    content_length,
-                    guid=guid
-                )
-                self.assertEqual(verdict["Verdict"], "Malicious")
-                self.assertEqual(verdict["Guid"].casefold(), guid)
+                verdict = await vaas.for_stream(response.aiter_bytes(), content_length)
 
-    async def test_for_sha256_returns_malicious_for_eicar(self):
-        async with await create_and_connect() as vaas:
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_sha256(
-                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-                guid=guid
-            )
-            self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertEqual(
-                verdict["Sha256"].casefold(),
-                "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f".casefold(),
-            self.assertEqual(verdict["Guid"].casefold(), guid)
-            )
+                assert verdict.verdict == expected_verdict
 
-    async def test_for_sha256_returns_pup_for_amtso(self):
-        async with await create_and_connect() as vaas:
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_sha256(
-                "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad",
-                guid=guid
-            )
-            self.assertEqual(verdict["Verdict"], "Pup")
-            self.assertEqual(
-                verdict["Sha256"].casefold(),
-                "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad".casefold(),
-            )
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    @pytest.mark.parametrize(
+        "use_hash_lookup",
+        [
+            False,
+            True
+        ],
+        ids=["hash_lookup_enabled", "hash_lookup_disabled"]
+    )
+    async def test_for_stream_send_options(self, use_hash_lookup, httpx_mock):
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(use_hash_lookup).lower()}",
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256
+            }
+        )
 
-    async def test_for_buffer_returns_malicious_for_eicar(self):
-        async with await create_and_connect() as vaas:
-            buffer = base64.b64decode(EICAR_BASE64)
-            sha256 = hashlib.sha256(buffer).hexdigest()
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_buffer(buffer, guid=guid)
-            self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+        httpx_mock.add_response(
+            method="GET",
+            url= f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(use_hash_lookup).lower()}",
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256,
+                "verdict": "Clean",
+                "detection": None,
+                "fileType": None,
+                "mimeType": None
+            }
+        )
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+        options = ForStreamOptions(use_hash_lookup=use_hash_lookup)
 
-    async def test_for_stream_returns_malicious_for_eicar(self):
-        async with await create_and_connect() as vaas:
-            buffer = base64.b64decode(EICAR_BASE64)
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_buffer(buffer, guid=guid)
-            self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            verdict = await vaas.for_stream(response.aiter_bytes(), content_length, options)
+            for actual_request in httpx_mock.get_requests():
+                actual_url = str(actual_request.url)
 
-    async def test_for_buffer_returns_unknown_for_random_buffer(self):
-        async with await create_and_connect() as vaas:
-            buffer = os.urandom(1024)
-            sha256 = hashlib.sha256(buffer).hexdigest()
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_buffer(buffer, guid=guid)
-            self.assertEqual(verdict["Verdict"], "Clean")
-            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+            assert len(httpx_mock.get_requests()) == 2
+            assert verdict.verdict == "Clean"
 
-    async def test_for_file_returns_verdict(self):
-        async with await create_and_connect() as vaas:
-            with open("eicar.txt", "wb") as f:
-                f.write(base64.b64decode(EICAR_BASE64))
-            sha256 = hash_file("eicar.txt")
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_file("eicar.txt", guid=guid)
-            self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
-            self.assertEqual(verdict["Guid"].casefold(), guid)
 
-    async def test_for_file_returns_verdict_if_no_cache_or_shed(self):
-        options = get_disabled_options()
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    async def test_for_stream_send_user_agent(self, httpx_mock):
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256
+            }
+        )
 
-        async with await create_and_connect(options=options) as vaas:
-            with open("eicar.txt", "wb") as f:
-                f.write(base64.b64decode(EICAR_BASE64))
-            sha256 = hash_file("eicar.txt")
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_file("eicar.txt", guid=guid)
-            self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+        httpx_mock.add_response(
+            method="GET",
+            url= f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}",
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256,
+                "verdict": "Clean",
+                "detection": None,
+                "fileType": None,
+                "mimeType": None
+            }
+        )
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-    async def test_for_url_returns_malicious_for_eicar(self):
-        options = get_disabled_options()
-        async with await create_and_connect(options=options) as vaas:
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://secure.eicar.org/eicarcom2.zip", guid=guid)
-            self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            verdict = await vaas.for_stream(response.aiter_bytes(), content_length)
+            for request in httpx_mock.get_requests():
+                assert "Python" in request.headers["User-Agent"]
 
-    async def test_for_url_without_shed_and_cache_returns_clean_for_robots_txt(self):
-        options = get_disabled_options()
-        async with await create_and_connect(options=options) as vaas:
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
-            self.assertEqual(verdict["Verdict"], "Clean")
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+            assert len(httpx_mock.get_requests()) == 2
+            assert verdict.verdict == "Clean"
 
-    async def test_for_url_without_cache_returns_clean_for_robots_txt(self):
-        options = VaasOptions()
-        options.use_cache = False
-        options.use_hash_lookup = True
-        async with await create_and_connect(options=options) as vaas:
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
-            self.assertEqual(verdict["Verdict"], "Clean")
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    async def test_for_stream_set_request_id_send_trace_state(self, httpx_mock):
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256
+            }
+        )
 
-    async def test_for_url__with_url_with_status_code_4xx__raises_VaasClientError(self):
-        options = get_disabled_options()
-        async with await create_and_connect(options=options) as vaas:
-            with self.assertRaises(VaasClientError, msg="Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere") as error:
-                await vaas.for_url("https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere")
-            self.assertEqual(str(error.msg), "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere")
+        httpx_mock.add_response(
+            method="GET",
+            url= f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}",
+            status_code=200,
+            json={
+                "sha256": CLEAN_SHA256,
+                "verdict": "Clean",
+                "detection": None,
+                "fileType": None,
+                "mimeType": None
+            }
+        )
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-    async def test_for_buffer_traces(self):
-        tracing = VaasTracing()
-        tracing.trace_hash_request = MagicMock()
-        tracing.trace_upload_request = MagicMock()
-        async with await create_and_connect(tracing=tracing) as vaas:
-            buffer = os.urandom(1024)
-            sha256 = hashlib.sha256(buffer).hexdigest()
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_buffer(buffer, guid=guid)
-            self.assertEqual(verdict["Verdict"], "Clean")
-            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
-            self.assertEqual(verdict["Guid"].casefold(), guid)
-            tracing.trace_hash_request.assert_called_with(ANY)
-            tracing.trace_upload_request.assert_called_with(ANY, 1024)
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            options = ForStreamOptions(vaas_request_id="foobar")
+            verdict = await vaas.for_stream(response.aiter_bytes(), content_length, options)
+            for request in httpx_mock.get_requests():
+                assert "vaasrequestid=foobar" in request.headers["tracestate"]
 
-    async def test_for_empty_buffer_returns_clean(self):
-        async with await create_and_connect() as vaas:
-            buffer = bytes("", "utf-8")
-            sha256 = hashlib.sha256(buffer).hexdigest()
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_buffer(buffer, guid=guid)
-            self.assertEqual(verdict["Verdict"], "Clean")
-            self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
-            self.assertEqual(verdict["Guid"].casefold(), guid)
+            assert len(httpx_mock.get_requests()) == 2
+            assert verdict.verdict == "Clean"
 
-    async def test_for_url_returns_detections_and_mime_type(self):
-        options = get_disabled_options()
-        async with await create_and_connect(options=options) as vaas:
-            guid = str(uuid.uuid4())
-            verdict = await vaas.for_url("https://secure.eicar.org/eicar.com.txt", guid=guid)
-            self.assertEqual(verdict["Verdict"], "Malicious")
-            self.assertIsNotNone(verdict["Detection"])
-            self.assertEqual(verdict['FileType'], "EICAR virus test files")
-            self.assertEqual(verdict['MimeType'], "text/plain")
+
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    async def test_for_stream_bad_request_raise_vaas_client_error(self, httpx_mock):
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            status_code=400,
+            json = {
+                "detail": "Mocked client-side error",
+                "type": "VaasClientException"
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            with pytest.raises(VaasClientError):
+                await vaas.for_stream(response.aiter_bytes(), content_length)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    async def test_for_stream_server_error_raise_vaas_server_error(self, httpx_mock):
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            status_code=500,
+            json = {
+                "detail": "Mocked server-side error",
+                "type": "VaasServerException"
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            with pytest.raises(VaasServerError):
+                await vaas.for_stream(response.aiter_bytes(), content_length)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    async def test_for_stream_authentication_error_raise_vaas_authentication_error(self, httpx_mock):
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(side_effect=VaasAuthenticationError("Mocked auth error"))
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            with pytest.raises(VaasAuthenticationError):
+                await vaas.for_stream(response.aiter_bytes(), content_length)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    async def test_for_stream_unauthorized_raise_vaas_authentication_error(self, httpx_mock):
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            status_code=401,
+            json = {
+                "detail": "Authentication error",
+                "type": "VaasAuthenticationException"
+            }
+        )
+
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            with pytest.raises(VaasAuthenticationError):
+                await vaas.for_stream(response.aiter_bytes(), content_length)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
+    async def test_for_stream_cancel_request_raise_cancel_error(self, httpx_mock):
+        vaas = await create_vaas()
+        vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
+        httpx_mock.add_exception(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            exception=asyncio.CancelledError()
+        )
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
+            content_length = response.headers["Content-Length"]
+            with pytest.raises(asyncio.CancelledError):
+                await vaas.for_stream(response.aiter_bytes(), content_length)
+
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "url, expected_verdict",
+        [
+            ("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt", "Malicious"),
+            ("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt", "Clean"),
+            ("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe", "Pup")
+        ],
+        ids=["Malware", "Clean", "Pup"]
+    )
+    async def test_for_file_returns_verdict(self, url, expected_verdict):
+            vaas = await create_vaas()
+            async with httpx.AsyncClient() as client:
+                filename = os.path.join("/tmp", os.path.basename(url))
+                response = await client.get(url)
+                response.raise_for_status()
+                with open(filename, mode="wb") as file:
+                    file.write(response.content)
+                verdict = await vaas.for_file(filename)
+
+                assert verdict.verdict == expected_verdict
+
+
+    # async def test_for_buffer_returns_malicious_for_eicar(self):
+    #     async with await create_vaas() as vaas:
+    #         buffer = base64.b64decode(EICAR_BASE64)
+    #         sha256 = hashlib.sha256(buffer).hexdigest()
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_buffer(buffer, guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Malicious")
+    #         self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_stream_returns_malicious_for_eicar(self):
+    #     async with await create_vaas() as vaas:
+    #         buffer = base64.b64decode(EICAR_BASE64)
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_buffer(buffer, guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Malicious")
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_buffer_returns_unknown_for_random_buffer(self):
+    #     async with await create_vaas() as vaas:
+    #         buffer = os.urandom(1024)
+    #         sha256 = hashlib.sha256(buffer).hexdigest()
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_buffer(buffer, guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Clean")
+    #         self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_file_returns_verdict(self):
+    #     async with await create_vaas() as vaas:
+    #         with open("eicar.txt", "wb") as f:
+    #             f.write(base64.b64decode(EICAR_BASE64))
+    #         sha256 = hash_file("eicar.txt")
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_file("eicar.txt", guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Malicious")
+    #         self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_file_returns_verdict_if_no_cache_or_shed(self):
+    #     options = get_disabled_options()
+    #
+    #     async with await create_vaas(options=options) as vaas:
+    #         with open("eicar.txt", "wb") as f:
+    #             f.write(base64.b64decode(EICAR_BASE64))
+    #         sha256 = hash_file("eicar.txt")
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_file("eicar.txt", guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Malicious")
+    #         self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_url_returns_malicious_for_eicar(self):
+    #     options = get_disabled_options()
+    #     async with await create_vaas(options=options) as vaas:
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_url("https://secure.eicar.org/eicarcom2.zip", guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Malicious")
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_url_without_shed_and_cache_returns_clean_for_robots_txt(self):
+    #     options = get_disabled_options()
+    #     async with await create_vaas(options=options) as vaas:
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Clean")
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_url_without_cache_returns_clean_for_robots_txt(self):
+    #     options = VaasOptions()
+    #     options.use_cache = False
+    #     options.use_hash_lookup = True
+    #     async with await create_vaas(options=options) as vaas:
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_url("https://www.gdata.de/robots.txt", guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Clean")
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #
+    # async def test_for_url__with_url_with_status_code_4xx__raises_VaasClientError(self):
+    #     options = get_disabled_options()
+    #     async with await create_vaas(options=options) as vaas:
+    #         with self.assertRaises(VaasClientError, msg="Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere") as error:
+    #             await vaas.for_url("https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere")
+    #         self.assertEqual(str(error.msg), "Call failed with status code 404 (Not Found): GET https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere")
+
+    # async def test_for_buffer_traces(self):
+    #     tracing = VaasTracing()
+    #     tracing.trace_hash_request = MagicMock()
+    #     tracing.trace_upload_request = MagicMock()
+    #     async with await create_and_connect(tracing=tracing) as vaas:
+    #         buffer = os.urandom(1024)
+    #         sha256 = hashlib.sha256(buffer).hexdigest()
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_buffer(buffer, guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Clean")
+    #         self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+    #         tracing.trace_hash_request.assert_called_with(ANY)
+    #         tracing.trace_upload_request.assert_called_with(ANY, 1024)
+
+    # async def test_for_empty_buffer_returns_clean(self):
+    #     async with await create_vaas() as vaas:
+    #         buffer = bytes("", "utf-8")
+    #         sha256 = hashlib.sha256(buffer).hexdigest()
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_buffer(buffer, guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Clean")
+    #         self.assertEqual(verdict["Sha256"].casefold(), sha256.casefold())
+    #         self.assertEqual(verdict["Guid"].casefold(), guid)
+
+    # async def test_for_url_returns_detections_and_mime_type(self):
+    #     options = get_disabled_options()
+    #     async with await create_vaas(options=options) as vaas:
+    #         guid = str(uuid.uuid4())
+    #         verdict = await vaas.for_url("https://secure.eicar.org/eicar.com.txt", guid=guid)
+    #         self.assertEqual(verdict["Verdict"], "Malicious")
+    #         self.assertIsNotNone(verdict["Detection"])
+    #         self.assertEqual(verdict['FileType'], "EICAR virus test files")
+    #         self.assertEqual(verdict['MimeType'], "text/plain")
 
 
 if __name__ == "__main__":
