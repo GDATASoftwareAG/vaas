@@ -1,13 +1,12 @@
 """Verdict-as-a-Service
 
 :mod:`vaas` is a Python library for the VaaS-API."""
-from authlib.integrations.base_client import OAuthError
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
-from .vaas_errors import VaasAuthenticationError
+from src.vaas.authentication.authenticator_interface import AuthenticatorInterface
+from src.vaas.vaas_errors import VaasAuthenticationError
 
-
-class ClientCredentialsGrantAuthenticator:
+class ClientCredentialsGrantAuthenticator(AuthenticatorInterface):
     """Tracing interface for Vaas"""
 
     def __init__(self, client_id, client_secret, token_endpoint, verify=True):
