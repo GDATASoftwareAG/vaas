@@ -1,43 +1,33 @@
 """Verdict-as-a-Service
 
 :mod:`vaas` is a Python library for the VaaS-API."""
-import hashlib
-import json
 import os.path
 import time
-import uuid
-from typing import Optional, TypedDict, Literal
-import asyncio
-from asyncio import Future
-import ssl
-from urllib.parse import urlparse, urljoin, urlencode
-
-import aiofiles
-from jwt import PyJWT
 import httpx
-import websockets.client
+from urllib.parse import urljoin, urlencode
+from importlib.metadata import version
 
 from .async_file_reader import AsyncFileReader
 from .authentication.authenticator_interface import AuthenticatorInterface
-from .messages.file_report import FileReport
 from .messages.file_analysis_started import FileAnalysisStarted
+from .messages.file_report import FileReport
+from .messages.url_analysis_request import UrlAnalysisRequest
+from .messages.url_analysis_started import UrlAnalysisStarted
+from .messages.url_report import UrlReport
 from .messages.vaas_verdict import VaasVerdict
 from .options.for_file_options import ForFileOptions
 from .options.for_sha256_options import ForSha256Options
 from .options.for_stream_options import ForStreamOptions
+from .options.for_url_options import ForUrlOptions
+from .sha256 import SHA256
 from .vaas_errors import (
-    VaasInvalidStateError,
-    VaasConnectionClosedError,
-    VaasTimeoutError, VaasClientError, VaasServerError, VaasAuthenticationError,
+    VaasClientError, VaasServerError, VaasAuthenticationError,
 )
-from .options.vaas_options import VaasOptions
-from .vaas_interface import VaasInterface
 
 TIMEOUT = 60
 HTTP2 = False
-# TODO: Set to default of 5 once Vaas upload endpoint is 100% streaming
 UPLOAD_TIMEOUT = 600
-USER_AGENT = "Python"
+USER_AGENT = f"Python/{version("gdata-vaas")}"
 
 
 class VaasTracing:
@@ -52,87 +42,25 @@ class VaasTracing:
     def trace_url_request(self, elapsed_in_seconds):
         """Trace url request in seconds"""
 
-    def trace_hash_request_timeout(self):
-        """Trace timeout while waiting for hash verdict"""
 
-    def trace_upload_result_timeout(self, file_size):
-        """Trace timeout while waiting for verdict for uploaded file"""
+class VaasOptions:
+    """Configure behaviour of VaaS"""
 
-    def trace_upload_timeout(self, file_size):
-        """Trace upload timeout"""
-
-# class VaasVerdict(TypedDict):
-#     Sha256: str
-#     "The SHA256 hash of the file"
-#
-#     Guid: str
-#
-#     Verdict: Literal["Clean", "Malicious", "Unknown", "Pup"]
-#
-#     Detection: Optional[str]
-#     "Name of the detected malware if found"
-#
-#     FileType: Optional[str]
-#     "The file type of the file"
-#
-#     MimeType: Optional[str]
-#     "The mime type of the file"
-
-def hash_file(filename):
-    """Return sha256 hash for file"""
-    block_size = 65536
-
-    h_sha256 = hashlib.sha256()
-
-    with open(filename, "rb") as file:
-        buffer = file.read(block_size)
-        while len(buffer) > 0:
-            h_sha256.update(buffer)
-            buffer = file.read(block_size)
-
-    return h_sha256.hexdigest()
+    def __init__(self):
+        self.use_cache = True
+        self.use_hash_lookup = True
 
 
-def is_ssl_url(url):
-    """check if url is wss"""
-    parsed_url = urlparse(url)
-    return parsed_url.scheme == "wss"
-
-
-def get_ssl_context(url, verify):
-    """return ssl context for websockets"""
-    if not is_ssl_url(url):
-        return None
-    if verify:
-        return ssl.create_default_context()
-    return ssl._create_unverified_context()  # pylint: disable=W0212
-
-
-def problem_details_to_error(problem_details):
-    type = problem_details.get("type")
-    details = problem_details.get("details")
-    if type == "VaasClientException":
-        return VaasClientError(details)
-    return VaasServerError(details)
-
-
-def map_response(verdict_response) -> VaasVerdict:
-    return {
-        "Sha256": verdict_response.get("sha256"),
-        "Guid": verdict_response.get("guid"),
-        "Verdict": verdict_response.get("verdict"),
-        "Detection": verdict_response.get("detection"),
-        "FileType": verdict_response.get("file_type"),
-        "MimeType": verdict_response.get("mime_type")
-    }
-
-def raiseIfHttpResponseError(response):
+def raise_if_vaas_error_occurred(response):
+    if response.is_client_error:
+        if response.status_code == 401:
+            raise VaasAuthenticationError(response.reason_phrase)
+        raise VaasClientError(response.reason_phrase)
     if response.is_server_error:
         raise VaasServerError(response.reason_phrase)
-    if response.is_client_error:
-        raise VaasClientError(response.reason_phrase)
 
-class Vaas(VaasInterface):
+
+class Vaas:
     """Verdict-as-a-Service client"""
 
     def __init__(
@@ -140,78 +68,27 @@ class Vaas(VaasInterface):
         tracing=VaasTracing(),
         options=VaasOptions(),
         authenticator=AuthenticatorInterface(),
+        httpx_client = httpx.AsyncClient(http2=HTTP2, verify=True),
         url="https://gateway.production.vaas.gdatasecurity.de",
     ):
         self.tracing = tracing
-        self.loop_result = None
-        self.websocket = None
-        self.session_id = None
-        self.results = {}
-        self.httpx_client = httpx.AsyncClient(http2=HTTP2)
         self.options = options
+        self.httpx_client = httpx_client
         self.authenticator = authenticator
         self.url = url
 
-    def get_authenticated_websocket(self):
-        """Get authenticated websocket"""
-        if self.websocket is None:
-            raise VaasInvalidStateError("connect() was not called")
-        if not self.websocket.open:
-            raise VaasConnectionClosedError(
-                "connection closed or connect() was not awaited"
-            )
-        if self.session_id is None:
-            raise VaasConnectionClosedError("connect() was not awaited")
-        return self.websocket
-
-    async def connect(self, token, verify=True, websocket=None):
-        """Connect to VaaS
-
-        token -- OpenID Connect token signed by a trusted identity provider
-        """
-        ssl_context = get_ssl_context(self.url, verify)
-        if websocket is not None:
-            self.websocket = websocket
-        else:
-            self.websocket = await websockets.client.connect(self.url, ssl=ssl_context)
-
-        authenticate_request = {"kind": "AuthRequest", "token": token}
-        await self.websocket.send(json.dumps(authenticate_request))
-
-        authentication_response = json.loads(await self.websocket.recv())
-        if not authentication_response.get("success", False):
-            raise Exception("Authentication failed")
-        self.session_id = authentication_response["session_id"]
-
-        self.loop_result = asyncio.ensure_future(
-            self.__receive_loop()
-        )  # fire and forget async_foo()
-
-        self.httpx_client = httpx.AsyncClient(http2=HTTP2, verify=verify)
-
-    async def close(self):
-        """Close the connection"""
-        if self.websocket is not None:
-            await self.websocket.close()
-        if self.loop_result is not None:
-            await self.loop_result
-        if self.httpx_client is not None:
-            await self.httpx_client.aclose()
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, traceback):
-        await self.close()
 
     async def for_sha256(self, sha256, for_sha256_options=None) -> VaasVerdict:
-        for_sha256_options = for_sha256_options or ForSha256Options()
+        if not SHA256.is_valid_sha256(sha256):
+            raise VaasClientError("Invalid SHA256")
+        for_sha256_options = for_sha256_options or ForSha256Options().from_vaas_config(vaas_options=self.options)
         report_uri = urljoin(self.url + "/", f"files/{sha256}/report" ) + "?" + urlencode({
             "useCache": str(for_sha256_options.use_cache).lower(),
             "useHashLookup": str(for_sha256_options.use_hash_lookup).lower()
         })
 
         token = await self.authenticator.get_token()
+        start = time.time()
         response = await self.httpx_client.get(
             url=report_uri,
             headers={
@@ -221,21 +98,16 @@ class Vaas(VaasInterface):
             }
         )
 
-        if response.is_client_error:
-            if response.status_code == 401:
-                raise VaasAuthenticationError(response.reason_phrase)
-            raise VaasClientError(response.reason_phrase)
-
-        if response.is_server_error:
-            raise VaasServerError(response.reason_phrase)
+        raise_if_vaas_error_occurred(response)
 
         file_report = FileReport.model_validate(response.json())
+        self.tracing.trace_hash_request(time.time() - start)
         return VaasVerdict.from_report(file_report)
 
 
     async def for_file(self, path, for_file_options=None) -> VaasVerdict:
         """Returns the verdict for a file"""
-        for_file_options = for_file_options or ForFileOptions()
+        for_file_options = for_file_options or ForFileOptions().from_vaas_config(vaas_options=self.options)
 
         if for_file_options.use_hash_lookup or for_file_options.use_cache:
             for_sha256_options = ForSha256Options(
@@ -244,10 +116,18 @@ class Vaas(VaasInterface):
                 vaas_request_id=for_file_options.vaas_request_id
             )
 
-            sha256 = hash_file(path)
+            sha256 = SHA256.hash_file(path)
             response = await self.for_sha256(sha256, for_sha256_options)
-            verdict_without_detection = response.verdict is "Malicious" or "Pup" and response.detection is None
-            if response.verdict is not "Unknown" and not verdict_without_detection and response.fileType is not None and response.mimeType is not None:
+            verdict_without_detection = (
+                    response.verdict in ["Malicious", "Pup"]
+                    and response.detection is None
+            )
+            if (
+                    response.verdict != "Unknown"
+                    and not verdict_without_detection
+                    and response.fileType is not None
+                    and response.mimeType is not None
+            ):
                 return response
 
         reader = AsyncFileReader(path)
@@ -260,12 +140,13 @@ class Vaas(VaasInterface):
 
     async def for_stream(self, async_buffered_reader, content_length, for_stream_options=None) -> VaasVerdict:
         """Returns the verdict for a file"""
-        for_stream_options = for_stream_options or ForStreamOptions()
+        for_stream_options = for_stream_options or ForStreamOptions().from_vaas_config(vaas_options=self.options)
         report_uri = urljoin(self.url + "/", f"files" ) + "?" + urlencode({
             "useHashLookup": str(for_stream_options.use_hash_lookup).lower()
         })
 
         token = await self.authenticator.get_token()
+        start = time.time()
         response = await self.httpx_client.post(
             url=report_uri,
             content=async_buffered_reader,
@@ -277,15 +158,10 @@ class Vaas(VaasInterface):
             }
         )
 
-        if response.is_client_error:
-            if response.status_code == 401:
-                raise VaasAuthenticationError(response.reason_phrase)
-            raise VaasClientError(response.reason_phrase)
-
-        if response.is_server_error:
-            raise VaasServerError(response.reason_phrase)
+        raise_if_vaas_error_occurred(response)
 
         file_analysis_started = FileAnalysisStarted.model_validate(response.json())
+        self.tracing.trace_upload_request(time.time() - start, content_length)
         for_sha256_options = ForSha256Options(
             use_hash_lookup=for_stream_options.use_hash_lookup,
             vaas_request_id=for_stream_options.vaas_request_id
@@ -293,212 +169,55 @@ class Vaas(VaasInterface):
 
         return await self.for_sha256(file_analysis_started.sha256, for_sha256_options)
 
+    async def for_url(self, url, for_url_options=None) -> VaasVerdict:
+        for_url_options = for_url_options or ForUrlOptions().from_vaas_config(vaas_options=self.options)
+        token = await self.authenticator.get_token()
 
-        # verdict_response = await self.__for_stream(
-        #     verdict_request_attributes, guid
-        # )
-        # guid = verdict_response.get("guid")
-        # token = verdict_response.get("upload_token")
-        # url = verdict_response.get("url")
-        # verdict = verdict_response.get("verdict")
-        #
-        # if verdict != "Unknown":
-        #     raise VaasServerError("server returned verdict without receiving content")
-        #
-        # if token == None:
-        #     raise VaasServerError("VerdictResponse missing UploadToken for stream upload")
-        #
-        # if url == None:
-        #     raise VaasServerError("VerdictResponse missing URL for stream upload")
-        #
-        # start = time.time()
-        # response_message = self.__response_message_for_guid(guid)
-        # await self.__upload(token, url, asyncBufferedReader, len)
-        # try:
-        #     verdict_response = await asyncio.wait_for(response_message, timeout=TIMEOUT)
-        # except asyncio.TimeoutError as ex:
-        #     self.tracing.trace_upload_result_timeout(len)
-        #     raise VaasTimeoutError() from ex
-        # self.tracing.trace_upload_request(time.time() - start, len)
-        #
-        # return map_response(verdict_response)
-
-
-    async def __for_stream(self, verdict_request_attributes=None, guid=None):
-        if verdict_request_attributes is not None and not isinstance(
-            verdict_request_attributes, dict
-        ):
-            raise TypeError("verdict_request_attributes has to be dict(str, str)")
-
-        websocket = self.get_authenticated_websocket()
-        start = time.time()
-        guid = guid or str(uuid.uuid4())
-        verdict_request = {
-            "kind": "VerdictRequestForStream",
-            "session_id": self.session_id,
-            "guid": guid,
-            "use_hash_lookup": self.options.use_hash_lookup,
-            "use_cache": self.options.use_cache,
-            "verdict_request_attributes": verdict_request_attributes,
-        }
-        response_message = self.__response_message_for_guid(guid)
-        await websocket.send(json.dumps(verdict_request))
-
-        try:
-            result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
-        except asyncio.TimeoutError as ex:
-            self.tracing.trace_hash_request_timeout()
-            raise VaasTimeoutError() from ex
-
-        self.tracing.trace_hash_request(time.time() - start)
-        return result
-
-    async def __for_sha256(self, sha256, verdict_request_attributes=None, guid=None):
-        if verdict_request_attributes is not None and not isinstance(
-            verdict_request_attributes, dict
-        ):
-            raise TypeError("verdict_request_attributes has to be dict(str, str)")
-
-        websocket = self.get_authenticated_websocket()
-        start = time.time()
-        guid = guid or str(uuid.uuid4())
-        verdict_request = {
-            "kind": "VerdictRequest",
-            "sha256": sha256,
-            "session_id": self.session_id,
-            "guid": guid,
-            "use_hash_lookup": self.options.use_hash_lookup,
-            "use_cache": self.options.use_cache,
-            "verdict_request_attributes": verdict_request_attributes,
-        }
-        response_message = self.__response_message_for_guid(guid)
-        await websocket.send(json.dumps(verdict_request))
-
-        try:
-            result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
-        except asyncio.TimeoutError as ex:
-            self.tracing.trace_hash_request_timeout()
-            raise VaasTimeoutError() from ex
-
-        self.tracing.trace_hash_request(time.time() - start)
-        return result
-
-    def __response_message_for_guid(self, guid):
-        result = Future()
-        self.results[guid] = result
-        return result
-
-    async def __receive_loop(self):
-        try:
-            websocket = self.get_authenticated_websocket()
-        except VaasConnectionClosedError as e:
-            # Fix for Python >= 3.12: Connection has already been closed again. End loop.
-            return
-        try:
-            async for message in websocket:
-                vaas_message = json.loads(message)
-                message_kind = vaas_message.get("kind")
-                guid = vaas_message.get("guid")
-                if message_kind == "VerdictResponse":
-                    future = self.results.get(guid)
-                    if future is not None:
-                        future.set_result(vaas_message)
-                if message_kind == "Error":
-                    problem_details = vaas_message.get("problem_details")
-                    if guid is None or problem_details is None:
-                        # Error: Server sent guid we are not waiting for, or problem details are null, ignore it
-                        continue
-                    future = self.results.get(guid)
-                    if future is not None:
-                        future.set_exception(problem_details_to_error(problem_details))
-        except Exception as error:
-            raise VaasConnectionClosedError(error) from error
-
-    async def for_buffer(self, buffer, verdict_request_attributes=None, guid=None) -> VaasVerdict:
-        """Returns the verdict for a buffer"""
-
-        loop = asyncio.get_running_loop()
-        sha256 = await loop.run_in_executor(
-            None, lambda: hashlib.sha256(buffer).hexdigest()
+        url_analysis_request = UrlAnalysisRequest(
+            url=url,
+            use_hash_lookup=for_url_options.use_hash_lookup,
         )
 
-        verdict_response = await self.__for_sha256(
-            sha256, verdict_request_attributes, guid
-        )
-        verdict = verdict_response.get("verdict")
-
-        if verdict == "Unknown":
-            verdict_response = await self._for_unknown_buffer(
-                verdict_response, buffer, len(buffer)
-            )
-
-        return map_response(verdict_response)
-
-    async def _for_unknown_buffer(self, response, buffer, buffer_len):
         start = time.time()
-        guid = response.get("guid")
-        token = response.get("upload_token")
-        url = response.get("url")
-        response_message = self.__response_message_for_guid(guid)
-        await self.__upload(token, url, buffer, buffer_len)
-        try:
-            verdict_response = await asyncio.wait_for(response_message, timeout=TIMEOUT)
-        except asyncio.TimeoutError as ex:
-            self.tracing.trace_upload_result_timeout(buffer_len)
-            raise VaasTimeoutError() from ex
-        self.tracing.trace_upload_request(time.time() - start, buffer_len)
-        return verdict_response
+        response = await self.httpx_client.post(
+            url=f"{self.url}/urls",
+            content=url_analysis_request.model_dump_json(),
+            headers={
+                "Authorization": f"Bearer {token}" ,
+                "User-Agent": USER_AGENT,
+                "tracestate": f"vaasrequestid={for_url_options.vaas_request_id}",
+                "Content-Type": "application/json"
+            }
+        )
 
+        raise_if_vaas_error_occurred(response)
 
+        report_id = UrlAnalysisStarted.model_validate(response.json()).id
 
-
-
-    async def __upload(self, token, upload_uri, buffer_or_file, content_length):
-        jwt = PyJWT()
-        decoded_token = jwt.decode(token, options={"verify_signature": False})
-        try:
-            response = await self.httpx_client.put(
-                url=upload_uri,
-                content=buffer_or_file,
+        while True:
+            response = await self.httpx_client.get(
+                url=f"{self.url}/urls/{report_id}/report",
                 headers={
-                    "Authorization": token,
-                    "Content-Length": str(content_length),
-                },
-                timeout=UPLOAD_TIMEOUT,
+                    "Authorization": f"Bearer {token}",
+                    "User-Agent": USER_AGENT,
+                    "tracestate": f"vaasrequestid={for_url_options.vaas_request_id}"
+                }
             )
-            raiseIfHttpResponseError(response)
-        except httpx.TimeoutException as ex:
-            self.tracing.trace_upload_timeout(content_length)
-            raise VaasTimeoutError() from ex
 
-    async def for_url(self, url, verdict_request_attributes=None, guid=None) -> VaasVerdict:
-        """Returns the verdict for a file from an url"""
-        if verdict_request_attributes is not None and not isinstance(
-            verdict_request_attributes, dict
-        ):
-            raise TypeError("verdict_request_attributes has to be dict(str, str)")
+            status = response.status_code
 
-        websocket = self.get_authenticated_websocket()
-        start = time.time()
-        guid = guid or str(uuid.uuid4())
-        verdict_request_for_url = {
-            "kind": "VerdictRequestForUrl",
-            "url": url,
-            "session_id": self.session_id,
-            "guid": guid,
-            "use_hash_lookup": self.options.use_hash_lookup,
-            "use_cache": self.options.use_cache,
-            "verdict_request_attributes": verdict_request_attributes,
-        }
-        response_message = self.__response_message_for_guid(guid)
-        await websocket.send(json.dumps(verdict_request_for_url))
+            if status == 200:
+                self.tracing.trace_url_request(time.time() - start)
+                url_report = UrlReport.model_validate(response.json())
+                return VaasVerdict.from_report(url_report)
+            elif status in {201, 202}:
+                continue
+            elif status in {400, 403}:
+                if status == 401:
+                    raise VaasAuthenticationError(response.reason_phrase)
+                raise VaasClientError(response.reason_phrase)
+            elif 500 <= status < 600:
+                raise VaasServerError(response.reason_phrase)
+            else:
+                raise VaasClientError(f"Unexpected status code {status}: {response.reason_phrase} ")
 
-        try:
-            result = await asyncio.wait_for(response_message, timeout=TIMEOUT)
-        except asyncio.TimeoutError as ex:
-            self.tracing.trace_hash_request_timeout()
-            raise VaasTimeoutError() from ex
-
-        self.tracing.trace_url_request(time.time() - start)
-
-        return map_response(result)

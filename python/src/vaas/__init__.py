@@ -6,24 +6,16 @@ __version__ = "0.0.1"
 __all__ = [
     "Vaas",
     "VaasTracing",
-    "VaasTimeoutError",
     "VaasAuthenticationError",
-    "VaasInvalidStateError",
-    "VaasConnectionClosedError",
-    "VaasOptions",
     "ClientCredentialsGrantAuthenticator",
     "ResourceOwnerPasswordGrantAuthenticator",
-    "get_ssl_context",
 ]
 
 __author__ = "G DATA CyberDefense AG <oem@gdata.de>"
 
-from .vaas import Vaas, VaasTracing, VaasOptions, get_ssl_context
+from .vaas import Vaas, VaasTracing
 from .vaas_errors import (
-    VaasTimeoutError,
     VaasAuthenticationError,
-    VaasInvalidStateError,
-    VaasConnectionClosedError,
 )
 from src.vaas.authentication.client_credentials_grant_authenticator import ClientCredentialsGrantAuthenticator
 from src.vaas.authentication.resource_owner_password_grant_authenticator import ResourceOwnerPasswordGrantAuthenticator

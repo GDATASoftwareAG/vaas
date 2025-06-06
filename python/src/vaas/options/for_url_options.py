@@ -4,7 +4,7 @@ class ForUrlOptions:
     def __init__(
             self,
             use_hash_lookup = True,
-            vaas_request_id=uuid.uuid4()
+            vaas_request_id = None
     ):
         self.vaas_request_id = vaas_request_id
         self.use_hash_lookup = use_hash_lookup

@@ -1,7 +1,6 @@
 from abc import abstractmethod
 
-
-class AuthenticatorInterface():
+class AuthenticatorInterface:
     @abstractmethod
     async def get_token(self):
         pass

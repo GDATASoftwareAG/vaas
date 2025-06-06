@@ -1,6 +1,5 @@
 import asyncio
 
-
 class AsyncFileReader:
     def __init__(self, path, chunk_size=8192):
         self.path = path

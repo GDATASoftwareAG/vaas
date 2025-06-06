@@ -6,7 +6,6 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from src.vaas.authentication.authenticator_interface import AuthenticatorInterface
 from src.vaas.vaas_errors import VaasAuthenticationError
 
-
 class ClientCredentialsGrantAuthenticator(AuthenticatorInterface):
     """Tracing interface for Vaas"""
 
