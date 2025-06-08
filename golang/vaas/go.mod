@@ -2,7 +2,7 @@ module github.com/GDATASoftwareAG/vaas/golang/vaas
 
 go 1.23.0
 
-toolchain go1.24.3
+toolchain go1.24.4
 
 require (
 	github.com/Noooste/websocket v1.0.3
