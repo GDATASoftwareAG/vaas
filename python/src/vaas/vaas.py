@@ -49,6 +49,7 @@ class VaasOptions:
     def __init__(self):
         self.use_cache = True
         self.use_hash_lookup = True
+        self.timeout = 300
 
 
 def raise_if_vaas_error_occurred(response):
@@ -59,6 +60,17 @@ def raise_if_vaas_error_occurred(response):
     if response.is_server_error:
         raise VaasServerError(response.reason_phrase)
 
+def add_request_headers(request_id=None, token=None):
+    if request_id is not None:
+        return {
+            "Authorization": f"Bearer {token}",
+            "User-Agent": USER_AGENT,
+            "tracestate": f"vaasrequestid={request_id}",
+        }
+    return {
+        "Authorization": f"Bearer {token}",
+        "User-Agent": USER_AGENT,
+    }
 
 class Vaas:
     """Verdict-as-a-Service client"""
@@ -88,14 +100,12 @@ class Vaas:
         })
 
         token = await self.authenticator.get_token()
+        headers = add_request_headers(for_sha256_options.vaas_request_id, token=token)
         start = time.time()
         response = await self.httpx_client.get(
             url=report_uri,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "User-Agent": USER_AGENT,
-                "tracestate": f"vaasrequestid={for_sha256_options.vaas_request_id}"
-            }
+            headers=headers,
+            timeout=self.options.timeout
         )
 
         raise_if_vaas_error_occurred(response)
@@ -141,21 +151,19 @@ class Vaas:
     async def for_stream(self, async_buffered_reader, content_length, for_stream_options=None) -> VaasVerdict:
         """Returns the verdict for a file"""
         for_stream_options = for_stream_options or ForStreamOptions().from_vaas_config(vaas_options=self.options)
-        report_uri = urljoin(self.url + "/", f"files" ) + "?" + urlencode({
+        report_uri = urljoin(self.url + "/", "files" ) + "?" + urlencode({
             "useHashLookup": str(for_stream_options.use_hash_lookup).lower()
         })
 
         token = await self.authenticator.get_token()
+        headers = add_request_headers(for_stream_options.vaas_request_id, token=token)
+        headers["Content-Length"] = str(content_length)
         start = time.time()
         response = await self.httpx_client.post(
             url=report_uri,
             content=async_buffered_reader,
-            headers={
-                "Authorization": f"Bearer {token}" ,
-                "User-Agent": USER_AGENT,
-                "tracestate": f"vaasrequestid={for_stream_options.vaas_request_id}",
-                "Content-Length": str(content_length)
-            }
+            headers=headers,
+            timeout=self.options.timeout
         )
 
         raise_if_vaas_error_occurred(response)
@@ -169,6 +177,7 @@ class Vaas:
 
         return await self.for_sha256(file_analysis_started.sha256, for_sha256_options)
 
+
     async def for_url(self, url, for_url_options=None) -> VaasVerdict:
         for_url_options = for_url_options or ForUrlOptions().from_vaas_config(vaas_options=self.options)
         token = await self.authenticator.get_token()
@@ -178,16 +187,14 @@ class Vaas:
             use_hash_lookup=for_url_options.use_hash_lookup,
         )
 
+        headers = add_request_headers(for_url_options.vaas_request_id, token=token)
+        headers["Content-Type"] = "application/json"
         start = time.time()
         response = await self.httpx_client.post(
-            url=f"{self.url}/urls",
+            url=urljoin(self.url + "/", "urls"),
             content=url_analysis_request.model_dump_json(),
-            headers={
-                "Authorization": f"Bearer {token}" ,
-                "User-Agent": USER_AGENT,
-                "tracestate": f"vaasrequestid={for_url_options.vaas_request_id}",
-                "Content-Type": "application/json"
-            }
+            headers=headers,
+            timeout=self.options.timeout
         )
 
         raise_if_vaas_error_occurred(response)
@@ -195,13 +202,11 @@ class Vaas:
         report_id = UrlAnalysisStarted.model_validate(response.json()).id
 
         while True:
+            headers.pop("Content-Type", None)
             response = await self.httpx_client.get(
-                url=f"{self.url}/urls/{report_id}/report",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "User-Agent": USER_AGENT,
-                    "tracestate": f"vaasrequestid={for_url_options.vaas_request_id}"
-                }
+                url=urljoin(self.url + "/", f"urls/{report_id}/report"),
+                headers=headers,
+                timeout=self.options.timeout
             )
 
             status = response.status_code

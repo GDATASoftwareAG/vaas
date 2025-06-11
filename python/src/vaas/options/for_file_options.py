@@ -12,7 +12,6 @@ class ForFileOptions:
         self.use_cache = use_cache
 
     def from_vaas_config(self, vaas_options):
-        self.vaas_request_id = vaas_options.vaas_request_id
         self.use_hash_lookup = vaas_options.use_hash_lookup
         self.use_cache = vaas_options.use_cache
         return ForFileOptions()
