@@ -81,7 +81,7 @@ jobs:
         working-directory: python
 
       - name: run tests
-        run: python -m unittest -v tests/test_*
+        run: pytest -v --tb=short
         working-directory: python
 
       - name: install example requirements
