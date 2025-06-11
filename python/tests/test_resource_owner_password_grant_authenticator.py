@@ -64,7 +64,7 @@ class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCa
             token_endpoint=token_url
         )
 
-        vaas = Vaas(url=vaas_url)
+        vaas = Vaas(url=vaas_url, authenticator=authenticator)
         url = "https://secure.eicar.org/eicar.com"
         verdict = await vaas.for_url(url)
         print(f"Url {url} is detected as {verdict.get('Verdict')}")
