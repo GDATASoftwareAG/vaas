@@ -32,7 +32,7 @@ PUP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyU
 
 CLEAN_FILE_CONTENT = "I am clean."
 
-async def create_vaas(tracing=None):
+def create_vaas(tracing=None):
     tracing = tracing or VaasTracing()
 
     authenticator = ClientCredentialsGrantAuthenticator(
@@ -56,7 +56,7 @@ class TestVaas:
         ids=["Malware", "Clean", "Pup"]
     )
     async def test_for_sha256_returns_verdict(self, sha256, expected_verdict):
-            vaas = await create_vaas()
+            vaas = create_vaas()
 
             verdict = await vaas.for_sha256(sha256)
 
@@ -89,7 +89,7 @@ class TestVaas:
                 "mimeType": None
             }
         )
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
         options = ForSha256Options(use_cache=use_cache, use_hash_lookup=use_hash_lookup)
 
@@ -118,7 +118,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         verdict = await vaas.for_sha256(CLEAN_SHA256)
@@ -145,7 +145,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         options = ForSha256Options(vaas_request_id="foobar")
@@ -170,7 +170,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasClientError):
@@ -190,7 +190,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasServerError):
@@ -198,7 +198,7 @@ class TestVaas:
 
     @pytest.mark.asyncio(loop_scope="session")
     async def test_for_sha256_authentication_error_raise_vaas_authentication_error(self):
-        vaas = await create_vaas()
+        vaas = create_vaas()
 
         vaas.authenticator.get_token = AsyncMock(side_effect=VaasAuthenticationError("Mocked auth error"))
 
@@ -219,7 +219,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasAuthenticationError):
@@ -227,7 +227,7 @@ class TestVaas:
 
     @pytest.mark.asyncio(loop_scope="session")
     async def test_for_sha256_cancel_request_raise_cancel_error(self, httpx_mock):
-        vaas = await create_vaas()
+        vaas = create_vaas()
 
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
@@ -251,7 +251,7 @@ class TestVaas:
         ids=["Malware", "Clean", "Pup"]
     )
     async def test_for_stream_returns_verdict(self, url, expected_verdict):
-            vaas = await create_vaas()
+            vaas = create_vaas()
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
                 content_length = response.headers["Content-Length"]
@@ -291,7 +291,7 @@ class TestVaas:
                 "mimeType": None
             }
         )
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
         options = ForStreamOptions(use_hash_lookup=use_hash_lookup)
 
@@ -329,7 +329,7 @@ class TestVaas:
                 "mimeType": None
             }
         )
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -366,7 +366,7 @@ class TestVaas:
                 "mimeType": None
             }
         )
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -393,7 +393,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -415,7 +415,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -427,7 +427,7 @@ class TestVaas:
     @pytest.mark.asyncio(loop_scope="session")
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
     async def test_for_stream_authentication_error_raise_vaas_authentication_error(self, httpx_mock):
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(side_effect=VaasAuthenticationError("Mocked auth error"))
 
         async with httpx.AsyncClient() as client:
@@ -449,7 +449,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -461,7 +461,7 @@ class TestVaas:
     @pytest.mark.asyncio(loop_scope="session")
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
     async def test_for_stream_cancel_request_raise_cancel_error(self, httpx_mock):
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
         httpx_mock.add_exception(
             method="POST",
@@ -487,7 +487,7 @@ class TestVaas:
         ids=["Malware", "Clean", "Pup"]
     )
     async def test_for_file_returns_verdict(self, url, expected_verdict):
-            vaas = await create_vaas()
+            vaas = create_vaas()
             async with httpx.AsyncClient() as client:
                 filename = os.path.join("/tmp", os.path.basename(url))
                 response = await client.get(url)
@@ -550,7 +550,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -594,7 +594,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -639,7 +639,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -672,7 +672,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -700,7 +700,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -717,7 +717,7 @@ class TestVaas:
         url = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt"
         filename = os.path.join("/tmp", os.path.basename(url))
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
 
         vaas.authenticator.get_token = AsyncMock(side_effect=VaasAuthenticationError("Mocked auth error"))
 
@@ -746,7 +746,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -770,7 +770,7 @@ class TestVaas:
             exception=asyncio.CancelledError()
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -793,7 +793,7 @@ class TestVaas:
         ids=["Malware", "Clean", "Pup"]
     )
     async def test_for_url_returns_verdict(self, url, expected_verdict):
-        vaas = await create_vaas()
+        vaas = create_vaas()
         verdict = await vaas.for_url(url)
 
         assert verdict.verdict == expected_verdict
@@ -834,7 +834,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         options = ForUrlOptions(use_hash_lookup=use_hash_lookup)
@@ -871,7 +871,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         verdict = await vaas.for_url(url)
@@ -910,7 +910,7 @@ class TestVaas:
             }
         )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         options = ForUrlOptions(vaas_request_id="foobar")
@@ -960,7 +960,7 @@ class TestVaas:
                 is_optional=True
             )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasClientError):
@@ -1005,7 +1005,7 @@ class TestVaas:
                 is_optional=True
             )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasServerError):
@@ -1016,7 +1016,7 @@ class TestVaas:
     async def test_for_url_authentication_error_raise_vaas_authentication_error(self):
         url = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt"
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(side_effect=VaasAuthenticationError("Mocked auth error"))
         with pytest.raises(VaasAuthenticationError):
             await vaas.for_url(url)
@@ -1060,7 +1060,7 @@ class TestVaas:
                 is_optional=True
             )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasAuthenticationError):
@@ -1097,7 +1097,7 @@ class TestVaas:
                 is_optional = True
             )
 
-        vaas = await create_vaas()
+        vaas = create_vaas()
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(asyncio.CancelledError):
