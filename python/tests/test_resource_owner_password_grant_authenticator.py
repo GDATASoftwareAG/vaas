@@ -55,7 +55,7 @@ class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCa
         if token_url is None:
             token_url = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
         if vaas_url is None:
-            vaas_url = "wss://gateway.production.vaas.gdatasecurity.de"
+            vaas_url = "https://gateway.production.vaas.gdatasecurity.de"
 
         authenticator = ResourceOwnerPasswordGrantAuthenticator(
             client_id=client_id,
@@ -63,9 +63,9 @@ class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCa
             password=password,
             token_endpoint=token_url
         )
-        async with Vaas(url=vaas_url) as vaas:
-            await vaas.connect(await authenticator.get_token())
-            url = "https://secure.eicar.org/eicar.com"
-            verdict = await vaas.for_url(url)
-            print(f"Url {url} is detected as {verdict.get('Verdict')}")
+
+        vaas = Vaas(url=vaas_url)
+        url = "https://secure.eicar.org/eicar.com"
+        verdict = await vaas.for_url(url)
+        print(f"Url {url} is detected as {verdict.get('Verdict')}")
         self.assertEqual(verdict.get("Verdict"), "Malicious")
