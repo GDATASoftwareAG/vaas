@@ -63,7 +63,7 @@ class TestVaas:
             assert verdict.verdict == expected_verdict
             assert verdict.sha256.casefold() == sha256.casefold()
 
-    @pytest.mark.asyncio(loop_scope="session")
+    @pytest.mark.asyncio()
     @pytest.mark.parametrize(
         "use_cache, use_hash_lookup",
         [
