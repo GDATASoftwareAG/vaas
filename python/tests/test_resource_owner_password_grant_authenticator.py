@@ -67,5 +67,5 @@ class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCa
         vaas = Vaas(url=vaas_url, authenticator=authenticator)
         url = "https://secure.eicar.org/eicar.com"
         verdict = await vaas.for_url(url)
-        print(f"Url {url} is detected as {verdict.get('Verdict')}")
-        self.assertEqual(verdict.get("Verdict"), "Malicious")
+        print(f"Url {url} is detected as {verdict.Verdict}")
+        self.assertEqual(verdict.Verdict, "Malicious")
