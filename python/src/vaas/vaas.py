@@ -77,16 +77,16 @@ class Vaas:
 
     def __init__(
         self,
-        tracing=VaasTracing(),
-        options=VaasOptions(),
-        authenticator=AuthenticatorInterface(),
-        httpx_client = httpx.AsyncClient(http2=HTTP2, verify=True),
+        tracing=None,
+        options=None,
+        authenticator=None,
+        httpx_client=None,
         url="https://gateway.production.vaas.gdatasecurity.de",
     ):
-        self.tracing = tracing
-        self.options = options
-        self.httpx_client = httpx_client
-        self.authenticator = authenticator
+        self.tracing = tracing or VaasTracing()
+        self.options = options or VaasOptions()
+        self.authenticator = authenticator or AuthenticatorInterface()
+        self.httpx_client = httpx_client or httpx.AsyncClient(http2=HTTP2, verify=True)
         self.url = url
 
 
