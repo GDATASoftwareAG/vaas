@@ -45,7 +45,7 @@ import static org.mockito.Mockito.*;
 
 @Slf4j
 public class RealApiIntegrationTests {
-    private static final String EICAR_URL = "https://vaas-test.s3-eu-central-1.ionoscloud.com/eicar.com.txt";
+    private static final String EICAR_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt";
 
     private static final Dotenv dotenv = Dotenv.configure()
             .ignoreIfMissing()
@@ -318,9 +318,9 @@ public class RealApiIntegrationTests {
 
     @ParameterizedTest
     @CsvSource({
-            "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt, CLEAN",
-            "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt, MALICIOUS",
-            "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe, PUP"
+            "https://samples.develop.vaas.gdatasecurity.de/clean.txt, CLEAN",
+            "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt, MALICIOUS",
+            "https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe, PUP"
     })
     public void forFile_ReturnsVerdict(String uri, Verdict verdict) throws Exception {
         var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
