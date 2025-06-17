@@ -25,6 +25,7 @@ import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -736,11 +737,12 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forFile_EmptyFile_ReturnsVerdict() throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
+        var file = new File(System.getProperty("java.io.tmpdir"), "empty.txt");
 
         vaas = getVaasWithCredentials();
-        var vaasVerdict = vaas.forFileAsync(tmpFile).join();
+        var vaasVerdict = vaas.forFileAsync(file.toPath()).join();
 
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", vaasVerdict.getSha256());
         assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
     }
 
@@ -1130,6 +1132,7 @@ public class RealApiIntegrationTests {
         vaas = getVaasWithCredentials();
         var vaasVerdict = vaas.forStreamAsync(stream, 0).join();
 
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", vaasVerdict.getSha256());
         assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
     }
 
