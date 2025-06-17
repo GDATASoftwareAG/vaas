@@ -1,5 +1,6 @@
-import unittest
 import os
+import pytest
+
 from dotenv import load_dotenv
 from src.vaas import ResourceOwnerPasswordGrantAuthenticator, VaasAuthenticationError, Vaas
 
@@ -7,44 +8,53 @@ load_dotenv()
 TOKEN_URL = os.getenv("TOKEN_URL")
 
 
-class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCase):
+class ResourceOwnerPasswordGrantAuthenticatorTest():
 
+    @pytest.mark.asyncio()
     async def test_raises_error_if_credentials_are_invalid(self):
         authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
             token_endpoint=TOKEN_URL)
-        with self.assertRaises(VaasAuthenticationError):
+
+        with pytest.raises(VaasAuthenticationError):
             await authenticator.get_token()
 
+    @pytest.mark.asyncio()
     async def test_raises_error_if_token_url_is_invalid(self):
         authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
             token_endpoint="https://")
-        with self.assertRaises(VaasAuthenticationError):
+
+        with pytest.raises(VaasAuthenticationError):
             await authenticator.get_token()
 
+    @pytest.mark.asyncio()
     async def test_raises_error_if_token_url_is_wrong(self):
         authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
             token_endpoint="gateway.production.vaas.gdatasecurity.de")
-        with self.assertRaises(VaasAuthenticationError):
+
+        with pytest.raises(VaasAuthenticationError):
             await authenticator.get_token()
 
+    @pytest.mark.asyncio()
     async def test_raises_error_if_token_url_is_doesnotexist(self):
         authenticator = ResourceOwnerPasswordGrantAuthenticator(
             "invalid_client_id",
             "invalid_user",
             "invalid_password",
             token_endpoint="gateway.production.vaas.gdatasecurity.de/nocontenthere")
-        with self.assertRaises(VaasAuthenticationError):
+
+        with pytest.raises(VaasAuthenticationError):
             await authenticator.get_token()
 
+    @pytest.mark.asyncio()
     async def test_for_url_with_resource_owner_password_grant_returns_malicious(self):
         token_url = os.getenv("TOKEN_URL")
         vaas_url = os.getenv("VAAS_URL")
@@ -70,7 +80,7 @@ class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCa
         print(f"Url {url} is detected as {verdict.verdict}")
         assert verdict.verdict, "Malicious"
 
-
+    @pytest.mark.asyncio()
     async def get_token_request_twice_get_cached_token(self):
         token_url = os.getenv("TOKEN_URL")
         client_id = os.getenv("VAAS_CLIENT_ID")
