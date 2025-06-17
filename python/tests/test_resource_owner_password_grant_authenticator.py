@@ -68,4 +68,25 @@ class ResourceOwnerPasswordGrantAuthenticatorTest(unittest.IsolatedAsyncioTestCa
         url = "https://secure.eicar.org/eicar.com"
         verdict = await vaas.for_url(url)
         print(f"Url {url} is detected as {verdict.verdict}")
-        self.assertEqual(verdict.verdict, "Malicious")
+        assert verdict.verdict, "Malicious"
+
+
+    async def get_token_request_twice_get_cached_token(self):
+        token_url = os.getenv("TOKEN_URL")
+        client_id = os.getenv("VAAS_CLIENT_ID")
+        username = os.getenv("VAAS_USER_NAME")
+        password = os.getenv("VAAS_PASSWORD")
+
+        if token_url is None:
+            token_url = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+
+        authenticator = ResourceOwnerPasswordGrantAuthenticator(
+            client_id=client_id,
+            user_name=username,
+            password=password,
+            token_endpoint=token_url
+        )
+
+        token = await authenticator.get_token()
+        cached_token = await authenticator.get_token()
+        assert token == cached_token

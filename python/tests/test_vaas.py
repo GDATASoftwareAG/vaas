@@ -7,7 +7,7 @@ import httpx
 import pytest
 from dotenv import load_dotenv
 
-from src.vaas import Vaas, VaasTracing, ClientCredentialsGrantAuthenticator, VaasAuthenticationError
+from src.vaas import VaasAuthenticationError
 from src.vaas.options.for_file_options import ForFileOptions
 from src.vaas.options.for_sha256_options import ForSha256Options
 from src.vaas.options.for_stream_options import ForStreamOptions
@@ -16,11 +16,7 @@ from src.vaas.vaas_errors import VaasClientError, VaasServerError
 
 load_dotenv()
 
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-TOKEN_URL = os.getenv("TOKEN_URL")
 VAAS_URL = os.getenv("VAAS_URL")
-SSL_VERIFICATION = os.getenv("SSL_VERIFICATION", "True").lower() in ["true", "1"]
 
 EICAR_SHA256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
 CLEAN_SHA256 = "d24dc598b54a8eedb0a4b381fad68af956441dffa9c9d5d9ac81de73fcc0a089"
@@ -62,8 +58,7 @@ class TestVaas:
         ids=["false_for_all", "only_hash_lookup", "only_cache", "true_for_all"]
     )
     async def test_for_sha256_send_options(self, vaas, use_cache, use_hash_lookup, httpx_mock):
-        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(use_cache).lower()}&useHashLookup={str(use_hash_lookup).lower()}"
-        )
+        request_url = f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(use_cache).lower()}&useHashLookup={str(use_hash_lookup).lower()}"
         httpx_mock.add_response(
             method="GET",
             url=request_url,
@@ -76,23 +71,20 @@ class TestVaas:
                 "mimeType": None
             }
         )
-        
-
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
-        options = ForSha256Options(use_cache=use_cache, use_hash_lookup=use_hash_lookup)
 
+        options = ForSha256Options(use_cache=use_cache, use_hash_lookup=use_hash_lookup)
         verdict = await vaas.for_sha256(CLEAN_SHA256, options)
+
         actual_request = httpx_mock.get_requests()[0]
         actual_url = str(actual_request.url)
-
         assert len(httpx_mock.get_requests()) == 1
         assert actual_url == request_url, f"URL mismatch:\nExpected: {request_url}\nActual:   {actual_url}"
         assert verdict.verdict == "Clean"
 
     @pytest.mark.asyncio()
     async def test_for_sha256_send_user_agent(self, vaas, httpx_mock):
-        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
-        )
+        request_url = f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
         httpx_mock.add_response(
             method="GET",
             url=request_url,
@@ -105,22 +97,18 @@ class TestVaas:
                 "mimeType": None
             }
         )
-
-        
-
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         verdict = await vaas.for_sha256(CLEAN_SHA256)
-        request = httpx_mock.get_requests()[0]
 
+        request = httpx_mock.get_requests()[0]
         assert len(httpx_mock.get_requests()) == 1
         assert "Python" in request.headers["User-Agent"]
         assert verdict.verdict == "Clean"
 
     @pytest.mark.asyncio()
     async def test_for_sha256_set_request_id_send_trace_state(self, vaas, httpx_mock):
-        request_url = (f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
-        )
+        request_url = f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(True).lower()}"
         httpx_mock.add_response(
             method="GET",
             url=request_url,
@@ -133,15 +121,12 @@ class TestVaas:
                 "mimeType": None
             }
         )
-
-        
-
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         options = ForSha256Options(vaas_request_id="foobar")
         verdict = await vaas.for_sha256(CLEAN_SHA256, options)
-        request = httpx_mock.get_requests()[0]
 
+        request = httpx_mock.get_requests()[0]
         assert len(httpx_mock.get_requests()) == 1
         assert "vaasrequestid=foobar" in request.headers["tracestate"]
         assert verdict.verdict == "Clean"
@@ -159,9 +144,6 @@ class TestVaas:
                 "type": "VaasClientException"
             }
         )
-
-        
-
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasClientError):
@@ -180,9 +162,6 @@ class TestVaas:
                 "type": "VaasServerException"
             }
         )
-
-        
-
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasServerError):
@@ -190,7 +169,6 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     async def test_for_sha256_authentication_error_raise_vaas_authentication_error(self, vaas):
-        
         vaas.authenticator.get_token = AsyncMock(side_effect=VaasAuthenticationError("Mocked auth error"))
 
         with pytest.raises(VaasAuthenticationError):
@@ -209,9 +187,6 @@ class TestVaas:
                 "type": "VaasAuthenticationException"
             }
         )
-
-        
-
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         with pytest.raises(VaasAuthenticationError):
@@ -219,9 +194,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     async def test_for_sha256_cancel_request_raise_cancel_error(self, vaas, httpx_mock):
-        
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
-
         httpx_mock.add_exception(
             method="GET",
             url=f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache=true&useHashLookup=true",
@@ -242,8 +215,6 @@ class TestVaas:
         ids=["Malware", "Clean", "Pup"]
     )
     async def test_for_stream_returns_verdict(self, vaas, url, expected_verdict):
-            
-
             async with httpx.AsyncClient() as client:
                 response = await client.get(url)
                 content_length = response.headers["Content-Length"]
@@ -270,7 +241,6 @@ class TestVaas:
                 "sha256": CLEAN_SHA256
             }
         )
-
         httpx_mock.add_response(
             method="GET",
             url= f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache={str(True).lower()}&useHashLookup={str(use_hash_lookup).lower()}",
@@ -283,15 +253,15 @@ class TestVaas:
                 "mimeType": None
             }
         )
-        
-
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
-        options = ForStreamOptions(use_hash_lookup=use_hash_lookup)
 
         async with httpx.AsyncClient() as client:
             response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
             content_length = response.headers["Content-Length"]
+
+            options = ForStreamOptions(use_hash_lookup=use_hash_lookup)
             verdict = await vaas.for_stream(response.aiter_bytes(), content_length, options)
+
             for actual_request in httpx_mock.get_requests():
                 actual_url = str(actual_request.url)
 
@@ -387,8 +357,6 @@ class TestVaas:
                 "type": "VaasClientException"
             }
         )
-
-        
 
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 

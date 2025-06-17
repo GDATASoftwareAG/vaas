@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+TOKEN_URL = os.getenv("TOKEN_URL")
+VAAS_URL = os.getenv("VAAS_URL")
+SSL_VERIFICATION = os.getenv("SSL_VERIFICATION", "True").lower() in ["true", "1"]
+
 @pytest.fixture
 async def vaas():
     authenticator = ClientCredentialsGrantAuthenticator(
