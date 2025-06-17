@@ -737,8 +737,8 @@ public class RealApiIntegrationTests {
 
     @Test
     public void forFile_EmptyFile_ReturnsVerdict() throws Exception {
-        var file = new File(System.getProperty("java.io.tmpdir"), "empty.txt")
-                .createNewFile();
+        var file = new File(System.getProperty("java.io.tmpdir"), "empty.txt");
+        file.createNewFile();
 
         vaas = getVaasWithCredentials();
         var vaasVerdict = vaas.forFileAsync(file.toPath()).join();
