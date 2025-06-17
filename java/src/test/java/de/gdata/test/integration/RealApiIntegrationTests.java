@@ -23,13 +23,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -733,6 +736,18 @@ public class RealApiIntegrationTests {
     }
 
     @Test
+    public void forFile_EmptyFile_ReturnsVerdict() throws Exception {
+        var file = new File(System.getProperty("java.io.tmpdir"), "empty.txt");
+        file.createNewFile();
+
+        vaas = getVaasWithCredentials();
+        var vaasVerdict = vaas.forFileAsync(file.toPath()).join();
+
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", vaasVerdict.getSha256());
+        assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
+    }
+
+    @Test
     public void forStream_ReturnsVerdict() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
         var conn = url.openConnection();
@@ -1109,6 +1124,17 @@ public class RealApiIntegrationTests {
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).get());
         assertInstanceOf(TimeoutException.class, exception.getCause());
+    }
+
+    @Test
+    public void forStream_EmptyFile_ReturnsVerdict() throws Exception {
+        var stream = new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8));
+
+        vaas = getVaasWithCredentials();
+        var vaasVerdict = vaas.forStreamAsync(stream, 0).join();
+
+        assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", vaasVerdict.getSha256());
+        assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
     }
 
     @Test

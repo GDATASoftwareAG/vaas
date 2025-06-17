@@ -118,7 +118,7 @@ public class Vaas implements IVaas {
     }
 
     private CompletableFuture<VaasVerdict> sendUrlWithRetry(HttpClient httpClient, URI uri, String vaasRequestId) {
-        return CreateHttpRequestBuilderWithHeaders(uri, vaasRequestId).thenCompose(request ->
+        return createHttpRequestBuilderWithHeaders(uri, vaasRequestId).thenCompose(request ->
                 httpClient.sendAsync(request.build(), HttpResponse.BodyHandlers.ofString())
                         .thenCompose(handleException(response -> switch (response.statusCode()) {
                             case 200 -> {
@@ -135,7 +135,7 @@ public class Vaas implements IVaas {
     }
 
     private CompletableFuture<VaasVerdict> sendFileWithRetry(HttpClient httpClient, URI uri, String vaasRequestId) {
-        return CreateHttpRequestBuilderWithHeaders(uri, vaasRequestId).thenCompose(request ->
+        return createHttpRequestBuilderWithHeaders(uri, vaasRequestId).thenCompose(request ->
                 httpClient.sendAsync(request.build(), HttpResponse.BodyHandlers.ofString())
                         .thenCompose(handleException(response -> switch (response.statusCode()) {
                             case 200 -> {
@@ -150,7 +150,7 @@ public class Vaas implements IVaas {
                         })));
     }
 
-    private CompletableFuture<HttpRequest.Builder> CreateHttpRequestBuilderWithHeaders(URI uri, String requestId) {
+    private CompletableFuture<HttpRequest.Builder> createHttpRequestBuilderWithHeaders(URI uri, String requestId) {
         return this.authenticator.getToken().thenApply(token -> {
             var httpRequestBuilder = HttpRequest.newBuilder()
                     .uri(uri)
@@ -274,9 +274,10 @@ public class Vaas implements IVaas {
                                                          ForStreamOptions options) {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var filesUri = this.config.getUrl() + "/files?" + encodeParams(params);
-        var bodyPublisher = BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(() -> inputStream),
-                contentLength);
-        return CreateHttpRequestBuilderWithHeaders(URI.create(filesUri), options.getVaasRequestId()).thenCompose(
+        var bodyPublisher = contentLength > 0
+            ? BodyPublishers.fromPublisher(BodyPublishers.ofInputStream(() -> inputStream), contentLength)
+            : BodyPublishers.noBody();
+        return createHttpRequestBuilderWithHeaders(URI.create(filesUri), options.getVaasRequestId()).thenCompose(
                 requestBuilder -> {
                     var postRequest = requestBuilder
                             .POST(bodyPublisher)
@@ -329,7 +330,7 @@ public class Vaas implements IVaas {
         var params = Map.of("useHashLookup", String.valueOf(options.isUseHashLookup()));
         var urlsUri = this.config.getUrl() + "/urls";
         var urlAnalysisRequest = new UrlAnalysisRequest(url.toString(), options.isUseHashLookup());
-        return CreateHttpRequestBuilderWithHeaders(URI.create(urlsUri), options.getVaasRequestId()).thenCompose(requestBuilder -> {
+        return createHttpRequestBuilderWithHeaders(URI.create(urlsUri), options.getVaasRequestId()).thenCompose(requestBuilder -> {
             var postRequest = requestBuilder
                     .POST(HttpRequest.BodyPublishers.ofString(UrlAnalysisRequest.ToJson(urlAnalysisRequest)))
                     .header("Content-Type", "application/json")
