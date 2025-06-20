@@ -8,7 +8,7 @@ load_dotenv()
 TOKEN_URL = os.getenv("TOKEN_URL")
 
 
-class ClientCredentialsGrantAuthenticatorTest:
+class TestClientCredentialsGrantAuthenticator:
 
     @pytest.mark.asyncio()
     async def test_raises_error_if_credentials_are_invalid(self):
@@ -49,7 +49,7 @@ class ClientCredentialsGrantAuthenticatorTest:
             await authenticator.get_token()
 
     @pytest.mark.asyncio()
-    async def get_token_request_twice_get_cached_token(self):
+    async def test_get_token_request_twice_get_cached_token(self):
         token_url = os.getenv("TOKEN_URL")
         client_id = os.getenv("CLIENT_ID")
         client_secret = os.getenv("CLIENT_SECRET")

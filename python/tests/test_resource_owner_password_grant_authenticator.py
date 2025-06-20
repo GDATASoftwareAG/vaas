@@ -8,7 +8,7 @@ load_dotenv()
 TOKEN_URL = os.getenv("TOKEN_URL")
 
 
-class ResourceOwnerPasswordGrantAuthenticatorTest():
+class TestResourceOwnerPasswordGrantAuthenticator():
 
     @pytest.mark.asyncio()
     async def test_raises_error_if_credentials_are_invalid(self):
@@ -81,7 +81,7 @@ class ResourceOwnerPasswordGrantAuthenticatorTest():
         assert verdict.verdict, "Malicious"
 
     @pytest.mark.asyncio()
-    async def get_token_request_twice_get_cached_token(self):
+    async def test_get_token_request_twice_get_cached_token(self):
         token_url = os.getenv("TOKEN_URL")
         client_id = os.getenv("VAAS_CLIENT_ID")
         username = os.getenv("VAAS_USER_NAME")
