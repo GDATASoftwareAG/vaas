@@ -9,21 +9,21 @@ importers:
   .:
     dependencies:
       '@types/node':
-        specifier: 22.15.29
-        version: 22.15.29
+        specifier: 22.15.34
+        version: 22.15.34
       gdata-vaas:
-        specifier: 7.6.18
-        version: 7.6.18
+        specifier: 7.6.20
+        version: 7.6.20
       ts-node:
         specifier: ^10.9.2
-        version: 10.9.2(@types/node@22.15.29)(typescript@5.8.3)
+        version: 10.9.2(@types/node@22.15.34)(typescript@5.8.3)
       typescript:
         specifier: 5.8.3
         version: 5.8.3
     devDependencies:
       dotenv:
         specifier: ^16.4.5
-        version: 16.5.0
+        version: 16.6.1
 
 packages:
 
@@ -58,8 +58,8 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
-  '@types/node@22.15.29':
-    resolution: {integrity: sha512-LNdjOkUDlU1RZb8e1kOIUpN1qQUlzGkEtbVNo53vbrwDg5om6oduhm4SiUaPW5ASTXhAiP0jInWG8Qx9fVlOeQ==}
+  '@types/node@22.15.34':
+    resolution: {integrity: sha512-8Y6E5WUupYy1Dd0II32BsWAx5MWdcnRd8L84Oys3veg1YrYtNtzgO4CFhiBg6MDSjk7Ay36HYOnU7/tuOzIzcw==}
 
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
@@ -103,8 +103,8 @@ packages:
     resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
     engines: {node: '>=0.3.1'}
 
-  dotenv@16.5.0:
-    resolution: {integrity: sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==}
+  dotenv@16.6.1:
+    resolution: {integrity: sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow==}
     engines: {node: '>=12'}
 
   fast-sha256@1.3.0:
@@ -123,8 +123,8 @@ packages:
     resolution: {integrity: sha512-ETEklSGi5t0QMZuiXoA/Q6vcnxcLQP5vdugSpuAyi6SVGi2clPPp+xgEhuMaHC+zGgn31Kd235W35f7Hykkaww==}
     engines: {node: '>= 6'}
 
-  gdata-vaas@7.6.18:
-    resolution: {integrity: sha512-IhgcElXOUizVTZoV2P4txDkoEUiKYzwsJr1TPVje4oXyeyHJfowMhQc3OHAeOZGlgO1+h760Uqs7eKEh1XtaFQ==}
+  gdata-vaas@7.6.20:
+    resolution: {integrity: sha512-4F09OVzLaA/2YuSL30GclqZy+8E2NQWehOkUwL3W0WmnWWX80bwAmS9J19uMnRZveem1OT3hf4394W4+b040kQ==}
 
   make-error@1.3.6:
     resolution: {integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==}
@@ -221,7 +221,7 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
-  '@types/node@22.15.29':
+  '@types/node@22.15.34':
     dependencies:
       undici-types: 6.21.0
 
@@ -229,7 +229,7 @@ snapshots:
 
   '@types/ws@8.18.1':
     dependencies:
-      '@types/node': 22.15.29
+      '@types/node': 22.15.34
 
   '@ungap/url-search-params@0.2.2': {}
 
@@ -261,7 +261,7 @@ snapshots:
 
   diff@4.0.2: {}
 
-  dotenv@16.5.0: {}
+  dotenv@16.6.1: {}
 
   fast-sha256@1.3.0: {}
 
@@ -273,7 +273,7 @@ snapshots:
       combined-stream: 1.0.8
       mime-types: 2.1.35
 
-  gdata-vaas@7.6.18:
+  gdata-vaas@7.6.20:
     dependencies:
       '@d-fischer/isomorphic-ws': 7.0.2(ws@8.18.2)
       '@types/uuid': 10.0.0
@@ -301,14 +301,14 @@ snapshots:
 
   reflect-metadata@0.1.14: {}
 
-  ts-node@10.9.2(@types/node@22.15.29)(typescript@5.8.3):
+  ts-node@10.9.2(@types/node@22.15.34)(typescript@5.8.3):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
       '@tsconfig/node10': 1.0.11
       '@tsconfig/node12': 1.0.11
       '@tsconfig/node14': 1.0.3
       '@tsconfig/node16': 1.0.4
-      '@types/node': 22.15.29
+      '@types/node': 22.15.34
       acorn: 8.12.0
       acorn-walk: 8.3.3
       arg: 4.1.3
