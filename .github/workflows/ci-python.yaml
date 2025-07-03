@@ -73,7 +73,7 @@ jobs:
       - name: set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: 3.12
       - name: install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -81,7 +81,7 @@ jobs:
         working-directory: python
 
       - name: run tests
-        run: python -m unittest -v tests/test_*
+        run: pytest -v --tb=short
         working-directory: python
 
       - name: install example requirements
