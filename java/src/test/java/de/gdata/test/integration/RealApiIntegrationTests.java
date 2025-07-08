@@ -54,6 +54,8 @@ public class RealApiIntegrationTests {
             .ignoreIfMissing()
             .load();
 
+    private static final SamplesFixture samplesFixture = new SamplesFixture();
+
     private static Vaas vaas;
 
     private static String getEnvironmentKey(String key) {
@@ -348,12 +350,7 @@ public class RealApiIntegrationTests {
     })
     @Tag("Mock")
     public void forFile_SendOptions(boolean useCache, boolean useHashLookup) throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
-
+        var tmpFile = samplesFixture.getEicarSample();
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -428,11 +425,7 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("Mock")
     public void forFile_SendUserAgent() throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+        var tmpFile = samplesFixture.getEicarSample();
 
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
@@ -492,12 +485,8 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("Mock")
     public void forFile_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
-
+        var tmpFile = samplesFixture.getEicarSample();
+        
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -557,12 +546,8 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("Mock")
     public void forFile_IfBadRequest_ThrowsVaasClientException() throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
-
+        var tmpFile = samplesFixture.getEicarSample();
+        
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
         var mockGetResponse = mock(HttpResponse.class);
@@ -598,11 +583,7 @@ public class RealApiIntegrationTests {
     @Tag("Mock")
     public void forFile_IfInternalServerError_ThrowsVaasServerException()
             throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+        var tmpFile = samplesFixture.getEicarSample();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -639,11 +620,7 @@ public class RealApiIntegrationTests {
     @Tag("Mock")
     public void forFile_IfUnauthorized_ThrowsVaasAuthenticationException()
             throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+        var tmpFile = samplesFixture.getEicarSample();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -679,11 +656,7 @@ public class RealApiIntegrationTests {
     @Test
     @Tag("Mock")
     public void forFile_IfAuthenticatorFailed_ThrowsVaasAuthenticationException() throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+        var tmpFile = samplesFixture.getEicarSample();
 
         var mockHttpClient = mock(HttpClient.class);
         var mockResponse = mock(HttpResponse.class);
@@ -701,11 +674,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(EICAR_URL).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
+        var tmpFile = samplesFile.getEicarSample();
         vaas = getVaasWithCredentials();
 
         var future = vaas.forFileAsync(tmpFile);
