@@ -1,30 +1,38 @@
-package de.gdata.test.unit;
+package de.gdata.test.integration;
+
+import de.gdata.vaas.Sha256;
+import de.gdata.vaas.exceptions.VaasClientException;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.nio.file.*;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class SamplesFixture {
-
-    private static final String EICAR_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt";
-    private static final String PUP_URL = "https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe";
 
     private static final String EICAR_SHA256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
     private static final String PUP_SHA256 = "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
 
     private Path eicarSample;
     private Path pupSample;
+    private URL eicarUrl;
+    private URL pupUrl;
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private static final HttpClient httpClient = HttpClient.newHttpClient();
+    public SamplesFixture() {
+        try {
+            eicarUrl = URI.create("https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt").toURL();
+            pupUrl = URI.create("https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe").toURL();
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
-    private Path downloadSample(String url, String fileName, String expectedSha256) throws IOException, InterruptedException {
+    private Path downloadSample(URL url, String fileName, String expectedSha256) throws IOException, InterruptedException, VaasClientException {
         Path tmpDir = Path.of(System.getProperty("java.io.tmpdir"));
         Path targetFile = tmpDir.resolve(fileName);
 
@@ -35,30 +43,18 @@ public class SamplesFixture {
             }
         }
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .build();
-
-        HttpResponse<Path> response = httpClient.send(request, HttpResponse.BodyHandlers.ofFileDownload(tmpDir, fileName));
-
-        if (response.statusCode() != 200) {
-            throw new IOException("Failed to download sample from " + url);
+        try (var inputStream = url.openStream()) {
+            Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
         }
 
-        Path downloadedFile = response.body();
-        String downloadedSha256 = new Sha256(downloadedFile).getValue();
-        if (!downloadedSha256.equals(expectedSha256)) {
-            throw new IOException("SHA256 mismatch for " + fileName);
-        }
-
-        return downloadedFile;
+        return targetFile;
     }
 
-    public Path getEicarSample() throws IOException, InterruptedException {
+    public Path getEicarSample() throws IOException, InterruptedException, VaasClientException {
         lock.lock();
         try {
             if (eicarSample == null) {
-                eicarSample = downloadSample(EICAR_URL, "eicar.com.txt", EICAR_SHA256);
+                eicarSample = downloadSample(eicarUrl, "eicar.com.txt", EICAR_SHA256);
             }
             return eicarSample;
         } finally {
@@ -66,11 +62,11 @@ public class SamplesFixture {
         }
     }
 
-    public Path getPupSample() throws IOException, InterruptedException {
+    public Path getPupSample() throws IOException, InterruptedException, VaasClientException {
         lock.lock();
         try {
             if (pupSample == null) {
-                pupSample = downloadSample(PUP_URL, "PotentiallyUnwanted.exe", PUP_SHA256);
+                pupSample = downloadSample(pupUrl, "PotentiallyUnwanted.exe", PUP_SHA256);
             }
             return pupSample;
         } finally {

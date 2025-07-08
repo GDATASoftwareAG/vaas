@@ -674,7 +674,7 @@ public class RealApiIntegrationTests {
     @Test
     public void forFile_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
-        var tmpFile = samplesFile.getEicarSample();
+        var tmpFile = samplesFixture.getEicarSample();
         vaas = getVaasWithCredentials();
 
         var future = vaas.forFileAsync(tmpFile);
