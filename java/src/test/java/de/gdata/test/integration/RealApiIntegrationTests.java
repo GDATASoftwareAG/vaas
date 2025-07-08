@@ -55,13 +55,13 @@ public class RealApiIntegrationTests {
             .load();
 
     private static final SamplesFixture samplesFixture = new SamplesFixture();
-
-    private static Vaas vaas;
-
+    private static final IAuthenticator authenticatorFixture;
     private static final Vaas vaasWithDefaultConfig;
 
+
     static {
-        vaasWithDefaultConfig = getVaasWithCredentials();
+        authenticatorFixture = getAuthenticator();
+        vaasWithDefaultConfig = getVaasWithAuthenticator(authenticatorFixture);
     }
 
     private static String getEnvironmentKey(String key) {
@@ -86,27 +86,16 @@ public class RealApiIntegrationTests {
         return new ClientCredentialsGrantAuthenticator(clientId, clientSecret, tokenUrl, httpClient);
     }
 
-    private static Vaas getVaasWithCredentials(IAuthenticator authenticator) {
-
+    private static Vaas getVaasWithAuthenticator(IAuthenticator authenticator) {
         var vaasUrl = getEnvironmentKey("VAAS_URL");
         var config = new VaasConfig(URI.create(vaasUrl));
         return new Vaas(config, authenticator);
     }
 
-    private static Vaas getVaasWithCredentials(HttpClient httpClient) {
-
+    private static Vaas getVaasWithMockedClient(HttpClient httpClient) {
         var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var authenticator = getAuthenticator();
         var config = new VaasConfig(URI.create(vaasUrl));
-        return new Vaas(config, authenticator, httpClient);
-    }
-
-    private static Vaas getVaasWithCredentials() {
-
-        var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var authenticator = getAuthenticator();
-        var config = new VaasConfig(URI.create(vaasUrl));
-        return new Vaas(config, authenticator);
+        return new Vaas(config, authenticatorFixture, httpClient);
     }
 
     public static byte[] readContent(HttpRequest.BodyPublisher bodyPublisher) {
@@ -175,7 +164,7 @@ public class RealApiIntegrationTests {
         when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forSha256Async(sha256, forSha256Options).join();
         verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
         var capturedUri = requestCaptor.getValue().uri();
@@ -204,7 +193,7 @@ public class RealApiIntegrationTests {
         when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forSha256Async(sha256).join();
         verify(mockHttpClient).sendAsync(requestCaptor.capture(), any(HttpResponse.BodyHandler.class));
         var capturedUserAgent = requestCaptor.getValue().headers().firstValue("User-Agent");
@@ -231,7 +220,7 @@ public class RealApiIntegrationTests {
         when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var forSha256Options = new ForSha256Options(true, true, "foobar");
         var vaasVerdict = vaas.forSha256Async(sha256, forSha256Options).join();
 
@@ -257,7 +246,7 @@ public class RealApiIntegrationTests {
         when(mockResponse.body()).thenReturn(
                 new Gson().toJson(new ProblemDetails("VaasClientException", "Bad Request")));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
         assertInstanceOf(VaasClientException.class, exception.getCause());
@@ -274,7 +263,7 @@ public class RealApiIntegrationTests {
         when(mockHttpClient.sendAsync(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forSha256Async(sha256).join());
         assertInstanceOf(VaasServerException.class, exception.getCause());
@@ -292,7 +281,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockResponse));
 
         var authenticator = getAuthenticator(mockHttpClient);
-        vaas = getVaasWithCredentials(authenticator);
+        var vaas = getVaasWithAuthenticator(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256(sha256));
     }
@@ -309,7 +298,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> mockResponse);
 
         var authenticator = getAuthenticator(mockHttpClient);
-        vaas = getVaasWithCredentials(authenticator);
+        var vaas = getVaasWithAuthenticator(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> vaas.forSha256(sha256));
     }
@@ -404,7 +393,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forFileAsync(tmpFile, forFileOptions).join();
         verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
@@ -468,7 +457,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forFileAsync(tmpFile).join();
         verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
@@ -489,7 +478,7 @@ public class RealApiIntegrationTests {
     @Tag("Mock")
     public void forFile_IfVaasRequestIdIsSet_SendTraceState() throws Exception {
         var tmpFile = samplesFixture.getEicarSample();
-        
+
         var requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
@@ -528,7 +517,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var forFileOptions = new ForFileOptions(true, true, "foobar");
         var vaasVerdict = vaas.forFileAsync(tmpFile, forFileOptions).join();
         verify(mockHttpClient, times(3)).sendAsync(requestCaptor.capture(),
@@ -550,7 +539,7 @@ public class RealApiIntegrationTests {
     @Tag("Mock")
     public void forFile_IfBadRequest_ThrowsVaasClientException() throws Exception {
         var tmpFile = samplesFixture.getEicarSample();
-        
+
         var mockHttpClient = mock(HttpClient.class);
         var mockPostResponse = mock(HttpResponse.class);
         var mockGetResponse = mock(HttpResponse.class);
@@ -575,7 +564,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
         assertInstanceOf(VaasClientException.class, exception.getCause());
@@ -612,7 +601,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
         assertInstanceOf(VaasServerException.class, exception.getCause());
@@ -649,7 +638,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forFileAsync(tmpFile).join());
         assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
@@ -669,7 +658,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> mockResponse);
 
         var authenticator = getAuthenticator(mockHttpClient);
-        vaas = getVaasWithCredentials(authenticator);
+        var vaas = getVaasWithAuthenticator(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> vaas.forFile(tmpFile));
     }
@@ -697,9 +686,8 @@ public class RealApiIntegrationTests {
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var authenticator = getAuthenticator();
         var config = new VaasConfig(1000, URI.create(vaasUrl));
-        var vaas = new Vaas(config, authenticator);
+        var vaas = new Vaas(config, authenticatorFixture);
         var forFileOptions = new ForFileOptions(false, false, null);
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forFileAsync(tmpFile, forFileOptions).get());
@@ -781,7 +769,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
@@ -844,7 +832,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
@@ -905,7 +893,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var forFileOptions = new ForStreamOptions(true, "foobar");
         var vaasVerdict = vaas.forStreamAsync(inputStream, contentLength, forFileOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
@@ -953,7 +941,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
         assertInstanceOf(VaasClientException.class, exception.getCause());
@@ -993,7 +981,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
         assertInstanceOf(VaasServerException.class, exception.getCause());
@@ -1033,7 +1021,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forStreamAsync(inputStream, contentLength).join());
         assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
@@ -1056,7 +1044,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> mockResponse);
 
         var authenticator = getAuthenticator(mockHttpClient);
-        vaas = getVaasWithCredentials(authenticator);
+        var vaas = getVaasWithAuthenticator(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> vaas.forStream(inputStream, contentLength));
     }
@@ -1085,9 +1073,8 @@ public class RealApiIntegrationTests {
         var contentLength = conn.getContentLength();
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var authenticator = getAuthenticator();
         var config = new VaasConfig(1000, URI.create(vaasUrl));
-        var vaas = new Vaas(config, authenticator);
+        var vaas = new Vaas(config, authenticatorFixture);
         var forStreamOptions = new ForStreamOptions(false, null);
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).get());
@@ -1153,7 +1140,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forUrlAsync(url, forUrlOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
@@ -1207,7 +1194,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var vaasVerdict = vaas.forUrlAsync(url).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
                 any(HttpResponse.BodyHandler.class));
@@ -1258,7 +1245,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
         var forUrlOptions = new ForUrlOptions(true, "foobar");
         var vaasVerdict = vaas.forUrlAsync(url, forUrlOptions).join();
         verify(mockHttpClient, times(2)).sendAsync(requestCaptor.capture(),
@@ -1291,7 +1278,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
         assertInstanceOf(VaasClientException.class, exception.getCause());
@@ -1316,7 +1303,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
         assertInstanceOf(VaasServerException.class, exception.getCause());
@@ -1341,7 +1328,7 @@ public class RealApiIntegrationTests {
                 any(HttpResponse.BodyHandler.class)))
                 .thenAnswer(invocation -> CompletableFuture.completedFuture(mockPostResponse));
 
-        vaas = getVaasWithCredentials(mockHttpClient);
+        var vaas = getVaasWithMockedClient(mockHttpClient);
 
         var exception = assertThrows(CompletionException.class, () -> vaas.forUrlAsync(url).join());
         assertInstanceOf(VaasAuthenticationException.class, exception.getCause());
@@ -1361,7 +1348,7 @@ public class RealApiIntegrationTests {
                 .thenAnswer(invocation -> mockResponse);
 
         var authenticator = getAuthenticator(mockHttpClient);
-        vaas = getVaasWithCredentials(authenticator);
+        var vaas = getVaasWithAuthenticator(authenticator);
 
         assertThrows(VaasAuthenticationException.class, () -> vaas.forUrl(url));
     }
@@ -1384,9 +1371,8 @@ public class RealApiIntegrationTests {
         var url = URI.create("https://ash-speed.hetzner.com/1GB.bin").toURL();
 
         var vaasUrl = getEnvironmentKey("VAAS_URL");
-        var authenticator = getAuthenticator();
         var config = new VaasConfig(1000, URI.create(vaasUrl));
-        var vaas = new Vaas(config, authenticator);
+        var vaas = new Vaas(config, authenticatorFixture);
 
         var exception = assertThrows(ExecutionException.class, () -> vaas.forUrlAsync(url).get());
         assertInstanceOf(TimeoutException.class, exception.getCause());
@@ -1396,7 +1382,7 @@ public class RealApiIntegrationTests {
     @Disabled()
     public void forFileAsync_WithSmallTimeout_DoesNotShowNegativeResources() {
         var config = new VaasConfig(45, false, false, URI.create(getEnvironmentKey("VAAS_URL")));
-        var vaas = new Vaas(config, getAuthenticator());
+        var vaas = new Vaas(config, authenticatorFixture);
         var file = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
         try (var writer = Files.newBufferedWriter(file)) {
             writer.write(UUID.randomUUID().toString());
@@ -1420,7 +1406,7 @@ public class RealApiIntegrationTests {
     @Disabled()
     public void forFileAsync_WithSmallTimeoutInParallel_DoesNotShowNegativeResources() {
         var config = new VaasConfig(45, false, false, URI.create(getEnvironmentKey("VAAS_URL")));
-        var vaas = new Vaas(config, getAuthenticator());
+        var vaas = new Vaas(config, authenticatorFixture);
         var file1 = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
         var file2 = Path.of(System.getProperty("java.io.tmpdir"), "file2.txt");
         var file3 = Path.of(System.getProperty("java.io.tmpdir"), "file3.txt");
