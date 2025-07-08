@@ -20,7 +20,9 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
 import java.io.ByteArrayInputStream;
@@ -40,6 +42,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.*;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -315,21 +318,19 @@ public class RealApiIntegrationTests {
     }
 
     @ParameterizedTest
-    @CsvSource({
-            "https://samples.develop.vaas.gdatasecurity.de/clean.txt, CLEAN",
-            "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt, MALICIOUS",
-            "https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe, PUP"
-    })
-    public void forFile_ReturnsVerdict(String uri, Verdict verdict) throws Exception {
-        var tmpFile = Path.of(System.getProperty("java.io.tmpdir"), "file.txt");
-        var url = URI.create(uri).toURL();
-        var conn = url.openConnection();
-        var inputStream = conn.getInputStream();
-        Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
-
+    @MethodSource("provideForFileParams")
+    public void forFile_ReturnsVerdict(Path tmpFile, Verdict verdict) throws Exception {
         var vaasVerdict = vaasWithDefaultConfig.forFileAsync(tmpFile).join();
 
         assertEquals(verdict, vaasVerdict.getVerdict());
+    }
+
+    private static Stream<Arguments> provideForFileParams() throws VaasClientException, IOException, InterruptedException {
+        return Stream.of(
+                Arguments.of(samplesFixture.getCleanSample(), Verdict.CLEAN),
+                Arguments.of(samplesFixture.getEicarSample(), Verdict.MALICIOUS),
+                Arguments.of(samplesFixture.getPupSample(), Verdict.PUP)
+        );
     }
 
     @SuppressWarnings("unchecked")
