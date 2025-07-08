@@ -58,6 +58,12 @@ public class RealApiIntegrationTests {
 
     private static Vaas vaas;
 
+    private static final Vaas vaasWithDefaultConfig;
+
+    static {
+        vaasWithDefaultConfig = getVaasWithCredentials();
+    }
+
     private static String getEnvironmentKey(String key) {
         var value = dotenv.get(key);
         if (value == null) {
@@ -139,9 +145,8 @@ public class RealApiIntegrationTests {
     })
     public void forSha256_ReturnsVerdict(String sha256, Verdict verdict) {
         var sha256sum = new Sha256(sha256);
-        vaas = getVaasWithCredentials();
 
-        var vaasVerdict = vaas.forSha256Async(sha256sum).join();
+        var vaasVerdict = vaasWithDefaultConfig.forSha256Async(sha256sum).join();
 
         assertEquals(sha256, vaasVerdict.getSha256());
         assertEquals(verdict, vaasVerdict.getVerdict());
@@ -312,9 +317,8 @@ public class RealApiIntegrationTests {
     @Test
     public void forSha256_IfCancellationIsRequested_ThrowsCancellationException() {
         var sha256 = new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f");
-        vaas = getVaasWithCredentials();
 
-        var future = vaas.forSha256Async(sha256);
+        var future = vaasWithDefaultConfig.forSha256Async(sha256);
 
         var result = future.cancel(true);
         assertTrue(result);
@@ -334,8 +338,7 @@ public class RealApiIntegrationTests {
         var inputStream = conn.getInputStream();
         Files.copy(inputStream, tmpFile, StandardCopyOption.REPLACE_EXISTING);
 
-        vaas = getVaasWithCredentials();
-        var vaasVerdict = vaas.forFileAsync(tmpFile).join();
+        var vaasVerdict = vaasWithDefaultConfig.forFileAsync(tmpFile).join();
 
         assertEquals(verdict, vaasVerdict.getVerdict());
     }
@@ -675,9 +678,8 @@ public class RealApiIntegrationTests {
     public void forFile_IfCancellationIsRequested_ThrowsCancellationException()
             throws Exception {
         var tmpFile = samplesFixture.getEicarSample();
-        vaas = getVaasWithCredentials();
 
-        var future = vaas.forFileAsync(tmpFile);
+        var future = vaasWithDefaultConfig.forFileAsync(tmpFile);
 
         var result = future.cancel(true);
         assertTrue(result);
@@ -709,8 +711,7 @@ public class RealApiIntegrationTests {
         var file = new File(System.getProperty("java.io.tmpdir"), "empty.txt");
         file.createNewFile();
 
-        vaas = getVaasWithCredentials();
-        var vaasVerdict = vaas.forFileAsync(file.toPath()).join();
+        var vaasVerdict = vaasWithDefaultConfig.forFileAsync(file.toPath()).join();
 
         assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", vaasVerdict.getSha256());
         assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
@@ -724,8 +725,7 @@ public class RealApiIntegrationTests {
         var contentLength = conn.getContentLength();
         var forStreamOptions = new ForStreamOptions(true, "foobar");
 
-        var vaas = getVaasWithCredentials();
-        var verdict = vaas.forStreamAsync(inputStream, contentLength, forStreamOptions).join();
+        var verdict = vaasWithDefaultConfig.forStreamAsync(inputStream, contentLength, forStreamOptions).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
@@ -1068,9 +1068,8 @@ public class RealApiIntegrationTests {
         var conn = url.openConnection();
         var inputStream = conn.getInputStream();
         var contentLength = conn.getContentLength();
-        vaas = getVaasWithCredentials();
 
-        var future = vaas.forStreamAsync(inputStream, contentLength);
+        var future = vaasWithDefaultConfig.forStreamAsync(inputStream, contentLength);
 
         var result = future.cancel(true);
         assertTrue(result);
@@ -1099,8 +1098,7 @@ public class RealApiIntegrationTests {
     public void forStream_EmptyFile_ReturnsVerdict() throws Exception {
         var stream = new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8));
 
-        vaas = getVaasWithCredentials();
-        var vaasVerdict = vaas.forStreamAsync(stream, 0).join();
+        var vaasVerdict = vaasWithDefaultConfig.forStreamAsync(stream, 0).join();
 
         assertEquals("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", vaasVerdict.getSha256());
         assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
@@ -1110,8 +1108,7 @@ public class RealApiIntegrationTests {
     public void forUrl_ReturnsVerdict() throws Exception {
         var url = URI.create(EICAR_URL).toURL();
 
-        vaas = getVaasWithCredentials();
-        var verdict = vaas.forUrlAsync(url).join();
+        var verdict = vaasWithDefaultConfig.forUrlAsync(url).join();
 
         assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
         assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
@@ -1374,8 +1371,7 @@ public class RealApiIntegrationTests {
             throws Exception {
         var url = URI.create(EICAR_URL).toURL();
 
-        vaas = getVaasWithCredentials();
-        var future = vaas.forUrlAsync(url);
+        var future = vaasWithDefaultConfig.forUrlAsync(url);
 
         var result = future.cancel(true);
         assertTrue(result);
