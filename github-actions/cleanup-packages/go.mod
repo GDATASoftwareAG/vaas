@@ -7,7 +7,7 @@ toolchain go1.24.5
 require (
 	github.com/docker/docker v28.3.2+incompatible
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v69 v69.2.0
+	github.com/google/go-github/v73 v73.0.0
 	github.com/google/go-github/v73 v73.0.0
 )
 
