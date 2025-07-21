@@ -15,7 +15,7 @@ dependencies {
     implementation 'de.gdata:vaas:9.0.10'
     implementation 'org.projectlombok:lombok:1.18.38'
     implementation 'io.github.cdimascio:dotenv-java:3.2.0'
-    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.787'
+    implementation 'com.amazonaws:aws-java-sdk-s3:1.12.788'
 }
 
 tasks.register('sha256Scan', JavaExec) {
