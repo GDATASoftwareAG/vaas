@@ -16,7 +16,7 @@ class ClientCredentialsGrantAuthenticator(AuthenticatorInterface):
         self._expires_at = 0  # UNIX timestamp
 
     async def get_token(self):
-        if self._access_token and time.time() < self._expires_at - 10:
+        if self._access_token and time.time() < self._expires_at:
             return self._access_token
 
         async with AsyncOAuth2Client(
