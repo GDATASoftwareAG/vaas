@@ -4,7 +4,7 @@
     "url": "https://github.com/GDATASoftwareAG/vaas"
   },
   "name": "gdata-vaas",
-  "version": "0.0.49",
+  "version": "0.0.50",
   "license": "MIT",
   "main": "lib/Index.js",
   "types": "lib/Index.d.ts",
@@ -33,7 +33,7 @@
     "random-bytes": "1.0.0",
     "ts-jest": "^29.2.5",
     "ts-node": "10.9.2",
-    "typescript": "5.8.3"
+    "typescript": "5.9.2"
   },
   "dependencies": {
     "@d-fischer/isomorphic-ws": "^7.0.2",
