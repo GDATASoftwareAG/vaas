@@ -104,9 +104,9 @@ class Vaas:
             "useHashLookup": str(for_sha256_options.use_hash_lookup).lower()
         })
 
-        token = await self.authenticator.get_token()
-        headers = add_request_headers(for_sha256_options.vaas_request_id, token=token)
         while True:
+            token = await self.authenticator.get_token()
+            headers = get_request_headers(for_sha256_options.vaas_request_id, token=token)
             start = time.time()
             response = await self.httpx_client.get(
                 url=report_uri,
@@ -169,7 +169,7 @@ class Vaas:
         })
 
         token = await self.authenticator.get_token()
-        headers = add_request_headers(for_stream_options.vaas_request_id, token=token)
+        headers = get_request_headers(for_stream_options.vaas_request_id, token=token)
         headers["Content-Length"] = str(content_length)
         start = time.time()
         response = await self.httpx_client.post(
@@ -200,7 +200,7 @@ class Vaas:
             use_hash_lookup=for_url_options.use_hash_lookup,
         )
 
-        headers = add_request_headers(for_url_options.vaas_request_id, token=token)
+        headers = get_request_headers(for_url_options.vaas_request_id, token=token)
         headers["Content-Type"] = "application/json"
         start = time.time()
         response = await self.httpx_client.post(
@@ -215,6 +215,8 @@ class Vaas:
         report_id = UrlAnalysisStarted.model_validate(response.json()).id
 
         while True:
+            token = await self.authenticator.get_token()
+            headers = get_request_headers(for_url_options.vaas_request_id, token=token)
             headers.pop("Content-Type", None)
             response = await self.httpx_client.get(
                 url=urljoin(self.url + "/", f"urls/{report_id}/report"),
