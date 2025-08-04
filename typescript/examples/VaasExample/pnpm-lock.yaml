@@ -12,8 +12,8 @@ importers:
         specifier: 24.1.0
         version: 24.1.0
       gdata-vaas:
-        specifier: 7.7.1
-        version: 7.7.1
+        specifier: 7.7.2
+        version: 7.7.2
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@24.1.0)(typescript@5.9.2)
@@ -150,8 +150,8 @@ packages:
   function-bind@1.1.2:
     resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
 
-  gdata-vaas@7.7.1:
-    resolution: {integrity: sha512-n4XRTe1ULZ7OnUNYZdRg56n8eR98sKvH10OkM6MxFtfeX1sus6qDDuqUGkGnWAJVTjiAxvVy6WP1hP2cNNsiYQ==}
+  gdata-vaas@7.7.2:
+    resolution: {integrity: sha512-8d63R2S6RyEv3NE6g12bbVtO7c/vLRRFSjeDg2w/4BTQwQ0g2JP2eF7y9+NrOfcH6v95O1jNOrck9CULIMvA9Q==}
 
   get-intrinsic@1.3.0:
     resolution: {integrity: sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==}
@@ -358,7 +358,7 @@ snapshots:
 
   function-bind@1.1.2: {}
 
-  gdata-vaas@7.7.1:
+  gdata-vaas@7.7.2:
     dependencies:
       '@d-fischer/isomorphic-ws': 7.0.2(ws@8.18.3)
       '@types/uuid': 10.0.0
