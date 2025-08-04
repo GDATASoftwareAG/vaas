@@ -65,7 +65,7 @@ def raise_if_vaas_error_occurred(response):
         else:
             raise VaasClientError(f"Unexpected status code {response.status_code}: {response.reason_phrase} ")
 
-def add_request_headers(request_id=None, token=None):
+def get_request_headers(request_id=None, token=None):
     if request_id is not None:
         return {
             "Authorization": f"Bearer {token}",
