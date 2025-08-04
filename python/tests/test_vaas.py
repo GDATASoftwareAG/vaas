@@ -145,8 +145,12 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        with pytest.raises(VaasClientError):
+        with pytest.raises(VaasClientError) as exception_info:
             await vaas.for_sha256(CLEAN_SHA256)
+
+        problem_details = exception_info.value.args[0]
+        assert problem_details.detail == "Mocked client-side error"
+        assert problem_details.type == "VaasClientException"
 
     @pytest.mark.asyncio()
     async def test_for_sha256_server_error_raise_vaas_server_error(self, vaas, httpx_mock):
@@ -163,8 +167,12 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        with pytest.raises(VaasServerError):
+        with pytest.raises(VaasServerError) as exception_info:
             await vaas.for_sha256(CLEAN_SHA256)
+
+        problem_details = exception_info.value.args[0]
+        assert problem_details.detail == "Mocked server-side error"
+        assert problem_details.type == "VaasServerException"
 
     @pytest.mark.asyncio()
     async def test_for_sha256_authentication_error_raise_vaas_authentication_error(self, vaas):
@@ -188,8 +196,12 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        with pytest.raises(VaasAuthenticationError):
+        with pytest.raises(VaasAuthenticationError) as exception_info:
             await vaas.for_sha256(CLEAN_SHA256)
+
+        problem_details = exception_info.value.args[0]
+        assert problem_details.detail == "Authentication error"
+        assert problem_details.type == "VaasAuthenticationException"
 
     @pytest.mark.asyncio()
     async def test_for_sha256_cancel_request_raise_cancel_error(self, vaas, httpx_mock):
@@ -355,8 +367,12 @@ class TestVaas:
         async with httpx.AsyncClient() as client:
             response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
             content_length = response.headers["Content-Length"]
-            with pytest.raises(VaasClientError):
+            with pytest.raises(VaasClientError) as exception_info:
                 await vaas.for_stream(response.aiter_bytes(), content_length)
+
+            problem_details = exception_info.value.args[0]
+            assert problem_details.detail == "Mocked client-side error"
+            assert problem_details.type == "VaasClientException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
@@ -375,8 +391,12 @@ class TestVaas:
         async with httpx.AsyncClient() as client:
             response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
             content_length = response.headers["Content-Length"]
-            with pytest.raises(VaasServerError):
+            with pytest.raises(VaasServerError) as exception_info:
                 await vaas.for_stream(response.aiter_bytes(), content_length)
+
+            problem_details = exception_info.value.args[0]
+            assert problem_details.detail == "Mocked server-side error"
+            assert problem_details.type == "VaasServerException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
@@ -406,8 +426,12 @@ class TestVaas:
         async with httpx.AsyncClient() as client:
             response = await client.get("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt")
             content_length = response.headers["Content-Length"]
-            with pytest.raises(VaasAuthenticationError):
+            with pytest.raises(VaasAuthenticationError) as exception_info:
                 await vaas.for_stream(response.aiter_bytes(), content_length)
+
+            problem_details = exception_info.value.args[0]
+            assert problem_details.detail == "Authentication error"
+            assert problem_details.type == "VaasAuthenticationException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
@@ -619,8 +643,12 @@ class TestVaas:
             with open(filename, mode="wb") as file:
                 file.write(response.content)
 
-            with pytest.raises(VaasClientError):
+            with pytest.raises(VaasClientError) as exception_info:
                 await vaas.for_file(filename)
+
+            problem_details = exception_info.value.args[0]
+            assert problem_details.detail == "Mocked client-side error"
+            assert problem_details.type == "VaasClientException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
@@ -645,8 +673,12 @@ class TestVaas:
             with open(filename, mode="wb") as file:
                 file.write(response.content)
 
-            with pytest.raises(VaasServerError):
+            with pytest.raises(VaasServerError) as exception_info:
                 await vaas.for_file(filename)
+
+            problem_details = exception_info.value.args[0]
+            assert problem_details.detail == "Mocked server-side error"
+            assert problem_details.type == "VaasServerException"
 
     @pytest.mark.asyncio()
     async def test_for_file_authentication_error_raise_vaas_authentication_error(self, vaas):
@@ -688,8 +720,12 @@ class TestVaas:
             with open(filename, mode="wb") as file:
                 file.write(response.content)
 
-            with pytest.raises(VaasAuthenticationError):
+            with pytest.raises(VaasAuthenticationError) as exception_info:
                 await vaas.for_file(filename)
+
+            problem_details = exception_info.value.args[0]
+            assert problem_details.detail == "Authentication error"
+            assert problem_details.type == "VaasAuthenticationException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
@@ -886,8 +922,12 @@ class TestVaas:
 
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        with pytest.raises(VaasClientError):
+        with pytest.raises(VaasClientError) as exception_info:
             await vaas.for_url(url)
+
+        problem_details = exception_info.value.args[0]
+        assert "Mocked client-side error" in problem_details.detail
+        assert problem_details.type == "VaasClientException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
@@ -930,8 +970,12 @@ class TestVaas:
 
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        with pytest.raises(VaasServerError):
+        with pytest.raises(VaasServerError) as exception_info:
             await vaas.for_url(url)
+
+        problem_details = exception_info.value.args[0]
+        assert "Mocked server-side error" in problem_details.detail
+        assert problem_details.type == "VaasServerException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)
@@ -962,7 +1006,7 @@ class TestVaas:
             httpx_mock.add_response(
                 method="POST",
                 url=f"{VAAS_URL}/urls",
-                status_code=401,
+                status_code=200,
                 json={
                     "id": "foobar"
                 },
@@ -972,7 +1016,7 @@ class TestVaas:
             httpx_mock.add_response(
                 method="GET",
                 url=f"{VAAS_URL}/urls/foobar/report",
-                status_code=500,
+                status_code=401,
                 json={
                     "detail": "Authentication error",
                     "type": "VaasAuthenticationException"
@@ -982,8 +1026,12 @@ class TestVaas:
 
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        with pytest.raises(VaasAuthenticationError):
+        with pytest.raises(VaasAuthenticationError) as exception_info:
             await vaas.for_url(url)
+
+        problem_details = exception_info.value.args[0]
+        assert problem_details.detail == "Authentication error"
+        assert problem_details.type == "VaasAuthenticationException"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(should_mock=lambda request: "gdatasecurity.de" in request.url.host)

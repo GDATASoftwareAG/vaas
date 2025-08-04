@@ -7,6 +7,8 @@ import httpx
 from urllib.parse import urljoin, urlencode
 from importlib.metadata import version
 
+from vaas.messages.problem_details import ProblemDetails
+
 from .async_file_reader import AsyncFileReader
 from .authentication.authenticator_interface import AuthenticatorInterface
 from .messages.file_analysis_started import FileAnalysisStarted
@@ -53,12 +55,15 @@ class VaasOptions:
 
 
 def raise_if_vaas_error_occurred(response):
-    if response.is_client_error:
-        if response.status_code == 401:
-            raise VaasAuthenticationError(response.reason_phrase)
-        raise VaasClientError(response.reason_phrase)
-    if response.is_server_error:
-        raise VaasServerError(response.reason_phrase)
+    if not response.is_success:
+        if response.is_client_error:
+            if response.status_code == 401:
+                raise VaasAuthenticationError(ProblemDetails.model_validate(response.json()))
+            raise VaasClientError(ProblemDetails.model_validate(response.json()))
+        if response.is_server_error:
+            raise VaasServerError(ProblemDetails.model_validate(response.json()))
+        else:
+            raise VaasClientError(f"Unexpected status code {response.status_code}: {response.reason_phrase} ")
 
 def add_request_headers(request_id=None, token=None):
     if request_id is not None:
@@ -101,18 +106,26 @@ class Vaas:
 
         token = await self.authenticator.get_token()
         headers = add_request_headers(for_sha256_options.vaas_request_id, token=token)
-        start = time.time()
-        response = await self.httpx_client.get(
-            url=report_uri,
-            headers=headers,
-            timeout=self.options.timeout
-        )
+        while True:
+            start = time.time()
+            response = await self.httpx_client.get(
+                url=report_uri,
+                headers=headers,
+                timeout=self.options.timeout
+            )
 
-        raise_if_vaas_error_occurred(response)
+            raise_if_vaas_error_occurred(response)
 
-        file_report = FileReport.model_validate(response.json())
-        self.tracing.trace_hash_request(time.time() - start)
-        return VaasVerdict.from_report(file_report)
+            status = response.status_code
+
+            if status == 200:
+                self.tracing.trace_url_request(time.time() - start)
+                file_report = FileReport.model_validate(response.json())
+                return VaasVerdict.from_report(file_report)
+            elif status in {201, 202}:
+                continue
+
+            self.tracing.trace_hash_request(time.time() - start)
 
 
     async def for_file(self, path, for_file_options=None) -> VaasVerdict:
@@ -145,7 +158,7 @@ class Vaas:
             vaas_request_id=for_file_options.vaas_request_id,
             use_hash_lookup=for_file_options.use_hash_lookup,
         )
-        return await self.for_stream(reader, str(os.path.getsize(path)), for_stream_options)
+        return await self.for_stream(reader, os.path.getsize(path), for_stream_options)
 
 
     async def for_stream(self, async_buffered_reader, content_length, for_stream_options=None) -> VaasVerdict:
@@ -217,12 +230,5 @@ class Vaas:
                 return VaasVerdict.from_report(url_report)
             elif status in {201, 202}:
                 continue
-            elif status in {400, 403}:
-                if status == 401:
-                    raise VaasAuthenticationError(response.reason_phrase)
-                raise VaasClientError(response.reason_phrase)
-            elif 500 <= status < 600:
-                raise VaasServerError(response.reason_phrase)
-            else:
-                raise VaasClientError(f"Unexpected status code {status}: {response.reason_phrase} ")
 
+            raise_if_vaas_error_occurred(response)
