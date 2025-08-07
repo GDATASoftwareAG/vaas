@@ -127,11 +127,11 @@ class Vaas:
 
             self.tracing.trace_hash_request(time.time() - start)
 
-
     async def for_file(self, path, for_file_options=None) -> VaasVerdict:
         """Returns the verdict for a file"""
         for_file_options = for_file_options or ForFileOptions().from_vaas_config(vaas_options=self.options)
 
+        response = None
         if for_file_options.use_hash_lookup or for_file_options.use_cache:
             for_sha256_options = ForSha256Options(
                 use_cache=for_file_options.use_cache,
@@ -140,13 +140,19 @@ class Vaas:
             )
 
             sha256 = SHA256.hash_file(path)
-            response = await self.for_sha256(sha256, for_sha256_options)
+            try:
+                response = await self.for_sha256(sha256, for_sha256_options)
+            except (VaasClientError, VaasServerError, VaasAuthenticationError):
+                response = None
+
             verdict_without_detection = (
-                    response.verdict in ["Malicious", "Pup"]
+                    response
+                    and response.verdict in ["Malicious", "Pup"]
                     and response.detection is None
             )
             if (
-                    response.verdict != "Unknown"
+                    response
+                    and response.verdict != "Unknown"
                     and not verdict_without_detection
                     and response.fileType is not None
                     and response.mimeType is not None

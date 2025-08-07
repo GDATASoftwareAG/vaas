@@ -635,6 +635,17 @@ class TestVaas:
                 "type": "VaasClientException"
             }
         )
+
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            status_code=400,
+            json = {
+                "detail": "Mocked client-side error",
+                "type": "VaasClientException"
+            }
+        )
+
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
         async with httpx.AsyncClient() as client:
@@ -659,6 +670,16 @@ class TestVaas:
         httpx_mock.add_response(
             method="GET",
             url=f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache=true&useHashLookup=true",
+            status_code=500,
+            json = {
+                "detail": "Mocked server-side error",
+                "type": "VaasServerException"
+            }
+        )
+
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
             status_code=500,
             json = {
                 "detail": "Mocked server-side error",
@@ -707,6 +728,16 @@ class TestVaas:
             url=f"{VAAS_URL}/files/{CLEAN_SHA256}/report?useCache=true&useHashLookup=true",
             status_code=401,
             json={
+                "detail": "Authentication error",
+                "type": "VaasAuthenticationException"
+            }
+        )
+
+        httpx_mock.add_response(
+            method="POST",
+            url= f"{VAAS_URL}/files?useHashLookup={str(True).lower()}",
+            status_code=401,
+            json = {
                 "detail": "Authentication error",
                 "type": "VaasAuthenticationException"
             }
