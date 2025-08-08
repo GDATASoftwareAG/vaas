@@ -17,46 +17,67 @@
 
 version := "0.0.0"
 
-# Copy a `.env` file from the root directory to all 
-# language directories. For the C++ SDK, an `.cpp.env` is 
-# required, as the C++ SDK needs different credentials to
-# be run in the statigin environment.
-# ATTENTION: The `.env` & `.cpp.env` has to be placed manually in the
-# root directory, as secrets must not be checked into
-# the git repository.
-populate-env:
-	mkdir -p cpp/build && cp .cpp.env cpp/build/.env
-	cp .env rust/.env
-	cp .env typescript/.env
-	cp .env dotnet/.env
-	cp .env python/.env
-	cp .env golang/vaas/.env
-	cp .env golang/vaas/v2/.env
-	cp .env golang/vaas/v2/examples/file-verdict-request/.env
-	cp .env golang/vaas/v2/examples/vaasctl/.env
-	cp .env golang/vaas/v2/pkg/vaas/.env
-	cp .env golang/vaas/v2/pkg/authenticator/.env
-	cp .env golang/vaas/pkg/authenticator/.env
-	cp .env golang/vaas/pkg/vaas/.env
-	cp .env golang/vaas/v3/.env
-	cp .env golang/vaas/v3/examples/file-verdict-request/.env
-	cp .env golang/vaas/v3/examples/vaasctl/.env
-	cp .env golang/vaas/v3/pkg/vaas/.env
-	cp .env golang/vaas/v3/pkg/authenticator/.env
-	cp .env java/.env
-	cp .env php/tests/vaas/.env
-	cp .env ruby/test/.env
-	cp .env shell/.env
+# Copies a `.env.wss` or `.env.https` file from the root directory to all 
+# language directories. The `.env.wss` file is used for the WebSocket API, 
+# while the `.env.https` file is used for the HTTP API.
+populate-env: populate-cpp-env \
+  populate-rust-env \
+  populate-ts-env \
+  populate-dotnet-env \
+  populate-go-env \
+  populate-python-env \
+  populate-php-env \
+  populate-java-env \
+  populate-shell-env
+
+populate-cpp-env:
+  mkdir -p cpp/build && cp .env.https cpp/build/.env
+
+populate-rust-env:
+  cp .env.wss rust/.env
+
+populate-ts-env:
+  cp .env.wss typescript/.env
+
+populate-dotnet-env:
+  cp .env.wss dotnet/.env
+
+populate-go-env:
+	cp .env.wss golang/vaas/.env
+	cp .env.wss golang/vaas/v2/.env
+	cp .env.wss golang/vaas/v2/examples/file-verdict-request/.env
+	cp .env.wss golang/vaas/v2/examples/vaasctl/.env
+	cp .env.wss golang/vaas/v2/pkg/vaas/.env
+	cp .env.wss golang/vaas/v2/pkg/authenticator/.env
+	cp .env.wss golang/vaas/pkg/authenticator/.env
+	cp .env.wss golang/vaas/pkg/vaas/.env
+	cp .env.wss golang/vaas/v3/.env
+	cp .env.wss golang/vaas/v3/examples/file-verdict-request/.env
+	cp .env.wss golang/vaas/v3/examples/vaasctl/.env
+	cp .env.wss golang/vaas/v3/pkg/vaas/.env
+	cp .env.wss golang/vaas/v3/pkg/authenticator/.env
+
+populate-python-env:
+  cp .env.wss python/.env
+
+populate-php-env:
+  cp .env.https php/tests/VaasTesting/.env
+
+populate-java-env:
+  cp .env.https java/.env
+
+populate-shell-env:
+  cp .env.wss shell/.env
 
 ############################################################
 # Commands for all languages at once.
 ############################################################
 
-build-all: build-rust build-ts build-dotnet build-go build-java build-ruby build-cpp
+build-all: build-rust build-ts build-dotnet build-go build-java build-cpp
 
-test-all: test-rust test-ts test-dotnet test-go test-python test-php test-java test-ruby test-cpp
+test-all: test-rust test-ts test-dotnet test-go test-python test-php test-java test-cpp
 
-clean-all: clean-rust clean-ts clean-dotnet clean-go clean-python clean-php clean-java clean-ruby clean-cpp
+clean-all: clean-rust clean-ts clean-dotnet clean-go clean-python clean-php clean-java clean-cpp
 
 ############################################################
 # Rust commands
@@ -157,13 +178,13 @@ release-python:
 ############################################################
 
 install-php:
-	cd php/tests/vaas && composer install && cd -
+	cd php/tests/VaasTesting && composer install && cd -
 
 test-php: install-php
-	cd php/tests/vaas && ./vendor/bin/phpunit --color --testdox && cd -
+	cd php/tests/VaasTesting && ./vendor/bin/phpunit --color --testdox --exclude-group exclude && cd -
 
 clean-php:
-	cd php/tests/vaas && rm -rf vendor && cd - 
+	cd php/tests/VaasTesting && rm -rf vendor && cd - 
 
 release-php:
 	git tag -a php{{version}} -m "Release PHP SDK {{version}}" && git push origin php{{version}}
@@ -184,26 +205,6 @@ clean-java:
 
 release-java:
 	git tag -a java{{version}} -m "Release Java SDK {{version}}" && git push origin java{{version}}
-
-
-############################################################
-# Ruby commands
-############################################################
-
-build-ruby:
-	cd ruby && gem build vaas.gemspec && cd -
-
-install-ruby: build-ruby
-	cd ruby && gem install --dev "vaas-0.0.1.gem" && cd -
-
-test-ruby: install-ruby 
-	cd ruby/test && ruby vaas_test.rb && cd -
-
-clean-ruby:
-	cd ruby && gem clean && cd -
-
-release-ruby:
-	git tag -a rb{{version}} -m "Release Ruby SDK {{version}}" && git push origin rb{{version}}
 
 
 ############################################################
@@ -257,10 +258,6 @@ alias cph := clean-php
 alias bja := build-java
 alias tja := test-java
 alias cja := clean-java
-
-alias brb := build-ruby
-alias trb := test-ruby
-alias crb := clean-ruby
 
 alias bcp := build-cpp
 alias tcp := test-cpp

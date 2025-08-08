@@ -23,7 +23,6 @@
           pkgs.clippy
           pkgs.rustfmt
         ] ++ lib.optional pkgs.stdenv.isDarwin [
-          pkgs.darwin.apple_sdk.frameworks.Cocoa
           pkgs.libiconv
           pkgs.iconv
         ];
@@ -51,7 +50,7 @@
         ];
 
         javaDeps = [
-          pkgs.jdk22
+          pkgs.jdk24
           pkgs.gradle
         ];
 
@@ -66,6 +65,7 @@
           pkgs.curl
           pkgs.jsoncpp
           pkgs.doctest
+          pkgs.clang
         ];
 
       in
@@ -87,12 +87,16 @@
           ++ cppDeps;
 
           shellHook = ''
-                        	alias c=cargo
-                        	alias j=just
-                        	alias lg=lazygit
-                                alias ll="ls -la"
-                                alias lll="ls -lah"
-            		'';
+            alias c=cargo
+            alias j=just
+            alias lg=lazygit
+            alias ll="ls -la"
+            alias lll="ls -lah"
+
+            # Set path to C++ compiler
+            export CC=${pkgs.clang}/bin/clang
+            export CXX=${pkgs.clang}/bin/clang++
+          '';
 
           DOTNET_CLI_HOME = "/tmp/nix/.dotnet";
           GOPATH = "/tmp/nix/.go";

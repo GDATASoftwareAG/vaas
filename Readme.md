@@ -113,7 +113,13 @@ just release-rust 0.1.0
 As the SDKs need credentials to authenticate to the VaaS API. You need to provide them in a `.env` file. Copy your `.env` file into the root directory of the project. The C++ SDK needs special credentials, which you can provide in a `.cpp.env` file.
 
 ```bash
-# Copy the .env and .cpp.env file to all SDK folders
+# Copy the .env.wss and .env.https files to all SDK folders
 # to be able to run the integration tests
 just populate-env
+
+# If you see any strange error, e.g. not found compiler. Try to clean the project
+# and populate the environment again.
+just clean-all
+just populate-env
+```
 
