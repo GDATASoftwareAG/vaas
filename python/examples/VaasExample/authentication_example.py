@@ -32,11 +32,8 @@ async def main():
             token_endpoint=token_url
         )
 
-    async with Vaas(url=vaas_url) as vaas:
-        await vaas.connect(await authenticator.get_token())
-        url = "https://secure.eicar.org/eicar.com"
-        verdict = await vaas.for_url(url)
-        print(f"Url {url} is detected as {verdict['Verdict']}")
+    # Use the authenticator in VaaS
+    # Vaas(authenticator=authenticator)
 
 
 if __name__ == "__main__":
