@@ -53,7 +53,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -64,7 +64,7 @@ jobs:
         run: |
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
@@ -73,7 +73,7 @@ jobs:
       - name: set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: 3.x
+          python-version: 3.12
       - name: install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -81,7 +81,7 @@ jobs:
         working-directory: python
 
       - name: run tests
-        run: python -m unittest -v tests/test_*
+        run: pytest -v --tb=short
         working-directory: python
 
       - name: install example requirements

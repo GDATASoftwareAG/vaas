@@ -6,12 +6,9 @@ USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR = False
 
 async def main():
     token_url = os.getenv("TOKEN_URL")
-    vaas_url = os.getenv("VAAS_URL")
 
     if token_url is None:
         token_url = "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
-    if vaas_url is None:
-        vaas_url = "wss://gateway.production.vaas.gdatasecurity.de"
 
     # If you got a username and password from us, you can use the ResourceOwnerPasswordAuthenticator like this
     if USE_RESOURCE_OWNER_PASSWORD_GRANT_AUTHENTICATOR:
@@ -32,11 +29,8 @@ async def main():
             token_endpoint=token_url
         )
 
-    async with Vaas(url=vaas_url) as vaas:
-        await vaas.connect(await authenticator.get_token())
-        url = "https://secure.eicar.org/eicar.com"
-        verdict = await vaas.for_url(url)
-        print(f"Url {url} is detected as {verdict['Verdict']}")
+    # Use the authenticator in VaaS
+    # Vaas(authenticator=authenticator)
 
 
 if __name__ == "__main__":
