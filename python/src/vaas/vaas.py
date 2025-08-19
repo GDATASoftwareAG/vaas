@@ -146,7 +146,7 @@ class Vaas:
                 vaas_request_id=for_file_options.vaas_request_id
             )
 
-            sha256 = SHA256.hash_file(path)
+            sha256 = await SHA256.hash_file(path)
             try:
                 response = await self.for_sha256(sha256, for_sha256_options)
             except (VaasClientError, VaasServerError, VaasAuthenticationError):
