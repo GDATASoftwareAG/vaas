@@ -6,11 +6,11 @@ import os.path
 import time
 import httpx
 from urllib.parse import urljoin, urlencode
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
 from pydantic import ValidationError
 
-from vaas.messages.problem_details import ProblemDetails
+from .messages.problem_details import ProblemDetails
 
 from .async_file_reader import AsyncFileReader
 from .authentication.authenticator_interface import AuthenticatorInterface
@@ -32,7 +32,11 @@ from .vaas_errors import (
 TIMEOUT = 60
 HTTP2 = False
 UPLOAD_TIMEOUT = 600
-USER_AGENT = f"Python/{version("gdata-vaas")}"
+try:
+    VERSION = version("gdata-vaas")
+except PackageNotFoundError:
+    VERSION = "0.0.0"
+USER_AGENT = f"Python/{VERSION}"
 
 
 class VaasTracing:
