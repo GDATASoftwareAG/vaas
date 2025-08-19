@@ -6,7 +6,7 @@ import httpx
 import pytest
 from dotenv import load_dotenv
 
-from src.vaas import VaasAuthenticationError
+from src.vaas.vaas import VaasAuthenticationError
 from src.vaas.options.for_file_options import ForFileOptions
 from src.vaas.options.for_sha256_options import ForSha256Options
 from src.vaas.options.for_stream_options import ForStreamOptions

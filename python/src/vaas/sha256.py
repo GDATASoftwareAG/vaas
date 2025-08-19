@@ -1,7 +1,7 @@
 import hashlib
 import re
 
-from vaas.async_file_reader import AsyncFileReader
+from .async_file_reader import AsyncFileReader
 
 class SHA256:
     @staticmethod

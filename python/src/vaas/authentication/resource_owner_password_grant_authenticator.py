@@ -2,7 +2,7 @@ import time
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 
 from .authenticator_interface import AuthenticatorInterface
-from vaas.vaas_errors import VaasAuthenticationError
+from ..vaas_errors import VaasAuthenticationError
 
 
 class ResourceOwnerPasswordGrantAuthenticator(AuthenticatorInterface):
