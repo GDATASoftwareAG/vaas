@@ -1,11 +1,14 @@
 """Verdict-as-a-Service
 
 :mod:`vaas` is a Python library for the VaaS-API."""
+from json import JSONDecodeError
 import os.path
 import time
 import httpx
 from urllib.parse import urljoin, urlencode
 from importlib.metadata import version
+
+from pydantic import ValidationError
 
 from vaas.messages.problem_details import ProblemDetails
 
@@ -56,14 +59,18 @@ class VaasOptions:
 
 def raise_if_vaas_error_occurred(response):
     if not response.is_success:
-        if response.is_client_error:
-            if response.status_code == 401:
-                raise VaasAuthenticationError(ProblemDetails.model_validate(response.json()))
-            raise VaasClientError(ProblemDetails.model_validate(response.json()))
-        if response.is_server_error:
-            raise VaasServerError(ProblemDetails.model_validate(response.json()))
-        else:
-            raise VaasClientError(f"Unexpected status code {response.status_code}: {response.reason_phrase} ")
+        try:
+            json = response.json()
+            if response.is_client_error:
+                if response.status_code == 401:
+                    raise VaasAuthenticationError(ProblemDetails.model_validate(json))
+                raise VaasClientError(ProblemDetails.model_validate(json))
+            if response.is_server_error:
+                raise VaasServerError(ProblemDetails.model_validate(json))
+            else:
+                raise VaasClientError(f"Unexpected status code {response.status_code}: {response.reason_phrase} ")
+        except (JSONDecodeError, ValidationError):
+            raise VaasServerError(f"Server error {response.status_code}: {response.reason_phrase}")
 
 def get_request_headers(request_id=None, token=None):
     if request_id is not None:
