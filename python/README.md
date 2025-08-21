@@ -48,6 +48,8 @@ The scan functions will return the following dict:
 pip3 install gdata-vaas
 ```
 
+gdata-vaas requires Python 3.12+.
+
 ### Import
 
 ```python
@@ -64,30 +66,27 @@ authenticator = ClientCredentialsGrantAuthenticator(
     TOKEN_URL,
     SSL_VERIFICATION
 )
+vaas = Vaas(authenticator=authenticator)
 ```
+
+The Vaas instance can and should be used for multiple requests.
 
 Verdict Request for SHA256:
 ```python
-async with Vaas() as vaas:
-    await vaas.connect(await authenticator.get_token())
-    sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-    verdict = await vaas.for_sha256(sha256)
+sha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+verdict = await vaas.for_sha256(sha256)
 ```
 
 Verdict Request for a file:
 ```python
-async with Vaas() as vaas:
-    await vaas.connect(await authenticator.get_token())
-    path = "/path/to/file"
-    verdict = await vaas.for_file(path)
+path = "/path/to/file"
+verdict = await vaas.for_file(path)
 ```
 
 Verdict Request for a URL:
 ```python
-async with Vaas() as vaas:
-    await vaas.connect(await authenticator.get_token())
-    url = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
-    verdict = await vaas.for_url(url)
+url = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
+verdict = await vaas.for_url(url)
 ```
 
 ## <a name="interested"></a>I'm interested in VaaS
