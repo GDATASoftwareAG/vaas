@@ -18,25 +18,25 @@ java {
 }
 
 dependencies {
-    implementation 'org.projectlombok:lombok:1.18.38'
+    implementation 'org.projectlombok:lombok:1.18.40'
     implementation 'com.google.code.gson:gson:2.13.1'
-    implementation 'org.jetbrains:annotations:26.0.2'
+    implementation 'org.jetbrains:annotations:26.0.2-1'
     implementation 'io.github.cdimascio:dotenv-java:3.2.0'
     implementation 'com.ibm.async:asyncutil:0.1.0'
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.2'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.20.0'
     implementation 'io.github.cdimascio:dotenv-java:3.2.0'
     testImplementation 'org.testng:testng:7.11.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.13.4'
-    testImplementation 'org.mockito:mockito-core:5.18.0'
+    testImplementation 'org.mockito:mockito-core:5.19.0'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.13.4'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.13.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
 
-    compileOnly 'org.projectlombok:lombok:1.18.38'
-    annotationProcessor 'org.projectlombok:lombok:1.18.38'
+    compileOnly 'org.projectlombok:lombok:1.18.40'
+    annotationProcessor 'org.projectlombok:lombok:1.18.40'
 
-    testCompileOnly 'org.projectlombok:lombok:1.18.38'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.38'
+    testCompileOnly 'org.projectlombok:lombok:1.18.40'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.40'
 }
 
 test {
