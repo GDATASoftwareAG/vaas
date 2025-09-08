@@ -44,7 +44,7 @@ jobs:
         version: ["8.1", "8.2", "8.3", "8.4"]
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
@@ -138,7 +138,7 @@ jobs:
 
       - name: checkout
         if: startsWith(github.ref, 'refs/tags/php') || startsWith(github.ref, 'refs/heads/phpdev-')
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: publish on site repo
         if: startsWith(github.ref, 'refs/tags/php')
