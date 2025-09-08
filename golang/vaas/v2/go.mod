@@ -2,13 +2,13 @@ module github.com/GDATASoftwareAG/vaas/golang/vaas/v2
 
 go 1.23.0
 
-toolchain go1.24.5
+toolchain go1.25.1
 
 require (
 	github.com/Noooste/websocket v1.0.3
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
