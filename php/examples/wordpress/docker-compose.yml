@@ -16,7 +16,7 @@ services:
       - wordpress:/var/www/html
 
   db:
-    image: mariadb:11
+    image: mariadb:12
     restart: always
     environment:
       MARIADB_DATABASE: exampledb
