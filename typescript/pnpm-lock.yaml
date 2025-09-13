@@ -21,8 +21,8 @@ importers:
         specifier: 0.2.2
         version: 0.2.2
       axios:
-        specifier: 1.11.0
-        version: 1.11.0
+        specifier: 1.12.0
+        version: 1.12.0
       fast-sha256:
         specifier: 1.3.0
         version: 1.3.0
@@ -614,8 +614,8 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  axios@1.11.0:
-    resolution: {integrity: sha512-1Lx3WLFQWm3ooKDYZD1eXmoGO9fxYQjrycfHFC8P0sCfQVXyROp0p9PFWBehewBOdCwHc+f/b8I0fMto5eSfwA==}
+  axios@1.12.0:
+    resolution: {integrity: sha512-oXTDccv8PcfjZmPGlWsPSwtOJCZ/b6W5jAMCNcfwJbCzDckwG0jrYJFaWH1yvivfCXjVzV/SPDEhMB3Q+DSurg==}
 
   babel-jest@30.0.5:
     resolution: {integrity: sha512-mRijnKimhGDMsizTvBTWotwNpzrkHr+VvZUQBof2AufXKB8NXrL1W69TG20EvOz7aevx6FTJIaBuBkYxS8zolg==}
@@ -861,8 +861,8 @@ packages:
     resolution: {integrity: sha512-PpOwAdQ/YlXQ2vj8a3h8IipDuYRi3wceVQQGYWxNINccq40Anw7BlsEXCMbt1Zt+OLA6Fq9suIpIWD0OsnISlw==}
     engines: {node: '>=8'}
 
-  follow-redirects@1.15.6:
-    resolution: {integrity: sha512-wWN62YITEaOpSK584EZXJafH1AGpO8RVgElfkuXbTOrPX4fIfOyEpW/CsiNd8JdYrAoOvafRTOEnvsO++qCqFA==}
+  follow-redirects@1.15.11:
+    resolution: {integrity: sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -2293,9 +2293,9 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.11.0:
+  axios@1.12.0:
     dependencies:
-      follow-redirects: 1.15.6
+      follow-redirects: 1.15.11
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -2549,7 +2549,7 @@ snapshots:
       locate-path: 5.0.0
       path-exists: 4.0.0
 
-  follow-redirects@1.15.6: {}
+  follow-redirects@1.15.11: {}
 
   foreground-child@3.3.1:
     dependencies:
