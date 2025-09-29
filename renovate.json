@@ -37,5 +37,9 @@
         "*/**"
       ]
     }
-  ]
+  ],
+  "stabilityDays": 7,
+  "vulnerabilityAlerts": {
+    "enabled": true
+  }
 }
