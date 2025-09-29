@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     container: ghcr.io/gdatasoftwareag/vaas/cpp-toolchain
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
@@ -72,7 +72,7 @@ jobs:
 
       # https://learn.microsoft.com/en-us/vcpkg/consume/binary-caching-github-actions-cache
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
