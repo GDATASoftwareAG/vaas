@@ -2,12 +2,12 @@ module github.com/GDATASoftwareAG/vaas/golang/vaas/v3
 
 go 1.23.0
 
-toolchain go1.24.5
+toolchain go1.25.1
 
 require (
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/joho/godotenv v1.5.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 )
 
 require (

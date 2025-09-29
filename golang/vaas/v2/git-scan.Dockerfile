@@ -3,7 +3,7 @@ FROM ubuntu:24.04 as runner
 RUN apt update && apt install -y git
 WORKDIR /app
 
-FROM golang:1.24 as builder
+FROM golang:1.25 as builder
 
 COPY . .
 RUN go build -o /build/git-scan cmd/git-scan/main.go
