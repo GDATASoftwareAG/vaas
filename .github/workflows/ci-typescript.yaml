@@ -78,7 +78,7 @@ jobs:
           version: 9
           run_install: false
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v6
         name: setup node
         with:
           node-version: 20
