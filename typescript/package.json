@@ -4,7 +4,7 @@
     "url": "https://github.com/GDATASoftwareAG/vaas"
   },
   "name": "gdata-vaas",
-  "version": "0.0.52",
+  "version": "0.0.53",
   "license": "MIT",
   "main": "lib/Index.js",
   "types": "lib/Index.d.ts",
@@ -37,13 +37,13 @@
   },
   "dependencies": {
     "@d-fischer/isomorphic-ws": "^7.0.2",
-    "@types/uuid": "10.0.0",
+    "@types/uuid": "11.0.0",
     "@types/ws": "8.18.1",
     "@ungap/url-search-params": "0.2.2",
     "axios": "1.12.2",
     "fast-sha256": "1.3.0",
     "typescript-json-serializer": "6.0.1",
-    "uuid": "11.1.0",
+    "uuid": "13.0.0",
     "ws": "8.18.3"
   },
   "scripts": {
