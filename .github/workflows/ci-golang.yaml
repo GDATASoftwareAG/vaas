@@ -41,7 +41,7 @@ jobs:
     outputs:
       major_version: ${{ steps.extract_major_version.outputs.major_version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Extract major version
         id: extract_major_version
         if: startsWith(github.ref, 'refs/tags')
@@ -50,7 +50,7 @@ jobs:
   virus-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
         with:
@@ -65,7 +65,7 @@ jobs:
       matrix:
         version-directory: ["./", "v2/", "v3/"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: set legacy vaas gateway for production
         run: |
@@ -131,7 +131,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -163,7 +163,7 @@ jobs:
       matrix:
         version-directory: [".", "v2", "v3"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
         shell: bash
@@ -224,7 +224,7 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
