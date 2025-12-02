@@ -23,7 +23,7 @@ use VaasSdk\Options\ForStreamOptions;
 use VaasSdk\Options\ForUrlOptions;
 use VaasSdk\Options\VaasOptions;
 use function Amp\async;
-use function Amp\File\openFile;
+use function Amp\File\filesystem;
 
 class Vaas
 {
@@ -140,8 +140,9 @@ class Vaas
     {
         return async(function () use ($path, $options, $cancellation) {
             $this->logger->debug("Requesting verdict for file: $path");
+			$filesystem = filesystem($options->filesystemDriver);
 
-            if (!file_exists($path)) {
+            if (!$filesystem->exists($path)) {
                 $this->logger->error("File does not exist: $path");
                 throw new VaasClientException('File does not exist');
             }
@@ -167,7 +168,7 @@ class Vaas
             }
 
             try {
-                $stream = openFile($path, 'r');
+                $stream = $filesystem->openFile($path, 'r');
                 $cancellation?->subscribe(function () use ($stream) { $stream->close(); });
                 $forStreamOptions = new ForStreamOptions($options->useHashLookup, $options->timeout, $options->vaasRequestId);
                 $this->logger->debug("Requesting verdict for $path as file stream");

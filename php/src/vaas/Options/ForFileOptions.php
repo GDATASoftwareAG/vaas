@@ -2,16 +2,19 @@
 
 namespace VaasSdk\Options;
 
+use Amp\File\FilesystemDriver;
+
 class ForFileOptions
 {
-    private const DEFAULT_TIMEOUT = 300;
-    private const DEFAULT_REQUEST_ID = null;
+    public const DEFAULT_TIMEOUT = 300;
+    public const DEFAULT_REQUEST_ID = null;
     
     public function __construct(
-        public bool $useCache = true,
-        public bool $useHashLookup = true,
-        public int $timeout = self::DEFAULT_TIMEOUT,
-        public ?string $vaasRequestId = self::DEFAULT_REQUEST_ID) {}
+        public bool        $useCache = true,
+        public bool        $useHashLookup = true,
+        public int         $timeout = self::DEFAULT_TIMEOUT,
+		public ?FilesystemDriver $filesystemDriver = null,
+        public ?string     $vaasRequestId = self::DEFAULT_REQUEST_ID) {}
 
     public static function fromVaasOptions(VaasOptions $options): self
     {
