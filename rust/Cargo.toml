@@ -1,6 +1,6 @@
 [package]
 name = "vaas"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 license = "MIT"
 authors = ["GDATA CyberDefense AG"]
@@ -16,7 +16,7 @@ serde = { version = "1.0.200", features = ["derive"] }
 serde_json = "1.0.116"
 thiserror = "2.0.0"
 uuid = { version = "1.8", features = ["serde", "v4"] }
-reqwest = { version = "0.12.4", features = ["stream"] }
+reqwest = { version = "0.13.0", features = ["stream"] }
 regex = "1.10.4"
 tokio = { version = "1.37", features = ["sync", "fs"] }
 sha2 = "0.10.8"

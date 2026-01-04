@@ -1,6 +1,6 @@
 [package]
 name = "gscan"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["GDATA CyberDefense AG <opensource@gdata.de>"]
 license = "MIT"
@@ -11,6 +11,6 @@ publish = false
 vaas = { version = "6.0.0" }
 tokio = { version = "1.37", features = ["rt-multi-thread", "macros"] }
 clap = { version = "4.5.4", features = ["env", "cargo"] }
-reqwest = "0.12.4"
+reqwest = "0.13.0"
 futures = "0.3.30"
 dotenv = "0.15"
