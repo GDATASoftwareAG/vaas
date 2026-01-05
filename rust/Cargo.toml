@@ -1,35 +1,35 @@
-[package]
-name = "vaas"
-version = "0.0.1"
-edition = "2021"
-license = "MIT"
-authors = ["GDATA CyberDefense AG"]
-description = "Check files and hashes for malicious content."
-readme = "Readme.md"
-keywords = ["malware", "anti-virus", "security"]
-categories = ["api-bindings"]
-repository = "https://github.com/GDATASoftwareAG/vaas"
+# [package]
+# name = "vaas"
+# version = "0.0.1"
+# edition = "2021"
+# license = "MIT"
+# authors = ["GDATA CyberDefense AG"]
+# description = "Check files and hashes for malicious content."
+# readme = "Readme.md"
+# keywords = ["malware", "anti-virus", "security"]
+# categories = ["api-bindings"]
+# repository = "https://github.com/GDATASoftwareAG/vaas"
 
-[dependencies]
-websockets = "0.3.0"
-serde = { version = "1.0.200", features = ["derive"] }
-serde_json = "1.0.116"
-thiserror = "2.0.0"
-uuid = { version = "1.8", features = ["serde", "v4"] }
-reqwest = { version = "0.12.4", features = ["stream"] }
-regex = "1.10.4"
-tokio = { version = "1.37", features = ["sync", "fs"] }
-sha2 = "0.10.8"
-futures = "0.3.30"
-rand = "0.9.0"
-async-trait = "0.1.80"
-bytes = "1.6.0"
-tokio-util = "0.7.11"
-futures-util = "0.3.30"
-tokio-stream = "0.1.15"
-tracing = "0.1.40"
+# [dependencies]
+# websockets = "0.3.0"
+# serde = { version = "1.0.200", features = ["derive"] }
+# serde_json = "1.0.116"
+# thiserror = "2.0.0"
+# uuid = { version = "1.8", features = ["serde", "v4"] }
+# reqwest = { version = "0.12.4", features = ["stream"] }
+# regex = "1.10.4"
+# tokio = { version = "1.37", features = ["sync", "fs"] }
+# sha2 = "0.10.8"
+# futures = "0.3.30"
+# rand = "0.9.0"
+# async-trait = "0.1.80"
+# bytes = "1.6.0"
+# tokio-util = "0.7.11"
+# futures-util = "0.3.30"
+# tokio-stream = "0.1.15"
+# tracing = "0.1.40"
 
-[dev-dependencies]
-dotenv = "0.15"
-tokio = { version = "1.37", features = ["rt", "macros", "rt-multi-thread"] }
-tracing-test = "0.2.1"
+# [dev-dependencies]
+# dotenv = "0.15"
+# tokio = { version = "1.37", features = ["rt", "macros", "rt-multi-thread"] }
+# tracing-test = "0.2.1"
