@@ -2,6 +2,9 @@
 
 namespace VaasTesting;
 
+use Amp\File\Driver\BlockingFilesystemDriver;
+use Amp\File\File;
+use Amp\File\FilesystemDriver;
 use Amp\File\FilesystemException;
 use Dotenv\Dotenv;
 use Monolog\Formatter\JsonFormatter;
@@ -14,11 +17,13 @@ use Psr\Log\LoggerInterface;
 use VaasSdk\Authentication\ClientCredentialsGrantAuthenticator;
 use VaasSdk\Exceptions\InvalidSha256Exception;
 use VaasSdk\Exceptions\VaasClientException;
+use VaasSdk\Options\ForFileOptions;
 use VaasSdk\Options\ForSha256Options;
 use VaasSdk\Options\VaasOptions;
 use VaasSdk\Sha256;
 use VaasSdk\Vaas;
 use VaasSdk\Verdict;
+use function Amp\File\filesystem;
 use function Amp\File\openFile;
 
 final class VaasTest extends TestCase
@@ -273,6 +278,117 @@ final class VaasTest extends TestCase
 
         $this->vaas->forFileAsync(__DIR__ . "/invalid")->await();
     }
+
+	public function testForFile_WithCustomFilesystemDriver_UtilizesDriver(): void
+	{
+		$file = file_get_contents(self::PUP_URL);
+		file_put_contents(__DIR__ . "/PotentiallyUnwantedCustomDriver.exe", $file);
+		$customDriverCalled = false;
+		$customDriver = new class(
+			function () use (&$customDriverCalled) {
+				$customDriverCalled = true;
+			}
+		) implements FileSystemDriver {
+			private $callback;
+
+			public function __construct(callable $callback)
+			{
+				$this->callback = $callback;
+			}
+
+			public function openFile(string $path, string $mode): File
+			{
+				($this->callback)();
+				return filesystem(new BlockingFilesystemDriver())->openFile($path, $mode);
+			}
+
+			public function getStatus(string $path): ?array
+			{
+				return filesystem(new BlockingFilesystemDriver())->getStatus($path);
+			}
+
+			public function getLinkStatus(string $path): ?array
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function createSymlink(string $target, string $link): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function createHardlink(string $target, string $link): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function resolveSymlink(string $target): string
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function move(string $from, string $to): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function deleteFile(string $path): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function createDirectory(string $path, int $mode = 0777): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function createDirectoryRecursively(string $path, int $mode = 0777): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function deleteDirectory(string $path): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function listFiles(string $path): array
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function changePermissions(string $path, int $mode): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function changeOwner(string $path, ?int $uid, ?int $gid): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function touch(string $path, ?int $modificationTime, ?int $accessTime): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function read(string $path): string
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+
+			public function write(string $path, string $contents): void
+			{
+				throw new BadMethodCallException('Not implemented');
+			}
+		};
+
+		$verdict = $this->vaas->forFileAsync(__DIR__ . "/PotentiallyUnwantedCustomDriver.exe", new ForFileOptions(false, false, ForFileOptions::DEFAULT_TIMEOUT, $customDriver))->await();
+
+		unlink(__DIR__ . "/PotentiallyUnwantedCustomDriver.exe");
+		$this->assertEquals(Verdict::PUP, $verdict->verdict);
+		$this->assertTrue($customDriverCalled, "custom driver not called");
+	}
 
     public function testForStream_WithCleanStream_GetsCleanResponse(): void
     {

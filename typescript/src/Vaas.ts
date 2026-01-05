@@ -184,7 +184,7 @@ export class Vaas {
             verdictResponse.verdict === Verdict.UNKNOWN &&
             typeof sample !== "string"
           ) {
-            await this.upload(verdictResponse, sample);
+            await this.upload(verdictResponse, sample, sample.length);
             return;
           }
 
@@ -386,7 +386,7 @@ export class Vaas {
   private async upload(
     verdictResponse: VerdictResponse,
     input: Uint8Array | Readable,
-    contentLength: number = Infinity,
+    contentLength: number,
   ) {
     return new Promise(async (resolve, reject) => {
       const instance = axios.default.create({
@@ -396,8 +396,8 @@ export class Vaas {
         headers: {
           Authorization: verdictResponse.upload_token!,
           "Content-Type": "application/octet-stream",
+          "Content-Length": contentLength.toString(),
         },
-        maxBodyLength: contentLength,
       });
 
       instance.defaults.httpAgent = new http.Agent({ keepAlive: true });
