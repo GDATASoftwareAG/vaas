@@ -109,7 +109,7 @@ jobs:
           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: run tests
-        run: go test -race ./...
+        run: go test -v -race ./...
         working-directory: golang/vaas/${{ matrix.version-directory }}
 
       - name: Microsoft Teams Notification
