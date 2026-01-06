@@ -4,7 +4,7 @@ use rand::Rng;
 use reqwest::Url;
 use std::convert::TryFrom;
 use std::ops::Deref;
-use vaas::auth::authenticators::{ClientCredentials, Password};
+use vaas::authentication::authenticators::{ClientCredentials, Password};
 use vaas::{message::Verdict, CancellationToken, Connection, Sha256, Vaas};
 
 async fn get_vaas_with_flags(use_cache: bool, use_hash_lookup: bool) -> Connection {

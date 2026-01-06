@@ -17,7 +17,7 @@
 //! Check a file hash for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict, Sha256};
-//! use vaas::auth::authenticators::ClientCredentials;
+//! use vaas::authentication::authenticators::ClientCredentials;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
@@ -44,7 +44,7 @@
 //! Check a file for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
-//! use vaas::auth::authenticators::ClientCredentials;
+//! use vaas::authentication::authenticators::ClientCredentials;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
@@ -71,7 +71,7 @@
 //! Check a file behind a URL for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
-//! use vaas::auth::authenticators::ClientCredentials;
+//! use vaas::authentication::authenticators::ClientCredentials;
 //! use reqwest::Url;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
@@ -96,21 +96,19 @@
 //!
 #![warn(missing_docs)]
 
-pub mod auth;
+pub mod authentication;
 pub mod builder;
-pub mod cancellation;
-pub mod connection;
 pub mod error;
+mod http;
 pub mod message;
-mod options;
+pub mod options;
 pub mod sha256;
 pub mod vaas;
 pub mod vaas_verdict;
-pub(crate) mod response_broker;
 
 pub use crate::vaas::Vaas;
 pub use builder::Builder;
-pub use cancellation::CancellationToken;
-pub use connection::Connection;
 pub use sha256::Sha256;
 pub use vaas_verdict::VaasVerdict;
+
+pub use tokio_util::sync::CancellationToken;

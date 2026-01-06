@@ -1,6 +1,11 @@
 //! Implements a SHA256 structure that guarantees that a given hash string is in the correct format.
 
+use crate::error::VResult;
 use regex::Regex;
+use serde::Deserialize;
+use sha2::Digest;
+use std::fmt::Write;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::{convert::TryFrom, fmt, ops::Deref};
 
@@ -16,23 +21,41 @@ use std::{convert::TryFrom, fmt, ops::Deref};
 /// # Ok(()) }
 /// ```
 
-#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Deserialize)]
 pub struct Sha256(String);
 
-impl From<&[u8]> for Sha256 {
-    fn from(value: &[u8]) -> Self {
-        use sha2::Digest;
-        use std::fmt::Write;
-
+impl Sha256 {
+    pub fn hash_file(path: &Path) -> VResult<Sha256> {
+        let mut file = std::fs::File::open(path)?;
         let mut hasher = sha2::Sha256::new();
-        hasher.update(value);
-        let result = hasher.finalize();
+        let mut buf = [0; 1024];
 
-        let hex_string = result.iter().fold(String::new(), |mut output, b| {
+        loop {
+            let count = file.read(&mut buf)?;
+            if count == 0 {
+                break;
+            }
+            hasher.update(&buf[..count]);
+        }
+        let digest = hasher.finalize();
+        Ok(Self::from_hash_bytes(digest.as_slice()))
+    }
+
+    fn from_hash_bytes(bytes: &[u8]) -> Sha256 {
+        let hex_string = bytes.iter().fold(String::new(), |mut output, b| {
             let _ = write!(output, "{b:02x}");
             output
         });
         Self(hex_string)
+    }
+}
+
+impl From<&[u8]> for Sha256 {
+    fn from(value: &[u8]) -> Self {
+        let mut hasher = sha2::Sha256::new();
+        hasher.update(value);
+        let result = hasher.finalize();
+        Sha256::from_hash_bytes(result.as_slice())
     }
 }
 
@@ -106,21 +129,21 @@ mod tests {
     #[test]
     fn try_from_invalid_sha256() {
         // Wrong characters
-        assert!(Sha256::try_from(
-            "x00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0"
-        )
-        .is_err());
+        assert!(
+            Sha256::try_from("x00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0")
+                .is_err()
+        );
 
         // Too short
-        assert!(Sha256::try_from(
-            "00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0"
-        )
-        .is_err());
+        assert!(
+            Sha256::try_from("00020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0")
+                .is_err()
+        );
 
         // Too long
-        assert!(Sha256::try_from(
-            "1000020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0"
-        )
-        .is_err());
+        assert!(
+            Sha256::try_from("1000020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0")
+                .is_err()
+        );
     }
 }

@@ -1,68 +1,57 @@
-use crate::auth::Authenticator;
-use crate::error::{Error, VResult};
-use crate::message::OpenIdConnectTokenResponse;
+use crate::authentication::Authenticator;
+use crate::authentication::secret_string::SecretString;
+use crate::authentication::token_receiver::TokenReceiver;
+use crate::error::VResult;
 use async_trait::async_trait;
-use reqwest::{StatusCode, Url};
+use reqwest::Url;
+use std::fmt::Debug;
 
 /// Authenticator for the VaaS service using the password flow.
-/// Expects a client id, a user name and a password.
+/// Expects a client id, a username and a password.
+#[derive(Debug, Clone)]
 pub struct Password {
     client_id: String,
-    user_name: String,
-    password: String,
-    token_url: Url,
+    username: String,
+    password: SecretString,
+    receiver: TokenReceiver,
 }
 
 impl Password {
     /// Create a new authenticator for the VaaS service using the password flow.
-    pub fn new(client_id: String, user_name: String, password: String) -> Self {
-        Self {
+    /// Returns an error if the HTTP client cannot be initialized
+    pub fn try_new(client_id: String, username: String, password: String) -> VResult<Self> {
+        Ok(Self {
             client_id,
-            user_name,
-            password,
-            token_url: Url::parse(crate::auth::authenticator::DEFAULT_TOKEN_URL).unwrap(), // Safe to unwrap, as this is a constant URL and will always be valid.
-        }
+            username,
+            password: password.into(),
+            receiver: TokenReceiver::try_new()?,
+        })
     }
+
     /// Set the token URL to be used for authentication.
     pub fn with_token_url(mut self, token_url: Url) -> Self {
-        self.token_url = token_url;
+        self.receiver = self.receiver.set_token_url(token_url);
         self
     }
 }
 
 #[async_trait]
 impl Authenticator for Password {
-    async fn get_token(&self) -> VResult<String> {
+    async fn get_token(&mut self) -> VResult<String> {
         let params = [
-            ("client_id", self.client_id.clone()),
-            ("username", self.user_name.clone()),
-            ("password", self.password.clone()),
-            ("grant_type", "password".to_string()),
+            ("client_id", self.client_id.as_str()),
+            ("username", self.username.as_str()),
+            ("password", self.password.as_str()),
+            ("grant_type", "password"),
         ];
-        let client = reqwest::Client::new();
-        let token_response = client
-            .post(self.token_url.clone())
-            .form(&params)
-            .send()
-            .await?;
-
-        match token_response.status() {
-            StatusCode::OK => {
-                let json_string = token_response.text().await?;
-                Ok(OpenIdConnectTokenResponse::try_from(&json_string)?.access_token)
-            }
-            status => Err(Error::FailedAuthTokenRequest(
-                status,
-                token_response.text().await.unwrap_or_default(),
-            )),
-        }
+        self.receiver.get_token(&params).await
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::Error::FailedAuthTokenRequest;
+    use crate::error::Error;
 
     #[tokio::test]
     async fn authenticator_returns_token() {
@@ -79,7 +68,9 @@ mod tests {
         let password = dotenv::var("VAAS_PASSWORD").expect(
             "No VAAS_PASSWORD environment variable set to be used in the integration tests",
         );
-        let authenticator = Password::new(client_id, user_name, password).with_token_url(token_url);
+        let mut authenticator = Password::try_new(client_id, user_name, password)
+            .unwrap()
+            .with_token_url(token_url);
 
         let token = authenticator.get_token().await;
 
@@ -95,14 +86,16 @@ mod tests {
         let client_id = "invalid".to_string();
         let user_name = "invalid".to_string();
         let password = "invalid".to_string();
-        let authenticator = Password::new(client_id, user_name, password).with_token_url(token_url);
+        let mut authenticator = Password::try_new(client_id, user_name, password)
+            .unwrap()
+            .with_token_url(token_url);
 
         let token = authenticator.get_token().await;
 
         assert!(token.is_err());
         assert!(match token {
             Ok(_) => false,
-            Err(FailedAuthTokenRequest(_, _)) => true,
+            Err(Error::AuthorizationFailed(_)) => true,
             _ => false,
         })
     }
