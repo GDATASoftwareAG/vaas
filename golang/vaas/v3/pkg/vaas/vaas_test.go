@@ -753,7 +753,7 @@ func Test_ForUrl(t *testing.T) {
 	const (
 		cleanURL   string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
 		eicarURL   string = "https://secure.eicar.org/eicar.com"
-		invalidURL string = "https://gateway.production.vaas.gdatasecurity.de/swagger/nocontenthere"
+		invalidURL string = "https://invalid.url.test"
 	)
 	type args struct {
 		url             string
