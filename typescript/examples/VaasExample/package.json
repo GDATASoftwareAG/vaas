@@ -1,6 +1,6 @@
 {
     "name": "test-files",
-    "version": "1.0.60",
+    "version": "1.0.61",
     "description": "",
     "scripts": {
         "start:filescan": "npx ts-node main.ts",
@@ -12,7 +12,7 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "@types/node": "24.9.2",
+        "@types/node": "25.0.3",
         "gdata-vaas": "7.7.6",
         "ts-node": "^10.9.2",
         "typescript": "5.9.3"
