@@ -26,10 +26,9 @@ on:
         default: "production"
 
 env:
-  LATEST_PATH: v3/
   CLIENT_ID: ${{ secrets.CLIENT_ID }}
   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
-  VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+  VAAS_URL: "https://gateway.production.vaas.gdatasecurity.de"
   TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
@@ -61,20 +60,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: golang:latest
-    strategy:
-      matrix:
-        version-directory: ["./", "v2/", "v3/"]
     steps:
       - uses: actions/checkout@v5
-
-      - name: set legacy vaas gateway for production
-        run: |
-          if [ "${{ matrix.version-directory }}" = "./" -o "${{ matrix.version-directory }}" = "v2/" ]; then
-            echo "VAAS_URL=wss://gateway.production.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          else
-            echo "VAAS_URL=https://gateway.production.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          fi
-
 
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-beta')))
@@ -83,11 +70,7 @@ jobs:
           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
-          if [ "${{ matrix.version-directory }}" = "./" -o "${{ matrix.version-directory }}" = "v2/" ]; then
-            echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          else
-            echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          fi
+          echo "VAAS_URL=https://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
           echo "VAAS_PASSWORD=${{ secrets.STAGING_VAAS_PASSWORD }}" >> $GITHUB_ENV
@@ -99,18 +82,14 @@ jobs:
           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
-          if [ "${{ matrix.version-directory }}" = "./" -o "${{ matrix.version-directory }}" = "v2/" ]; then
-            echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          else
-            echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
-          fi
+          echo "VAAS_URL=https://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
       - name: run tests
         run: go test -v -race ./...
-        working-directory: golang/vaas/${{ matrix.version-directory }}
+        working-directory: golang/vaas/v3 }}
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
@@ -159,9 +138,6 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: golang:latest
-    strategy:
-      matrix:
-        version-directory: [".", "v2", "v3"]
     steps:
       - uses: actions/checkout@v5
       - name: Install govulncheck
@@ -169,8 +145,8 @@ jobs:
         shell: bash
 
       - name: Run govulncheck
-        run: govulncheck ./${{ matrix.version-directory }}...
-        working-directory: golang/vaas/
+        run: govulncheck ./...
+        working-directory: golang/vaas/v3
         shell: bash
 
       - name: Microsoft Teams Notification
@@ -196,11 +172,8 @@ jobs:
           MAJOR_VERSION: ${{ needs.extract-major-version.outputs.major_version }}
         if: startsWith(github.ref, 'refs/tags/golang/vaas/v3')
         run: |
-          if [ "$MAJOR_VERSION" = "v1" ]; then
-            GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas@${GITHUB_REF#refs/tags/golang/vaas/}
-          else
             GOPROXY=proxy.golang.org go list -m github.com/GDATASoftwareAG/vaas/golang/vaas/${MAJOR_VERSION}@${GITHUB_REF#refs/tags/golang/vaas/}
-          fi
+          
 
       - name: Microsoft Teams Notification
         uses: skitionek/notify-microsoft-teams@master
@@ -266,8 +239,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: "golang/vaas/${{ env.LATEST_PATH }}"
-          file: "golang/vaas/${{ env.LATEST_PATH }}git-scan.Dockerfile"
+          context: "golang/vaas/v3"
+          file: "golang/vaas/v3/git-scan.Dockerfile"
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
