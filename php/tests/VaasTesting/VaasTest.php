@@ -35,13 +35,13 @@ final class VaasTest extends TestCase
 
     const MALICIOUS_HASH = "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2";
     const EICAR_HASH = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-    const PUP_HASH = "42d6581dd0a2ba9bec6a40c5b7c85870a8019d7347c9130d24752ec5865f0732";
+    const PUP_HASH = "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
     const CLEAN_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     const UNKNOWN_HASH = "23b85b080bda43cd0dd80f0386d66b8a5f3ca647441df0306d8c74ef035cfe93";
     
-    const MALICIOUS_URL = "https://secure.eicar.org/eicar.com.txt";
-    const PUP_URL = "http://amtso.eicar.org/PotentiallyUnwanted.exe";
-    const CLEAN_URL = "https://www.gdata.de";
+    const MALICIOUS_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt";
+    const PUP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe";
+    const CLEAN_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt";
 
     public function setUp(): void
     {
