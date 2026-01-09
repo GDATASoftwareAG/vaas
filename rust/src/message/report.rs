@@ -4,6 +4,7 @@ use serde::Deserialize;
 use url::Url;
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(test, derive(serde::Serialize))]
 #[serde(rename_all = "camelCase")]
 pub struct FileReport {
     pub sha256: Sha256,
@@ -14,6 +15,7 @@ pub struct FileReport {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg_attr(test, derive(serde::Serialize))]
 #[serde(rename_all = "camelCase")]
 pub struct UrlReport {
     pub sha256: Sha256,

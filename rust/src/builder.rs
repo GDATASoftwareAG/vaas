@@ -11,9 +11,9 @@ use crate::error::VResult;
 /// // Create a new [Vaas] instance from the builder.
 /// # fn main() -> vaas::error::VResult<()> {
 /// use vaas::Builder;
-/// use vaas::authentication::authenticators::ClientCredentials;
+/// use vaas::authentication::ClientCredentials;
 ///
-/// let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
+/// let authenticator = ClientCredentials::try_new("client_id".to_string(), "client_secret".to_string())?;
 ///
 /// let vaas = Builder::new(authenticator).build()?;
 /// # Ok(()) }

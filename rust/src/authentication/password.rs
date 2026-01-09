@@ -1,6 +1,6 @@
-use crate::authentication::Authenticator;
 use crate::authentication::secret_string::SecretString;
 use crate::authentication::token_receiver::TokenReceiver;
+use crate::authentication::Authenticator;
 use crate::error::VResult;
 use async_trait::async_trait;
 use reqwest::Url;
@@ -53,8 +53,12 @@ mod tests {
     use super::*;
     use crate::error::Error;
 
+    // Keycloak is sometimes flaky when tests are run in parallel, so force serialization
+    static AUTH_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
     #[tokio::test]
     async fn authenticator_returns_token() {
+        let lock = AUTH_LOCK.lock().await;
         let token_url: Url = dotenv::var("TOKEN_URL")
             .expect("No TOKEN_URL environment variable set to be used in the integration tests")
             .parse()
@@ -74,11 +78,40 @@ mod tests {
 
         let token = authenticator.get_token().await;
 
-        assert!(token.is_ok())
+        assert!(token.is_ok());
+        drop(lock);
+    }
+
+    #[tokio::test]
+    async fn authenticator_caches_token() {
+        let lock = AUTH_LOCK.lock().await;
+        let token_url: Url = dotenv::var("TOKEN_URL")
+            .expect("No TOKEN_URL environment variable set to be used in the integration tests")
+            .parse()
+            .expect("Failed to parse TOKEN_URL environment variable");
+        let client_id = dotenv::var("VAAS_CLIENT_ID").expect(
+            "No VAAS_CLIENT_ID environment variable set to be used in the integration tests",
+        );
+        let user_name = dotenv::var("VAAS_USER_NAME").expect(
+            "No VAAS_USER_NAME environment variable set to be used in the integration tests",
+        );
+        let password = dotenv::var("VAAS_PASSWORD").expect(
+            "No VAAS_PASSWORD environment variable set to be used in the integration tests",
+        );
+        let mut authenticator = Password::try_new(client_id, user_name, password)
+            .unwrap()
+            .with_token_url(token_url);
+
+        let token1 = authenticator.get_token().await.unwrap();
+        let token2 = authenticator.get_token().await.unwrap();
+
+        assert_eq!(token1, token2, "Token should have been re-used");
+        drop(lock);
     }
 
     #[tokio::test]
     async fn authenticator_wrong_credentials() {
+        let lock = AUTH_LOCK.lock().await;
         let token_url: Url = dotenv::var("TOKEN_URL")
             .expect("No TOKEN_URL environment variable set to be used in the integration tests")
             .parse()
@@ -97,6 +130,7 @@ mod tests {
             Ok(_) => false,
             Err(Error::AuthorizationFailed(_)) => true,
             _ => false,
-        })
+        });
+        drop(lock);
     }
 }

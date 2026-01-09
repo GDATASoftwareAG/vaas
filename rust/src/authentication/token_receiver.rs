@@ -1,4 +1,5 @@
 use crate::authentication::authenticator::DEFAULT_TOKEN_URL;
+use crate::authentication::secret_string::SecretString;
 use crate::error::{Error, VResult};
 use crate::http;
 use crate::message::token_response::TokenResponse;
@@ -15,11 +16,13 @@ pub struct TokenReceiver {
 }
 
 impl TokenReceiver {
+    /// Create a new receiver that obtains tokens from the default URL. Returns an error if no HTTP client could be instantiated.
     pub fn try_new() -> VResult<Self> {
         let token_url = Url::parse(DEFAULT_TOKEN_URL)?;
         Self::try_new_with_token_url(token_url)
     }
 
+    /// Create a new receiver obtaining tokens from the given URL. Returns an error if no HTTP client could be instantiated.
     pub fn try_new_with_token_url(token_url: Url) -> VResult<Self> {
         Ok(Self {
             client: http::new_http_client()?,
@@ -34,7 +37,7 @@ impl TokenReceiver {
         self
     }
 
-    async fn get_fresh_token<T: Serialize>(&mut self, form: &T) -> VResult<TokenResponse> {
+    async fn get_fresh_token<T: Serialize>(&self, form: &T) -> VResult<TokenResponse> {
         let token_response = self
             .client
             .post(self.token_url.clone())
@@ -47,7 +50,7 @@ impl TokenReceiver {
                 let token_response: TokenResponse = token_response.json().await?;
                 Ok(token_response)
             }
-            status => Err(Error::AuthorizationFailed(
+            _ => Err(Error::AuthorizationFailed(
                 token_response.text().await.unwrap_or_default(),
             )),
         }
@@ -55,14 +58,14 @@ impl TokenReceiver {
 
     pub async fn get_token<T: Serialize + Sized>(&mut self, form: &T) -> VResult<String> {
         if let Some(cached_token) = self.last_token.as_ref()
-            && cached_token.valid_until <= SystemTime::now()
+            && SystemTime::now() <= cached_token.valid_until
         {
-            Ok(cached_token.access_token.clone())
+            Ok(cached_token.access_token.clone().into())
         } else {
             let new_token = self.get_fresh_token(form).await?;
             let valid_until = SystemTime::now() + Duration::from_secs(new_token.expires_in);
             let cached_token = CachedAccessToken {
-                access_token: new_token.access_token.clone(),
+                access_token: new_token.access_token.clone().into(),
                 valid_until,
             };
             self.last_token = Some(cached_token);
@@ -71,17 +74,8 @@ impl TokenReceiver {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct CachedAccessToken {
-    access_token: String,
+    access_token: SecretString,
     valid_until: SystemTime,
-}
-
-impl Debug for CachedAccessToken {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CachedAccessToken")
-            .field("access_token", &"<redacted>")
-            .field("valid_until", &self.valid_until)
-            .finish()
-    }
 }

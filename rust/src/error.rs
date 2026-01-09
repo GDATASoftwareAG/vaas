@@ -10,20 +10,28 @@ pub type VResult<T> = Result<T, Error>;
 #[non_exhaustive]
 #[derive(Error, Debug)]
 pub enum Error {
+    /// HTTP error
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
-    #[error("Invalid Vaas url: {0}")]
+    /// A given URL was not valid
+    #[error("Invalid url: {0}")]
     InvalidUrl(#[from] url::ParseError),
-    #[error("Request was cancelled")]
-    Cancelled,
+    /// A `CancellationToken` was canceled prior to an operation completing
+    #[error("Request was canceled")]
+    Canceled,
+    /// Unable to obtain a valid authorization token. The most common cause is incorrect credentials.
     #[error("Failed to obtain authorization token - check your credentials: {0}")]
     AuthorizationFailed(String),
+    /// The request was not authorized despite sending an authorization token
     #[error("Unauthorized request: {0}")]
     Unauthorized(String),
+    /// The VaaS server reported an error
     #[error("The server reported an error: {0}")]
     ServerError(#[from] ProblemDetails),
     #[error("IO Error: {0}")]
+    /// An I/O error occurred
     IoError(#[from] std::io::Error),
+    /// The given SHA256 value is not valid
     #[error("Invalid SHA256 hash value: {0}")]
     InvalidSha256(String),
 }

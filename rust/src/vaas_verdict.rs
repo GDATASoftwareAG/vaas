@@ -6,13 +6,14 @@ use crate::message::report::{FileReport, UrlReport};
 use crate::message::verdict::Verdict;
 use crate::sha256::Sha256;
 
-/// Response object from the api.
+/// Response with all information regarding an analysis.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct VaasVerdict {
     /// Sha256 of the requested file
     pub sha256: Sha256,
     /// Verdict for the file
     pub verdict: Verdict,
+    /// The detected malware or PUP found in the file, if any
     pub detection: Option<String>,
     /// File type as classified by https://www.darwinsys.com/file/
     pub file_type: Option<String>,

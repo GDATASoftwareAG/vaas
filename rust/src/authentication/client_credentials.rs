@@ -38,7 +38,7 @@ impl Authenticator for ClientCredentials {
     async fn get_token(&mut self) -> VResult<String> {
         let params = [
             ("client_id", self.client_id.as_str()),
-            ("client_secret", &self.client_secret.as_str()),
+            ("client_secret", self.client_secret.as_str()),
             ("grant_type", "client_credentials"),
         ];
         self.receiver.get_token(&params).await
@@ -69,6 +69,28 @@ mod tests {
         let token = authenticator.get_token().await;
 
         assert!(token.is_ok())
+    }
+
+    #[tokio::test]
+    async fn authenticator_caches_token() {
+        let token_url: Url = dotenv::var("TOKEN_URL")
+            .expect("No TOKEN_URL environment variable set to be used in the integration tests")
+            .parse()
+            .expect("Failed to parse TOKEN_URL environment variable");
+        let client_id = dotenv::var("CLIENT_ID").expect(
+            "No VAAS_CLIENT_ID environment variable set to be used in the integration tests",
+        );
+        let client_secret = dotenv::var("CLIENT_SECRET").expect(
+            "No VAAS_PASSWORD environment variable set to be used in the integration tests",
+        );
+        let mut authenticator = ClientCredentials::try_new(client_id, client_secret)
+            .unwrap()
+            .with_token_url(token_url);
+
+        let token1 = authenticator.get_token().await.unwrap();
+        let token2 = authenticator.get_token().await.unwrap();
+
+        assert_eq!(token1, token2, "Token should have been re-used");
     }
 
     #[tokio::test]

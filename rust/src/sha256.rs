@@ -5,7 +5,6 @@ use regex::Regex;
 use serde::Deserialize;
 use sha2::Digest;
 use std::fmt::Write;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::{convert::TryFrom, fmt, ops::Deref};
 
@@ -22,21 +21,16 @@ use std::{convert::TryFrom, fmt, ops::Deref};
 /// ```
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash, Deserialize)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub struct Sha256(String);
 
 impl Sha256 {
+    /// Hash the file at `path` and return the `Sha256` hash.
+    /// Returns an error if hashing fails (due to I/O errors).
     pub fn hash_file(path: &Path) -> VResult<Sha256> {
         let mut file = std::fs::File::open(path)?;
         let mut hasher = sha2::Sha256::new();
-        let mut buf = [0; 1024];
-
-        loop {
-            let count = file.read(&mut buf)?;
-            if count == 0 {
-                break;
-            }
-            hasher.update(&buf[..count]);
-        }
+        std::io::copy(&mut file, &mut hasher)?;
         let digest = hasher.finalize();
         Ok(Self::from_hash_bytes(digest.as_slice()))
     }
@@ -145,5 +139,14 @@ mod tests {
             Sha256::try_from("1000020f89134d831f48541b2d8ec39397bc99fccf4cc86a3861257dbe6d819d0")
                 .is_err()
         );
+    }
+
+    #[test]
+    fn test_hash_file() {
+        let test_file = std::env::current_exe().unwrap();
+
+        let hash_result = Sha256::hash_file(&test_file);
+
+        assert!(hash_result.is_ok(), "hasing failed {:?}", hash_result);
     }
 }

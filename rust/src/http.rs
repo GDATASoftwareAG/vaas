@@ -62,9 +62,10 @@ async fn send_request(
     authenticator: &Mutex<Box<dyn Authenticator>>,
     request: RequestBuilder,
 ) -> VResult<reqwest::Response> {
-    let mut authenticator = authenticator.lock().await;
-    let token = authenticator.get_token().await?;
-    drop(authenticator);
+    let token = {
+        let mut authenticator = authenticator.lock().await;
+        authenticator.get_token().await?
+    };
     let response = request.bearer_auth(token).send().await?;
     Ok(response)
 }

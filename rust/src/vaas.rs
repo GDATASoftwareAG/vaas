@@ -9,10 +9,10 @@ use crate::message::report::{FileReport, UrlReport};
 use crate::message::verdict::Verdict;
 use crate::options::{ForFileOptions, ForSha256Options, ForStreamOptions, ForUrlOptions};
 use crate::{CancellationToken, Sha256, VaasVerdict, http};
-use bytes::Bytes;
 use reqwest::{Body, StatusCode, Url};
 use std::path::Path;
 use tokio::sync::Mutex;
+use tokio_util::bytes::Bytes;
 use tokio_util::io::ReaderStream;
 
 /// Provides all functionality needed to check a hash or file for malicious content.
@@ -52,7 +52,9 @@ impl Vaas {
             "false"
         };
         let report_uri = Url::parse_with_params(
-            &(self.vaas_url.to_string() + &format!("/files/{sha256}/report")),
+            self.vaas_url
+                .join(&format!("/files/{sha256}/report"))?
+                .as_str(),
             &[("useCache", use_cache), ("useHashLookup", use_hash_lookup)],
         )?;
 
@@ -72,7 +74,7 @@ impl Vaas {
             }?;
             return Ok(report.into());
         }
-        Err(Error::Cancelled)
+        Err(Error::Canceled)
     }
 
     /// Request a verdict for a file.
@@ -121,7 +123,7 @@ impl Vaas {
             "false"
         };
         let upload_url = Url::parse_with_params(
-            &(self.vaas_url.to_string() + "/files"),
+            self.vaas_url.join("/files")?.as_str(),
             &[("useCache", "true"), ("useHashLookup", use_hash_lookup)],
         )?;
 
@@ -163,7 +165,7 @@ impl Vaas {
         options: ForUrlOptions,
         ct: &CancellationToken,
     ) -> VResult<VaasVerdict> {
-        let url_analysis = Url::parse(&(self.vaas_url.to_string() + "/urls"))?;
+        let url_analysis = self.vaas_url.join("/urls")?;
         let request = UrlAnalysisRequest {
             url,
             use_hash_lookup: options.use_hash_lookup,
@@ -175,9 +177,9 @@ impl Vaas {
             StatusCode::OK => Ok(response.json().await?),
             _ => Err(parse_vaas_error(response).await),
         }?;
-        let report_url = Url::parse(
-            &(self.vaas_url.to_string() + &format!("/urls/{}/report", analysis_started.id)),
-        )?;
+        let report_url = self
+            .vaas_url
+            .join(&format!("/urls/{}/report", analysis_started.id))?;
 
         while !ct.is_cancelled() {
             let request_future =
@@ -195,7 +197,7 @@ impl Vaas {
             }?;
             return Ok(url_report.into());
         }
-        Err(Error::Cancelled)
+        Err(Error::Canceled)
     }
 }
 
@@ -208,5 +210,267 @@ async fn parse_vaas_error(response: reqwest::Response) -> Error {
             r#type: None,
             details: Some("Unknown server error - ".to_string() + &status.to_string()),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::authentication::ClientCredentials;
+    use crate::error::{Error, VResult};
+    use crate::message::problem::ProblemDetails;
+    use crate::message::report::FileReport;
+    use crate::message::verdict::Verdict;
+    use crate::options::ForSha256Options;
+    use crate::{Sha256, Vaas};
+    use mockito::{Matcher, ServerGuard};
+    use serde::Serialize;
+    use tokio_util::sync::CancellationToken;
+    use url::Url;
+
+    const MOCK_USERNAME: &str = "vaas-user";
+    const MOCK_PASSWORD: &str = "foobar";
+    const MOCK_CLIENT: &str = "vaas";
+    const MOCK_CLIENT_SECRET: &str = "qwertz";
+    const TEST_SHA256: &str = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+
+    struct AuthenticationMock {
+        pub auth_url: Url,
+        pub server_guard: ServerGuard,
+    }
+
+    struct ClientCredentialsMock {
+        authenticator: ClientCredentials,
+        server_guard: ServerGuard,
+    }
+
+    struct VaasMock {
+        vaas: Vaas,
+        vaas_server: ServerGuard,
+        auth_server: ServerGuard,
+    }
+
+    async fn mock_auth_server() -> AuthenticationMock {
+        let mut server = mockito::Server::new_async().await;
+        let auth_url = Url::parse(&(server.url() + "/authorize")).unwrap();
+        server
+            .mock("POST", "/authorize")
+            .with_body(r#"{"access_token": "mock-token", "expires_in": 1}"#)
+            .expect_at_least(0)
+            .create_async()
+            .await;
+        AuthenticationMock {
+            auth_url,
+            server_guard: server,
+        }
+    }
+
+    async fn mock_client_credentials() -> ClientCredentialsMock {
+        let auth_mock = mock_auth_server().await;
+        let client_credentials =
+            ClientCredentials::try_new(MOCK_CLIENT.to_string(), MOCK_CLIENT_SECRET.to_string())
+                .unwrap()
+                .with_token_url(auth_mock.auth_url);
+        ClientCredentialsMock {
+            authenticator: client_credentials,
+            server_guard: auth_mock.server_guard,
+        }
+    }
+
+    async fn mock_vaas() -> VaasMock {
+        let auth_mock = mock_client_credentials().await;
+        let vaas_server = mockito::Server::new_async().await;
+        let vaas_url = Url::parse(&vaas_server.url()).unwrap();
+        let vaas = Vaas::builder(auth_mock.authenticator)
+            .url(vaas_url)
+            .build()
+            .unwrap();
+        VaasMock {
+            vaas,
+            vaas_server,
+            auth_server: auth_mock.server_guard,
+        }
+    }
+
+    fn json<T: Serialize>(value: T) -> String {
+        serde_json::to_string_pretty(&value).unwrap()
+    }
+
+    #[tokio::test]
+    async fn test_for_sha256_sends_options() -> VResult<()> {
+        let mut vaas_mock = mock_vaas().await;
+        let sha256 = Sha256::try_from(TEST_SHA256)?;
+        let mock = vaas_mock
+            .vaas_server
+            .mock("GET", format!("/files/{TEST_SHA256}/report").as_str())
+            .match_query(Matcher::AllOf(vec![
+                Matcher::UrlEncoded("useCache".into(), "true".into()),
+                Matcher::UrlEncoded("useHashLookup".into(), "true".into()),
+            ]))
+            .with_body(json(FileReport {
+                sha256: sha256.clone(),
+                verdict: Verdict::Malicious,
+                detection: None,
+                file_type: None,
+                mime_type: None,
+            }))
+            .create_async()
+            .await;
+
+        vaas_mock
+            .vaas
+            .for_sha256(
+                &sha256,
+                ForSha256Options::default(),
+                &CancellationToken::new(),
+            )
+            .await?;
+
+        mock.assert_async().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_for_sha256_if_client_error_returns_error() -> VResult<()> {
+        let mut vaas_mock = mock_vaas().await;
+        let sha256 = Sha256::try_from(TEST_SHA256)?;
+        let mock = vaas_mock
+            .vaas_server
+            .mock("GET", format!("/files/{TEST_SHA256}/report").as_str())
+            .match_query(Matcher::Any)
+            .with_body(json(ProblemDetails {
+                r#type: Some("VaasClientException".to_string()),
+                details: Some("Mocked client-side error".to_string()),
+            }))
+            .with_status(reqwest::StatusCode::BAD_REQUEST.as_u16() as usize)
+            .create_async()
+            .await;
+
+        let maybe_err = vaas_mock
+            .vaas
+            .for_sha256(
+                &sha256,
+                ForSha256Options::default(),
+                &CancellationToken::new(),
+            )
+            .await;
+
+        mock.assert_async().await;
+        assert!(
+            matches!(maybe_err, Err(Error::ServerError(_))),
+            "Expected ServerError, got {maybe_err:?}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_for_sha256_if_server_error_returns_error() -> VResult<()> {
+        let mut vaas_mock = mock_vaas().await;
+        let sha256 = Sha256::try_from(TEST_SHA256)?;
+        let mock = vaas_mock
+            .vaas_server
+            .mock("GET", format!("/files/{TEST_SHA256}/report").as_str())
+            .match_query(Matcher::Any)
+            .with_body(json(ProblemDetails {
+                r#type: Some("VaasServerException".to_string()),
+                details: Some("Mocked server-side error".to_string()),
+            }))
+            .with_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
+            .create_async()
+            .await;
+
+        let maybe_err = vaas_mock
+            .vaas
+            .for_sha256(
+                &sha256,
+                ForSha256Options::default(),
+                &CancellationToken::new(),
+            )
+            .await;
+
+        mock.assert_async().await;
+        assert!(
+            matches!(maybe_err, Err(Error::ServerError(_))),
+            "Expected ServerError, got {maybe_err:?}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_for_sha256_if_authenticator_error_returns_error() -> VResult<()> {
+        let mut vaas_mock = mock_vaas().await;
+        let sha256 = Sha256::try_from(TEST_SHA256)?;
+        // remove existing auth mocks
+        vaas_mock.auth_server.reset();
+        let mock = vaas_mock
+            .auth_server
+            .mock("POST", "/authorize")
+            .with_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
+            .create_async()
+            .await;
+
+        let maybe_err = vaas_mock
+            .vaas
+            .for_sha256(
+                &sha256,
+                ForSha256Options::default(),
+                &CancellationToken::new(),
+            )
+            .await;
+
+        mock.assert_async().await;
+        assert!(
+            matches!(maybe_err, Err(Error::AuthorizationFailed(_))),
+            "expected AuthorizationFailed, got {maybe_err:?}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_for_sha256_if_401_error_returns_error() -> VResult<()> {
+        let mut vaas_mock = mock_vaas().await;
+        let sha256 = Sha256::try_from(TEST_SHA256)?;
+        let mock = vaas_mock
+            .vaas_server
+            .mock("GET", format!("/files/{TEST_SHA256}/report").as_str())
+            .match_query(Matcher::Any)
+            .with_body("invalid token")
+            .with_status(reqwest::StatusCode::UNAUTHORIZED.as_u16() as usize)
+            .create_async()
+            .await;
+
+        let maybe_err = vaas_mock
+            .vaas
+            .for_sha256(
+                &sha256,
+                ForSha256Options::default(),
+                &CancellationToken::new(),
+            )
+            .await;
+
+        mock.assert_async().await;
+        assert!(
+            matches!(maybe_err, Err(Error::Unauthorized(_))),
+            "expected unauthorized, got {maybe_err:?}"
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_for_sha256_if_canceled_returns_error() -> VResult<()> {
+        let vaas_mock = mock_vaas().await;
+        let sha256 = Sha256::try_from(TEST_SHA256)?;
+        let ct = CancellationToken::new();
+        ct.cancel();
+
+        let maybe_err = vaas_mock
+            .vaas
+            .for_sha256(&sha256, ForSha256Options::default(), &ct)
+            .await;
+
+        assert!(
+            matches!(maybe_err, Err(Error::Canceled)),
+            "expected Canceled, got {maybe_err:?}"
+        );
+        Ok(())
     }
 }

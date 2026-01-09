@@ -1,4 +1,6 @@
+//! Types related to verdicts
 use serde::{Deserialize, Serialize};
+use std::fmt::{Display, Formatter};
 
 /// The `Verdict` indicates whether the
 /// submission is `Clean`, `Malicious`, `Pup` or `Unknown`.
@@ -12,4 +14,10 @@ pub enum Verdict {
     Pup,
     /// Unknown if clean or malicious.
     Unknown,
+}
+
+impl Display for Verdict {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }

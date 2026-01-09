@@ -1,16 +1,16 @@
-#[derive(Debug, Clone)]
-pub(crate) struct Options {
-    pub use_cache: bool,
-    pub use_hash_lookup: bool,
-}
+//! Contains configuration options to customize the behavior of VaaS scanning
 
+/// Configuration options applicable when looking up a SHA256 hash
 #[derive(Debug, Clone)]
 pub struct ForSha256Options {
+    /// Whether to allow a cached response instead of a fresh analysis
     pub use_cache: bool,
+    /// Whether to perform a cloud hash lookup (for on-prem hosted VaaS)
     pub use_hash_lookup: bool,
 }
 
 impl ForSha256Options {
+    /// New options with recommended defaults
     pub fn new() -> Self {
         Self {
             use_cache: true,
@@ -43,13 +43,17 @@ impl From<ForStreamOptions> for ForSha256Options {
     }
 }
 
+/// Configuration options applicable when looking up a file
 #[derive(Debug, Clone)]
 pub struct ForFileOptions {
+    /// Whether to allow a cached response instead of a fresh analysis
     pub use_cache: bool,
+    /// Whether to perform a cloud hash lookup (for on-prem hosted VaaS)
     pub use_hash_lookup: bool,
 }
 
 impl ForFileOptions {
+    /// New options with recommended defaults
     pub fn new() -> Self {
         Self {
             use_cache: true,
@@ -73,12 +77,15 @@ impl From<ForSha256Options> for ForFileOptions {
     }
 }
 
+/// Configuration options applicable when looking up a streamed resource
 #[derive(Debug, Clone)]
 pub struct ForStreamOptions {
+    /// Whether to perform a cloud hash lookup (for on-prem hosted VaaS)
     pub use_hash_lookup: bool,
 }
 
 impl ForStreamOptions {
+    /// New options with recommended defaults
     pub fn new() -> Self {
         Self {
             use_hash_lookup: true,
@@ -108,12 +115,15 @@ impl From<ForFileOptions> for ForStreamOptions {
     }
 }
 
+/// Configuration options applicable when looking up a URL
 #[derive(Debug, Clone)]
 pub struct ForUrlOptions {
+    /// Whether to perform a cloud hash lookup (for on-prem hosted VaaS)
     pub use_hash_lookup: bool,
 }
 
 impl ForUrlOptions {
+    /// New options with recommended defaults
     pub fn new() -> Self {
         Self {
             use_hash_lookup: true,
