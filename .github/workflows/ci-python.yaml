@@ -111,8 +111,12 @@ jobs:
           cat ./python/setup.cfg
 
       - name: build wheel
-        run: python -m build
+        run: |
+          rm -rf build dist *.egg-info
+          python -m pip install -U build wheel setuptools
+          python -m build
         working-directory: python
+
 
       - name: publish a Python distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
