@@ -77,7 +77,7 @@ jobs:
       - name: install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -e ".[test]"
         working-directory: python
 
       - name: run tests
