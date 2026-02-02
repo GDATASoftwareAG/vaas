@@ -88,6 +88,11 @@ abstract class TokenReceiver {
                 .build();
         return this.httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenCompose(response -> {
+                    if (response == null) {
+                        return CompletableFuture.failedFuture(
+                            new VaasAuthenticationException("Received null response from identity provider")
+                        );
+                    }                    
                     if (response.statusCode() != 200) {
                         return CompletableFuture.failedFuture(
                                 new VaasAuthenticationException("Identity provider returned status code "
