@@ -162,7 +162,11 @@ func (c *commonOIDCAuthenticator) GetToken() (string, error) {
 			if err := json.NewDecoder(response.Body).Decode(&tokenErrResponse); err != nil {
 				return "", fmt.Errorf("http request failed: %s", response.Status)
 			}
-			return "", fmt.Errorf(tokenErrResponse.Error + ": " + tokenErrResponse.ErrorDescription)
+			return "", fmt.Errorf(
+				"%s: %s",
+				tokenErrResponse.Error,
+				tokenErrResponse.ErrorDescription,
+			)
 		}
 
 		var tokenResponse msg.TokenResponse
