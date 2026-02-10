@@ -17,9 +17,9 @@
 
 version := "0.0.0"
 
-# Copies a `.env.wss` or `.env.https` file from the root directory to all 
-# language directories. The `.env.wss` file is used for the WebSocket API, 
-# while the `.env.https` file is used for the HTTP API.
+# Copies a `.env.https` or `.env.wss` file from the root directory to all 
+# language directories. The `.env.https` file is used for the HTTP API (most SDKs), 
+# while the `.env.wss` file is used for the WebSocket API.
 populate-env: populate-cpp-env \
   populate-rust-env \
   populate-ts-env \
@@ -40,25 +40,17 @@ populate-ts-env:
   cp .env.wss typescript/.env
 
 populate-dotnet-env:
-  cp .env.wss dotnet/.env
+  cp .env.https dotnet/.env
 
 populate-go-env:
-	cp .env.wss golang/vaas/.env
-	cp .env.wss golang/vaas/v2/.env
-	cp .env.wss golang/vaas/v2/examples/file-verdict-request/.env
-	cp .env.wss golang/vaas/v2/examples/vaasctl/.env
-	cp .env.wss golang/vaas/v2/pkg/vaas/.env
-	cp .env.wss golang/vaas/v2/pkg/authenticator/.env
-	cp .env.wss golang/vaas/pkg/authenticator/.env
-	cp .env.wss golang/vaas/pkg/vaas/.env
-	cp .env.wss golang/vaas/v3/.env
-	cp .env.wss golang/vaas/v3/examples/file-verdict-request/.env
-	cp .env.wss golang/vaas/v3/examples/vaasctl/.env
-	cp .env.wss golang/vaas/v3/pkg/vaas/.env
-	cp .env.wss golang/vaas/v3/pkg/authenticator/.env
+	cp .env.https golang/vaas/v3/.env
+	cp .env.https golang/vaas/v3/examples/file-verdict-request/.env
+	cp .env.https golang/vaas/v3/examples/vaasctl/.env
+	cp .env.https golang/vaas/v3/pkg/vaas/.env
+	cp .env.https golang/vaas/v3/pkg/authenticator/.env
 
 populate-python-env:
-  cp .env.wss python/.env
+  cp .env.https python/.env
 
 populate-php-env:
   cp .env.https php/tests/VaasTesting/.env
@@ -67,7 +59,7 @@ populate-java-env:
   cp .env.https java/.env
 
 populate-shell-env:
-  cp .env.wss shell/.env
+  cp .env.https shell/.env
 
 ############################################################
 # Commands for all languages at once.
@@ -138,16 +130,16 @@ release-dotnet:
 ############################################################
 
 install-go:
-	cd golang/vaas/v2 && go mod download && cd -
+	cd golang/vaas/v3 && go mod download && cd -
 
 build-go: install-go
-	cd golang/vaas/v2 && go build ./... && cd -
+	cd golang/vaas/v3 && go build ./... && cd -
 
 test-go: build-go
-	cd golang/vaas/v2 && go test -race ./... && cd -
+	cd golang/vaas/v3 && go test -race ./... && cd -
 
 clean-go:
-	cd golang/vaas/v2 && go clean ./... && cd -
+	cd golang/vaas/v3 && go clean ./... && cd -
 
 release-go:
 	git tag -a golang/vaas/v{{version}} -m "Release Go SDK {{version}}" && git push origin golang/vaas/v{{version}}
@@ -161,10 +153,10 @@ virtualenv-python:
 	cd python && python3 -m venv venv && cd -
 
 install-python: virtualenv-python
-	cd python && source venv/bin/activate && pip3 install -r requirements.txt && cd -
+	cd python && source venv/bin/activate && pip3 install . && pip3 install -e ".[test]" && cd -
 
 test-python: install-python
-	cd python && source venv/bin/activate && python -m unittest -v tests/test_* && cd -
+	cd python && source venv/bin/activate && pytest -v --tb=short && cd -
 
 clean-python:
 	cd python && rm -rf ./venv && cd -
