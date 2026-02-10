@@ -1,110 +1,110 @@
-# name: vaas-rust-ci
-# on:
-#   push:
-#     branches:
-#       - main
-#     paths:
-#       - "rust/**"
-#       - ".github/workflows/ci-rust.yaml"
-#     tags:
-#       - "rs*"
-#   pull_request:
-#     branches:
-#       - main
-#     paths:
-#       - "rust/**"
-#       - ".github/workflows/ci-rust.yaml"
-#   workflow_dispatch:
-#     inputs:
-#       environment:
-#         type: choice
-#         description: "Test environment"
-#         options:
-#           - production
-#           - staging
-#           - develop
-#         default: "production"
+name: vaas-rust-ci
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "rust/**"
+      - ".github/workflows/ci-rust.yaml"
+    tags:
+      - "rs*"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "rust/**"
+      - ".github/workflows/ci-rust.yaml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: "Test environment"
+        options:
+          - production
+          - staging
+          - develop
+        default: "production"
 
-# env:
-#   CLIENT_ID: ${{ secrets.CLIENT_ID }}
-#   CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
-#   VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
-#   TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
-#   VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
-#   VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
-#   VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
+env:
+  CLIENT_ID: ${{ secrets.CLIENT_ID }}
+  CLIENT_SECRET: ${{secrets.CLIENT_SECRET}}
+  VAAS_URL: "wss://gateway.production.vaas.gdatasecurity.de"
+  TOKEN_URL: "https://account.gdata.de/realms/vaas-production/protocol/openid-connect/token"
+  VAAS_CLIENT_ID: ${{ secrets.VAAS_CLIENT_ID }}
+  VAAS_USER_NAME: ${{ secrets.VAAS_USER_NAME }}
+  VAAS_PASSWORD: ${{secrets.VAAS_PASSWORD}}
 
-# jobs:
-#   build-rust:
-#     name: Build & Test Rust SDK
-#     runs-on: ubuntu-22.04
+jobs:
+  build-rust:
+    name: Build & Test Rust SDK
+    runs-on: ubuntu-22.04
 
-#     steps:
-#       - name: checkout
-#         uses: actions/checkout@v5
+    steps:
+      - name: checkout
+        uses: actions/checkout@v5
 
-#       - name: Scan for Viruses
-#         uses: ./.github/actions/vaas-scan-action
-#         with:
-#           VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
-#           VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
+      - name: Scan for Viruses
+        uses: ./.github/actions/vaas-scan-action
+        with:
+          VAAS_CLIENT_ID: ${{ secrets.VAAS_SCAN_CLIENT_ID }}
+          VAAS_CLIENT_SECRET: ${{ secrets.VAAS_SCAN_CLIENT_SECRET }}
 
-#       - name: set staging environment
-#         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/rs') && endsWith(github.ref, '-beta')))
-#         run: |
-#           echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
-#           echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
-#           echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
-#           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
-#           echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
-#           echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
-#           echo "VAAS_PASSWORD=${{ secrets.STAGING_VAAS_PASSWORD }}" >> $GITHUB_ENV
+      - name: set staging environment
+        if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags/rs') && endsWith(github.ref, '-beta')))
+        run: |
+          echo "CLIENT_ID=${{ secrets.STAGING_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "CLIENT_SECRET=${{ secrets.STAGING_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "VAAS_URL=wss://gateway.staging.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token" >> $GITHUB_ENV
+          echo "VAAS_CLIENT_ID=${{ secrets.STAGING_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "VAAS_USER_NAME=${{ secrets.STAGING_VAAS_USER_NAME }}" >> $GITHUB_ENV
+          echo "VAAS_PASSWORD=${{ secrets.STAGING_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
-#       - name: set develop environment
-#         if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags/rs') && endsWith(github.ref, '-alpha')))
-#         run: |
-#           echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
-#           echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
-#           echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
-#           echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
-#           echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
-#           echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
-#           echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
+      - name: set develop environment
+        if: (inputs.environment == 'develop' || (startsWith(github.ref, 'refs/tags/rs') && endsWith(github.ref, '-alpha')))
+        run: |
+          echo "CLIENT_ID=${{ secrets.DEVELOP_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "CLIENT_SECRET=${{ secrets.DEVELOP_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "VAAS_URL=wss://gateway.develop.vaas.gdatasecurity.de" >> $GITHUB_ENV
+          echo "TOKEN_URL=https://account-staging.gdata.de/realms/vaas-develop/protocol/openid-connect/token" >> $GITHUB_ENV
+          echo "VAAS_CLIENT_ID=${{ secrets.DEVELOP_VAAS_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "VAAS_USER_NAME=${{ secrets.DEVELOP_VAAS_USER_NAME }}" >> $GITHUB_ENV
+          echo "VAAS_PASSWORD=${{ secrets.DEVELOP_VAAS_PASSWORD }}" >> $GITHUB_ENV
 
-#       - name: install Rust stable
-#         uses: actions-rust-lang/setup-rust-toolchain@v1
-#         with:
-#           toolchain: stable
+      - name: install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
 
-#       - uses: Swatinem/rust-cache@v2
-#         with:
-#           workspaces: rust
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
 
-#       - name: run tests
-#         run: cargo test
-#         working-directory: rust
+      - name: run tests
+        run: cargo test
+        working-directory: rust
 
-#       - name: extract version
-#         if: startsWith(github.ref, 'refs/tags/rs')
-#         run: |
-#           echo "RELEASE_VERSION=${GITHUB_REF#refs/*/rs}" >> $GITHUB_ENV
-#           echo $RELEASE_VERSION
+      - name: extract version
+        if: startsWith(github.ref, 'refs/tags/rs')
+        run: |
+          echo "RELEASE_VERSION=${GITHUB_REF#refs/*/rs}" >> $GITHUB_ENV
+          echo $RELEASE_VERSION
 
-#       - name: set version
-#         if: startsWith(github.ref, 'refs/tags/rs')
-#         run: |
-#           sed -i "s/^version = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version = \"$RELEASE_VERSION\"/g" ./rust/Cargo.toml
+      - name: set version
+        if: startsWith(github.ref, 'refs/tags/rs')
+        run: |
+          sed -i "s/^version = \"[0-9]\+\.[0-9]\+\.[0-9]\+\"/version = \"$RELEASE_VERSION\"/g" ./rust/Cargo.toml
 
-#       - name: publish crates.io package
-#         if: startsWith(github.ref, 'refs/tags/rs')
-#         run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-#         working-directory: rust
+      - name: publish crates.io package
+        if: startsWith(github.ref, 'refs/tags/rs')
+        run: cargo publish --allow-dirty --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        working-directory: rust
 
-#       - name: Microsoft Teams Notification
-#         uses: skitionek/notify-microsoft-teams@master
-#         if: failure()
-#         with:
-#           webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
-#           title: "`Failed workflow on for VaaS-SDK vaas-rust-ci`"
-#           job: ${{ toJson(job) }}
-#           steps: ${{ toJson(steps) }}
+      - name: Microsoft Teams Notification
+        uses: skitionek/notify-microsoft-teams@master
+        if: failure()
+        with:
+          webhook_url: ${{ secrets.MSTEAMS_WEBHOOK }}
+          title: "`Failed workflow on for VaaS-SDK vaas-rust-ci`"
+          job: ${{ toJson(job) }}
+          steps: ${{ toJson(steps) }}
