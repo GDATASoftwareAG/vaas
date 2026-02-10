@@ -16,58 +16,85 @@
 
 With minimal effort, you can check a file, URL or hashsum for malicious content. No local installation of any anti-malware product is necessary. VaaS works out of the box, by providing detections from the G DATA cloud. Hosting VaaS on your own Kubernetes cluster, is an option as well.
 
-Simple example in Rust. Check below for more programming languages.
+This repository contains Software Development Kits (SDKs) for VaaS in several programming languages. The SDKs allow you to easily integrate VaaS into your software. Some examples are below:
 
-```rust
-use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
-use vaas::auth::authenticators::ClientCredentials;
-use std::convert::TryFrom;
-use std::time::Duration;
+## Examples
 
-#[tokio::main]
-async fn main() -> VResult<()> {
-    // Cancel the request after 10 seconds if no response is received
-    let ct = CancellationToken::from_seconds(10);
+### C#
 
-    // Authenticate and create VaaS instance
-    let authenticator = ClientCredentials::new(CLIENT_ID, CLIENT_SECRET);
-    let vaas = Vaas::builder(authenticator).build()?.connect().await?;
+```c#
+// Setup
+var authenticator = new ResourceOwnerPasswordGrantAuthenticator("vaas-customer", userName, password, tokenUrl);
+var vaas = VaasFactory.Create(authenticator);
 
-    // Open a file we want to check
-    let file = std::path::PathBuf::from("myfile");
-
-    // Ask VaaS for a verdict
-    let verdict = vaas.for_file(&file, &ct).await?;
-
-    // Prints "Clean", "Pup" or "Malicious"
-    println!("{}", verdict.verdict);
-    Ok(())
-}
+// Scan a file...
+var verdict = await vaas.ForFileAsync(file, CancellationToken.None);
+// or a URL...
+var verdict = await vaas.ForUrlAsync(uri, CancellationToken.None);
+// or just a SHA256 hash
+var verdict = await vaas.ForSha256Async(new ChecksumSha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"), CancellationToken.None);
 ```
 
+Full C# examples can be found in [dotnet examples](dotnet/examples/VaasExample).
+
+### Java
+
+```java
+// Setup
+var authenticator = new ResourceOwnerPasswordGrantAuthenticator("vaas-customer", userName, password, new URI(tokenUrl));
+var config = new VaasConfig(new URI(env.vaasUrl));
+var vaas = new Vaas(config, authenticator);
+
+// Scan a file...
+var verdict = vaas.forFile(file);
+// or a URL...
+var verdict = vaas.forUrl(url);
+// or just a a SHA256 hash
+var verdict = vaas.forSha256(new Sha256("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"));
+```
+
+Full Java examples can be found in [java examples](java/examples/VaasExample/).
+
+### More languages
+See below for a list of supported languages and examples.
+
 ## How to get started with VaaS
-If you are interested in trying out VaaS, you can sign up on our website to create a free trial account. Visit our registration page and follow the instructions to get started. If you have a business case or specific requirements, please contact us at oem@gdata.de to discuss your needs and explore how VaaS can best fit your organization.
+If you are interested in trying out VaaS, please check out [our website](https://www.gdatasoftware.com/business/security-services/verdict-as-a-service) ([German version](https://www.gdata.de/business/security-services/verdict-as-a-service)).
+
+We provide free trial accounts for evaluation purposes with our cloud version of VaaS. You can [sign up here](https://www.gdata.de/vaas-files/vaas-technical-onboarding.html) with a free trial account. You can then use the created credentials with any SDK in combination with our test environment:
+
+* **Authenticator**: ResourceOwnerPasswordGrant
+* **Client ID**: vaas-customer
+* **Username**: Your registered *email* address
+* **Password**: Your password
+* **Token/Authenticator URL**: https://account-staging.gdata.de/realms/vaas-staging/protocol/openid-connect/token
+* **VaaS URL**: https://gateway.staging.vaas.gdatasecurity.de (for SDKs which still use the Websocket API, use wss://gateway.staging.vaas.gdatasecurity.de instead)
+
+For production use of VaaS, please [contact us](https://www.gdata.de/help-en/vaas/contact/) to discuss your needs and explore how VaaS can best fit your organization. VaaS is available both as a cloud version and on-premise.
+
+## VaaS Documentation
+We provide an [online documentation](https://www.gdata.de/help-en/vaas/) for VaaS. The documentation includes setup examples, product descriptions and several guides to help you set things up.
 
 ## SDKs
 We provide SDKs for various programming languages to make it easy for you to integrate VaaS in your application. You can find the source code, examples, and documentation for each SDK in the corresponding repository. Currently, we support the following languages:
 
 |Language|Source Code|Examples|Documentation|Repository|
 |--------|-----------|--------|-------------|----------|
-|Rust|[Rust SDK](./rust/)| [Examples](./rust/examples)| [docs.rs](https://docs.rs/vaas/latest/vaas/) | [crates.io](https://crates.io/crates/vaas) | 
-|Java|[Java SDK](./java/)|[Examples](./java/examples)| [Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/java/Readme.md) | [maven central](https://mvnrepository.com/artifact/de.gdata/vaas)|
-|PHP|[PHP SDK](./php/)|[Examples](./php/examples)||[packagist](https://packagist.org/packages/gdata/vaas)|
-|TypeScript(DEPRECATED)|[TypeScript SDK](./typescript/)|[Examples](./typescript/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/typescript/Readme.md)|[npmjs](https://www.npmjs.com/package/gdata-vaas)
-|Python|[Python SDK](./python/)|[Examples](./python/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/python/README.md)|[pypi](https://pypi.org/project/gdata-vaas/)|
-|.NET|[.NET SDK](./dotnet/)|[Examples](./dotnet/examples)||[nuget.org](https://www.nuget.org/packages/GDataCyberDefense.Vaas)|
-|Ruby (DEPRECATED)|[Ruby SDK](./ruby/)|[Examples](./ruby/examples)|[Reamde](https://github.com/GDATASoftwareAG/vaas/blob/main/ruby/README.md)|[rubygems](https://rubygems.org/gems/vaas)|
-|Go|[Go SDK](./golang/vaas/)|[Examples](./golang/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/golang/vaas/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/golang/vaas)|
-|C++|[C++ SDK](./cpp/)||[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/cpp/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/cpp)|
+|Rust|[Rust SDK](rust/)|[Examples](rust/examples)| [docs.rs](https://docs.rs/vaas/latest/vaas/)|[crates.io](https://crates.io/crates/vaas)|
+|Java|[Java SDK](java/)|[Examples](java/examples)| [Readme](java/Readme.md) | [maven central](https://mvnrepository.com/artifact/de.gdata/vaas)|
+|PHP|[PHP SDK](php/)|[Examples](php/examples)||[packagist](https://packagist.org/packages/gdata/vaas)|
+|TypeScript(DEPRECATED)|[TypeScript SDK](typescript/)|[Examples](typescript/examples)|[Readme](typescript/Readme.md)|[npmjs](https://www.npmjs.com/package/gdata-vaas)
+|Python|[Python SDK](python/)|[Examples](python/examples)|[Readme](python/README.md)|[pypi](https://pypi.org/project/gdata-vaas/)|
+|.NET|[.NET SDK](dotnet/)|[Examples](dotnet/examples)||[nuget.org](https://www.nuget.org/packages/GDataCyberDefense.Vaas)|
+|Ruby (DEPRECATED)|[Ruby SDK](ruby/)|[Examples](ruby/examples)|[Readme](ruby/README.md)|[rubygems](https://rubygems.org/gems/vaas)|
+|Go|[Go SDK](golang/vaas/v3)|[Examples](golang/vaas/v3/examples)|[Readme](golang/vaas/v3/README.md)|[Github](https://github.com/GDATASoftwareAG/vaas/tree/main/golang/vaas/v3)|
+|C++|[C++ SDK](./cpp/)||[Readme](cpp/README.md)||
 
 The following table shows the functionality supported by each SDK:
 
 |Functionality|Rust|Java|PHP|TypeScript|.NET|Python|Ruby (DEPRECATED)|Golang|C++|
 |---|---|---|---|---|---|---|---|---|---|
-|Use HTTP API|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|&#10060;|
+|Use HTTP API|&#9989;|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|&#10060;|&#9989;|&#9989;|
 |Check SHA256|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
 |Check File|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|
 |Check URL|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#9989;|&#10060;|
@@ -109,7 +136,7 @@ The `release-*` task triggers a Github Action to build and release a new version
 just release-rust 0.1.0
 ```
 
-As the SDKs need credentials to authenticate to the VaaS API. You need to provide them in a `.env` file. Copy your `.env` file into the root directory of the project. The C++ SDK needs special credentials, which you can provide in a `.cpp.env` file.
+As the SDKs need credentials to authenticate to the VaaS API. You need to provide them in `.env.https` and `.env.wss` file. Copy your `.env.https` and `.env.wss` files into the root directory of the project. The `.env.https` file should contain the credentials with the Vaas Url set to `https`and the wss file should contain the same credentials, but with a `wss` url instead.
 
 ```bash
 # Copy the .env.wss and .env.https files to all SDK folders
