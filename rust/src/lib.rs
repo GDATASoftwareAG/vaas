@@ -17,23 +17,23 @@
 //! Check a file hash for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict, Sha256};
-//! use vaas::auth::authenticators::ClientCredentials;
+//! use vaas::authentication::ClientCredentials;
+//! use vaas::options::ForSha256Options;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> VResult<()> {
-//!     // Cancel the request after 10 seconds if no response is received.
-//!     let ct = CancellationToken::from_seconds(10);
-//!     
-//!     //Authenticate and create VaaS instance
-//!     let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
-//!     let vaas = Vaas::builder(authenticator).build()?.connect().await?;
+//!     let ct = CancellationToken::new();
+//!     // Create VaaS instance
+//!     let authenticator = ClientCredentials::try_new("client_id".to_string(), "client_secret".to_string())?;
+//!     let vaas = Vaas::builder(authenticator).build()?;
 //!
 //!     // Create the SHA256 we want to check.
 //!     let sha256 = Sha256::try_from("698CDA840A0B344639F0C5DBD5C629A847A27448A9A179CB6B7A648BC1186F23")?;
 //!
-//!     let verdict = vaas.for_sha256(&sha256, &ct).await?;
+//!     // Perform the lookup
+//!     let verdict = vaas.for_sha256(&sha256, ForSha256Options::default(), &ct).await?;
 //!
 //!     // Prints "Clean", "Malicious" or "Unknown"
 //!     println!("{}", verdict.verdict);
@@ -44,23 +44,23 @@
 //! Check a file for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
-//! use vaas::auth::authenticators::ClientCredentials;
+//! use vaas::authentication::ClientCredentials;
+//! use vaas::options::ForFileOptions;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> VResult<()> {
-//!     // Cancel the request after 10 seconds if no response is received.
-//!     let ct = CancellationToken::from_seconds(10);
-//!
-//!     //Authenticate and create VaaS instance
-//!     let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
-//!     let vaas = Vaas::builder(authenticator).build()?.connect().await?;
+//!     let ct = CancellationToken::new();
+//!     // Create VaaS instance
+//!     let authenticator = ClientCredentials::try_new("client_id".to_string(), "client_secret".to_string())?;
+//!     let vaas = Vaas::builder(authenticator).build()?;
 //!
 //!     // Create file we want to check.
-//!     let file = std::path::PathBuf::from("myfile");
+//!     let file = std::path::Path::new("myfile");
 //!
-//!     let verdict = vaas.for_file(&file, &ct).await?;
+//!     // Perform the lookup
+//!     let verdict = vaas.for_file(&file, ForFileOptions::default(), &ct).await?;
 //!
 //!     // Prints "Clean", "Pup" or "Malicious"
 //!     println!("{}", verdict.verdict);
@@ -71,22 +71,23 @@
 //! Check a file behind a URL for malicious content:
 //! ```rust,no_run
 //! use vaas::{error::VResult, CancellationToken, Vaas, VaasVerdict};
-//! use vaas::auth::authenticators::ClientCredentials;
+//! use vaas::authentication::ClientCredentials;
+//! use vaas::options::ForUrlOptions;
 //! use reqwest::Url;
 //! use std::convert::TryFrom;
 //! use std::time::Duration;
 //!
 //! #[tokio::main]
 //! async fn main() -> VResult<()> {
-//!     // Cancel the request after 10 seconds if no response is received.
-//!     let ct = CancellationToken::from_seconds(10);
-//!     
-//!     //Authenticate and create VaaS instance
-//!     let authenticator = ClientCredentials::new("client_id".to_string(), "client_secret".to_string());
-//!     let vaas = Vaas::builder(authenticator).build()?.connect().await?;
+//!     let ct = CancellationToken::new();
+//!     // Create VaaS instance
+//!     let authenticator = ClientCredentials::try_new("client_id".to_string(), "client_secret".to_string())?;
+//!     let vaas = Vaas::builder(authenticator).build()?;
 //!
 //!     let url = Url::parse("https://mytesturl.test").unwrap();
-//!     let verdict = vaas.for_url(&url, &ct).await?;
+//!
+//!     // Perform the lookup
+//!     let verdict = vaas.for_url(&url, ForUrlOptions::default(), &ct).await?;
 //!
 //!     // Prints "Clean", "Pup" or "Malicious"
 //!     println!("{}", verdict.verdict);
@@ -96,21 +97,20 @@
 //!
 #![warn(missing_docs)]
 
-pub mod auth;
+pub mod authentication;
 pub mod builder;
-pub mod cancellation;
-pub mod connection;
 pub mod error;
+mod http;
 pub mod message;
-mod options;
+pub mod options;
 pub mod sha256;
 pub mod vaas;
 pub mod vaas_verdict;
-pub(crate) mod response_broker;
 
 pub use crate::vaas::Vaas;
 pub use builder::Builder;
-pub use cancellation::CancellationToken;
-pub use connection::Connection;
 pub use sha256::Sha256;
 pub use vaas_verdict::VaasVerdict;
+
+pub use tokio_util::bytes::Bytes;
+pub use tokio_util::sync::CancellationToken;

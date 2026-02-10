@@ -53,7 +53,7 @@ We provide SDKs for various programming languages to make it easy for you to int
 
 |Language|Source Code|Examples|Documentation|Repository|
 |--------|-----------|--------|-------------|----------|
-|Rust(DEPRECATED)|[Rust SDK](./rust/)| [Examples](./rust/examples)| [docs.rs](https://docs.rs/vaas/latest/vaas/) | [crates.io](https://crates.io/crates/vaas) | 
+|Rust|[Rust SDK](./rust/)| [Examples](./rust/examples)| [docs.rs](https://docs.rs/vaas/latest/vaas/) | [crates.io](https://crates.io/crates/vaas) | 
 |Java|[Java SDK](./java/)|[Examples](./java/examples)| [Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/java/Readme.md) | [maven central](https://mvnrepository.com/artifact/de.gdata/vaas)|
 |PHP|[PHP SDK](./php/)|[Examples](./php/examples)||[packagist](https://packagist.org/packages/gdata/vaas)|
 |TypeScript(DEPRECATED)|[TypeScript SDK](./typescript/)|[Examples](./typescript/examples)|[Readme](https://github.com/GDATASoftwareAG/vaas/blob/main/typescript/Readme.md)|[npmjs](https://www.npmjs.com/package/gdata-vaas)
