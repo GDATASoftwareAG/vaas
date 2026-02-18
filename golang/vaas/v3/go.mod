@@ -2,7 +2,7 @@ module github.com/GDATASoftwareAG/vaas/golang/vaas/v3
 
 go 1.24.0
 
-toolchain go1.25.6
+toolchain go1.26.0
 
 require (
 	github.com/go-playground/validator/v10 v10.30.1
