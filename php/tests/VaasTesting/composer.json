@@ -16,7 +16,7 @@
         "monolog/monolog": "^3.8 || ^2.10"
     },
     "require-dev": {
-        "phpunit/phpunit": "^11 || ^10 || ^12",
+        "phpunit/phpunit": "^11 || ^10 || ^12 || ^13",
         "phpspec/prophecy-phpunit": "^2"
     }
 }
