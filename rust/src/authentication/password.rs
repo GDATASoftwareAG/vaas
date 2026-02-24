@@ -41,7 +41,7 @@ impl Authenticator for Password {
         let params = [
             ("client_id", self.client_id.as_str()),
             ("username", self.username.as_str()),
-            ("password", self.password.as_str()),
+            ("password", self.password.as_unredacted_str()),
             ("grant_type", "password"),
         ];
         self.receiver.get_token(&params).await

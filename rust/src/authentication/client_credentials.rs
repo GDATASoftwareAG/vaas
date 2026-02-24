@@ -38,7 +38,7 @@ impl Authenticator for ClientCredentials {
     async fn get_token(&mut self) -> VResult<String> {
         let params = [
             ("client_id", self.client_id.as_str()),
-            ("client_secret", self.client_secret.as_str()),
+            ("client_secret", self.client_secret.as_unredacted_str()),
             ("grant_type", "client_credentials"),
         ];
         self.receiver.get_token(&params).await

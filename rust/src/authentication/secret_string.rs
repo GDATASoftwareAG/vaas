@@ -7,10 +7,10 @@ pub struct SecretString {
     inner: String,
 }
 
-impl Deref for SecretString {
-    type Target = String;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
+impl SecretString {
+    /// Return the internal string without redaction
+    pub fn as_unredacted_str(&self) -> &str {
+        self.inner.as_str()
     }
 }
 
