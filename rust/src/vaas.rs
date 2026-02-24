@@ -214,7 +214,7 @@ async fn parse_vaas_error(response: reqwest::Response) -> Error {
     } else {
         Error::ServerError(ProblemDetails {
             r#type: "unknown".to_string(),
-            details: "Unknown server error - ".to_string() + &status.to_string(),
+            detail: "Unknown server error - ".to_string() + &status.to_string(),
         })
     }
 }
@@ -234,7 +234,7 @@ mod tests {
     use std::io::Write;
     use tokio_util::sync::CancellationToken;
     use url::Url;
-    
+
     const MOCK_CLIENT: &str = "vaas";
     const MOCK_CLIENT_SECRET: &str = "qwertz";
     const TEST_SHA256: &str = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
@@ -347,7 +347,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasClientException".to_string(),
-                details: "Mocked client-side error".to_string(),
+                detail: "Mocked client-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::BAD_REQUEST.as_u16() as usize)
             .create_async()
@@ -380,7 +380,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasServerException".to_string(),
-                details: "Mocked server-side error".to_string(),
+                detail: "Mocked server-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
             .create_async()
@@ -553,7 +553,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasClientException".to_string(),
-                details: "Mocked client-side error".to_string(),
+                detail: "Mocked client-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::BAD_REQUEST.as_u16() as usize)
             .create_async()
@@ -596,7 +596,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasServerException".to_string(),
-                details: "Mocked server-side error".to_string(),
+                detail: "Mocked server-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
             .create_async()
@@ -769,7 +769,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasClientException".to_string(),
-                details: "Mocked client-side error".to_string(),
+                detail: "Mocked client-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::BAD_REQUEST.as_u16() as usize)
             .create_async()
@@ -804,7 +804,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasServerException".to_string(),
-                details: "Mocked server-side error".to_string(),
+                detail: "Mocked server-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
             .create_async()
@@ -979,7 +979,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasClientException".to_string(),
-                details: "Mocked client-side error".to_string(),
+                detail: "Mocked client-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::BAD_REQUEST.as_u16() as usize)
             .create_async()
@@ -1012,7 +1012,7 @@ mod tests {
             .match_query(Matcher::Any)
             .with_body(json(ProblemDetails {
                 r#type: "VaasServerException".to_string(),
-                details: "Mocked server-side error".to_string(),
+                detail: "Mocked server-side error".to_string(),
             }))
             .with_status(reqwest::StatusCode::INTERNAL_SERVER_ERROR.as_u16() as usize)
             .create_async()

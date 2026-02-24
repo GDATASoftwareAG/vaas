@@ -12,11 +12,11 @@ pub struct ProblemDetails {
     #[serde(rename = "type")]
     pub r#type: String,
     /// Problem details as per RFC7807
-    pub details: String,
+    pub detail: String,
 }
 
 impl Display for ProblemDetails {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} - {} ", self.r#type, self.details)
+        write!(f, "{} - {} ", self.r#type, self.detail)
     }
 }
