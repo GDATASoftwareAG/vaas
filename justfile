@@ -34,7 +34,7 @@ populate-cpp-env:
   mkdir -p cpp/build && cp .env.https cpp/build/.env
 
 populate-rust-env:
-  cp .env.wss rust/.env
+  cp .env.https rust/.env
 
 populate-ts-env:
   cp .env.wss typescript/.env
