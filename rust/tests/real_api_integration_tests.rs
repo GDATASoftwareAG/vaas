@@ -164,7 +164,7 @@ async fn test_for_stream(vaas_with_client_credentials: Vaas) -> Result<(), Error
 async fn test_for_url(
     vaas_with_client_credentials: Vaas,
     #[case] url: Url,
-    #[case] expected_veridct: Verdict,
+    #[case] expected_verdict: Verdict,
 ) -> Result<(), Error> {
     let options = ForUrlOptions::default();
     let ct = CancellationToken::new();
@@ -174,8 +174,8 @@ async fn test_for_url(
         .await?;
 
     assert_eq!(
-        verdict.verdict, expected_veridct,
-        "unexpected verdict for {url}, expected {expected_veridct} got {}",
+        verdict.verdict, expected_verdict,
+        "unexpected verdict for {url}, expected {expected_verdict} got {}",
         verdict.verdict
     );
     Ok(())
@@ -189,7 +189,7 @@ async fn test_for_url(
 async fn test_for_buf(
     vaas_with_client_credentials: Vaas,
     #[case] data: &str,
-    #[case] expected_veridct: Verdict,
+    #[case] expected_verdict: Verdict,
 ) -> Result<(), Error> {
     let options = ForStreamOptions::default();
     let ct = CancellationToken::new();
@@ -200,8 +200,8 @@ async fn test_for_buf(
         .await?;
 
     assert_eq!(
-        verdict.verdict, expected_veridct,
-        "unexpected verdict for {data}, expected {expected_veridct} got {}",
+        verdict.verdict, expected_verdict,
+        "unexpected verdict for {data}, expected {expected_verdict} got {}",
         verdict.verdict
     );
     Ok(())
