@@ -7,7 +7,7 @@ pub static DEFAULT_TOKEN_URL: &str =
 
 /// This trait has to be implemented by any authentication methods for VaaS.
 #[async_trait]
-pub trait Authenticator: Debug {
+pub trait Authenticator: Debug + Send + Sync {
     /// Return a valid token that can be used to authenticate against the VaaS service.
     async fn get_token(&mut self) -> VResult<String>;
 }

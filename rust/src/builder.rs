@@ -25,7 +25,7 @@ pub struct Builder {
 
 impl Builder {
     /// Create a new `VaasBuilder` to create a [Vaas] instance.
-    pub fn new(authenticator: impl Authenticator + 'static) -> Self {
+    pub fn new(authenticator: impl Authenticator + Send + Sync + 'static) -> Self {
         let authenticator = Box::new(authenticator);
         Self {
             authenticator,
