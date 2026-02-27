@@ -2,6 +2,9 @@ use slint::Model;
 use std::{env, path::PathBuf, rc::Rc};
 use structopt::StructOpt;
 use vaas::{CancellationToken, Vaas};
+use vaas::authentication::Password;
+use vaas::options::ForFileOptions;
+
 slint::include_modules!();
 
 #[tokio::main]
@@ -16,18 +19,15 @@ async fn main() {
     let handle_weak = ui.as_weak();
     ui.on_scan({
         move || {
-            let vaas_token = opt.token.clone();
+            let authenticator = Password::try_new("vaas-customer", opt.client_username, opt.client_password).unwrap();
             let handle_weak = handle_weak.clone();
             let file_items_clone = file_items.clone();
             tokio::spawn(async move {
-                let vaas = Vaas::builder(vaas_token)
+                let vaas = Vaas::builder(authenticator)
                     .build()
-                    .expect("Failed to create VaaS client.") // TODO: Show error to user.
-                    .connect()
-                    .await
-                    .expect("Failed to connect to VaaS.");
+                    .expect("Failed to create VaaS client.");
 
-                let cts = CancellationToken::from_minutes(1);
+                let cts = CancellationToken::new();
 
                 let files = file_items_clone
                     .iter()
@@ -46,7 +46,11 @@ async fn main() {
                     )
                 });
 
-                let verdicts = vaas.for_file_list(&files, &cts).await;
+                let mut verdicts = Vec::new();
+                for file in files {
+                    let verdict = vaas.for_file(&file, ForFileOptions::new(), &cts).await;
+                    verdicts.push(verdict);
+                }
                 fic.iter().zip(verdicts).for_each(|(f, v)| {
                     update_file_model(
                         handle_weak.clone(),
@@ -98,9 +102,13 @@ fn get_file_name(path: &str) -> String {
     about = "Scan files for malicious content."
 )]
 struct Opt {
-    /// VaaS Token
+    /// VaaS Username (Email)
     #[structopt(short, long)]
-    token: String,
+    client_username: String,
+
+    /// VaaS password
+    #[structopt(short, long)]
+    client_password: String,
 
     /// Files to scan (full path)
     #[structopt(short, long)]
