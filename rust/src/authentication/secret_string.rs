@@ -1,5 +1,4 @@
 use std::fmt::Debug;
-use std::ops::Deref;
 
 #[derive(Clone)]
 /// Wrapper for a `String`, but does not reveal the string in debug :? formatting

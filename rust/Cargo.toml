@@ -15,7 +15,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.17"
 reqwest = { version = "0.13.1", features = ["stream", "form", "json"] }
 regex = "1.12.2"
-tokio = { version = "1.49", features = ["sync", "fs"] }
+tokio = { version = "1.49", features = ["sync", "fs", "macros"] }
 sha2 = "0.10.8"
 futures = "0.3.31"
 async-trait = "0.1.89"

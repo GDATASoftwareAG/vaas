@@ -26,7 +26,7 @@ pub struct Vaas {
 impl Vaas {
     /// Create a new [Builder] instance to configure the `Vaas` instance.
     /// Equivalent to `Builder::new(authenticator)`
-    pub fn builder(authenticator: impl Authenticator + Send + Sync + 'static) -> Builder {
+    pub fn builder(authenticator: impl Authenticator + 'static) -> Builder {
         Builder::new(authenticator)
     }
 
