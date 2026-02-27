@@ -8,9 +8,9 @@
 //! The `vaas` SDK is intended for developers who want to integrate Verdict-as-a-Service into their product.
 //! For example to check all files uploaded by user on a website or plugin into an e-mail client, to check all attachments of an e-mail for malicious content.
 //!
-//! ## Contact
+//! ## More information
 //!
-//! For questions and support please contact us at [OEM at GDATA](mailto:oem@gdata.de)!
+//! Please see the main project information on [GitHub](https://github.com/GDATASoftwareAG/vaas) for more information on VaaS, licensing, and credentials.
 //!
 //! # Examples
 //!
