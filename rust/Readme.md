@@ -10,11 +10,7 @@ It gives you as a developer a functions to talk to G DATA VaaS. It wraps away th
 
 ### for_sha256
 
-If you calculate the sha256 for a file, you can request that sha256 against G DATA VaaS. It's the fastest way to get a verdict from our service.
-
-### for_sha256_list
-
-You can also request multiple sha256 with a single function call.
+If you calculate the sha256 for a file, you can request that sha256 against G DATA VaaS. It's the fastest way to get a verdict from our service. This requires the hash value to be known to the VaaS server.
 
 ### for_url
 
@@ -24,9 +20,13 @@ If you want to request if a file behind a URL is safe, you can specify the URL a
 
 You can also ask for a file itself. You will still get the benefit of a fast verdict via Sha256 because the SDK will do that for you first. But additionally, if we don't know the file, the file will get uploaded and (automatically) analyzed by us.
 
-### for_file_list
+### for_stream
 
-You can also request multiple files with a single function call.
+For data blobs which do not exist as a file on-disk, you can also supply the file as a binary data stream.
+
+### for_buf
+
+Effectively a simplified version of `for_stream`, you can supply a byte blob as a file.
 
 ## How to use
 
@@ -41,8 +41,4 @@ For more insights about the api, please check out our documentation on [Docs.rs]
 
 ## <a name="interested"></a>I'm interested in VaaS
 
-You need credentials to use the service in your application. If you are interested in using VaaS, please [contact us](mailto:oem@gdata.de).
-
-## Developing with Visual Studio Code
-
-Every single SDKs also includes [Devcontainer](./devcontainer/). If you use the [Visual Studio Code Dev Containers extension](https://code.visualstudio.com/docs/devcontainers/containers), you can run the code in a full-featured development environment.
+You need credentials to use the service in your application. Please [check out the main project README for further information](https://github.com/GDATASoftwareAG/vaas/blob/main/Readme.md).
