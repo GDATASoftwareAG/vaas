@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
