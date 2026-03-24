@@ -40,7 +40,7 @@ jobs:
     outputs:
       major_version: ${{ steps.extract_major_version.outputs.major_version }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Extract major version
         id: extract_major_version
         if: startsWith(github.ref, 'refs/tags')
@@ -49,7 +49,7 @@ jobs:
   virus-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
         with:
@@ -61,7 +61,7 @@ jobs:
     container:
       image: golang:latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-beta')))
@@ -110,7 +110,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -139,7 +139,7 @@ jobs:
     container:
       image: golang:latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
         shell: bash
@@ -197,10 +197,10 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Extract version info
         id: extract_version
@@ -217,7 +217,7 @@ jobs:
           echo "patch=$patch" >> "$GITHUB_OUTPUT"
 
       - name: Docker meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         id: meta
         with:
           images: |
@@ -230,14 +230,14 @@ jobs:
             latest=auto
 
       - name: login to ghcr.io/gdatasoftwareag
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_USERNAME }}
           password: ${{ secrets.GHCR_IO_GDATASOFTWAREAG_PASSWORD }}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: "golang/vaas/v3"
           file: "golang/vaas/v3/git-scan.Dockerfile"
