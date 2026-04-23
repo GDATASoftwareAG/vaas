@@ -1,6 +1,6 @@
 [package]
 name = "vaas"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 license = "MIT"
 authors = ["GDATA CyberDefense AG"]
@@ -16,7 +16,7 @@ thiserror = "2.0.17"
 reqwest = { version = "0.13.1", features = ["stream", "form", "json"] }
 regex = "1.12.2"
 tokio = { version = "1.49", features = ["sync", "fs", "macros"] }
-sha2 = "0.10.8"
+sha2 = "0.11.0"
 futures = "0.3.31"
 async-trait = "0.1.89"
 tokio-util = "0.7.18"
