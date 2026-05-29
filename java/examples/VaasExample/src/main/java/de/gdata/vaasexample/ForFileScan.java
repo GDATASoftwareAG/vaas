@@ -17,10 +17,10 @@ public class ForFileScan {
         var file = Path.of(Environment.getenv("SCAN_PATH"));
         var verdict = vaas.forFile(file);
 
-        System.out.printf("File %s was sync detected as %s", verdict.getSha256(), verdict.getVerdict());
+        System.out.printf("File %s was sync detected as %s and is encrypted: %s", verdict.getSha256(), verdict.getVerdict(), verdict.getIsEncrypted());
 
         vaas.forFileAsync(file).thenAccept(vaasResult -> {
-            System.out.printf("\nFile %s was async detected as %s", vaasResult.getSha256(), vaasResult.getVerdict());
+            System.out.printf("\nFile %s was async detected as %s and is encrypted: %s", vaasResult.getSha256(), vaasResult.getVerdict(), vaasResult.getIsEncrypted());
         }).get();
     }
 }

@@ -12,6 +12,7 @@ public class VaasVerdict {
     String detection;
     String fileType;
     String mimeType;
+    Boolean isEncrypted;
 
     public VaasVerdict(UrlReport urlReport) {
         this.sha256 = urlReport.sha256;
@@ -19,6 +20,7 @@ public class VaasVerdict {
         this.detection = urlReport.detection;
         this.fileType = urlReport.fileType;
         this.mimeType = urlReport.mimeType;
+        this.isEncrypted = urlReport.isEncrypted;
     }
 
     public VaasVerdict(FileReport fileReport) {
@@ -27,6 +29,7 @@ public class VaasVerdict {
         this.detection = fileReport.detection;
         this.fileType = fileReport.fileType;
         this.mimeType = fileReport.mimeType;
+        this.isEncrypted = fileReport.isEncrypted;
     }
 
     public static VaasVerdict From(UrlReport urlReport) {
