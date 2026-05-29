@@ -9,6 +9,7 @@ class VaasVerdict
     public ?string $detection;
     public ?string $fileType;
     public ?string $mimeType;
+    public ?bool $isEncrypted;
 
     public static function from(array $data): self
     {
@@ -18,6 +19,7 @@ class VaasVerdict
         $verdict->detection = $data['detection'] ?? null;
         $verdict->fileType = $data['fileType'] ?? null;
         $verdict->mimeType = $data['mimeType'] ?? null;
+        $verdict->isEncrypted = $data['isEncrypted'] ?? null;
         return $verdict;
     }
     
@@ -28,7 +30,8 @@ class VaasVerdict
             'verdict' => $this->verdict,
             'detection' => $this->detection,
             'fileType' => $this->fileType,
-            'mimeType' => $this->mimeType
+            'mimeType' => $this->mimeType,
+            'isEncrypted' => $this->isEncrypted
         ]);
     }
 }
