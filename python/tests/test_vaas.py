@@ -1099,3 +1099,50 @@ class TestVaas:
 
         with pytest.raises(asyncio.CancelledError):
             await vaas.for_url(url)
+
+PASSWORD_ZIP_URL = "https://samples.develop.vaas.gdatasecurity.de/password.zip"
+WITH_AND_WITHOUT_PASSWORD_ZIP_URL = "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip"
+
+
+class TestVaasEncrypted:
+    @pytest.mark.asyncio()
+    async def test_for_file_if_encrypted_returns_clean_and_is_encrypted(self, vaas):
+        async with httpx.AsyncClient() as client:
+            filename = "/tmp/password.zip"
+            response = await client.get(PASSWORD_ZIP_URL)
+            response.raise_for_status()
+            with open(filename, mode="wb") as file:
+                file.write(response.content)
+
+            verdict = await vaas.for_file(filename)
+
+            assert verdict.verdict == "Clean"
+            assert verdict.isEncrypted is True
+
+    @pytest.mark.asyncio()
+    async def test_for_file_if_contains_eicar_and_encrypted_returns_malicious_and_is_encrypted(self, vaas):
+        async with httpx.AsyncClient() as client:
+            filename = "/tmp/with-and-without-password.zip"
+            response = await client.get(WITH_AND_WITHOUT_PASSWORD_ZIP_URL)
+            response.raise_for_status()
+            with open(filename, mode="wb") as file:
+                file.write(response.content)
+
+            verdict = await vaas.for_file(filename)
+
+            assert verdict.verdict == "Malicious"
+            assert verdict.isEncrypted is True
+
+    @pytest.mark.asyncio()
+    async def test_for_url_if_encrypted_returns_clean_and_is_encrypted(self, vaas):
+        verdict = await vaas.for_url(PASSWORD_ZIP_URL)
+
+        assert verdict.verdict == "Clean"
+        assert verdict.isEncrypted is True
+
+    @pytest.mark.asyncio()
+    async def test_for_url_if_contains_eicar_and_encrypted_returns_malicious_and_is_encrypted(self, vaas):
+        verdict = await vaas.for_url(WITH_AND_WITHOUT_PASSWORD_ZIP_URL)
+
+        assert verdict.verdict == "Malicious"
+        assert verdict.isEncrypted is True
