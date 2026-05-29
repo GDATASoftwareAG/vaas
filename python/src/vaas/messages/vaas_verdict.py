@@ -7,6 +7,7 @@ class VaasVerdict(BaseModel):
     detection: Optional[str]
     fileType: Optional[str]
     mimeType: Optional[str]
+    isEncrypted: Optional[bool] = None
 
     @staticmethod
     def from_report(report):
@@ -15,5 +16,6 @@ class VaasVerdict(BaseModel):
             verdict=report.verdict,
             detection=report.detection,
             fileType=report.fileType,
-            mimeType=report.mimeType
+            mimeType=report.mimeType,
+            isEncrypted=report.isEncrypted
         )
