@@ -1,5 +1,6 @@
 package de.gdata.test.unit;
 
+import de.gdata.test.TestDotenv;
 import de.gdata.vaas.authentication.ClientCredentialsGrantAuthenticator;
 import de.gdata.vaas.authentication.ResourceOwnerPasswordGrantAuthenticator;
 import io.github.cdimascio.dotenv.Dotenv;
@@ -11,9 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class AuthenticatorTest {
-    private static final Dotenv dotenv = Dotenv.configure()
-            .ignoreIfMissing()
-            .load();
+    private static final Dotenv dotenv = TestDotenv.load();
 
     private static String getEnvironmentKey(String key) {
         var value = dotenv.get(key);

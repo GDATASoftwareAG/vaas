@@ -1,6 +1,7 @@
 package de.gdata.test.integration;
 
 import com.google.gson.Gson;
+import de.gdata.test.TestDotenv;
 import de.gdata.vaas.Sha256;
 import de.gdata.vaas.Vaas;
 import de.gdata.vaas.VaasConfig;
@@ -55,9 +56,7 @@ public class RealApiIntegrationTests {
         private static final String PASSWORD_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip";
         private static final String WITH_AND_WITHOUT_PASSWORD_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip";
 
-        private static final Dotenv dotenv = Dotenv.configure()
-                        .ignoreIfMissing()
-                        .load();
+        private static final Dotenv dotenv = TestDotenv.load();
 
         private static final SamplesFixture samplesFixture = new SamplesFixture();
         private static final IAuthenticator authenticatorFixture;
