@@ -320,6 +320,7 @@ mod tests {
                 detection: None,
                 file_type: None,
                 mime_type: None,
+                is_encrypted: None,
             }))
             .create_async()
             .await;
@@ -515,6 +516,7 @@ mod tests {
                 detection: None,
                 file_type: None,
                 mime_type: None,
+                is_encrypted: None,
             }))
             .create_async()
             .await;
@@ -739,6 +741,7 @@ mod tests {
                 detection: None,
                 file_type: None,
                 mime_type: None,
+                is_encrypted: None,
             }))
             .create_async()
             .await;
@@ -951,6 +954,7 @@ mod tests {
                 detection: None,
                 file_type: None,
                 mime_type: None,
+                is_encrypted: None,
             }))
             .create_async()
             .await;

@@ -12,6 +12,7 @@ pub struct FileReport {
     pub detection: Option<String>,
     pub file_type: Option<String>,
     pub mime_type: Option<String>,
+    pub is_encrypted: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -24,4 +25,5 @@ pub struct UrlReport {
     pub detection: Option<String>,
     pub file_type: Option<String>,
     pub mime_type: Option<String>,
+    pub is_encrypted: Option<bool>,
 }
