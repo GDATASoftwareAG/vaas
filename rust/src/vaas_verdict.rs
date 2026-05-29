@@ -19,6 +19,8 @@ pub struct VaasVerdict {
     pub file_type: Option<String>,
     /// mime type as classified by https://www.darwinsys.com/file/
     pub mime_type: Option<String>,
+    /// Whether the file is encrypted
+    pub is_encrypted: Option<bool>,
 }
 
 impl From<FileReport> for VaasVerdict {
@@ -29,6 +31,7 @@ impl From<FileReport> for VaasVerdict {
             detection: report.detection,
             file_type: report.file_type,
             mime_type: report.mime_type,
+            is_encrypted: report.is_encrypted,
         }
     }
 }
@@ -41,6 +44,7 @@ impl From<UrlReport> for VaasVerdict {
             detection: report.detection,
             file_type: report.file_type,
             mime_type: report.mime_type,
+            is_encrypted: report.is_encrypted,
         }
     }
 }

@@ -1,5 +1,6 @@
 use reqwest::Url;
 use std::io::Write;
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::LazyLock;
 use tokio_util::sync::CancellationToken;
@@ -14,8 +15,26 @@ static EICAR_SHA256: LazyLock<Sha256> = LazyLock::new(|| {
 });
 const EICAR_STRING: &str = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
 
+fn load_dotenv_from_ancestors() {
+    let mut dir = std::env::current_dir().expect("Failed to get current directory");
+    loop {
+        let candidate = dir.join(".env");
+        if candidate.is_file() {
+            dotenv::from_path(Path::new(&candidate)).ok();
+            return;
+        }
+        match dir.parent() {
+            Some(parent) => dir = parent.to_owned(),
+            None => return,
+        }
+    }
+}
+
+static DOTENV: LazyLock<()> = LazyLock::new(load_dotenv_from_ancestors);
+
 fn vaas_with_authenticator(authenticator: impl Authenticator + 'static) -> Vaas {
-    let vaas_url = dotenv::var("VAAS_URL")
+    let _ = *DOTENV;
+    let vaas_url = std::env::var("VAAS_URL")
         .expect("No VAAS_URL environment variable set to be used in the integration tests");
     Vaas::builder(authenticator)
         .url(Url::parse(&vaas_url).unwrap())
@@ -25,13 +44,14 @@ fn vaas_with_authenticator(authenticator: impl Authenticator + 'static) -> Vaas 
 
 #[rstest::fixture]
 fn vaas_with_client_credentials() -> Vaas {
-    let token_url: Url = dotenv::var("TOKEN_URL")
+    let _ = *DOTENV;
+    let token_url: Url = std::env::var("TOKEN_URL")
         .expect("No TOKEN_URL environment variable set to be used in the integration tests")
         .parse()
         .expect("Failed to parse TOKEN_URL environment variable");
-    let client_id = dotenv::var("CLIENT_ID")
+    let client_id = std::env::var("CLIENT_ID")
         .expect("No CLIENT_ID environment variable set to be used in the integration tests");
-    let client_secret = dotenv::var("CLIENT_SECRET")
+    let client_secret = std::env::var("CLIENT_SECRET")
         .expect("No CLIENT_SECRET environment variable set to be used in the integration tests");
     let authenticator = ClientCredentials::try_new(client_id, client_secret)
         .unwrap()
@@ -41,15 +61,16 @@ fn vaas_with_client_credentials() -> Vaas {
 
 #[rstest::fixture]
 fn vaas_with_password() -> Vaas {
-    let token_url: Url = dotenv::var("TOKEN_URL")
+    let _ = *DOTENV;
+    let token_url: Url = std::env::var("TOKEN_URL")
         .expect("No TOKEN_URL environment variable set to be used in the integration tests")
         .parse()
         .expect("Failed to parse TOKEN_URL environment variable");
-    let client_id = dotenv::var("VAAS_CLIENT_ID")
+    let client_id = std::env::var("VAAS_CLIENT_ID")
         .expect("No CLIENT_ID environment variable set to be used in the integration tests");
-    let user_name = dotenv::var("VAAS_USER_NAME")
+    let user_name = std::env::var("VAAS_USER_NAME")
         .expect("No VAAS_USER_NAME environment variable set to be used in the integration tests");
-    let password = dotenv::var("VAAS_PASSWORD")
+    let password = std::env::var("VAAS_PASSWORD")
         .expect("No VAAS_PASSWORD environment variable set to be used in the integration tests");
     let authenticator = Password::try_new(client_id, user_name, password)
         .unwrap()
@@ -225,5 +246,92 @@ async fn test_for_buf_if_canceled_returns_error(
         matches!(verdict_result, Err(Error::Canceled)),
         "expected cancellation error got {verdict_result:#?}"
     );
+    Ok(())
+}
+
+const PASSWORD_ZIP_URL: &str =
+    "https://samples.develop.vaas.gdatasecurity.de/password.zip";
+const WITH_AND_WITHOUT_PASSWORD_ZIP_URL: &str =
+    "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip";
+
+async fn download_to_temp_file(url: &str) -> tempfile::NamedTempFile {
+    let response = reqwest::get(url).await.expect("Failed to download file");
+    let bytes = response.bytes().await.expect("Failed to read response bytes");
+    let mut tmp = tempfile::NamedTempFile::new().expect("Failed to create temp file");
+    tmp.as_file_mut()
+        .write_all(&bytes)
+        .expect("Failed to write to temp file");
+    tmp
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_file_if_encrypted_returns_clean_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let tmp = download_to_temp_file(PASSWORD_ZIP_URL).await;
+    let options = ForFileOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_file(tmp.path(), options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Clean);
+    assert_eq!(verdict.is_encrypted, Some(true));
+    Ok(())
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_file_if_contains_eicar_and_encrypted_returns_malicious_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let tmp = download_to_temp_file(WITH_AND_WITHOUT_PASSWORD_ZIP_URL).await;
+    let options = ForFileOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_file(tmp.path(), options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Malicious);
+    assert_eq!(verdict.is_encrypted, Some(true));
+    Ok(())
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_url_if_encrypted_returns_clean_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let url: Url = PASSWORD_ZIP_URL.parse().unwrap();
+    let options = ForUrlOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_url(&url, options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Clean);
+    assert_eq!(verdict.is_encrypted, Some(true));
+    Ok(())
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_url_if_contains_eicar_and_encrypted_returns_malicious_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let url: Url = WITH_AND_WITHOUT_PASSWORD_ZIP_URL.parse().unwrap();
+    let options = ForUrlOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_url(&url, options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Malicious);
+    assert_eq!(verdict.is_encrypted, Some(true));
     Ok(())
 }
