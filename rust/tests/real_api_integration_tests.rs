@@ -227,3 +227,90 @@ async fn test_for_buf_if_canceled_returns_error(
     );
     Ok(())
 }
+
+const PASSWORD_ZIP_URL: &str =
+    "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip";
+const WITH_AND_WITHOUT_PASSWORD_ZIP_URL: &str =
+    "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip";
+
+async fn download_to_temp_file(url: &str) -> tempfile::NamedTempFile {
+    let response = reqwest::get(url).await.expect("Failed to download file");
+    let bytes = response.bytes().await.expect("Failed to read response bytes");
+    let mut tmp = tempfile::NamedTempFile::new().expect("Failed to create temp file");
+    tmp.as_file_mut()
+        .write_all(&bytes)
+        .expect("Failed to write to temp file");
+    tmp
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_file_if_encrypted_returns_clean_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let tmp = download_to_temp_file(PASSWORD_ZIP_URL).await;
+    let options = ForFileOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_file(tmp.path(), options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Clean);
+    assert_eq!(verdict.is_encrypted, Some(true));
+    Ok(())
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_file_if_contains_eicar_and_encrypted_returns_malicious_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let tmp = download_to_temp_file(WITH_AND_WITHOUT_PASSWORD_ZIP_URL).await;
+    let options = ForFileOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_file(tmp.path(), options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Malicious);
+    assert_eq!(verdict.is_encrypted, Some(true));
+    Ok(())
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_url_if_encrypted_returns_clean_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let url: Url = PASSWORD_ZIP_URL.parse().unwrap();
+    let options = ForUrlOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_url(&url, options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Clean);
+    assert_eq!(verdict.is_encrypted, Some(true));
+    Ok(())
+}
+
+#[rstest::rstest]
+#[tokio::test]
+async fn test_for_url_if_contains_eicar_and_encrypted_returns_malicious_and_is_encrypted(
+    vaas_with_client_credentials: Vaas,
+) -> Result<(), Error> {
+    let url: Url = WITH_AND_WITHOUT_PASSWORD_ZIP_URL.parse().unwrap();
+    let options = ForUrlOptions::default();
+    let ct = CancellationToken::new();
+
+    let verdict = vaas_with_client_credentials
+        .for_url(&url, options, &ct)
+        .await?;
+
+    assert_eq!(verdict.verdict, Verdict::Malicious);
+    assert_eq!(verdict.is_encrypted, Some(true));
+    Ok(())
+}
