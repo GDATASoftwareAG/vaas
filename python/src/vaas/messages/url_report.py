@@ -8,3 +8,4 @@ class UrlReport(BaseModel):
     detection: Optional[str]
     fileType: Optional[str]
     mimeType: Optional[str]
+    isEncrypted: Optional[bool] = None
