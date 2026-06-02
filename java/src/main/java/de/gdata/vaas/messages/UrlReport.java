@@ -16,15 +16,17 @@ public class UrlReport {
     String detection;
     String fileType;
     String mimeType;
+    Boolean isEncrypted;
 
     public UrlReport(@NonNull String sha256, @NonNull Verdict verdict, @NonNull String url, String detection, String fileType,
-            String mimeType) {
+            String mimeType, Boolean isEncrypted) {
         this.sha256 = sha256;
         this.verdict = verdict;
         this.url = url;
         this.detection = detection;
         this.fileType = fileType;
         this.mimeType = mimeType;
+        this.isEncrypted = isEncrypted;
     }
 
     public static UrlReport fromJson(String json) {
