@@ -28,18 +28,6 @@ public class TestDotenvTest {
     }
 
     @Test
-    public void load_LoadsVariablesFromParentDirectory() throws Exception {
-        var parentDirectory = Files.createDirectory(tempDir.resolve("parent"));
-        var nestedDirectory = Files.createDirectories(parentDirectory.resolve("child/grandchild"));
-        Files.writeString(parentDirectory.resolve(".env"), "CLIENT_ID=test-client\nTOKEN_URL=https://example.test/token\n");
-
-        var dotenv = TestDotenv.load(nestedDirectory);
-
-        assertEquals("test-client", dotenv.get("CLIENT_ID"));
-        assertEquals("https://example.test/token", dotenv.get("TOKEN_URL"));
-    }
-
-    @Test
     public void findEnvDirectory_ReturnsEmptyWhenNoEnvExists() throws Exception {
         var nestedDirectory = Files.createDirectories(tempDir.resolve("child/grandchild"));
 

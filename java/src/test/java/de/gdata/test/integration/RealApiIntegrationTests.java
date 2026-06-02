@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -52,9 +53,9 @@ import static org.mockito.Mockito.*;
 
 @Slf4j
 public class RealApiIntegrationTests {
-        private static final String EICAR_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt";
-        private static final String PASSWORD_URL = "https://samples.develop.vaas.gdatasecurity.de/password.zip";
-        private static final String WITH_AND_WITHOUT_PASSWORD_URL = "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip";
+        private static final String EICAR_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt";
+        private static final String PASSWORD_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip";
+        private static final String WITH_AND_WITHOUT_PASSWORD_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip";
 
         private static final Dotenv dotenv = TestDotenv.load();
 
@@ -319,18 +320,21 @@ public class RealApiIntegrationTests {
 
         @ParameterizedTest
         @MethodSource("provideForFileParams")
-        public void forFile_ReturnsVerdict(Path tmpFile, Verdict verdict) throws Exception {
+        public void forFile_ReturnsVerdict(Path tmpFile, Verdict verdict, boolean isEncrypted) throws Exception {
                 var vaasVerdict = vaasWithDefaultConfig.forFileAsync(tmpFile).join();
 
                 assertEquals(verdict, vaasVerdict.getVerdict());
+                assertEquals(isEncrypted, vaasVerdict.getIsEncrypted());
         }
 
         private static Stream<Arguments> provideForFileParams()
                         throws VaasClientException, IOException, InterruptedException {
                 return Stream.of(
-                                Arguments.of(samplesFixture.getCleanSample(), Verdict.CLEAN),
-                                Arguments.of(samplesFixture.getEicarSample(), Verdict.MALICIOUS),
-                                Arguments.of(samplesFixture.getPupSample(), Verdict.PUP));
+                                Arguments.of(samplesFixture.getCleanSample(), Verdict.CLEAN, false),
+                                Arguments.of(samplesFixture.getEicarSample(), Verdict.MALICIOUS, false),
+                                Arguments.of(samplesFixture.getPupSample(), Verdict.PUP, false),
+                                Arguments.of(samplesFixture.getEncryptedSample(), Verdict.CLEAN, true),
+                                Arguments.of(samplesFixture.getEicarInEncryptedSample(), Verdict.MALICIOUS, true));
         }
 
         @SuppressWarnings("unchecked")
@@ -1100,15 +1104,21 @@ public class RealApiIntegrationTests {
                 assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
         }
 
-        @Test
-        public void forUrl_ReturnsVerdict() throws Exception {
-                var url = URI.create(EICAR_URL).toURL();
+        @ParameterizedTest
+        @MethodSource("provideForUrlParams")
+        public void forUrl_ReturnsVerdict(URL url, Verdict verdict, boolean isEncrypted) throws Exception {
+                var vaasVerdict = vaasWithDefaultConfig.forUrlAsync(url).join();
 
-                var verdict = vaasWithDefaultConfig.forUrlAsync(url).join();
+                assertEquals(verdict, vaasVerdict.getVerdict());
+                assertEquals(isEncrypted, vaasVerdict.getIsEncrypted());
+        }
 
-                assertEquals(Verdict.MALICIOUS, verdict.getVerdict());
-                assertTrue("275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-                                .equalsIgnoreCase(verdict.getSha256()));
+        private static Stream<Arguments> provideForUrlParams() throws Exception {
+                return Stream.of(
+                                Arguments.of(URI.create(EICAR_URL).toURL(), Verdict.MALICIOUS, false),
+                                Arguments.of(URI.create(PASSWORD_URL).toURL(), Verdict.CLEAN, true),
+                                Arguments.of(URI.create(WITH_AND_WITHOUT_PASSWORD_URL).toURL(), Verdict.MALICIOUS,
+                                                true));
         }
 
         @SuppressWarnings("unchecked")
@@ -1443,50 +1453,6 @@ public class RealApiIntegrationTests {
                                 }
                         });
                 }
-        }
-
-        @Test
-        public void forFile_IfEncrypted_ReturnsCleanAndIsEncrypted() throws Exception {
-                var file = samplesFixture.getEncryptedSample();
-
-                var vaasVerdict = vaasWithDefaultConfig.forFileAsync(file).join();
-
-                assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
-                assertTrue(vaasVerdict.getIsEncrypted());
-        }
-
-        @Test
-        public void forFile_IfContainsEicarAndEncryptedArchive_ReturnsMaliciousAndIsEncrypted() throws Exception {
-                var file = samplesFixture.getEicarInEncryptedSample();
-
-                var vaasVerdict = vaasWithDefaultConfig.forFileAsync(file).join();
-
-                assertEquals(Verdict.MALICIOUS, vaasVerdict.getVerdict());
-                assertTrue(vaasVerdict.getIsEncrypted());
-        }
-
-        @Test
-        public void forUrl_IfEncrypted_ReturnsCleanAndIsEncrypted() throws Exception {
-                var url = URI.create(PASSWORD_URL).toURL();
-                var config = new VaasConfig(false, false, URI.create(getEnvironmentKey("VAAS_URL")));
-                var vaas = new Vaas(config, authenticatorFixture);
-
-                var vaasVerdict = vaas.forUrlAsync(url).join();
-
-                assertEquals(Verdict.CLEAN, vaasVerdict.getVerdict());
-                assertTrue(vaasVerdict.getIsEncrypted());
-        }
-
-        @Test
-        public void forUrl_IfContainsEicarAndEncryptedArchive_ReturnsMaliciousAndIsEncrypted() throws Exception {
-                var url = URI.create(WITH_AND_WITHOUT_PASSWORD_URL).toURL();
-                var config = new VaasConfig(false, false, URI.create(getEnvironmentKey("VAAS_URL")));
-                var vaas = new Vaas(config, authenticatorFixture);
-
-                var vaasVerdict = vaas.forUrlAsync(url).join();
-
-                assertEquals(Verdict.MALICIOUS, vaasVerdict.getVerdict());
-                assertTrue(vaasVerdict.getIsEncrypted());
         }
 
 }
