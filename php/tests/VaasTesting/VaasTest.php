@@ -39,9 +39,11 @@ final class VaasTest extends TestCase
     const CLEAN_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     const UNKNOWN_HASH = "23b85b080bda43cd0dd80f0386d66b8a5f3ca647441df0306d8c74ef035cfe93";
     
-    const MALICIOUS_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt";
-    const PUP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe";
-    const CLEAN_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt";
+    const MALICIOUS_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt";
+    const PUP_URL = "https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe";
+    const CLEAN_URL = "https://samples.develop.vaas.gdatasecurity.de/clean.txt";
+    const ENCRYPTED_URL = "https://samples.develop.vaas.gdatasecurity.de/password.zip";
+    const EICAR_IN_ENCRYPTED_URL = "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip";
 
     public function setUp(): void
     {
@@ -212,6 +214,36 @@ final class VaasTest extends TestCase
         $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
     }
 
+    public function testForUrl_WithEncryptedUrl_GetsCleanEncryptedResponse(): void
+    {
+        $verdict = $this->vaas->forUrlAsync(self::ENCRYPTED_URL)->await();
+
+        $this->logger->info('Test for encrypted URL', [
+            'expected' => Verdict::CLEAN,
+            'actual' => $verdict->verdict,
+            'url' => self::ENCRYPTED_URL,
+            'isEncrypted' => $verdict->isEncrypted,
+        ]);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
+        $this->assertTrue($verdict->isEncrypted);
+    }
+
+    public function testForUrl_WithEncryptedMaliciousUrl_GetsMaliciousEncryptedResponse(): void
+    {
+        $verdict = $this->vaas->forUrlAsync(self::EICAR_IN_ENCRYPTED_URL)->await();
+
+        $this->logger->info('Test for encrypted malicious URL', [
+            'expected' => Verdict::MALICIOUS,
+            'actual' => $verdict->verdict,
+            'url' => self::EICAR_IN_ENCRYPTED_URL,
+            'isEncrypted' => $verdict->isEncrypted,
+        ]);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
+        $this->assertTrue($verdict->isEncrypted);
+    }
+
     public function testForUrl_WithInvalidUrl_ThrowsVaasClientException(): void
     {
         $this->expectException(VaasClientException::class);
@@ -269,6 +301,44 @@ final class VaasTest extends TestCase
 
         $this->assertEqualsIgnoringCase(self::PUP_HASH, $verdict->sha256);
         $this->assertEquals(Verdict::PUP, $verdict->verdict);
+    }
+
+    public function testForFile_WithEncryptedFile_GetsCleanEncryptedResponse(): void
+    {
+        $file = file_get_contents(self::ENCRYPTED_URL);
+        file_put_contents(__DIR__ . "/password.zip", $file);
+
+        $verdict = $this->vaas->forFileAsync(__DIR__ . "/password.zip")->await();
+        unlink(__DIR__ . "/password.zip");
+
+        $this->logger->info('Test for encrypted file', [
+            'expected' => Verdict::CLEAN,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/password.zip",
+            'isEncrypted' => $verdict->isEncrypted,
+        ]);
+
+        $this->assertEquals(Verdict::CLEAN, $verdict->verdict);
+        $this->assertTrue($verdict->isEncrypted);
+    }
+
+    public function testForFile_WithEncryptedMaliciousFile_GetsMaliciousEncryptedResponse(): void
+    {
+        $file = file_get_contents(self::EICAR_IN_ENCRYPTED_URL);
+        file_put_contents(__DIR__ . "/with-and-without-password.zip", $file);
+
+        $verdict = $this->vaas->forFileAsync(__DIR__ . "/with-and-without-password.zip")->await();
+        unlink(__DIR__ . "/with-and-without-password.zip");
+
+        $this->logger->info('Test for encrypted malicious file', [
+            'expected' => Verdict::MALICIOUS,
+            'actual' => $verdict->verdict,
+            'file' => __DIR__ . "/with-and-without-password.zip",
+            'isEncrypted' => $verdict->isEncrypted,
+        ]);
+
+        $this->assertEquals(Verdict::MALICIOUS, $verdict->verdict);
+        $this->assertTrue($verdict->isEncrypted);
     }
 
     public function testForFile_WithInvalidFile_ThrowsVaasClientException(): void
