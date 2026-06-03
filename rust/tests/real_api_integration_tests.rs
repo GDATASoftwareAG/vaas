@@ -229,9 +229,9 @@ async fn test_for_buf_if_canceled_returns_error(
 }
 
 const PASSWORD_ZIP_URL: &str =
-    "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip";
+    "https://samples.develop.vaas.gdatasecurity.de/password.zip";
 const WITH_AND_WITHOUT_PASSWORD_ZIP_URL: &str =
-    "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip";
+    "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip";
 
 async fn download_to_temp_file(url: &str) -> tempfile::NamedTempFile {
     let response = reqwest::get(url).await.expect("Failed to download file");
