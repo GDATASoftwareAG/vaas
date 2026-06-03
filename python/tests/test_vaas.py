@@ -21,12 +21,12 @@ EICAR_SHA256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f
 CLEAN_SHA256 = "d24dc598b54a8eedb0a4b381fad68af956441dffa9c9d5d9ac81de73fcc0a089"
 PUP_SHA256 = "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
 
-EICAR_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt"
-CLEAN_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt"
-PUP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe"
-PASSWORD_ZIP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip"
+EICAR_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt"
+CLEAN_URL = "https://samples.develop.vaas.gdatasecurity.de/clean.txt"
+PUP_URL = "https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe"
+PASSWORD_ZIP_URL = "https://samples.develop.vaas.gdatasecurity.de/password.zip"
 WITH_AND_WITHOUT_PASSWORD_ZIP_URL = (
-    "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip"
+    "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip"
 )
 
 CLEAN_FILE_CONTENT = "I am clean."
