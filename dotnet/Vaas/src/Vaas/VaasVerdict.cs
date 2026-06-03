@@ -10,6 +10,7 @@ public class VaasVerdict
     public string? Detection { get; init; }
     public string? MimeType { get; init; }
     public string? FileType { get; init; }
+    public bool? IsEncrypted { get; init; }
 
     public static VaasVerdict From(FileReport fileReport)
     {
@@ -20,6 +21,7 @@ public class VaasVerdict
             Detection = fileReport.Detection,
             MimeType = fileReport.MimeType,
             FileType = fileReport.FileType,
+            IsEncrypted = fileReport.IsEncrypted,
         };
     }
 
@@ -32,6 +34,7 @@ public class VaasVerdict
             Detection = urlReport.Detection,
             MimeType = urlReport.MimeType,
             FileType = urlReport.FileType,
+            IsEncrypted = urlReport.IsEncrypted,
         };
     }
 

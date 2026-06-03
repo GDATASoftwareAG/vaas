@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
 
@@ -26,5 +25,4 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Vaas\Vaas.csproj" />
   </ItemGroup>
-
 </Project>

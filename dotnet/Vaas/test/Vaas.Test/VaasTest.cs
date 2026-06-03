@@ -36,11 +36,23 @@ public class VaasTest
             DotNetEnv.Env.GetString("VAAS_URL", "https://gateway.production.vaas.gdatasecurity.de")
         );
 
+    private static readonly Uri PasswordUrl = new(
+        "https://samples.develop.vaas.gdatasecurity.de/password.zip"
+    );
+
+    public static readonly Uri WithAndWithoutPasswordUrl = new(
+        "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip"
+    );
+
     private readonly ITestOutputHelper _output;
     private IVaas _vaas;
 
     private const string EicarSha256 =
         "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2";
+    public const string EncryptedSha256 =
+        "c0621519a2dd9336b12dc6caef2cc789f23eef3026916638dcd620d0ac193881";
+    public const string EicarInEncryptedSha256 =
+        "79fae1ed9ff540bc286f6cc79c7fbaef323987d17e182ee20f13b0285038d8ed";
 
     public VaasTest(ITestOutputHelper output)
     {
@@ -92,6 +104,33 @@ public class VaasTest
         var services = new ServiceCollection();
         services.AddVerdictAsAService(configuration);
         return services;
+    }
+
+    private static async Task<string> GetSampleFileAsync(
+        Uri url,
+        string fileName,
+        string expectedSha256
+    )
+    {
+        var targetPath = Path.Combine(Path.GetTempPath(), fileName);
+        if (File.Exists(targetPath) && ChecksumSha256.Sha256CheckSum(targetPath) == expectedSha256)
+        {
+            return targetPath;
+        }
+
+        using var httpClient = new HttpClient();
+        var content = await httpClient.GetByteArrayAsync(url);
+        await File.WriteAllBytesAsync(targetPath, content);
+
+        var actualSha256 = ChecksumSha256.Sha256CheckSum(targetPath);
+        if (actualSha256 != expectedSha256)
+        {
+            throw new InvalidOperationException(
+                $"Unexpected SHA256 for {fileName}. Expected {expectedSha256}, got {actualSha256}."
+            );
+        }
+
+        return targetPath;
     }
 
     [Theory]
@@ -345,6 +384,32 @@ public class VaasTest
         File.Delete(fileName);
 
         Assert.Equal(verdict, actual.Verdict);
+    }
+
+    [Fact]
+    public async Task ForFileAsync_IfEncrypted_ReturnsCleanAndIsEncrypted()
+    {
+        var file = await GetSampleFileAsync(PasswordUrl, "password.zip", EncryptedSha256);
+
+        var actual = await _vaas.ForFileAsync(file, CancellationToken.None);
+
+        Assert.Equal(Verdict.Clean, actual.Verdict);
+        Assert.True(actual.IsEncrypted);
+    }
+
+    [Fact]
+    public async Task ForFileAsync_IfContainsEicarAndEncryptedArchive_ReturnsMaliciousAndIsEncrypted()
+    {
+        var file = await GetSampleFileAsync(
+            WithAndWithoutPasswordUrl,
+            "with-and-without-password.zip",
+            EicarInEncryptedSha256
+        );
+
+        var actual = await _vaas.ForFileAsync(file, CancellationToken.None);
+
+        Assert.Equal(Verdict.Malicious, actual.Verdict);
+        Assert.True(actual.IsEncrypted);
     }
 
     [Theory]
@@ -948,6 +1013,24 @@ public class VaasTest
     {
         var actual = await _vaas.ForUrlAsync(new Uri(url), CancellationToken.None);
         Assert.Equal(verdict, actual.Verdict);
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_IfEncrypted_ReturnsCleanAndIsEncrypted()
+    {
+        var actual = await _vaas.ForUrlAsync(PasswordUrl, CancellationToken.None);
+
+        Assert.Equal(Verdict.Clean, actual.Verdict);
+        Assert.True(actual.IsEncrypted);
+    }
+
+    [Fact]
+    public async Task ForUrlAsync_IfContainsEicarAndEncryptedArchive_ReturnsMaliciousAndIsEncrypted()
+    {
+        var actual = await _vaas.ForUrlAsync(WithAndWithoutPasswordUrl, CancellationToken.None);
+
+        Assert.Equal(Verdict.Malicious, actual.Verdict);
+        Assert.True(actual.IsEncrypted);
     }
 
     [Theory]
