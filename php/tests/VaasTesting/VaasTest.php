@@ -39,11 +39,11 @@ final class VaasTest extends TestCase
     const CLEAN_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     const UNKNOWN_HASH = "23b85b080bda43cd0dd80f0386d66b8a5f3ca647441df0306d8c74ef035cfe93";
     
-    const MALICIOUS_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt";
-    const PUP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe";
-    const CLEAN_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt";
-    const ENCRYPTED_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip";
-    const EICAR_IN_ENCRYPTED_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip";
+    const MALICIOUS_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt";
+    const PUP_URL = "https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe";
+    const CLEAN_URL = "https://samples.develop.vaas.gdatasecurity.de/clean.txt";
+    const ENCRYPTED_URL = "https://samples.develop.vaas.gdatasecurity.de/password.zip";
+    const EICAR_IN_ENCRYPTED_URL = "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip";
 
     public function setUp(): void
     {
