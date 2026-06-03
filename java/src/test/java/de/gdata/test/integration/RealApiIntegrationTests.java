@@ -53,9 +53,9 @@ import static org.mockito.Mockito.*;
 
 @Slf4j
 public class RealApiIntegrationTests {
-        private static final String EICAR_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt";
-        private static final String PASSWORD_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip";
-        private static final String WITH_AND_WITHOUT_PASSWORD_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip";
+        private static final String EICAR_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt";
+        private static final String PASSWORD_URL = "https://samples.develop.vaas.gdatasecurity.de/password.zip";
+        private static final String WITH_AND_WITHOUT_PASSWORD_URL = "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip";
 
         private static final Dotenv dotenv = TestDotenv.load();
 

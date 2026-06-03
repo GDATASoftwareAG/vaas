@@ -31,12 +31,12 @@ public class SamplesFixture {
 
     public SamplesFixture() {
         try {
-            cleanUrl = URI.create("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt").toURL();
-            eicarUrl = URI.create("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt").toURL();
-            pupUrl = URI.create("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe").toURL();
-            encryptedUrl = URI.create("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip").toURL();
+            cleanUrl = URI.create("https://samples.develop.vaas.gdatasecurity.de/clean.txt").toURL();
+            eicarUrl = URI.create("https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt").toURL();
+            pupUrl = URI.create("https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe").toURL();
+            encryptedUrl = URI.create("https://samples.develop.vaas.gdatasecurity.de/password.zip").toURL();
             eicarInEncryptedUrl = URI
-                    .create("https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip")
+                    .create("https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip")
                     .toURL();
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
