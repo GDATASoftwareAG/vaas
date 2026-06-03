@@ -31,8 +31,10 @@ type testFixture struct {
 }
 
 const (
-	eicarSha256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
-	eicarUrl    = "https://secure.eicar.org/eicar.com"
+	eicarSha256                  = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+	eicarUrl                     = "https://secure.eicar.org/eicar.com"
+	passwordZipUrl               = "https://samples.develop.vaas.gdatasecurity.de/password.zip"
+	withAndWithoutPasswordZipURL = "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip"
 )
 
 func (tf *testFixture) setUp() Vaas {
@@ -322,6 +324,38 @@ func createEicarFile(t *testing.T) string {
 	return testFile
 }
 
+func downloadSampleFile(t *testing.T, sampleURL string, localName string) string {
+	t.Helper()
+
+	response, err := http.Get(sampleURL)
+	if err != nil {
+		t.Fatalf("error downloading sample file: %v", err)
+	}
+	defer func() {
+		assert.NoError(t, response.Body.Close())
+	}()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("unexpected status code while downloading sample file: %d", response.StatusCode)
+	}
+
+	testFile := filepath.Join(t.TempDir(), localName)
+	file, err := os.Create(testFile)
+	if err != nil {
+		t.Fatalf("error creating sample file: %v", err)
+	}
+	defer func() {
+		assert.NoError(t, file.Close())
+	}()
+
+	_, err = io.Copy(file, response.Body)
+	if err != nil {
+		t.Fatalf("error writing sample file: %v", err)
+	}
+
+	return testFile
+}
+
 func Test_ForFile(t *testing.T) {
 	const (
 		eicarBase64String string = "WDVPIVAlQEFQWzRcUFpYNTQoUF4pN0NDKTd9JEVJQ0FSLVNUQU5EQVJELUFOVElWSVJVUy1URVNULUZJTEUhJEgrSCoK"
@@ -448,6 +482,42 @@ func Test_ForFile_SendsOptions(t *testing.T) {
 
 			_, err := vaasClient.ForFile(context.Background(), eicar, &option)
 			assert.NoError(t, err)
+		})
+	}
+}
+
+func Test_ForFile_PropagatesEncryptedFlag(t *testing.T) {
+	tests := []struct {
+		name            string
+		sampleURL       string
+		localName       string
+		expectedVerdict msg.Verdict
+	}{
+		{
+			name:            "password.zip is clean and encrypted",
+			sampleURL:       passwordZipUrl,
+			localName:       "password.zip",
+			expectedVerdict: msg.Clean,
+		},
+		{
+			name:            "with_and_without_password.zip is malicious and encrypted",
+			sampleURL:       withAndWithoutPasswordZipURL,
+			localName:       "with_and_without_password.zip",
+			expectedVerdict: msg.Malicious,
+		},
+	}
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUp()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFile := downloadSampleFile(t, tt.sampleURL, tt.localName)
+
+			verdict, err := vaasClient.ForFile(context.Background(), testFile, nil)
+			assert.NoError(t, err)
+			assert.True(t, verdict.IsEncrypted)
+			assert.Equal(t, tt.expectedVerdict, verdict.Verdict)
 		})
 	}
 }
@@ -736,6 +806,8 @@ func Test_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMimeType
 		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
 	}
 
+	assert.Equal(t, "EICAR virus test files", verdict.FileType)
+
 	if verdict.MimeType != "text/plain" {
 		t.Errorf("expected mime type to be text/plain, got %v", verdict.MimeType)
 	}
@@ -824,6 +896,42 @@ func Test_ForUrl_IfVaasRequestIdIsSet_SendsTraceState(t *testing.T) {
 	u, err := url.Parse(eicarUrl)
 	_, err = vaasClient.ForUrl(context.Background(), u, &opts)
 	assert.NoError(t, err, "ForUrl returned err")
+}
+
+func Test_ForUrl_PropagatesEncryptedFlag(t *testing.T) {
+	tests := []struct {
+		name            string
+		rawURL          string
+		expectedVerdict msg.Verdict
+	}{
+		{
+			name:            "password.zip is clean and encrypted",
+			rawURL:          passwordZipUrl,
+			expectedVerdict: msg.Clean,
+		},
+		{
+			name:            "with_and_without_password.zip is malicious and encrypted",
+			rawURL:          withAndWithoutPasswordZipURL,
+			expectedVerdict: msg.Malicious,
+		},
+	}
+
+	fixture := new(testFixture)
+	vaasClient := fixture.setUp()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			u, err := url.Parse(tt.rawURL)
+			if err != nil {
+				t.Fatalf("Cannot parse test url - %v", err)
+			}
+
+			verdict, err := vaasClient.ForUrl(context.Background(), u, nil)
+			assert.NoError(t, err)
+			assert.True(t, verdict.IsEncrypted)
+			assert.Equal(t, tt.expectedVerdict, verdict.Verdict)
+		})
+	}
 }
 
 func Test_ForUrl_SendsUserAgent(t *testing.T) {
