@@ -34,6 +34,10 @@ WITH_AND_WITHOUT_PASSWORD_ZIP_URL = (
 CLEAN_FILE_CONTENT = "I am clean."
 
 
+# Force identity encoding so the sample host returns Content-Length for stream tests.
+STREAM_TEST_CLIENT_HEADERS = {"Accept-Encoding": "identity"}
+
+
 class TestVaas:
     @pytest.mark.asyncio()
     @pytest.mark.parametrize(
@@ -237,7 +241,7 @@ class TestVaas:
     async def test_for_stream_returns_verdict(
         self, vaas, url, expected_verdict, is_encrypted
     ):
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(url)
             content_length = response.headers["Content-Length"]
             verdict = await vaas.for_stream(response.aiter_bytes(), content_length)
@@ -275,7 +279,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
 
@@ -283,9 +287,6 @@ class TestVaas:
             verdict = await vaas.for_stream(
                 response.aiter_bytes(), content_length, options
             )
-
-            for actual_request in httpx_mock.get_requests():
-                actual_url = str(actual_request.url)
 
             assert len(httpx_mock.get_requests()) == 2
             assert verdict.verdict == "Clean"
@@ -315,7 +316,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             verdict = await vaas.for_stream(response.aiter_bytes(), content_length)
@@ -350,7 +351,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             options = ForStreamOptions(vaas_request_id="foobar")
@@ -378,7 +379,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasClientError) as exception_info:
@@ -403,7 +404,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasServerError) as exception_info:
@@ -424,7 +425,7 @@ class TestVaas:
             side_effect=VaasAuthenticationError("Mocked auth error")
         )
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasAuthenticationError):
@@ -448,7 +449,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasAuthenticationError) as exception_info:
@@ -470,7 +471,7 @@ class TestVaas:
             exception=asyncio.CancelledError(),
         )
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(asyncio.CancelledError):
