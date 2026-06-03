@@ -806,6 +806,8 @@ func Test_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMimeType
 		t.Errorf("verdict should be %v, got %v", msg.Malicious, verdict.Verdict)
 	}
 
+	assert.Equal(t, "EICAR virus test files", verdict.FileType)
+
 	if verdict.MimeType != "text/plain" {
 		t.Errorf("expected mime type to be text/plain, got %v", verdict.MimeType)
 	}

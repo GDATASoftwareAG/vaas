@@ -4,8 +4,8 @@ type FileReport struct {
 	Sha256      string  `json:"sha256" validate:"required"`
 	Verdict     Verdict `json:"verdict" validate:"required"`
 	Detection   string  `json:"detection,omitempty"`
-	MimeType    string  `json:"mimetype,omitempty"`
-	FileType    string  `json:"file_type,omitempty"`
+	MimeType    string  `json:"mimeType,omitempty"`
+	FileType    string  `json:"fileType,omitempty"`
 	IsEncrypted bool    `json:"isEncrypted"`
 }
 
@@ -24,8 +24,8 @@ type URLReport struct {
 	Sha256      string  `json:"sha256" validate:"required"`
 	Verdict     Verdict `json:"verdict" validate:"required"`
 	Detection   string  `json:"detection,omitempty"`
-	MimeType    string  `json:"mimetype,omitempty"`
-	FileType    string  `json:"file_type,omitempty"`
+	MimeType    string  `json:"mimeType,omitempty"`
+	FileType    string  `json:"fileType,omitempty"`
 	URL         string  `json:"url" validate:"required"`
 	IsEncrypted bool    `json:"isEncrypted"`
 }
