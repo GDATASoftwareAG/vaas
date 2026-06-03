@@ -7,4 +7,5 @@ public class FileReport
     public string? Detection { get; init; }
     public string? FileType { get; init; }
     public string? MimeType { get; init; }
+    public bool? IsEncrypted { get; init; }
 }
