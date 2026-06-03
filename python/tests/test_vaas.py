@@ -1,6 +1,7 @@
 # pylint: disable=C0114,C0116,C0115
 import asyncio
 import os
+from urllib.parse import urlparse
 from unittest.mock import AsyncMock
 import httpx
 import pytest
@@ -16,20 +17,25 @@ from src.vaas.vaas_errors import VaasClientError, VaasServerError
 load_dotenv()
 
 VAAS_URL = os.getenv("VAAS_URL")
+VAAS_HOST = urlparse(VAAS_URL).hostname
 
 EICAR_SHA256 = "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
 CLEAN_SHA256 = "d24dc598b54a8eedb0a4b381fad68af956441dffa9c9d5d9ac81de73fcc0a089"
 PUP_SHA256 = "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad"
 
-EICAR_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/eicar.com.txt"
-CLEAN_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/clean.txt"
-PUP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/PotentiallyUnwanted.exe"
-PASSWORD_ZIP_URL = "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/password.zip"
+EICAR_URL = "https://samples.develop.vaas.gdatasecurity.de/eicar.com.txt"
+CLEAN_URL = "https://samples.develop.vaas.gdatasecurity.de/clean.txt"
+PUP_URL = "https://samples.develop.vaas.gdatasecurity.de/PotentiallyUnwanted.exe"
+PASSWORD_ZIP_URL = "https://samples.develop.vaas.gdatasecurity.de/password.zip"
 WITH_AND_WITHOUT_PASSWORD_ZIP_URL = (
-    "https://s3-eu-central-2.ionoscloud.com/test-samples-vaas/with-and-without-password.zip"
+    "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip"
 )
 
 CLEAN_FILE_CONTENT = "I am clean."
+
+
+# Force identity encoding so the sample host returns Content-Length for stream tests.
+STREAM_TEST_CLIENT_HEADERS = {"Accept-Encoding": "identity"}
 
 
 class TestVaas:
@@ -235,7 +241,7 @@ class TestVaas:
     async def test_for_stream_returns_verdict(
         self, vaas, url, expected_verdict, is_encrypted
     ):
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(url)
             content_length = response.headers["Content-Length"]
             verdict = await vaas.for_stream(response.aiter_bytes(), content_length)
@@ -245,7 +251,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     @pytest.mark.parametrize(
         "use_hash_lookup",
@@ -273,7 +279,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
 
@@ -282,15 +288,12 @@ class TestVaas:
                 response.aiter_bytes(), content_length, options
             )
 
-            for actual_request in httpx_mock.get_requests():
-                actual_url = str(actual_request.url)
-
             assert len(httpx_mock.get_requests()) == 2
             assert verdict.verdict == "Clean"
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_stream_send_user_agent(self, vaas, httpx_mock):
         httpx_mock.add_response(
@@ -313,7 +316,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             verdict = await vaas.for_stream(response.aiter_bytes(), content_length)
@@ -325,7 +328,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_stream_set_request_id_send_trace_state(self, vaas, httpx_mock):
         httpx_mock.add_response(
@@ -348,7 +351,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             options = ForStreamOptions(vaas_request_id="foobar")
@@ -363,7 +366,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_stream_bad_request_raise_vaas_client_error(
         self, vaas, httpx_mock
@@ -376,7 +379,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasClientError) as exception_info:
@@ -388,7 +391,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_stream_server_error_raise_vaas_server_error(
         self, vaas, httpx_mock
@@ -401,7 +404,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasServerError) as exception_info:
@@ -413,7 +416,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_stream_authentication_error_raise_vaas_authentication_error(
         self, vaas, httpx_mock
@@ -422,7 +425,7 @@ class TestVaas:
             side_effect=VaasAuthenticationError("Mocked auth error")
         )
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasAuthenticationError):
@@ -430,7 +433,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_stream_unauthorized_raise_vaas_authentication_error(
         self, vaas, httpx_mock
@@ -446,7 +449,7 @@ class TestVaas:
         )
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(VaasAuthenticationError) as exception_info:
@@ -458,7 +461,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_stream_cancel_request_raise_cancel_error(self, vaas, httpx_mock):
         vaas.authenticator.get_token = AsyncMock(return_value="mocked-token")
@@ -468,7 +471,7 @@ class TestVaas:
             exception=asyncio.CancelledError(),
         )
 
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(headers=STREAM_TEST_CLIENT_HEADERS) as client:
             response = await client.get(CLEAN_URL)
             content_length = response.headers["Content-Length"]
             with pytest.raises(asyncio.CancelledError):
@@ -502,7 +505,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     @pytest.mark.parametrize(
         ("use_cache", "use_hash_lookup", "request_count"),
@@ -567,7 +570,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_file_send_user_agent(self, vaas, httpx_mock):
         url = CLEAN_URL
@@ -610,7 +613,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_file_set_request_id_send_trace_state(self, vaas, httpx_mock):
         url = CLEAN_URL
@@ -653,7 +656,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_file_bad_request_raise_vaas_client_error(self, vaas, httpx_mock):
         url = CLEAN_URL
@@ -690,7 +693,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_file_server_error_raise_vaas_server_error(
         self, vaas, httpx_mock
@@ -748,7 +751,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_file_unauthorized_raise_vaas_authentication_error(
         self, vaas, httpx_mock
@@ -793,7 +796,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_file_cancel_request_raise_cancel_error(self, vaas, httpx_mock):
         url = CLEAN_URL
@@ -838,7 +841,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     @pytest.mark.parametrize(
         "use_hash_lookup",
@@ -878,7 +881,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_url_send_user_agent(self, vaas, httpx_mock):
         url = CLEAN_URL
@@ -913,7 +916,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_url_set_request_id_send_trace_state(self, vaas, httpx_mock):
         url = CLEAN_URL
@@ -950,7 +953,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     @pytest.mark.parametrize("post_fails", [True, False], ids=["post_400", "get_400"])
     async def test_for_url_bad_request_raise_vaas_client_error(
@@ -1000,7 +1003,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     @pytest.mark.parametrize("post_fails", [True, False], ids=["post_500", "get_500"])
     async def test_for_url_server_error_raise_vaas_server_error(
@@ -1050,7 +1053,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     async def test_for_url_authentication_error_raise_vaas_authentication_error(
         self, vaas
@@ -1064,7 +1067,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     @pytest.mark.parametrize("post_fails", [True, False], ids=["post_401", "get_401"])
     async def test_for_url_unauthorized_raise_vaas_authentication_error(
@@ -1114,7 +1117,7 @@ class TestVaas:
 
     @pytest.mark.asyncio()
     @pytest.mark.httpx_mock(
-        should_mock=lambda request: "gdatasecurity.de" in request.url.host
+        should_mock=lambda request: request.url.host == VAAS_HOST
     )
     @pytest.mark.parametrize(
         "post_fails", [True, False], ids=["post_cancel", "get_cancel"]
