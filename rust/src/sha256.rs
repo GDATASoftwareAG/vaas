@@ -1,6 +1,7 @@
 //! Implements a SHA256 structure that guarantees that a given hash string is in the correct format.
 
 use crate::error::VResult;
+use digest_io::IoWrapper;
 use regex::Regex;
 use serde::Deserialize;
 use sha2::Digest;
@@ -30,9 +31,9 @@ impl Sha256 {
     /// Returns an error if hashing fails (due to I/O errors).
     pub fn hash_file(path: &Path) -> VResult<Sha256> {
         let mut file = std::fs::File::open(path)?;
-        let mut hasher = sha2::Sha256::new();
+        let mut hasher = IoWrapper(sha2::Sha256::new());
         std::io::copy(&mut file, &mut hasher)?;
-        let digest = hasher.finalize();
+        let digest = hasher.0.finalize();
         Ok(Self::from_hash_bytes(digest.as_slice()))
     }
 

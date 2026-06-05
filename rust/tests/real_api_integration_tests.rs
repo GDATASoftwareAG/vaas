@@ -228,14 +228,16 @@ async fn test_for_buf_if_canceled_returns_error(
     Ok(())
 }
 
-const PASSWORD_ZIP_URL: &str =
-    "https://samples.develop.vaas.gdatasecurity.de/password.zip";
+const PASSWORD_ZIP_URL: &str = "https://samples.develop.vaas.gdatasecurity.de/password.zip";
 const WITH_AND_WITHOUT_PASSWORD_ZIP_URL: &str =
     "https://samples.develop.vaas.gdatasecurity.de/with-and-without-password.zip";
 
 async fn download_to_temp_file(url: &str) -> tempfile::NamedTempFile {
     let response = reqwest::get(url).await.expect("Failed to download file");
-    let bytes = response.bytes().await.expect("Failed to read response bytes");
+    let bytes = response
+        .bytes()
+        .await
+        .expect("Failed to read response bytes");
     let mut tmp = tempfile::NamedTempFile::new().expect("Failed to create temp file");
     tmp.as_file_mut()
         .write_all(&bytes)
