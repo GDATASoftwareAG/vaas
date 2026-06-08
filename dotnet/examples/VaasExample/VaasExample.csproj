@@ -10,7 +10,7 @@
 
     <ItemGroup>
       <PackageReference Include="DotNetEnv" Version="3.2.0" />
-      <PackageReference Include="GDataCyberDefense.Vaas" Version="8.2.4" />
+      <PackageReference Include="GDataCyberDefense.Vaas" Version="8.2.5" />
     </ItemGroup>
 
 </Project>
