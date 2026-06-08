@@ -20,7 +20,7 @@
     "revolt/event-loop": "^1.0",
     "amphp/byte-stream": "^2.1",
     "amphp/socket": "^2.3",
-    "amphp/file": "^3.2"
+    "amphp/file": "^4.0"
   },
   "autoload": {
     "psr-4": {
