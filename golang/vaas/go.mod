@@ -2,7 +2,7 @@
 
 go 1.23.0
 
-toolchain go1.26.2
+toolchain go1.26.3
 
 require (
 	github.com/Noooste/websocket v1.0.3
