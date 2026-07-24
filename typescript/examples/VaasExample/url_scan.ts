@@ -1,7 +1,4 @@
-import {
-  ClientCredentialsGrantAuthenticator,
-  Vaas,
-} from "gdata-vaas";
+import { ClientCredentialsGrantAuthenticator, Vaas } from "gdata-vaas";
 
 function throwError(errorMessage: string): never {
   throw new Error(errorMessage);
@@ -22,18 +19,15 @@ async function main() {
   const authenticator = new ClientCredentialsGrantAuthenticator(
     CLIENT_ID,
     CLIENT_SECRET,
-    TOKEN_URL
+    TOKEN_URL,
   );
 
-  const vaas = new Vaas();
-  const token = await authenticator.getToken()
-  await vaas.connect(token);
-  
+  const vaas = new Vaas(authenticator);
+
   const url = new URL("https://secure.eicar.org/eicar.com");
 
   const verdict = await vaas.forUrl(url);
   console.log(verdict);
-  vaas.close();
 }
 
 main().catch((e) => {

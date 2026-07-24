@@ -1,8 +1,8 @@
-
 import { promises as fs } from "fs";
 import {
   ClientCredentialsGrantAuthenticator,
   Vaas,
+  VaasOptions,
 } from "gdata-vaas";
 
 function throwError(errorMessage: string): never {
@@ -25,19 +25,18 @@ async function main() {
   const authenticator = new ClientCredentialsGrantAuthenticator(
     CLIENT_ID,
     CLIENT_SECRET,
-    TOKEN_URL
+    TOKEN_URL,
   );
 
-  const vaas = new Vaas();
-  const token = await authenticator.getToken()
-  await vaas.connect(token, VAAS_URL);
+  const options = new VaasOptions();
+  options.vaasUrl = VAAS_URL;
+  const vaas = new Vaas(authenticator, options);
 
   const f = await fs.open(SCAN_PATH, "r");
 
   const verdict = await vaas.forFile(await f.readFile());
   console.log(verdict);
   f.close();
-  vaas.close();
 }
 
 main().catch((e) => {

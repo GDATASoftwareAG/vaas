@@ -39,7 +39,7 @@ npm install gdata-vaas
 ### Import
 
 ```typescript
-import { ClientCredentialsGrantAuthenticator, Vaas } from "gdata-vaas";
+import { ClientCredentialsGrantAuthenticator, Vaas, VaasOptions } from "gdata-vaas";
 ```
 
 ### Request a verdict
@@ -51,9 +51,9 @@ let authenticator = new ClientCredentialsGrantAuthenticator(
     CLIENT_SECRET,
     TOKEN_URL
 );
-let vaas = new Vaas();
-let token = await authenticator.getToken()
-await vaas.connect(token, VAAS_URL)
+let options = new VaasOptions();
+options.vaasUrl = VAAS_URL;
+let vaas = new Vaas(authenticator, options);
 ```
 
 Verdict Request for SHA256:

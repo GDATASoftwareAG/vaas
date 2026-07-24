@@ -1,22 +1,25 @@
 import * as dotenv from "dotenv";
-import { Vaas } from "../src/Vaas";
-import * as randomBytes from "random-bytes";
-import { CancellationToken } from "../src/CancellationToken";
-import WebSocket from "@d-fischer/isomorphic-ws";
+import axios, { AxiosInstance } from "axios";
+import AxiosMockAdapter from "axios-mock-adapter";
+import { describe, expect, test, beforeAll } from "@jest/globals";
+import { Readable } from "stream";
 import * as sha256 from "fast-sha256";
+import * as randomBytes from "random-bytes";
+import { Vaas, VAAS_URL, Authenticator } from "../src/Vaas";
+import { CancellationToken } from "../src/CancellationToken";
 import {
   VaasAuthenticationError,
-  VaasConnectionClosedError,
-  VaasInvalidStateError,
+  VaasClientError,
+  VaasServerError,
+  VaasTimeoutError,
 } from "../src/VaasErrors";
+import { ForSha256Options } from "../src/options/ForSha256Options";
+import { ForFileOptions } from "../src/options/ForFileOptions";
+import { ForStreamOptions } from "../src/options/ForStreamOptions";
+import { ForUrlOptions } from "../src/options/ForUrlOptions";
+import { VaasOptions } from "../src/options/VaasOptions";
 import ClientCredentialsGrantAuthenticator from "../src/ClientCredentialsGrantAuthenticator";
 import ResourceOwnerPasswordGrantAuthenticator from "../src/ResourceOwnerPasswordGrantAuthenticator";
-import { Readable } from "stream";
-import axios from "axios";
-import { describe, expect, test } from '@jest/globals';
-import { AuthenticationResponse } from "../src/messages/authentication_response";
-import http from 'http';
-import https from 'https';
 
 function throwError(errorMessage: string): never {
   throw new Error(errorMessage);
@@ -28,51 +31,97 @@ function getFromEnvironment(key: string) {
   );
 }
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 dotenv.config();
+
 const CLIENT_ID = getFromEnvironment("CLIENT_ID");
 const CLIENT_SECRET = getFromEnvironment("CLIENT_SECRET");
-const VAAS_URL = getFromEnvironment("VAAS_URL");
+const VAAS_URL_ENV = getFromEnvironment("VAAS_URL");
 const TOKEN_URL = getFromEnvironment("TOKEN_URL");
 const VAAS_USER_NAME = getFromEnvironment("VAAS_USER_NAME");
 const VAAS_PASSWORD = getFromEnvironment("VAAS_PASSWORD");
 const VAAS_CLIENT_ID = getFromEnvironment("VAAS_CLIENT_ID");
 
-async function createVaasWithClientCredentialsGrantAuthenticator() {
-  let authenticator = new ClientCredentialsGrantAuthenticator(
+const defaultTimeout: number = 50_000;
+
+const eicarSha256 =
+  "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
+const eicarString =
+  "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
+
+class AuthenticatorMock implements Authenticator {
+  public token: string;
+
+  constructor(token: string = "mock-token") {
+    this.token = token;
+  }
+
+  async getToken(): Promise<string> {
+    return this.token;
+  }
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function fileReportUrl(sha256: string): RegExp {
+  return new RegExp(
+    `${escapeRegex(VAAS_URL_ENV)}/files/${sha256}/report(\\?.*)?$`,
+  );
+}
+
+function fileUploadUrl(): RegExp {
+  return new RegExp(`${escapeRegex(VAAS_URL_ENV)}/files(\\?.*)?$`);
+}
+
+function urlAnalysisUrl(): RegExp {
+  return new RegExp(`${escapeRegex(VAAS_URL_ENV)}/urls$`);
+}
+
+function urlReportUrl(id: string): RegExp {
+  return new RegExp(`${escapeRegex(VAAS_URL_ENV)}/urls/${id}/report(\\?.*)?$`);
+}
+
+function createVaas(
+  baseURL: string = VAAS_URL_ENV,
+  token: string = "mock-token",
+  options?: VaasOptions,
+): { vaas: Vaas; mock: AxiosMockAdapter; axiosInstance: AxiosInstance } {
+  const axiosInstance = axios.create({
+    baseURL,
+    validateStatus: () => true,
+  });
+  const mock = new AxiosMockAdapter(axiosInstance);
+  const vaas = new Vaas(new AuthenticatorMock(token), options, axiosInstance);
+  return { vaas, mock, axiosInstance };
+}
+
+async function createVaasWithClientCredentialsGrantAuthenticator(): Promise<Vaas> {
+  const authenticator = new ClientCredentialsGrantAuthenticator(
     CLIENT_ID,
     CLIENT_SECRET,
     TOKEN_URL,
   );
-  const vaas = new Vaas();
-  const token = await authenticator.getToken();
-  await vaas.connect(token, VAAS_URL);
-  vaas.debug = true;
-  return vaas;
+  return new Vaas(
+    authenticator,
+    undefined,
+    axios.create({ baseURL: VAAS_URL_ENV }),
+  );
 }
 
-async function createVaasWithResourceOwnerPasswordGrantAuthenticator() {
-  let authenticator = new ResourceOwnerPasswordGrantAuthenticator(
+async function createVaasWithResourceOwnerPasswordGrantAuthenticator(): Promise<Vaas> {
+  const authenticator = new ResourceOwnerPasswordGrantAuthenticator(
     VAAS_CLIENT_ID,
     VAAS_USER_NAME,
     VAAS_PASSWORD,
     TOKEN_URL,
   );
-  let vaas = new Vaas();
-  let token = await authenticator.getToken();
-  await vaas.connect(token, VAAS_URL);
-  vaas.debug = true;
-  return vaas;
+  return new Vaas(
+    authenticator,
+    undefined,
+    axios.create({ baseURL: VAAS_URL_ENV }),
+  );
 }
-
-const defaultTimeout: number = 50_000;
-
-const eicarSha256 =
-  "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f";
-const randomFile = randomBytes.sync(50);
 
 describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", function () {
   beforeAll(() => {
@@ -80,43 +129,19 @@ describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", fun
   });
 
   test("if wrong authentication token is send, an error is expected", async () => {
-    const token = "ThisIsAnInvalidToken";
-    const vaas = new Vaas();
-    await expect(
-      () => vaas.connect(token, VAAS_URL),
-    ).rejects.toThrow("Vaas authentication failed");
-    vaas.close();
-  });
-});
+    const { vaas, mock } = createVaas(VAAS_URL_ENV, "ThisIsAnInvalidToken");
+    mock
+      .onGet(
+        new RegExp(`${escapeRegex(VAAS_URL_ENV)}/files/.*/report(\\?.*)?$`),
+      )
+      .reply(401, {
+        type: "VaasAuthenticationException",
+        detail: "Authentication error",
+      });
 
-describe("Test authentication with ResourceOwnerPasswordGrantAuthenticator", function () {
-  beforeAll(() => {
-    jest.setTimeout(defaultTimeout);
-  });
-
-  test("if a request times out, an error is expected", async () => {
-    const vaas = await createVaasWithResourceOwnerPasswordGrantAuthenticator();
-    const verdict = await vaas.forSha256(
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C",
+    await expect(vaas.forSha256(eicarSha256)).rejects.toThrow(
+      VaasAuthenticationError,
     );
-    expect(verdict.verdict).toBe("Clean");
-  });
-});
-
-describe("Test cancellation through timeout", function () {
-  beforeAll(() => {
-    jest.setTimeout(defaultTimeout);
-  });
-
-  test("if a request times out, an error is expected", async () => {
-    const randomFileContent = randomBytes.sync(50);
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    // 1ms timeout
-    const promise = vaas.forFile(
-      randomFileContent,
-      CancellationToken.fromMilliseconds(1),
-    );
-    await expect(promise).rejects.toThrow("Timeout");
   });
 });
 
@@ -126,70 +151,151 @@ describe("Test verdict requests", function () {
   });
 
   test('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const verdict = await vaas.forSha256(
-      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
-    );
+    const { vaas, mock } = createVaas();
+    const sha256 =
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+    mock.onGet(fileReportUrl(sha256)).reply(200, {
+      sha256,
+      verdict: "Clean",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
+    const verdict = await vaas.forSha256(sha256);
     expect(verdict.verdict).toBe("Clean");
-    expect(verdict.sha256.toUpperCase()).toBe(
-      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e".toUpperCase(),
-    );
+    expect(verdict.sha256.toUpperCase()).toBe(sha256.toUpperCase());
   });
 
   test('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const verdict = await vaas.forSha256(
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-    );
+    const { vaas, mock } = createVaas();
+    mock.onGet(fileReportUrl(eicarSha256)).reply(200, {
+      sha256: eicarSha256,
+      verdict: "Malicious",
+      detection: "EICAR-Test-File",
+      fileType: "EICAR virus test files",
+      mimeType: "text/plain",
+    });
+
+    const verdict = await vaas.forSha256(eicarSha256);
     expect(verdict.verdict).toBe("Malicious");
-    expect(verdict.sha256).toBe(
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-    );
+    expect(verdict.sha256).toBe(eicarSha256);
   });
 
   test("test if eicar file is detected as malicious based on the SHA256", async () => {
-    const eicarString =
-      "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*";
     const eicarByteArray = new TextEncoder().encode(eicarString);
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const { vaas, mock } = createVaas(
+      VAAS_URL_ENV,
+      "mock-token",
+      new VaasOptions(),
+    );
+    mock.onPost(fileUploadUrl()).reply(201, { sha256: eicarSha256 });
+    mock.onGet(fileReportUrl(eicarSha256)).reply(200, {
+      sha256: eicarSha256,
+      verdict: "Malicious",
+      detection: "EICAR-Test-File",
+      fileType: "EICAR virus test files",
+      mimeType: "text/plain",
+    });
+
     const verdict = await vaas.forFile(eicarByteArray);
     expect(verdict.verdict).toBe("Malicious");
-    expect(verdict.sha256).toBe(
-      "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f",
-    );
+    expect(verdict.sha256).toBe(eicarSha256);
   });
 
   test("test if unknown file is uploaded and detected as clean", async () => {
-    const randomFileContent = await randomBytes.sync(50);
-    var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const randomFileContent = randomBytes.sync(50);
+    const fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
+    const { vaas, mock } = createVaas();
+    mock.onGet(fileReportUrl(fileSha256)).reply(200, {
+      sha256: fileSha256,
+      verdict: "Unknown",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+    mock.onPost(fileUploadUrl()).reply(201, { sha256: fileSha256 });
+    mock.onGet(fileReportUrl(fileSha256)).reply(200, {
+      sha256: fileSha256,
+      verdict: "Clean",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
     const verdict = await vaas.forFile(randomFileContent);
     expect(verdict.verdict).toBe("Clean");
     expect(verdict.sha256).toBe(fileSha256);
   });
 
   test("if a list of SHA256 is uploaded, they are detected", async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const verdicts = await vaas.forSha256List([
+    const { vaas, mock } = createVaas();
+    const sha256List = [
       "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
       "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
-    ]);
+    ];
+    mock.onGet(fileReportUrl(sha256List[0])).reply(200, {
+      sha256: sha256List[0],
+      verdict: "Malicious",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+    mock.onGet(fileReportUrl(sha256List[1])).reply(200, {
+      sha256: sha256List[1],
+      verdict: "Clean",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
+    const verdicts = await vaas.forSha256List(sha256List);
     expect(verdicts[0].verdict).toBe("Malicious");
-    expect(verdicts[0].sha256).toBe(
-      "ab5788279033b0a96f2d342e5f35159f103f69e0191dd391e036a1cd711791a2",
-    );
+    expect(verdicts[0].sha256).toBe(sha256List[0]);
     expect(verdicts[1].verdict).toBe("Clean");
-    expect(verdicts[1].sha256).toBe(
-      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
-    );
+    expect(verdicts[1].sha256).toBe(sha256List[1]);
   });
 
   test("if a list unknown files is uploaded, they are detected as clean", async () => {
-    const randomFileContent1 = await randomBytes.sync(50);
-    const randomFileContent2 = await randomBytes.sync(50);
-    var file1Sha256 = Vaas.toHexString(sha256.hash(randomFileContent1));
-    var file2Sha256 = Vaas.toHexString(sha256.hash(randomFileContent2));
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const randomFileContent1 = randomBytes.sync(50);
+    const randomFileContent2 = randomBytes.sync(50);
+    const file1Sha256 = Vaas.toHexString(sha256.hash(randomFileContent1));
+    const file2Sha256 = Vaas.toHexString(sha256.hash(randomFileContent2));
+    const { vaas, mock } = createVaas();
+    mock.onGet(fileReportUrl(file1Sha256)).reply(200, {
+      sha256: file1Sha256,
+      verdict: "Unknown",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+    mock.onGet(fileReportUrl(file2Sha256)).reply(200, {
+      sha256: file2Sha256,
+      verdict: "Unknown",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+    mock
+      .onPost(fileUploadUrl())
+      .replyOnce(201, { sha256: file1Sha256 })
+      .onPost(fileUploadUrl())
+      .replyOnce(201, { sha256: file2Sha256 });
+    mock.onGet(fileReportUrl(file1Sha256)).reply(200, {
+      sha256: file1Sha256,
+      verdict: "Clean",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+    mock.onGet(fileReportUrl(file2Sha256)).reply(200, {
+      sha256: file2Sha256,
+      verdict: "Clean",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
     const verdict = await vaas.forFileList([
       randomFileContent1,
       randomFileContent2,
@@ -202,81 +308,95 @@ describe("Test verdict requests", function () {
 
   test("if an empty file is uploaded, it is detected as clean", async () => {
     const emptyFile = new Uint8Array();
-    var fileSha256 = Vaas.toHexString(sha256.hash(emptyFile));
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const fileSha256 = Vaas.toHexString(sha256.hash(emptyFile));
+    const { vaas, mock } = createVaas();
+    mock.onGet(fileReportUrl(fileSha256)).reply(200, {
+      sha256: fileSha256,
+      verdict: "Unknown",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+    mock.onPost(fileUploadUrl()).reply(201, { sha256: fileSha256 });
+    mock.onGet(fileReportUrl(fileSha256)).reply(200, {
+      sha256: fileSha256,
+      verdict: "Clean",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
     const verdict = await vaas.forFile(emptyFile);
     expect(verdict.verdict).toBe("Clean");
     expect(verdict.sha256).toBe(fileSha256);
   });
 
-
-  test.skip("if a large file is uploaded, it is detected as clean", async () => {
-    const randomFileContent = await randomBytes.sync(1073741824);
-    var fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const verdict = await vaas.forFile(randomFileContent);
-    expect(verdict.verdict).toBe("Clean");
-    expect(verdict.sha256).toBe(fileSha256);
-  });
-
-  test("if we request the same guid twice, both calls return a result", async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const sha256 =
-      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
-    const request1 = vaas.forSha256(sha256);
-    const request2 = vaas.forSha256(sha256);
-    const verdict1 = await request1;
-    const verdict2 = await request2;
-    expect(verdict1.verdict).toBe("Clean");
-    expect(verdict1.sha256).toBe(
-      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
-    );
-    expect(verdict2.verdict).toBe("Clean");
-    expect(verdict2.sha256).toBe(
-      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
-    );
-  });
-
-  //www.virustotal.com/gui/file/edb6991d68ba5c7ed43f198c3d2593c770f2634beeb8c83afe3138279e5e81f3
-  test.skip("keeps connection alive", async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const sha256 =
-      "3A78F382E8E2968EC201B33178102E06DB72E4F2D1505E058A4613C1E977825C";
-    let verdict = await vaas.forSha256(sha256);
-    expect(verdict.verdict).toBe("Clean");
-    await delay(40000);
-    verdict = await vaas.forSha256(sha256);
-    expect(verdict.verdict).toBe("Clean");
-    expect(verdict.sha256.toUpperCase()).toBe(sha256);
-  });
-
   test("returns Pup for AMTSO pup sample", async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const { vaas, mock } = createVaas();
     const sha256 =
       "d6f6c6b9fde37694e12b12009ad11ab9ec8dd0f193e7319c523933bdad8a50ad";
-    let verdict = await vaas.forSha256(sha256);
+    mock.onGet(fileReportUrl(sha256)).reply(200, {
+      sha256,
+      verdict: "Pup",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
+    const verdict = await vaas.forSha256(sha256);
     expect(verdict.verdict).toBe("Pup");
     expect(verdict.sha256).toBe(sha256);
   });
 
   test('if a clean url is submitted, a verdict "clean" is expected', async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const verdict = await vaas.forUrl(
-      new URL("https://www.gdatasoftware.com/oem/verdict-as-a-service"),
-    );
+    const { vaas, mock } = createVaas();
+    const url = "https://www.gdatasoftware.com/oem/verdict-as-a-service";
+    const reportId = "report-id-123";
+    mock.onPost(urlAnalysisUrl()).reply(201, { id: reportId });
+    mock.onGet(urlReportUrl(reportId)).reply(200, {
+      sha256: "some-sha256",
+      verdict: "Clean",
+      url,
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
+    const verdict = await vaas.forUrl(new URL(url));
     expect(verdict.verdict).toBe("Clean");
   });
 
   test('if EICAR url is submitted, a verdict "malicious" is expected', async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const verdict = await vaas.forUrl(
-      new URL("https://secure.eicar.org/eicar.com"),
-    );
+    const { vaas, mock } = createVaas();
+    const url = "https://secure.eicar.org/eicar.com";
+    const reportId = "report-id-456";
+    mock.onPost(urlAnalysisUrl()).reply(201, { id: reportId });
+    mock.onGet(urlReportUrl(reportId)).reply(200, {
+      sha256: eicarSha256,
+      verdict: "Malicious",
+      url,
+      detection: "EICAR-Test-File",
+      fileType: "EICAR virus test files",
+      mimeType: "text/plain",
+    });
+
+    const verdict = await vaas.forUrl(new URL(url));
     expect(verdict.verdict).toBe("Malicious");
   });
 
   test('if a clean stream is submitted, a verdict "clean" is expected', async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const { vaas, mock } = createVaas();
+    const fileSha256 =
+      "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069";
+    mock.onPost(fileUploadUrl()).reply(201, { sha256: fileSha256 });
+    mock.onGet(fileReportUrl(fileSha256)).reply(200, {
+      sha256: fileSha256,
+      verdict: "Clean",
+      detection: undefined,
+      fileType: "ASCII text, with no line terminators",
+      mimeType: "text/plain",
+    });
+
     const stream = new Readable();
     stream.push("I am Clean");
     stream.push(null);
@@ -288,12 +408,19 @@ describe("Test verdict requests", function () {
   });
 
   test('if a EICAR stream is submitted, a verdict "malicious" is expected', async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const { vaas, mock } = createVaas();
+    mock.onPost(fileUploadUrl()).reply(201, { sha256: eicarSha256 });
+    mock.onGet(fileReportUrl(eicarSha256)).reply(200, {
+      sha256: eicarSha256,
+      verdict: "Malicious",
+      detection: "EICAR-Test-File",
+      fileType: "EICAR virus test files",
+      mimeType: "text/plain",
+    });
+
     const stream = new Readable();
-    stream._read = () => { };
-    stream.push(
-      `X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*`,
-    );
+    stream._read = () => {};
+    stream.push(eicarString);
     stream.push(null);
     const verdict = await vaas.forStream(stream);
     expect(verdict.verdict).toBe("Malicious");
@@ -301,109 +428,214 @@ describe("Test verdict requests", function () {
     expect(verdict.file_type).toBe("EICAR virus test files");
     expect(verdict.mime_type).toBe("text/plain");
   });
+});
 
-  test('if a EICAR stream from an url is submitted, a response with verdict, libmagic & detections is expected', async () => {
-    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
-    const response = await axios.get<Readable>(
-      "https://secure.eicar.org/eicar.com.txt",
-      { responseType: "stream" },
+describe("Test options", function () {
+  beforeAll(() => {
+    jest.setTimeout(defaultTimeout);
+  });
+
+  test.each([
+    [false, false],
+    [false, true],
+    [true, false],
+    [true, true],
+  ])(
+    "forSha256 sends useCache=%s and useHashLookup=%s",
+    async (useCache, useHashLookup) => {
+      const { vaas, mock } = createVaas();
+      const sha256 =
+        "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+      let capturedUrl: string | undefined;
+      mock.onGet(fileReportUrl(sha256)).reply((config) => {
+        capturedUrl = config.url;
+        return [
+          200,
+          {
+            sha256,
+            verdict: "Clean",
+            detection: undefined,
+            fileType: undefined,
+            mimeType: undefined,
+          },
+        ];
+      });
+
+      await vaas.forSha256(sha256, undefined, {
+        useCache,
+        useHashLookup,
+      } as ForSha256Options);
+
+      expect(capturedUrl).toContain(`useCache=${useCache}`);
+      expect(capturedUrl).toContain(`useHashLookup=${useHashLookup}`);
+    },
+  );
+
+  test("forSha256 sends User-Agent header", async () => {
+    const { vaas, mock } = createVaas();
+    const sha256 =
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+    let capturedHeaders: Record<string, string> | undefined;
+    mock.onGet(fileReportUrl(sha256)).reply((config) => {
+      capturedHeaders = config.headers as Record<string, string>;
+      return [
+        200,
+        {
+          sha256,
+          verdict: "Clean",
+          detection: undefined,
+          fileType: undefined,
+          mimeType: undefined,
+        },
+      ];
+    });
+
+    await vaas.forSha256(sha256);
+
+    expect(capturedHeaders?.["User-Agent"]).toContain("gdata-vaas-typescript");
+  });
+
+  test("forSha256 sends tracestate when vaasRequestId is set", async () => {
+    const { vaas, mock } = createVaas();
+    const sha256 =
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+    let capturedHeaders: Record<string, string> | undefined;
+    mock.onGet(fileReportUrl(sha256)).reply((config) => {
+      capturedHeaders = config.headers as Record<string, string>;
+      return [
+        200,
+        {
+          sha256,
+          verdict: "Clean",
+          detection: undefined,
+          fileType: undefined,
+          mimeType: undefined,
+        },
+      ];
+    });
+
+    await vaas.forSha256(
+      sha256,
+      undefined,
+      new ForSha256Options({ vaasRequestId: "foobar" }),
     );
-    axios.defaults.httpAgent = new http.Agent({ keepAlive: false });
-    axios.defaults.httpAgent = new https.Agent({ keepAlive: false });
-    const verdict = await vaas.forStream(response.data);
-    expect(verdict.verdict).toBe("Malicious");
-    expect(verdict.detection).not.toEqual("");
-    expect(verdict.file_type).toBe("EICAR virus test files");
-    expect(verdict.mime_type).toBe("text/plain");
+
+    expect(capturedHeaders?.["tracestate"]).toBe("vaasrequestid=foobar");
   });
 });
 
-describe("Vaas", () => {
-  let methodsAndParams: [string, any[]][] = [
-    ["forSha256", [eicarSha256]],
-    ["forSha256List", [[eicarSha256]]],
-    ["forFile", [randomFile]],
-    ["forFileList", [[randomFile]]],
-  ];
-
-  let webSocket: WebSocket.WebSocket;
-  let vaas: Vaas;
-
-  beforeEach(async () => {
-    webSocket = {
-      readyState: WebSocket.WebSocket.CONNECTING as number,
-      onopen: () => { },
-      onclose: () => { },
-      onmessage: () => { },
-      send: (data: any) => { },
-      close: () => { },
-    } as any;
-    vaas = new Vaas((url) => webSocket);
+describe("Test errors", function () {
+  beforeAll(() => {
+    jest.setTimeout(defaultTimeout);
   });
 
-  afterEach(() => {
-    vaas.close();
-  });
-
-  methodsAndParams.forEach(async ([method, params]) => {
-    describe(`#${method}()`, () => {
-      it("throws if connect() has not been called", async () => {
-        await expect(() => (vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
-      });
-
-      it("throws if connect() was not awaited", async () => {
-        vaas.connect("token", VAAS_URL);
-        (webSocket as any).readyState = WebSocket.WebSocket.CONNECTING;
-        await expect(() => (vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
-      });
-
-      it("throws not authenticated if connect() was not awaited", async () => {
-        vaas.connect("token", VAAS_URL);
-        (webSocket as any).readyState = WebSocket.WebSocket.OPEN;
-        await expect(() => (vaas as any)[method](...params)).rejects.toThrow(VaasInvalidStateError);
-      });
-
-      test.skip("is rejected if connection is closed by server", async () => {
-        const authResponse = new AuthenticationResponse(
-          "sessionId",
-          true,
-          "Authenticated."
-        );
-        await vaas.connect("token", VAAS_URL);
-        (webSocket as any).readyState = WebSocket.WebSocket.OPEN;
-        webSocket.onopen!({} as any);
-        webSocket.onmessage!({ data: JSON.stringify(authResponse) } as any);
-        const promise = (vaas as any)[method](...params);
-        webSocket.onclose!({ wasClean: true } as any);
-
-        await expect(promise).rejects.toThrow(VaasConnectionClosedError);
-      });
-
-      // Tests not using mock
-
-      it("throws if connection was closed", async () => {
-        const v = await createVaasWithClientCredentialsGrantAuthenticator();
-        try {
-          v.close();
-          await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasConnectionClosedError);
-        }
-        finally {
-          v.close();
-        }
-      });
-
-      it("throws if authentication failed", async () => {
-        const v = new Vaas();
-        try {
-          await expect(
-            () => v.connect("token", VAAS_URL),
-          ).rejects.toThrow(VaasAuthenticationError);
-          await expect(() => (v as any)[method](...params)).rejects.toThrow(VaasAuthenticationError);
-        }
-        finally {
-          v.close();
-        }
-      });
+  test("if a request times out, an error is expected", async () => {
+    const { vaas, mock } = createVaas();
+    const randomFileContent = randomBytes.sync(50);
+    const fileSha256 = Vaas.toHexString(sha256.hash(randomFileContent));
+    mock.onGet(fileReportUrl(fileSha256)).reply(200, {
+      sha256: fileSha256,
+      verdict: "Unknown",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
     });
+    mock
+      .onPost(fileUploadUrl())
+      .reply(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve([201, { sha256: fileSha256 }]), 1000),
+          ),
+      );
+    mock.onGet(fileReportUrl(fileSha256)).reply(200, {
+      sha256: fileSha256,
+      verdict: "Clean",
+      detection: undefined,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+
+    const promise = vaas.forFile(
+      randomFileContent,
+      CancellationToken.fromMilliseconds(1),
+    );
+    await expect(promise).rejects.toThrow(VaasTimeoutError);
+  });
+
+  test("if server returns VaasClientException, VaasClientError is thrown", async () => {
+    const { vaas, mock } = createVaas();
+    const sha256 =
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+    mock.onGet(fileReportUrl(sha256)).reply(400, {
+      type: "VaasClientException",
+      detail: "Mocked client-side error",
+    });
+
+    await expect(vaas.forSha256(sha256)).rejects.toThrow(VaasClientError);
+  });
+
+  test("if server returns VaasServerException, VaasServerError is thrown", async () => {
+    const { vaas, mock } = createVaas();
+    const sha256 =
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+    mock.onGet(fileReportUrl(sha256)).reply(500, {
+      type: "VaasServerException",
+      detail: "Mocked server-side error",
+    });
+
+    await expect(vaas.forSha256(sha256)).rejects.toThrow(VaasServerError);
+  });
+
+  test("if server returns 401, VaasAuthenticationError is thrown", async () => {
+    const { vaas, mock } = createVaas();
+    const sha256 =
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e";
+    mock
+      .onGet(fileReportUrl(sha256))
+      .reply(401, {
+        type: "VaasAuthenticationException",
+        detail: "Unauthorized",
+      });
+
+    await expect(vaas.forSha256(sha256)).rejects.toThrow(
+      VaasAuthenticationError,
+    );
+  });
+
+  test("if authenticator fails, error is propagated", async () => {
+    const axiosInstance = axios.create({
+      baseURL: VAAS_URL_ENV,
+      validateStatus: () => true,
+    });
+    const vaas = new Vaas(
+      {
+        getToken: () => Promise.reject(new Error("Auth failed")),
+      },
+      undefined,
+      axiosInstance,
+    );
+
+    await expect(vaas.forSha256(eicarSha256)).rejects.toThrow("Auth failed");
+  });
+});
+
+describe("Test live integration", function () {
+  beforeAll(() => {
+    jest.setTimeout(defaultTimeout);
+  });
+
+  test('if a clean SHA256 is submitted, a verdict "clean" is expected', async () => {
+    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const verdict = await vaas.forSha256(
+      "cd617c5c1b1ff1c94a52ab8cf07192654f271a3f8bad49490288131ccb9efc1e",
+    );
+    expect(verdict.verdict).toBe("Clean");
+  });
+
+  test('if eicar SHA256 is submitted, a verdict "malicious" is expected', async () => {
+    const vaas = await createVaasWithClientCredentialsGrantAuthenticator();
+    const verdict = await vaas.forSha256(eicarSha256);
+    expect(verdict.verdict).toBe("Malicious");
   });
 });

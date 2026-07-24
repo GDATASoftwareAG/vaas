@@ -1,20 +1,9 @@
-import WebSocket from "@d-fischer/isomorphic-ws";
-
-/** Connection was closed with error. */
-export class VaasConnectionClosedError extends Error {
-  /** Code and reason for connection close. */
-  public closeEvent?: WebSocket.CloseEvent;
-
-  constructor(closeEvent?: WebSocket.CloseEvent) {
-    super("Connection was closed");
-    this.closeEvent = closeEvent;
-  }
-}
+import { ProblemDetails } from "./messages/ProblemDetails";
 
 /** Vaas authentication failed. */
 export class VaasAuthenticationError extends Error {
-  constructor() {
-    super("Vaas authentication failed");
+  constructor(message?: string) {
+    super(message ?? "Vaas authentication failed");
   }
 }
 
@@ -35,10 +24,30 @@ export class VaasTimeoutError extends Error {
 }
 
 /** Vaas server error.
- * @description These are coding errors and be prevented by the developer.
+ * @description The server encountered an internal error.
  */
 export class VaasServerError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string | ProblemDetails) {
+    if (message instanceof ProblemDetails) {
+      super(message.detail);
+    } else {
+      super(message);
+    }
+  }
+}
+
+/** Vaas client error.
+ * @description The request is malformed or cannot be completed.
+ */
+export class VaasClientError extends Error {
+  public problemDetails?: ProblemDetails;
+
+  constructor(message: string | ProblemDetails) {
+    if (message instanceof ProblemDetails) {
+      super(message.detail);
+      this.problemDetails = message;
+    } else {
+      super(message);
+    }
   }
 }
