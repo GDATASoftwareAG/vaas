@@ -40,7 +40,7 @@ jobs:
     outputs:
       major_version: ${{ steps.extract_major_version.outputs.major_version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Extract major version
         id: extract_major_version
         if: startsWith(github.ref, 'refs/tags')
@@ -49,7 +49,7 @@ jobs:
   virus-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Scan for Viruses
         uses: ./.github/actions/vaas-scan-action
         with:
@@ -61,7 +61,7 @@ jobs:
     container:
       image: golang:latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: set staging environment
         if: (inputs.environment == 'staging' || (startsWith(github.ref, 'refs/tags') && endsWith(github.ref, '-beta')))
@@ -110,7 +110,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
@@ -139,7 +139,7 @@ jobs:
     container:
       image: golang:latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
         shell: bash
@@ -197,7 +197,7 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
