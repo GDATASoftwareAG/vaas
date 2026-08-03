@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Security.Authentication;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using Moq.Contrib.HttpClient;
 using Vaas.Authentication;
