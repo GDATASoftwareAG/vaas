@@ -823,7 +823,7 @@ func Test_ForStream_WithMaliciousStream_RetunsMaliciousWithDetectionsAndMimeType
 
 func Test_ForUrl(t *testing.T) {
 	const (
-		cleanURL   string = "https://www.gdatasoftware.com/oem/verdict-as-a-service"
+		cleanURL   string = "https://samples.develop.vaas.gdatasecurity.de/password.zip"
 		eicarURL   string = "https://secure.eicar.org/eicar.com"
 		invalidURL string = "https://invalid.url.test"
 	)
